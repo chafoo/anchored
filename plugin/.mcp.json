@@ -1,0 +1,6 @@
+{
+  "anchored": {
+    "command": "npx",
+    "args": ["-y", "@anchored/mcp"]
+  }
+}

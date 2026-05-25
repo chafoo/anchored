@@ -1,0 +1,52 @@
+{
+  "name": "@anchored/mcp",
+  "version": "0.2.0-alpha.0",
+  "description": "MCP server and CLI for the anchored Claude Code plugin — typed task-file state mutations with schema validation",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "anchored-mcp": "./dist/mcp/server.js",
+    "anchored": "./dist/cli/bin.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx src/cli/bin.ts",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "commander": "^12.1.0",
+    "yaml": "^2.5.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "esbuild": "^0.23.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "mcp",
+    "anchored",
+    "task-management",
+    "agent-workflow"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anchored/anchored"
+  }
+}
