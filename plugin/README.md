@@ -56,9 +56,18 @@ but is fully extensible with custom steps or agents (per-phase commits,
 lint/test runs, PR creation, Slack notify, deploy triggers, custom
 validators).
 
-See [`references/default-config.yml`](./references/default-config.yml)
+See [`EXTENDING.md`](./EXTENDING.md) for the full extension guide with
+worked examples (per-phase commits, custom validators, methodology
+contracts, deploy hooks), or
+[`references/default-config.yml`](./references/default-config.yml)
 for the full slot list with inline docs.
 
 ## License
 
 MIT — see [LICENSE](./LICENSE).
+
+---
+
+Built by [@chafoo](https://github.com/chafoo). Need help configuring
+anchored for your team? Reach out — custom `anchored.yml` setups +
+onboarding consulting available.
