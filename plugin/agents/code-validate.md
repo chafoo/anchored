@@ -127,7 +127,33 @@ codebase).
    Always write at least the rollup line, even on a full pass. Complete
    audit trail.
 
-8. **Return structured output.**
+8. **(V0.3) Surface rule-ambiguity as a structured question.**
+   If during scanning you discover a rule that the implement-agent
+   plausibly violated but you genuinely cannot tell whether the
+   violation was intentional (e.g. the implementation chose a
+   pattern that contradicts a phase-attached rule but matches a
+   different rule elsewhere in `.claude/rules/`), call:
+
+   ```
+   mcp__task__question_add(
+     project_root, slug,
+     text: "Phase <slug>'s code uses pattern X (file:line). Rule <path> says <constraint>, but rule <other-path> says <other-constraint>. Which applies for this work?",
+     priority: "high",
+     origin: "code-validate",
+     phase: "<phase-slug>"
+   )
+   ```
+
+   Mid-build questions are tagged `high` and block the phase loop
+   regardless of autonomy — the /impl-build orchestrator walks
+   them with the user before letting implement re-spawn. Same
+   reasoning as task-validate's question path.
+
+   Use sparingly. The common case is: rule violated → `set_failures`,
+   not `question_add`. Reserve `question_add` for genuine rule
+   conflicts the plan-agent + rules-check didn't anticipate.
+
+9. **Return structured output.**
 
 ## Return contract
 

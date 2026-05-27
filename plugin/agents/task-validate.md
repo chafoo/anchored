@@ -135,7 +135,34 @@ USER_EXTENSION: <optional prose from anchored.yml.build.task_validate, may be em
    per-AC findings here** — those live on the AC itself via the
    `failures` field set in step 6.
 
-8. **Return structured output** to the orchestrator (see below).
+8. **(V0.3) Surface mid-build ambiguity as a structured question.**
+   If during verification you discover that an AC is ambiguous — the
+   evidence is plausible but multiple reasonable interpretations of
+   "done" exist, and the plan didn't disambiguate — call:
+
+   ```
+   mcp__task__question_add(
+     project_root, slug,
+     text: "<concise question about the ambiguity>",
+     priority: "high",
+     origin: "task-validate",
+     phase: "<phase-slug>"
+   )
+   ```
+
+   Mid-build questions are tagged `high` regardless of impact —
+   implementation-time ambiguity is by definition unexpected (the
+   plan should have caught it). The /impl-build orchestrator halts
+   the phase loop when it sees a new open question and walks it
+   with the user (even under `decide_all` autonomy — the contract
+   is "AI decides what the plan couldn't predict, not what
+   task-validate caught mid-execution").
+
+   Use sparingly. The common case is: AC fails → call `set_failures`,
+   not `question_add`. Reserve `question_add` for "I literally
+   don't know what 'done' means here without user input."
+
+9. **Return structured output** to the orchestrator (see below).
 
 ## Return contract
 
