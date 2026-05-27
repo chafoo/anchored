@@ -15,6 +15,27 @@
     "README.md",
     "LICENSE"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chafoo/anchored.git",
+    "directory": "mcp"
+  },
+  "homepage": "https://github.com/chafoo/anchored#readme",
+  "bugs": {
+    "url": "https://github.com/chafoo/anchored/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "chafoo",
+    "url": "https://github.com/chafoo"
+  },
+  "keywords": [
+    "claude-code",
+    "mcp",
+    "model-context-protocol",
+    "task-management",
+    "autonomous-agents"
+  ],
   "scripts": {
     "build": "node build.mjs",
     "test": "vitest run",
