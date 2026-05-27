@@ -200,22 +200,39 @@ factory accepts `drafted → drafted` as a self-edge).
 Run each step from `anchored.yml.plan.steps` in declaration order
 (top-to-bottom in the user's config file).
 
-For the default pipeline (`explore` → `rules` → `refine`):
+For the default pipeline (`explore` + `rules` in parallel → `refine`):
 
-### Step: explore
+### Step: explore + rules (parallel)
+
+Spawn BOTH agents in a **single message** with two Agent tool
+calls. They share no dependencies — explore scans the codebase,
+rules scans `.claude/rules/`. Running them parallel cuts the
+wall-clock to `max(explore, rules)` instead of summing them
+(typically saves ~25-40s on a non-trivial task).
+
+**Step: explore**
 Spawn Claude Code's built-in `Explore` agent with the raw task
 description. Capture its return as the discovery summary
 (affected_paths, similar_code, patterns). If user's anchored.yml has
 `plan.steps.explore.instructions` prose, append it to the agent's
 brief.
 
-### Step: rules
+**Step: rules**
 Spawn the `rules` agent (`plugin/agents/rules.md`) with:
 - RAW_PLAN: user's task description
-- DISCOVERY: output from explore step
+- DISCOVERY: **null** (running parallel; rules-agent falls back to
+  keyword-match-only filtering on RAW_PLAN)
 - RULES_CONFIG: `anchored.yml.plan.rules` (paths, additional_keywords)
 
 Capture the rules summary (must_follow + worth_knowing + sources).
+The rules-agent is designed to handle empty DISCOVERY — it returns
+a slightly more inclusive list (keyword-matched only, no
+path-filtering), which rules-check tightens later in /impl-refine.
+
+If a future use case needs explore's output to feed rules (e.g.
+very large rules library where path-filtering is essential), the
+user can override `anchored.yml.plan.steps` to declare them
+sequentially.
 
 ### Step: refine
 Spawn the `plan` agent (`plugin/agents/plan.md`) with:
