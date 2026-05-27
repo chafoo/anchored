@@ -7,10 +7,7 @@
     "url": "https://github.com/chafoo"
   },
   "homepage": "https://github.com/chafoo/anchored",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/chafoo/anchored"
-  },
+  "repository": "https://github.com/chafoo/anchored",
   "license": "MIT",
   "keywords": [
     "claude-code",
