@@ -1,7 +1,7 @@
 # Changelog
 
 All notable changes to anchored (the Claude Code plugin) and
-`@chafoo/anchored-mcp` (the underlying MCP server + CLI) are
+`@chaafoo/anchored-mcp` (the underlying MCP server + CLI) are
 documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
@@ -58,7 +58,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   + 7 agents. Stage-N references, MCP tool names, and config slot
   identifiers explicitly forbidden in user-facing chat. Each skill
   ships with contrast pairs (machinery voice → partner voice).
-- **Package rename.** `@anchored/mcp` → `@chafoo/anchored-mcp`. The
+- **Package rename.** `@anchored/mcp` → `@chaafoo/anchored-mcp`. The
   unscoped binary name `anchored-mcp` is now the package's primary
   bin, matching npx auto-resolution.
 

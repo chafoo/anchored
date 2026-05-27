@@ -1,5 +1,5 @@
 {
-  "name": "@chafoo/anchored-mcp",
+  "name": "@chaafoo/anchored-mcp",
   "version": "0.3.0",
   "description": "MCP server and CLI for the anchored Claude Code plugin — typed task-file state mutations with schema validation",
   "type": "module",

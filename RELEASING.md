@@ -4,7 +4,7 @@ This doc is for me (the maintainer), not end users.
 
 anchored ships in two places that must stay in lockstep:
 
-1. **`@chafoo/anchored-mcp`** on the npm registry — the MCP server +
+1. **`@chaafoo/anchored-mcp`** on the npm registry — the MCP server +
    CLI binary.
 2. **`anchored` plugin** on the Claude Code marketplace — pulled
    directly from this GitHub repo's `main` branch on every install.
@@ -16,11 +16,11 @@ A release means: bump version, tag, push. The rest is automated.
 Before the first release, do these once:
 
 1. **Create npm account** (if not already): https://www.npmjs.com/signup
-   — username must be `chafoo` for the `@chafoo` scope to be yours.
+   — username must be `chaafoo` for the `@chaafoo` scope to be yours.
 2. **Get an npm access token** with publish permission:
-   - https://www.npmjs.com/settings/chafoo/tokens
+   - https://www.npmjs.com/settings/chaafoo/tokens
    - Type: **Automation** (CI-safe, bypasses 2FA)
-   - Scope: read + publish on `@chafoo/*`
+   - Scope: read + publish on `@chaafoo/*`
 3. **Add the token as a GitHub secret**:
    - Repo → Settings → Secrets and variables → Actions → New
      repository secret
@@ -102,11 +102,11 @@ Release both reject re-publishes of the same version.
 
 | Artifact | Where | When |
 |---|---|---|
-| `@chafoo/anchored-mcp` | npm registry | `git push --follow-tags` triggers publish workflow |
+| `@chaafoo/anchored-mcp` | npm registry | `git push --follow-tags` triggers publish workflow |
 | `anchored` plugin | Claude marketplace | Pulls from `main` branch HEAD on each install — no separate publish step |
 | GitHub Release | github.com/chafoo/anchored/releases | Auto-created by publish workflow with CHANGELOG section |
 | `dist/` bundle | inside the npm package | Built by `npm run build` during the publish flow; tracked via `files:` in package.json |
 
 The `dist/` folder is in `.gitignore` — only the npm tarball
 contains it. Source lives in `mcp/src/`; consumers always run the
-built version via `npx -y @chafoo/anchored-mcp`.
+built version via `npx -y @chaafoo/anchored-mcp`.

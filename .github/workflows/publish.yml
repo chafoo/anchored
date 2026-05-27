@@ -1,4 +1,4 @@
-# Publish @chafoo/anchored-mcp to npm on version tag push.
+# Publish @chaafoo/anchored-mcp to npm on version tag push.
 #
 # Trigger: push of any tag matching `v*` (e.g. v0.3.0, v0.4.0, v1.0.0).
 #
@@ -7,7 +7,7 @@
 #      (semver discipline — mismatched versions are the most common
 #      marketplace rejection reason).
 #   2. Run full quality gates: lint, typecheck, tests, build.
-#   3. Publish @chafoo/anchored-mcp to npm registry.
+#   3. Publish @chaafoo/anchored-mcp to npm registry.
 #   4. Create a GitHub Release with the matching CHANGELOG section.
 #
 # The plugin itself isn't published here — the Claude marketplace pulls
@@ -27,7 +27,7 @@ defaults:
 
 jobs:
   publish:
-    name: publish @chafoo/anchored-mcp
+    name: publish @chaafoo/anchored-mcp
     runs-on: ubuntu-latest
     permissions:
       contents: write  # for creating GitHub Release

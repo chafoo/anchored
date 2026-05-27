@@ -1,4 +1,4 @@
-# @chafoo/anchored-mcp
+# @chaafoo/anchored-mcp
 
 > MCP server + CLI for [anchored](https://github.com/chafoo/anchored) —
 > the Claude Code plugin for long autonomous AI coding runs.
@@ -18,13 +18,13 @@ custom MCP clients, scripting).
 ## Install
 
 ```bash
-npm install -g @chafoo/anchored-mcp
+npm install -g @chaafoo/anchored-mcp
 ```
 
 Or via npx (zero-install):
 
 ```bash
-npx -y @chafoo/anchored-mcp
+npx -y @chaafoo/anchored-mcp
 ```
 
 Requirements: Node 20+
@@ -38,7 +38,7 @@ In any MCP-compatible client:
   "mcpServers": {
     "anchored": {
       "command": "npx",
-      "args": ["-y", "@chafoo/anchored-mcp"]
+      "args": ["-y", "@chaafoo/anchored-mcp"]
     }
   }
 }

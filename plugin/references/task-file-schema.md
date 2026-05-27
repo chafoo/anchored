@@ -206,7 +206,7 @@ Schema for real-time validation while editing task-files by hand:
 ```
 
 The schema is exported on every build and lives in
-`@chafoo/anchored-mcp/dist/schema/task-file-v2.schema.json` (path adjusted
+`@chaafoo/anchored-mcp/dist/schema/task-file-v2.schema.json` (path adjusted
 for your install location). When the plugin is installed via
 marketplace, this resolves to the global node_modules location.
 
