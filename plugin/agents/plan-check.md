@@ -11,6 +11,8 @@ description: |
   appended to the default brief, never replaces it. Narrowly
   architectural — rules coverage is rules-check's territory.
 tools: Read, Glob, Grep, mcp__task__read, mcp__task__set_phase_rules, mcp__task__set_phase_context, mcp__task__append_plan, mcp__task__question_add, mcp__task__question_retag
+mcpServers:
+  - anchored
 model: opus
 ---
 

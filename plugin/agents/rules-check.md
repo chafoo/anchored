@@ -10,6 +10,8 @@ description: |
   anchored.yml.refine.rules_check.instructions is appended to the
   default brief, never replaces it.
 tools: Read, Glob, Grep, mcp__task__read, mcp__task__set_phase_rules, mcp__task__append_plan, mcp__task__question_add, mcp__task__question_retag
+mcpServers:
+  - anchored
 model: opus
 ---
 

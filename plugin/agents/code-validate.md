@@ -8,6 +8,8 @@ description: |
   disabled. User prose in anchored.yml.build.code_validate is appended
   to the default instructions, never replaces them.
 tools: Read, Glob, Grep, Bash, mcp__task__read, mcp__task__set_failures, mcp__task__append_build_section, mcp__task__question_add
+mcpServers:
+  - anchored
 model: opus
 ---
 

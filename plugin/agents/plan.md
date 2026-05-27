@@ -11,6 +11,8 @@ description: |
   tool use. Use during /impl-plan, after Explore + rules agents
   have run.
 tools: Read, Glob, Grep, mcp__task__read, mcp__task__create, mcp__task__append_plan, mcp__task__add_phase, mcp__task__question_add
+mcpServers:
+  - anchored
 model: opus
 ---
 
