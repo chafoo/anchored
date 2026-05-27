@@ -166,43 +166,106 @@ the AC back to `pending` and keeps its evidence as history).
 
 Capture both verdicts + rejected_acs once both `Task` calls return.
 
-### 4. Failures-driven re-do loop (the core of P6)
+### 4. Failures-driven re-do loop (autonomy-aware)
 
 After task-validate + code-validate complete:
 
 1. Re-read the phase via `mcp__task__read(project_root, slug)`.
 2. Scan `phase.acceptance_criteria`; collect ACs whose `failures`
    field is present and non-empty.
-3. **If any failures present:**
+3. **Check for new mid-build questions.** task-validate +
+   code-validate MAY surface new questions during build (e.g. they
+   discovered an ambiguity in implementing the ACs that the plan
+   didn't anticipate). Mid-build questions are tagged `priority: high`
+   regardless of autonomy — implementation ambiguity is unexpected
+   by definition.
 
-   a. Call `mcp__task__increment_retry(project_root, slug, phase.slug)`
-      → returns the new `retry_count` as `N`.
+   ```
+   const newQuestions = await mcp__task__question_list(
+     project_root, slug,
+     filter: { status: 'open' }
+   )
+   ```
 
-   b. Read `anchored.yml.build.retry_limit` (default 3).
+   **If any new open questions exist**: halt the phase loop, walk
+   the questions with the user via `AskUserQuestion` (build-time
+   ambiguity always asks the user, even under `decide_all` — the
+   contract is "AI decides what the PLAN couldn't predict ahead of
+   time, not what task-validate caught mid-execution"). Resolve
+   each via `task__question_resolve` with `source='user'`. After
+   resolution, re-spawn implement for the phase. Loop back to
+   step 3 (validators rerun).
 
-   c. **If `N > retry_limit`:**
-      - Call `mcp__task__set_phase_status(project_root, slug, phase.slug, "blocked")`.
-      - Surface to the user: which ACs hit the retry limit, what
-        their accumulated failures say, and which CLI ops can recover
-        (`anchored ac status set ... pending` to reset, or manual
-        edit + `anchored phase status set ... in-progress` to resume).
-      - Halt this phase's loop; continue to the next phase via
-        `task__next_phase`.
+4. **If failures present**, read the task's autonomy level to
+   decide retry behavior:
 
-   d. **Else (`N ≤ retry_limit`):**
-      - Re-spawn the `implement` agent for this phase. RETRY_ATTEMPT
-        for the re-spawn is `N + 1` (1-based counter; the just-
-        completed run was attempt `N`).
-      - After implement re-completes, **re-run task-validate +
-        code-validate** (loop back to step 3).
+   ```
+   const file = await mcp__task__read(project_root, slug)
+   const autonomy = file.autonomy ?? 'ask_high_only'   // safe default
+   ```
 
-4. **If no failures present** (all ACs accepted by both validators):
+   Then branch:
+
+   **a. `autonomy === 'ask_all'` — block on first failure**
+
+   No silent retry. The user wanted to be in the loop on every
+   decision; that includes failure recovery. Call
+   `set_phase_status('blocked')` and surface the failures + the
+   accumulated `failures[]` strings to the user via AskUserQuestion:
+
+   > "Phase {phase.name} ist in {N} ACs hängengeblieben. Soll ich
+   > nochmal mit den failure-notes ran, oder willst du erstmal
+   > selber gucken?"
+   >
+   > Options:
+   > - "Retry mit den failures als input" (resume the retry path)
+   > - "Ich gucke mir das erstmal an" (halt + exit; user can run
+   >   `/impl-build` again to resume after manual fix)
+   > - "Skip + continue mit nächster phase" (leave phase blocked,
+   >   call `next_phase`, continue)
+
+   **b. `autonomy === 'ask_high_only'` — retry then block + ask**
+
+   Standard V0.2 behavior. Call
+   `mcp__task__increment_retry(project_root, slug, phase.slug)`
+   → returns new `retry_count` as `N`.
+
+   - **If `N > retry_limit`** (default 3): `set_phase_status('blocked')`,
+     ask the user (same AskUserQuestion as case a) what to do next.
+   - **If `N ≤ retry_limit`**: re-spawn implement with
+     RETRY_ATTEMPT = `N + 1`, re-run validators, loop back to step 3.
+
+   **c. `autonomy === 'decide_all'` — retry then mark blocked + continue**
+
+   Vibe-coder hands-off mode. Same retry path as case b, but on
+   exhaustion the orchestrator does NOT ask the user — it marks
+   the phase blocked, logs the accumulated failures to
+   `context.build`, and continues to the next phase via
+   `next_phase`. The /impl-wrap reviewer surfaces the blocked
+   phases for human attention later.
+
+   Specifically:
+   - `mcp__task__increment_retry` → `N`
+   - **If `N > retry_limit`**: `set_phase_status('blocked')`, append
+     a summary note to `context.build → Implement` describing what
+     was tried + which ACs hit the wall, then call `next_phase`
+     and continue.
+   - **If `N ≤ retry_limit`**: re-spawn implement as usual.
+
+5. **If no failures present** (all ACs accepted by both validators):
    - Continue to step 5 (phase outcome evaluation).
 
-The orchestrator owns retry accounting. The agents (implement,
-task-validate, code-validate) never call `increment_retry` themselves
-— they don't know how many tries the user has authorized. Keep that
-decision at the orchestrator layer.
+The orchestrator owns retry accounting + autonomy interpretation.
+The agents (implement, task-validate, code-validate) never call
+`increment_retry` themselves and never read `task.autonomy` — they
+operate the same regardless. Keep those decisions at the orchestrator
+layer.
+
+**Autonomy override mid-build.** If the user says during a Q&A walk
+or at a block-and-ask prompt "actually, switch to decide_all" (or
+similar), call `mcp__task__set_autonomy` with the new value before
+continuing. The op appends an override audit entry; subsequent
+failure-handling reads the new value.
 
 ### 5. Evaluate phase outcome
 
