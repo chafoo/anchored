@@ -1,0 +1,118 @@
+# Publish @chafoo/anchored-mcp to npm on version tag push.
+#
+# Trigger: push of any tag matching `v*` (e.g. v0.3.0, v0.4.0, v1.0.0).
+#
+# The flow:
+#   1. Verify the tag version matches mcp/package.json AND plugin.json
+#      (semver discipline — mismatched versions are the most common
+#      marketplace rejection reason).
+#   2. Run full quality gates: lint, typecheck, tests, build.
+#   3. Publish @chafoo/anchored-mcp to npm registry.
+#   4. Create a GitHub Release with the matching CHANGELOG section.
+#
+# The plugin itself isn't published here — the Claude marketplace pulls
+# directly from the GitHub repo. A merge to main is the "deploy" for
+# the plugin; this workflow only handles the MCP npm package.
+
+name: publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+defaults:
+  run:
+    working-directory: mcp
+
+jobs:
+  publish:
+    name: publish @chafoo/anchored-mcp
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # for creating GitHub Release
+      id-token: write  # for npm provenance (signed publishes)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+
+      # ───────────────────────────────────────────────────────────────
+      # Verify tag version matches package.json + plugin.json
+      # ───────────────────────────────────────────────────────────────
+      - name: Verify version consistency
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          PLUGIN_VERSION=$(node -p "require('../plugin/.claude-plugin/plugin.json').version")
+          echo "Tag:    $TAG_VERSION"
+          echo "Package: $PKG_VERSION"
+          echo "Plugin:  $PLUGIN_VERSION"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag ($TAG_VERSION) does not match mcp/package.json ($PKG_VERSION)"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$PLUGIN_VERSION" ]; then
+            echo "::error::Tag ($TAG_VERSION) does not match plugin.json ($PLUGIN_VERSION)"
+            exit 1
+          fi
+
+      # ───────────────────────────────────────────────────────────────
+      # Install + quality gates (final pre-publish check)
+      # ───────────────────────────────────────────────────────────────
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # ───────────────────────────────────────────────────────────────
+      # Publish to npm
+      # ───────────────────────────────────────────────────────────────
+      - name: Publish to npm
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ───────────────────────────────────────────────────────────────
+      # Create GitHub Release
+      # ───────────────────────────────────────────────────────────────
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        working-directory: ${{ github.workspace }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Extract the section for this version from CHANGELOG.md.
+          # Pattern: lines between "## [VERSION]" and the next "## [" header.
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" {flag=1; next}
+            flag && /^## \[/ {flag=0}
+            flag {print}
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "No CHANGELOG entry found for $VERSION — using default" >&2
+            echo "See [CHANGELOG.md](./CHANGELOG.md) for details." > release-notes.md
+          fi
+          echo "notes_file=release-notes.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "anchored ${GITHUB_REF_NAME#v}" \
+            --notes-file "${{ steps.notes.outputs.notes_file }}"

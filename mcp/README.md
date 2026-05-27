@@ -1,4 +1,4 @@
-# @anchored/mcp
+# @chafoo/anchored-mcp
 
 > MCP server + CLI for [anchored](https://github.com/chafoo/anchored) —
 > the Claude Code plugin for long autonomous AI coding runs.
@@ -18,13 +18,13 @@ custom MCP clients, scripting).
 ## Install
 
 ```bash
-npm install -g @anchored/mcp
+npm install -g @chafoo/anchored-mcp
 ```
 
 Or via npx (zero-install):
 
 ```bash
-npx -y @anchored/mcp
+npx -y @chafoo/anchored-mcp
 ```
 
 Requirements: Node 20+
@@ -38,7 +38,7 @@ In any MCP-compatible client:
   "mcpServers": {
     "anchored": {
       "command": "npx",
-      "args": ["-y", "@anchored/mcp"]
+      "args": ["-y", "@chafoo/anchored-mcp"]
     }
   }
 }
@@ -90,14 +90,14 @@ Run `anchored --help` for the full command tree.
 38 typed MCP tools (matching CLI subcommands) for evidence-anchored
 task-file mutations, grouped by domain:
 
-| Domain | Operations |
-|---|---|
-| **task** | create, read, status, title, autonomy |
-| **context** | intro, plan, build / wrap sub-sections |
-| **phase** | list, next, add, remove, move, status, name, context, rules, retry counter |
-| **ac** | add, remove, text, evidence (set/add), failures (set/clear), status |
-| **field** | list, set, get (custom phase fields per anchored.yml) |
-| **question** | add, list, resolve, retag (priority-tagged Q&A surface) |
+| Domain       | Operations                                                                 |
+| ------------ | -------------------------------------------------------------------------- |
+| **task**     | create, read, status, title, autonomy                                      |
+| **context**  | intro, plan, build / wrap sub-sections                                     |
+| **phase**    | list, next, add, remove, move, status, name, context, rules, retry counter |
+| **ac**       | add, remove, text, evidence (set/add), failures (set/clear), status        |
+| **field**    | list, set, get (custom phase fields per anchored.yml)                      |
+| **question** | add, list, resolve, retag (priority-tagged Q&A surface)                    |
 
 ## Guarantees
 

@@ -1,7 +1,7 @@
 /**
  * `anchored-mcp` — MCP server exposing task-file mutations as typed tools.
  *
- * Started by Claude Code via `npx -y @anchored/mcp` after the plugin
+ * Started by Claude Code via `npx -y @chafoo/anchored-mcp` after the plugin
  * is installed (declared in plugin/.mcp.json). Communicates over stdio
  * per the MCP protocol.
  *
@@ -23,7 +23,7 @@ const server = new Server(
   {
     // serverInfo.name — matches the namespace key in .mcp.json so the
     // tool prefix in Claude Code is mcp__task__*. The package is still
-    // @anchored/mcp; the brand stays "anchored", but the in-chat
+    // @chafoo/anchored-mcp; the brand stays "anchored", but the in-chat
     // namespace is the shorter "task" since every tool operates on the
     // task-file.
     name: 'task',
@@ -50,9 +50,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 // Dispatch tool calls
 // ─────────────────────────────────────────────────────────────────────
 
-const toolsByName = new Map<string, AnchoredTool>(
-  ALL_TOOLS.map((t) => [t.name, t]),
-);
+const toolsByName = new Map<string, AnchoredTool>(ALL_TOOLS.map((t) => [t.name, t]));
 
 server.setRequestHandler(CallToolRequestSchema, async (req): Promise<CallToolResult> => {
   const { name, arguments: args } = req.params;
@@ -107,9 +105,7 @@ function formatErrorResponse(err: unknown): CallToolResult {
       ? (suggestions as string[])
       : [];
 
-  const content: CallToolResult['content'] = [
-    { type: 'text', text: `${errorName}: ${message}` },
-  ];
+  const content: CallToolResult['content'] = [{ type: 'text', text: `${errorName}: ${message}` }];
   if (suggestionsArr.length > 0) {
     const bulleted = suggestionsArr.map((s) => `  - ${s}`).join('\n');
     content.push({

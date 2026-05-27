@@ -12,7 +12,7 @@ Stops AI from claiming done before it actually is.
 | Package | Distributed as | Role |
 |---|---|---|
 | [`plugin/`](./plugin) | Claude Code marketplace plugin (`anchored`) | Skills, agents, references — what users install |
-| [`mcp/`](./mcp) | npm package (`@anchored/mcp`) | MCP server + CLI — typed service layer behind the plugin |
+| [`mcp/`](./mcp) | npm package (`@chafoo/anchored-mcp`) | MCP server + CLI — typed service layer behind the plugin |
 
 The plugin ships the user-facing skills, agents, and reference docs.
 The npm package ships the MCP server those agents call. They publish
@@ -26,12 +26,12 @@ User-facing docs: [`plugin/README.md`](./plugin/README.md).
 anchored/
 ├── plugin/                       # Claude Code marketplace target
 │   ├── .claude-plugin/           # plugin manifest
-│   ├── .mcp.json                 # references @anchored/mcp via npx
+│   ├── .mcp.json                 # references @chafoo/anchored-mcp via npx
 │   ├── skills/                   # /impl-plan, /impl-refine, /impl-build, /impl-wrap, /impl
 │   ├── agents/                   # 7 specialized subagents
 │   └── references/               # on-demand docs the agents load
 │
-├── mcp/                          # npm package: @anchored/mcp
+├── mcp/                          # npm package: @chafoo/anchored-mcp
 │   ├── src/schema/               # Zod schemas (task-file + anchored.yml)
 │   ├── src/core/                 # createOps(config, root) factory
 │   ├── src/cli/                  # `anchored` CLI binary

@@ -1,6 +1,6 @@
 {
-  "name": "@anchored/mcp",
-  "version": "0.2.0",
+  "name": "@chafoo/anchored-mcp",
+  "version": "0.3.0",
   "description": "MCP server and CLI for the anchored Claude Code plugin — typed task-file state mutations with schema validation",
   "type": "module",
   "engines": {
@@ -27,7 +27,8 @@
     "format:check": "prettier --check .",
     "type-coverage": "type-coverage --strict --at-least 95 --detail --ignore-files 'tests/**' --ignore-files 'scripts/**' --ignore-files 'build.mjs'",
     "prepare": "cd .. && husky mcp/.husky 2>/dev/null || true",
-    "prepublishOnly": "npm run typecheck && npm run lint && npm run test && npm run build"
+    "prepublishOnly": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "version": "node ../scripts/sync-plugin-version.cjs && git add ../plugin/.claude-plugin/plugin.json"
   },
   "lint-staged": {
     "*.{ts,js,mjs}": [

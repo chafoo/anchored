@@ -1,4 +1,4 @@
-# CI quality gates for the anchored plugin + @anchored/mcp package.
+# CI quality gates for the anchored plugin + @chafoo/anchored-mcp package.
 #
 # Six parallel jobs run on every PR + push to main. All must pass
 # before merge:

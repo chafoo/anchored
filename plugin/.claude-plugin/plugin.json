@@ -1,7 +1,24 @@
 {
   "name": "anchored",
+  "version": "0.3.0",
   "description": "Evidence-anchored task lifecycle for Claude Code. Plan, build, and wrap implementation work through a structured task-file with testable acceptance criteria — every AC requires concrete proof (file:line, command output, test result) before the framework will mark it done. Stops agents from hallucinating done-ness.",
   "author": {
-    "name": "anchored contributors"
-  }
+    "name": "chafoo",
+    "url": "https://github.com/chafoo"
+  },
+  "homepage": "https://github.com/chafoo/anchored",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chafoo/anchored"
+  },
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "autonomous",
+    "task-management",
+    "tdd",
+    "verification",
+    "orchestration"
+  ]
 }
