@@ -1,69 +1,68 @@
-# anchored — monorepo
+# anchored
 
-Evidence-anchored task lifecycle for Claude Code. This repo houses two
-deployable targets that ship together but publish separately:
+> Long autonomous AI coding runs you can actually trust.
+> Every claim has proof. Every decision is on the record. Every step is configurable.
+
+Evidence-anchored task lifecycle for Claude Code — every acceptance
+criterion needs concrete proof before the framework will mark it done.
+Stops AI from claiming done before it actually is.
+
+## What ships here
+
+| Package | Distributed as | Role |
+|---|---|---|
+| [`plugin/`](./plugin) | Claude Code marketplace plugin (`anchored`) | Skills, agents, references — what users install |
+| [`mcp/`](./mcp) | npm package (`@anchored/mcp`) | MCP server + CLI — typed service layer behind the plugin |
+
+The plugin ships the user-facing skills, agents, and reference docs.
+The npm package ships the MCP server those agents call. They publish
+separately but co-evolve in this repo.
+
+User-facing docs: [`plugin/README.md`](./plugin/README.md).
+
+## Repo layout
 
 ```
 anchored/
-├── plugin/   →  Claude Code marketplace as "anchored"
-├── mcp/      →  npm as "@anchored/mcp" (MCP server + CLI)
-└── docs/     →  architecture + design specs
+├── plugin/                       # Claude Code marketplace target
+│   ├── .claude-plugin/           # plugin manifest
+│   ├── .mcp.json                 # references @anchored/mcp via npx
+│   ├── skills/                   # /impl-plan, /impl-refine, /impl-build, /impl-wrap, /impl
+│   ├── agents/                   # 7 specialized subagents
+│   └── references/               # on-demand docs the agents load
+│
+├── mcp/                          # npm package: @anchored/mcp
+│   ├── src/schema/               # Zod schemas (task-file + anchored.yml)
+│   ├── src/core/                 # createOps(config, root) factory
+│   ├── src/cli/                  # `anchored` CLI binary
+│   ├── src/mcp/                  # `anchored-mcp` MCP server binary
+│   └── tests/                    # 484 tests across 36 files
+│
+└── docs/                         # architecture + design specs
 ```
 
-## What is anchored?
-
-A Claude Code plugin that takes raw task descriptions through a structured
-`plan → build → wrap` lifecycle where every acceptance criterion requires
-**concrete, verifiable evidence** (file:line refs, command output, test
-results) before the framework marks it done. Stops AI agents from
-hallucinating done-ness.
-
-User-facing docs live in [plugin/README.md](./plugin/README.md).
-
-## Repo structure
-
-### [`plugin/`](./plugin/) — what users install
-
-- `.claude-plugin/plugin.json` — plugin manifest (name, description, author)
-- `.mcp.json` — declares the MCP server via `npx -y @anchored/mcp`
-- `skills/` — the 4 slash-commands (`/impl-plan`, `/impl-build`, `/impl-wrap`, `/impl`)
-- `agents/` — 5 anchored-shipped subagents
-- `references/` — on-demand docs the agents read
-- `examples/` — sample anchored.yml configs and a finished task-file
-
-### [`mcp/`](./mcp/) — the npm package (server + CLI)
-
-- `src/schema/` — Zod schemas for `anchored.yml` and the task-file
-- `src/parser/` — task-file ↔ data-structure (round-trip safe)
-- `src/ops/` — typed service-layer operations (core + generic field ops)
-- `src/cli/` — `anchored` CLI binary
-- `src/mcp/` — `anchored-mcp` MCP server binary
-- Built with esbuild, bundled to single-file outputs.
-
-### [`docs/`](./docs/) — design specs and architecture
-
-Detailed design decisions, schema specs, agent contracts, and the V0.2
-execution roadmap. Read these to understand WHY things are structured
-the way they are.
-
-## Development
+## Contribute
 
 ```bash
-# Build everything
-cd mcp && npm install && npm run build
-
-# Run tests
-npm test
-
-# Type-check without emit
-npm run typecheck
+git clone https://github.com/chafoo/anchored
+cd anchored/mcp
+npm install
+npm test       # 484 tests
+npm run build  # produces dist/cli/bin.js + dist/mcp/server.js
 ```
 
-## Versioning
+Plugin development is symlink-based — point your project's `.claude/`
+folders at this repo's `plugin/` subdirectories and edits propagate
+live. No build step.
 
-Single version aligns across both deployables. `V0.2.0` is the first
-marketplace release. Pre-release tags (`-alpha.N`, `-beta.N`) for
-early testing.
+See [`docs/`](./docs) for architecture specs (service layer, skill
+orchestration, agent design).
+
+## Status
+
+Alpha. Architecture landed and end-to-end dogfood passed (see tag
+[`v0.3-dogfood-pass`](https://github.com/chafoo/anchored/releases/tag/v0.3-dogfood-pass)).
+Awaiting npm publish + marketplace submission.
 
 ## License
 

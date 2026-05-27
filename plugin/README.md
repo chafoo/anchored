@@ -58,3 +58,7 @@ validators).
 
 See [`references/default-config.yml`](./references/default-config.yml)
 for the full slot list with inline docs.
+
+## License
+
+MIT — see [LICENSE](./LICENSE).
