@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 230" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <style>
+    .box-fill      { fill: #ffffff; }
+    .box-stroke    { stroke: #d1d9e0; }
+    .text-primary  { fill: #1f2328; }
+    .text-secondary{ fill: #57606a; }
+    .arrow-stroke  { stroke: #57606a; }
+    .arrow-fill    { fill: #57606a; }
+    @media (prefers-color-scheme: dark) {
+      .box-fill      { fill: #161b22; }
+      .box-stroke    { stroke: #30363d; }
+      .text-primary  { fill: #f0f6fc; }
+      .text-secondary{ fill: #8b949e; }
+      .arrow-stroke  { stroke: #8b949e; }
+      .arrow-fill    { fill: #8b949e; }
+    }
+  </style>
+
+  <defs>
+    <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="arrow-fill"/>
+    </marker>
+  </defs>
+
+  <!-- Boxes: command nodes -->
+  <rect x="20"  y="40" width="160" height="60" rx="8" class="box-fill box-stroke" stroke-width="1.5"/>
+  <rect x="220" y="40" width="160" height="60" rx="8" class="box-fill box-stroke" stroke-width="1.5"/>
+  <rect x="420" y="40" width="160" height="60" rx="8" class="box-fill box-stroke" stroke-width="1.5"/>
+  <rect x="620" y="40" width="160" height="60" rx="8" class="box-fill box-stroke" stroke-width="1.5"/>
+
+  <!-- Command labels -->
+  <text x="100" y="75" text-anchor="middle" font-size="16" font-weight="600" class="text-primary">/impl-plan</text>
+  <text x="300" y="75" text-anchor="middle" font-size="16" font-weight="600" class="text-primary">/impl-refine</text>
+  <text x="500" y="75" text-anchor="middle" font-size="16" font-weight="600" class="text-primary">/impl-build</text>
+  <text x="700" y="75" text-anchor="middle" font-size="16" font-weight="600" class="text-primary">/impl-wrap</text>
+
+  <!-- Arrows between commands -->
+  <line x1="180" y1="70" x2="218" y2="70" class="arrow-stroke" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="380" y1="70" x2="418" y2="70" class="arrow-stroke" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="580" y1="70" x2="618" y2="70" class="arrow-stroke" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Annotations under each command -->
+  <g font-size="12" text-anchor="middle" class="text-secondary">
+    <text x="100" y="125">brainstorm task</text>
+    <text x="100" y="141">surface ambiguities</text>
+
+    <text x="300" y="125">pick autonomy</text>
+    <text x="300" y="141">walk through Q&amp;A</text>
+
+    <text x="500" y="125">phase-by-phase</text>
+    <text x="500" y="141">implement + verify</text>
+
+    <text x="700" y="125">review + summary</text>
+    <text x="700" y="141">mark done</text>
+  </g>
+
+  <!-- Bottom note -->
+  <text x="400" y="195" text-anchor="middle" font-size="13" class="text-secondary">
+    or run <tspan font-weight="600" class="text-primary">/impl</tspan> to autopilot all four sequentially
+  </text>
+</svg>
