@@ -46,30 +46,99 @@ export const TaskExtensions = z.object({
 export type TaskExtensions = z.infer<typeof TaskExtensions>;
 
 // ─────────────────────────────────────────────────────────────────────
-// lifecycle steps — plan / build / wrap
+// lifecycle steps — plan / refine / build / wrap
 // ─────────────────────────────────────────────────────────────────────
 
-export const StepProse = z.string().min(1, {
-  message: 'step prose cannot be empty — write what the AI should do, or omit the key',
-});
+/**
+ * A lifecycle step entry. Exactly one of `run` (inline prose
+ * instructions executed by the orchestrator) or `use` (named tool
+ * reference, e.g. `use: anchored/implement`) must be set — the
+ * refine guarantees a step is either prose-driven or tool-driven,
+ * never both.
+ */
+export const Step = z
+  .object({
+    name: z.string().min(1),
+    run: z.string().min(1).optional(),
+    use: z.string().min(1).optional(),
+  })
+  .refine((s) => Number(s.run !== undefined) + Number(s.use !== undefined) === 1, {
+    message: "step needs exactly one of run|use",
+  });
+export type Step = z.infer<typeof Step>;
 
-/** A lifecycle phase config — bag of named steps. Reserved names have
- *  framework semantics (plan: explore/rules/refine,
- *  build: implement/task_check/code_check, wrap: review/summarize).
- *  Other names are custom user steps run in declaration order. */
-export const LifecycleConfig = z.record(z.string(), StepProse).default({});
-export type LifecycleConfig = z.infer<typeof LifecycleConfig>;
+/** Reserved-slot config — instructions-only override block. `.strict()`
+ *  rejects unknown keys (e.g. legacy `enabled` flag) with a clear error. */
+const ReservedSlot = z
+  .object({
+    instructions: z.string().optional(),
+  })
+  .strict();
+
+// Plan + Wrap are simple step bags (no reserved slots in V0.2):
+const PlanConfig = z
+  .object({
+    steps: z.array(Step).default([]),
+  })
+  .strict()
+  .default({ steps: [] });
+
+const WrapConfig = z
+  .object({
+    steps: z.array(Step).default([]),
+  })
+  .strict()
+  .default({ steps: [] });
+
+/** Refine stage: refinement gates between plan and build.
+ *  Reserved slots: plan_check, rules_check. Strict on extras to
+ *  reject legacy `enabled` flags + typos. */
+const RefineConfig = z
+  .object({
+    steps: z.array(Step).default([]),
+    plan_check: ReservedSlot.default({}),
+    rules_check: ReservedSlot.default({}),
+  })
+  .strict()
+  .default({ steps: [], plan_check: {}, rules_check: {} });
+
+/** Build stage: per-phase implementation + post-phase validation gates.
+ *  Reserved slots: task_validate, code_validate. `retry_limit` caps
+ *  how many times the build loop retries on a failed gate.
+ *  Strict on extras to reject legacy `commit` slot + typos. */
+const BuildConfig = z
+  .object({
+    steps: z.array(Step).default([]),
+    retry_limit: z.number().int().min(1).default(3),
+    task_validate: ReservedSlot.default({}),
+    code_validate: ReservedSlot.default({}),
+  })
+  .strict()
+  .default({
+    steps: [],
+    retry_limit: 3,
+    task_validate: {},
+    code_validate: {},
+  });
+
+export type PlanConfig = z.infer<typeof PlanConfig>;
+export type RefineConfig = z.infer<typeof RefineConfig>;
+export type BuildConfig = z.infer<typeof BuildConfig>;
+export type WrapConfig = z.infer<typeof WrapConfig>;
 
 // ─────────────────────────────────────────────────────────────────────
 // top-level anchored.yml shape
 // ─────────────────────────────────────────────────────────────────────
 
-export const AnchoredYml = z.object({
-  task: TaskExtensions,
-  plan: LifecycleConfig,
-  build: LifecycleConfig,
-  wrap: LifecycleConfig,
-});
+export const AnchoredYml = z
+  .object({
+    task: TaskExtensions,
+    plan: PlanConfig,
+    refine: RefineConfig,
+    build: BuildConfig,
+    wrap: WrapConfig,
+  })
+  .strict();
 export type AnchoredYml = z.infer<typeof AnchoredYml>;
 
 export function parseAnchoredYml(raw: unknown): AnchoredYml {

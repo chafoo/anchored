@@ -1,0 +1,150 @@
+# CI quality gates for the anchored plugin + @anchored/mcp package.
+#
+# Six parallel jobs run on every PR + push to main. All must pass
+# before merge:
+#
+#   lint           — eslint + prettier check
+#   typecheck      — tsc + type-coverage (≥ 95% strict)
+#   test           — vitest full suite (incl. spawn-based protocol tests)
+#   audit          — npm audit; block on high/critical CVEs
+#   license        — production deps must use MIT/Apache/BSD/ISC family
+#   bundle-size    — size-limit; dist bundles within budget
+#
+# Cache the npm cache + node_modules between runs so green-path CI
+# completes in ~3-4 minutes on cache hit.
+
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+defaults:
+  run:
+    working-directory: mcp
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────
+  # Lint — ESLint + Prettier
+  # ───────────────────────────────────────────────────────────────────
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+      - run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: Prettier format check
+        run: npm run format:check
+
+  # ───────────────────────────────────────────────────────────────────
+  # Typecheck + type-coverage
+  # ───────────────────────────────────────────────────────────────────
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+      - run: npm ci
+      - name: tsc --noEmit
+        run: npm run typecheck
+      - name: type-coverage ≥ 95% strict
+        run: npm run type-coverage
+
+  # ───────────────────────────────────────────────────────────────────
+  # Test — vitest full suite
+  # ───────────────────────────────────────────────────────────────────
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+      - run: npm ci
+      - name: Build (required by spawn-based tests)
+        run: npm run build
+      - name: Run vitest
+        run: npm test
+
+  # ───────────────────────────────────────────────────────────────────
+  # Security audit — block on high/critical CVEs
+  # ───────────────────────────────────────────────────────────────────
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+      - run: npm ci
+      - name: npm audit (high+)
+        # Block on high/critical only — moderate/low get flagged but don't fail
+        # the build. Use --audit-level to control gating.
+        run: npm audit --audit-level=high --production
+      - name: npm audit (all severities, informational)
+        # Run again at "low" so the full picture lands in the logs,
+        # but with `continue-on-error` so it never blocks the build.
+        # Reviewers can see what's flagged without it being a wall.
+        if: always()
+        continue-on-error: true
+        run: npm audit --audit-level=low --production
+
+  # ───────────────────────────────────────────────────────────────────
+  # License compatibility — production deps only
+  # ───────────────────────────────────────────────────────────────────
+  license:
+    name: license
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+      - run: npm ci
+      - name: license-checker (production deps only)
+        # Allowed: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC,
+        # 0BSD, Python-2.0, CC0-1.0, Unlicense.
+        # Block on GPL/AGPL/LGPL/SSPL/unlicensed/unknown — propagation
+        # to downstream MIT users would create license-conflict risk.
+        run: |
+          npx --yes license-checker --production --onlyAllow "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;Python-2.0;CC0-1.0;Unlicense;BlueOak-1.0.0" --excludePrivatePackages --summary
+
+  # ───────────────────────────────────────────────────────────────────
+  # Bundle size — perf budget on dist artifacts
+  # ───────────────────────────────────────────────────────────────────
+  bundle-size:
+    name: bundle-size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+      - run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Check bundle sizes
+        run: npx --yes size-limit

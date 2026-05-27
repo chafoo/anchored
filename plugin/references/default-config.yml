@@ -1,136 +1,42 @@
-# anchored.yml — framework defaults
-#
-# This file ships with the anchored plugin. When you run /impl-plan
-# in a project that doesn't yet have an anchored.yml, the orchestrator
-# copies this file to your project root and uses it as your starting
-# configuration. You can edit it freely thereafter.
-#
-# What you can configure:
-#   1. task.phase.fields — custom fields preserved on each phase
-#      (e.g. commit SHA, coverage %, PR URL)
-#   2. plan.steps — the /impl-plan pipeline (default: explore → rules → refine)
-#   3. build.steps — the /impl-build pipeline (default: implement, then
-#      fixed task-check + code-check)
-#   4. wrap.steps — the /impl-wrap pipeline (default: review → summarize)
-#
-# What you CANNOT disable:
-#   - task-check and code-check agents during /impl-build. These are
-#     anchored's USP enforcement (no AC done without honest evidence,
-#     no rules silently violated). You can EXTEND them by adding prose
-#     in build.task_check / build.code_check (appended to defaults).
-#
-# See plugin/references/state-mutations.md for the MCP tool reference
-# (what agents and shell hooks can call to mutate the task-file).
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/anchored-yml.schema.json
+# anchored.yml — your project's anchored config.
+# All values shown below are framework defaults; uncomment + edit any slot to customize.
+# Schema: plugin/references/schema/anchored-yml.schema.json (validated by `anchored validate` + at every CLI/MCP invocation).
 
-# ─────────────────────────────────────────────────────────────────────
-# task — schema extensions
-# ─────────────────────────────────────────────────────────────────────
-task:
-  phase:
-    fields: []
-    # Example: per-phase commit SHA tracking
-    # fields:
-    #   - { name: commit, type: string }
-    #   - { name: coverage_pct, type: number }
+# ─── task ────────────────────────────────────────────────────────────
+# task:
+#   phase:
+#     fields: []   # declare custom phase fields, e.g. [{name: commit, type: string}, {name: coverage_pct, type: number}]
 
-# ─────────────────────────────────────────────────────────────────────
-# plan — /impl-plan pipeline
-# ─────────────────────────────────────────────────────────────────────
-plan:
-  # Agents used by default (all replaceable — write different prose to swap):
-  #   explore (step) → Claude Code's built-in `Explore` agent
-  #   rules   (step) → anchored's `rules` agent
-  #   refine  (step) → anchored's `plan` agent (writes the task-file via MCP)
+# ─── plan — /impl-plan pipeline ──────────────────────────────────────
+# plan:
+#   steps: []   # custom shell/tool steps run during /impl-plan (default: explore → rules → refine)
 
-  explore: |
-    Explore the codebase. Identify affected paths, similar existing code,
-    and patterns to match. Summarize findings.
+# ─── refine — /impl-refine pipeline ──────────────────────────────────
+# refine:
+#   steps: []   # custom steps run AFTER plan-check + rules-check (declaration order, halt on non-zero)
+#   plan_check:
+#     instructions: ""   # prose appended to plan-check default prompt (user architecture/style preferences)
+#   rules_check:
+#     instructions: ""   # prose appended to rules-check default prompt
 
-  rules: |
-    Scan project rule files (.claude/rules/ + any user-configured paths).
-    Return relevant rules categorized as must-follow vs worth-knowing
-    for this task's scope.
+# ─── build — /impl-build pipeline (per pending phase, in loop) ───────
+# build:
+#   retry_limit: 3       # max failures-driven implement re-spawns per phase before phase → blocked
+#   steps: []            # custom shell/tool steps run during /impl-build (default: implement)
+#   task_validate:
+#     instructions: ""   # prose appended to task-validate default prompt (extend-only; cannot disable)
+#   code_validate:
+#     instructions: ""   # prose appended to code-validate default prompt (extend-only; cannot disable)
 
-  refine: |
-    Decompose work into 2-6 phases. Each phase needs 2-6 testable
-    acceptance criteria. Surface gaps as questions in ### Plan under
-    Context. Run a Q&A loop with the user until all blocking questions
-    are resolved or deferred.
+# ─── wrap — /impl-wrap pipeline ──────────────────────────────────────
+# wrap:
+#   steps: []   # custom shell/tool steps run during /impl-wrap (default: review → summarize)
 
-# default — framework guarantees (runs around your steps):
-#   • Refuses to run if task status ≠ `plan` (or file doesn't exist)
-#   • Creates the task-file with frontmatter (slug, status, created)
-#   • Initializes ## Context and ## Phases sections
-#   • Generates phase slugs from phase names (<!-- id: ... -->)
-#   • Ensures every phase has ≥1 acceptance criterion
-#   • Initializes every AC with empty evidence (—)
-#   • Ensures all [blocking] questions are resolved before transitioning
-#   • Validates task-file schema integrity
-#   • Transitions task status: plan → build on success
-
-# ─────────────────────────────────────────────────────────────────────
-# build — /impl-build pipeline (runs per pending phase, in loop)
-# ─────────────────────────────────────────────────────────────────────
-build:
-  # Agents used by default:
-  #   implement  (step)        → anchored's `implement` agent — REPLACEABLE
-  #   task_check (always runs) → anchored's `task-check` agent — EXTEND ONLY
-  #   code_check (always runs) → anchored's `code-check` agent — EXTEND ONLY
-
-  implement: |
-    Read the phase carefully (context, acceptance_criteria, decisions
-    from ### Plan). For each acceptance criterion, implement the code
-    that satisfies it and capture concrete evidence (file:line +
-    one-liner, command + outcome, demonstrable result). Methodology
-    is yours to choose — replace this prose to specify TDD, BDD,
-    code-first, or any other workflow your project uses.
-
-  # task_check and code_check ALWAYS run after your steps above.
-  # The prose below is APPENDED to each agent's default instructions —
-  # use it to add project-specific requirements.
-
-  # task_check: |
-  #   Add project-specific check: also verify metadata fields declared
-  #   in task.phase.fields are preserved on the phase block.
-
-  # code_check: |
-  #   Add project-specific check: flag any new console.log calls as
-  #   warn-severity findings.
-
-# default — framework guarantees (per phase, around your steps):
-#   • Refuses to run if task status ≠ `build`
-#   • Picks next phase via phase_next_pending (handles in-progress resume)
-#   • Sets phase status: pending → in-progress at phase start
-#   • Routes evidence writes through service-layer ac.evidence.set
-#   • ALWAYS spawns task-check after your steps (framework-fixed)
-#   • ALWAYS spawns code-check after your steps (framework-fixed)
-#   • Refuses to transition phase to `done` unless ALL ACs have non-empty evidence
-#   • Sets phase status: in-progress → done | blocked based on outcomes
-#   • Loops until all phases reach terminal state (done|blocked|deferred)
-#   • Transitions task status: build → wrap when loop completes
-
-# ─────────────────────────────────────────────────────────────────────
-# wrap — /impl-wrap pipeline
-# ─────────────────────────────────────────────────────────────────────
-wrap:
-  # Agents/skills used by default:
-  #   review    (step) → Claude Code's built-in `/review` skill
-  #   summarize (step) → main Claude instance (no dedicated agent;
-  #                      writes summary directly via MCP)
-
-  review: |
-    Invoke Claude Code's built-in `/review` skill to run a final
-    code-review pass over the full task implementation. Capture any
-    notable findings into ### Wrap → #### review via context_append.
-
-  summarize: |
-    Read all phase outcomes, check findings, and the review findings.
-    Write a TL;DR into ### Wrap under Context: what was built vs
-    planned, phase rollup (done/blocked/deferred counts), notable
-    findings, total criteria satisfied with real evidence.
-
-# default — framework guarantees (runs after your steps):
-#   • Refuses to run if task status ≠ `wrap`
-#   • Validates all phases are in terminal state (done|blocked|deferred)
-#   • Counts ACs with vs. without evidence; surfaces ratio in summary
-#   • Transitions task status: wrap → done
+# ─── VCS integration ─────────────────────────────────────────────────
+# Anchored is VCS-agnostic — there is intentionally no `build.commit` slot.
+# To auto-commit per phase (or push, tag, open a PR), add a custom step under
+# build.steps[] running your VCS of choice. Example:
+#   build:
+#     steps:
+#       - { name: commit, run: 'git add -A && git commit -m "phase: ${PHASE_SLUG}"' }

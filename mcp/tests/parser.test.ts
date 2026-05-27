@@ -1,179 +1,363 @@
 /**
- * Sanity tests for parser + renderer.
+ * Tests for the v2 YAML-native parser + renderer.
  *
- * Primary property: round-trip safety — parse(render(parse(x)))
- * should equal parse(x) for valid task-files. We don't aim for
- * byte-identical render(parse(x)) === x (whitespace conventions
- * may normalize), but the semantic content must survive.
+ * v2's parser is a thin wrapper: `yaml.parse(raw) → Zod.parse(parsed)`.
+ * The renderer is `yaml.stringify(file, options)`. Round-trip safety
+ * (parse → render → parse) is guaranteed by the YAML library; we just
+ * verify it on representative fixtures.
+ *
+ * Critically: the newline-in-evidence bug from dogfood run #5 must
+ * be impossible here — YAML block scalars (`|`) handle multi-line
+ * strings natively. The test cases include this scenario explicitly.
  */
 
 import { describe, it, expect } from 'vitest';
-import { parse } from '../src/parser/parse.js';
-import { render } from '../src/parser/render.js';
+import { readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  parseTaskFileYAML,
+  ParseError,
+  SCHEMA_VERSION,
+} from '../src/parser/parse.js';
+import { renderTaskFileYAML } from '../src/parser/render.js';
+import type { TaskFile } from '../src/schema/task-file.js';
 
-const SAMPLE_TASK = `---
-slug: oauth-device-flow
-status: build
-created: 2026-05-25
----
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-# OAuth 2.0 Device Flow for Fastify API
+// ─────────────────────────────────────────────────────────────────────
+// Fixture builders
+// ─────────────────────────────────────────────────────────────────────
 
-## Context
-Device-flow OAuth so CLI tools can authenticate without browser.
-Existing auth lives in src/auth/.
-
-### Plan
-- Decision: use oauth4webapi lib (already in tree)
-- Q: [blocking] Token storage — Redis or in-memory?
-  → resolved: in-memory for V1
-
-### Build
-
-#### Implement
-- token-storage-layer / Token Storage Layer
-  Decided Map over Object for TTL eviction
-
-#### task-check
-- token-storage-layer / Token Storage Layer
-  verdict: pass — all 3 ACs have evidence
-
-## Phases
-
-### Token Storage Layer
-<!-- id: token-storage-layer -->
-- status: done
-- commit: abc1234
-- context: Storage layer at src/auth/. Use Fastify hooks pattern from auth.ts.
-- rules:
-  - path: .claude/rules/_pattern/factory.md
-    why: this phase adds new module in src/auth/
-- acceptance_criteria:
-  - token-store interface defined in src/auth/store.ts
-    evidence: src/auth/store.ts:8 — TokenStore interface
-  - in-memory impl with TTL eviction
-    evidence: src/auth/store-memory.ts:42 — MemoryStore factory
-  - unit tests cover expiry + concurrent access
-    evidence: src/auth/store-memory.test.ts (12 tests passing)
-
-### Device Flow Endpoints
-<!-- id: device-flow-endpoints -->
-- status: pending
-- acceptance_criteria:
-  - POST /oauth/device/code returns user_code + device_code
-    evidence: —
-  - POST /oauth/token polls and returns access_token on grant
-    evidence: —
+const MINIMAL = `schema_version: 2
+slug: tiny-task
+status: plan
+created: 2026-05-26
+title: A Tiny Task
+context:
+  intro: just a small thing.
+phases:
+  - name: Phase One
+    slug: phase-one
+    status: pending
+    acceptance_criteria:
+      - text: do the thing
+        status: pending
 `;
 
-describe('parse', () => {
-  it('parses frontmatter correctly', () => {
-    const file = parse(SAMPLE_TASK);
-    expect(file.frontmatter.slug).toBe('oauth-device-flow');
-    expect(file.frontmatter.status).toBe('build');
-    expect(file.frontmatter.created).toBe('2026-05-25');
+const MAXIMAL = `schema_version: 2
+slug: full-task
+status: build
+created: 2026-05-26
+title: Full Task
+context:
+  intro: Multi-paragraph intro.
+  plan: |
+    - decision X
+    - Q: foo?
+      → resolved: bar
+  build:
+    Implement: |
+      - phase-one / Phase One
+        switched to Map
+    task-check: |
+      - phase-one / Phase One
+        verdict: pass
+  wrap:
+    intro: Shipped it.
+    subsections:
+      review: all clear
+phases:
+  - name: Phase One
+    slug: phase-one
+    status: done
+    context: briefing prose
+    rules:
+      - path: .claude/rules/factory.md
+        why: this phase adds new module
+    acceptance_criteria:
+      - text: first AC
+        status: done
+        evidence:
+          - src/foo.ts:42 — done
+    commit: abc1234
+    coverage_pct: 87
+  - name: Phase Two
+    slug: phase-two
+    status: pending
+    acceptance_criteria:
+      - text: tbd
+        status: pending
+`;
+
+const MULTILINE_EVIDENCE = `schema_version: 2
+slug: multiline-evidence
+status: build
+created: 2026-05-26
+title: Multi-line Evidence Test
+context:
+  intro: tests the v0.1 newline bug-class.
+phases:
+  - name: Phase One
+    slug: phase-one
+    status: done
+    acceptance_criteria:
+      - text: with multi-line evidence
+        status: done
+        evidence:
+          - |
+            line one of evidence
+            line two with </evidence> brackets
+            line three
+      - text: with single-line evidence
+        status: done
+        evidence:
+          - "src/foo.ts:42 — single line"
+`;
+
+// ─────────────────────────────────────────────────────────────────────
+// Happy-path parsing
+// ─────────────────────────────────────────────────────────────────────
+
+describe('parser-v2 — happy paths', () => {
+  it('parses minimal task-file', () => {
+    const parsed = parseTaskFileYAML(MINIMAL);
+    expect(parsed.schema_version).toBe(SCHEMA_VERSION);
+    expect(parsed.slug).toBe('tiny-task');
+    expect(parsed.phases).toHaveLength(1);
   });
 
-  it('extracts the H1 title', () => {
-    const file = parse(SAMPLE_TASK);
-    expect(file.title).toBe('OAuth 2.0 Device Flow for Fastify API');
+  it('parses maximal task-file with every optional field', () => {
+    const parsed = parseTaskFileYAML(MAXIMAL);
+    expect(parsed.phases).toHaveLength(2);
+    expect(parsed.context.plan).toContain('decision X');
+    expect(parsed.context.build?.Implement).toContain('Map');
+    expect(parsed.context.wrap?.intro).toBe('Shipped it.');
+    expect(parsed.phases[0]?.commit).toBe('abc1234');
+    expect(parsed.phases[0]?.coverage_pct).toBe(87);
   });
 
-  it('parses ## Context intro', () => {
-    const file = parse(SAMPLE_TASK);
-    expect(file.context.intro).toContain('Device-flow OAuth');
-    expect(file.context.intro).toContain('src/auth/');
-  });
-
-  it('parses ### Plan content with Q&A', () => {
-    const file = parse(SAMPLE_TASK);
-    expect(file.context.plan).toBeDefined();
-    expect(file.context.plan).toContain('oauth4webapi lib');
-    expect(file.context.plan).toContain('[blocking]');
-    expect(file.context.plan).toContain('resolved: in-memory');
-  });
-
-  it('parses ### Build → H4 sub-sections', () => {
-    const file = parse(SAMPLE_TASK);
-    expect(file.context.build['Implement']).toContain('Decided Map over Object');
-    expect(file.context.build['task-check']).toContain('verdict: pass');
-  });
-
-  it('parses both phases', () => {
-    const file = parse(SAMPLE_TASK);
-    expect(file.phases).toHaveLength(2);
-    expect(file.phases[0]!.name).toBe('Token Storage Layer');
-    expect(file.phases[0]!.slug).toBe('token-storage-layer');
-    expect(file.phases[0]!.status).toBe('done');
-    expect(file.phases[1]!.name).toBe('Device Flow Endpoints');
-    expect(file.phases[1]!.status).toBe('pending');
-  });
-
-  it('parses phase context + rules + acceptance_criteria', () => {
-    const file = parse(SAMPLE_TASK);
-    const phase = file.phases[0]!;
-    expect(phase.context).toContain('Storage layer at src/auth/');
-    expect(phase.rules).toHaveLength(1);
-    expect(phase.rules![0]!.path).toBe('.claude/rules/_pattern/factory.md');
-    expect(phase.rules![0]!.why).toContain('new module');
-    expect(phase.acceptanceCriteria).toHaveLength(3);
-    expect(phase.acceptanceCriteria[0]!.text).toContain('token-store interface');
-    expect(phase.acceptanceCriteria[0]!.evidence).toContain('src/auth/store.ts:8');
-    expect(phase.acceptanceCriteria[2]!.evidence).toContain('12 tests passing');
-  });
-
-  it('parses user-extension phase fields', () => {
-    const file = parse(SAMPLE_TASK);
-    const phase = file.phases[0]!;
-    expect(phase.extensions['commit']).toBe('abc1234');
-  });
-
-  it('handles empty evidence as the em-dash sentinel', () => {
-    const file = parse(SAMPLE_TASK);
-    const pending = file.phases[1]!;
-    expect(pending.acceptanceCriteria[0]!.evidence).toBe('—');
-    expect(pending.acceptanceCriteria[1]!.evidence).toBe('—');
+  it('parses multi-line evidence via YAML block scalar', () => {
+    const parsed = parseTaskFileYAML(MULTILINE_EVIDENCE);
+    const ac0 = parsed.phases[0]?.acceptance_criteria[0];
+    expect(ac0?.evidence?.[0]).toContain('line one of evidence');
+    expect(ac0?.evidence?.[0]).toContain('line two with </evidence> brackets');
+    expect(ac0?.evidence?.[0]).toContain('line three');
+    // Single-element evidence array in same phase still works
+    expect(parsed.phases[0]?.acceptance_criteria[1]?.evidence?.[0]).toBe(
+      'src/foo.ts:42 — single line',
+    );
   });
 });
 
-describe('render', () => {
-  it('produces a non-empty string with frontmatter', () => {
-    const file = parse(SAMPLE_TASK);
-    const output = render(file);
-    expect(output).toMatch(/^---\n/);
-    expect(output).toContain('slug: oauth-device-flow');
-    expect(output).toContain('# OAuth 2.0 Device Flow');
+// ─────────────────────────────────────────────────────────────────────
+// schema_version gating with clear error
+// ─────────────────────────────────────────────────────────────────────
+
+describe('parser — schema_version gating', () => {
+  it('throws ParseError on schema_version: 1 (unsupported)', () => {
+    const v1ish = MINIMAL.replace('schema_version: 2', 'schema_version: 1');
+    try {
+      parseTaskFileYAML(v1ish);
+      expect.fail('expected ParseError');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ParseError);
+      const msg = (err as ParseError).message;
+      expect(msg.toLowerCase()).toContain('schema_version');
+      expect(msg.toLowerCase()).toContain('unsupported');
+    }
   });
 
-  it('round-trips phase structure', () => {
-    const file = parse(SAMPLE_TASK);
-    const output = render(file);
-    const reparsed = parse(output);
-    expect(reparsed.phases).toHaveLength(file.phases.length);
-    expect(reparsed.phases[0]!.slug).toBe(file.phases[0]!.slug);
-    expect(reparsed.phases[0]!.status).toBe(file.phases[0]!.status);
-    expect(reparsed.phases[0]!.acceptanceCriteria).toEqual(
-      file.phases[0]!.acceptanceCriteria,
+  it('throws ParseError on missing schema_version', () => {
+    const noVersion = MINIMAL.replace('schema_version: 2\n', '');
+    expect(() => parseTaskFileYAML(noVersion)).toThrow(ParseError);
+  });
+
+  it('throws ParseError on schema_version: 3 (future-version guard)', () => {
+    const future = MINIMAL.replace('schema_version: 2', 'schema_version: 3');
+    expect(() => parseTaskFileYAML(future)).toThrow(ParseError);
+  });
+
+  it('throws ParseError on malformed YAML (not just schema)', () => {
+    const broken = 'schema_version: 2\n  bad: indent\nfoo: [unterminated';
+    expect(() => parseTaskFileYAML(broken)).toThrow(ParseError);
+  });
+
+  it('ParseError messages mention the file or context for debugging', () => {
+    try {
+      parseTaskFileYAML('schema_version: 1\nslug: x\nstatus: plan');
+      expect.fail('expected throw');
+    } catch (err) {
+      // ParseError surface should be informative — not just a stack trace
+      expect((err as Error).message.length).toBeGreaterThan(40);
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// Round-trip safety — parse → render → parse → identical
+// ─────────────────────────────────────────────────────────────────────
+
+describe('parser-v2 — round-trip safety', () => {
+  function assertRoundTripEquivalent(yaml: string, label: string) {
+    const first = parseTaskFileYAML(yaml);
+    const rendered = renderTaskFileYAML(first);
+    const second = parseTaskFileYAML(rendered);
+    // Structural deep equality — not string equality (formatting may
+    // differ). We care that the typed data round-trips.
+    expect(second, `[${label}] should round-trip`).toEqual(first);
+  }
+
+  it('minimal task-file round-trips', () => {
+    assertRoundTripEquivalent(MINIMAL, 'minimal');
+  });
+
+  it('maximal task-file round-trips', () => {
+    assertRoundTripEquivalent(MAXIMAL, 'maximal');
+  });
+
+  it('multi-line evidence round-trips without corruption', () => {
+    assertRoundTripEquivalent(MULTILINE_EVIDENCE, 'multiline-evidence');
+  });
+
+  it('round-trip preserves extension fields (commit, coverage_pct)', () => {
+    const first = parseTaskFileYAML(MAXIMAL);
+    const rendered = renderTaskFileYAML(first);
+    const second = parseTaskFileYAML(rendered);
+    expect(second.phases[0]?.commit).toBe('abc1234');
+    expect(second.phases[0]?.coverage_pct).toBe(87);
+  });
+
+  it('round-trip after mutating evidence works correctly', () => {
+    const first = parseTaskFileYAML(MINIMAL);
+    // mutate — fill the evidence (atomic: status flips to done together)
+    const mutated: TaskFile = {
+      ...first,
+      phases: [
+        {
+          ...first.phases[0]!,
+          status: 'done' as const,
+          acceptance_criteria: [
+            {
+              ...first.phases[0]!.acceptance_criteria[0]!,
+              status: 'done' as const,
+              evidence: ['src/result.ts:1 — implemented'],
+            },
+          ],
+        },
+      ],
+    };
+    const rendered = renderTaskFileYAML(mutated);
+    const reparsed = parseTaskFileYAML(rendered);
+    expect(reparsed.phases[0]?.status).toBe('done');
+    expect(reparsed.phases[0]?.acceptance_criteria[0]?.status).toBe('done');
+    expect(reparsed.phases[0]?.acceptance_criteria[0]?.evidence?.[0]).toBe(
+      'src/result.ts:1 — implemented',
+    );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// The dogfood-#5 bug — newline in evidence is now structurally safe
+// ─────────────────────────────────────────────────────────────────────
+
+describe('parser-v2 — newline-corruption bug-class is impossible', () => {
+  it('renders multi-line evidence using YAML block scalar (|)', () => {
+    const file: TaskFile = {
+      schema_version: 2,
+      slug: 'newline-test',
+      status: 'build',
+      created: '2026-05-26',
+      title: 'Newline Test',
+      context: { intro: 'test.' },
+      phases: [
+        {
+          name: 'P',
+          slug: 'p',
+          status: 'pending',
+          acceptance_criteria: [
+            {
+              text: 'do',
+              status: 'done',
+              evidence: ['multi\nline\nevidence with </evidence> embedded'],
+            },
+          ],
+        },
+      ],
+    };
+    const rendered = renderTaskFileYAML(file);
+    // YAML.stringify must escape or block-scalar multi-line strings
+    // such that re-parsing produces the same value
+    const reparsed = parseTaskFileYAML(rendered);
+    expect(reparsed.phases[0]?.acceptance_criteria[0]?.evidence?.[0]).toBe(
+      'multi\nline\nevidence with </evidence> embedded',
     );
   });
 
-  it('preserves user-extension phase fields on round-trip', () => {
-    const file = parse(SAMPLE_TASK);
-    const reparsed = parse(render(file));
-    expect(reparsed.phases[0]!.extensions['commit']).toBe('abc1234');
+  it('XML-like brackets in evidence do not break parsing', () => {
+    const file: TaskFile = {
+      schema_version: 2,
+      slug: 'xml-test',
+      status: 'build',
+      created: '2026-05-26',
+      title: 'XML Test',
+      context: { intro: 'test.' },
+      phases: [
+        {
+          name: 'P',
+          slug: 'p',
+          status: 'pending',
+          acceptance_criteria: [
+            { text: 'do', status: 'done', evidence: ['ends with </evidence> tag'] },
+            { text: 'do2', status: 'done', evidence: ['has </invoke> too'] },
+          ],
+        },
+      ],
+    };
+    const rendered = renderTaskFileYAML(file);
+    const reparsed = parseTaskFileYAML(rendered);
+    expect(reparsed.phases[0]?.acceptance_criteria).toHaveLength(2);
+    expect(reparsed.phases[0]?.acceptance_criteria[0]?.evidence?.[0]).toContain(
+      '</evidence>',
+    );
+    expect(reparsed.phases[0]?.acceptance_criteria[1]?.evidence?.[0]).toContain(
+      '</invoke>',
+    );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// LOC budget meta-tests — keeps parser/renderer thin
+// ─────────────────────────────────────────────────────────────────────
+
+describe('parser — LOC budget (architecture-as-test)', () => {
+  it('parse.ts is < 100 LOC (excluding blanks + comments)', async () => {
+    const src = await readFile(
+      join(__dirname, '..', 'src', 'parser', 'parse.ts'),
+      'utf-8',
+    );
+    const codeLines = src
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0 && !l.startsWith('//') && !l.startsWith('*') && !l.startsWith('/*'));
+    expect(
+      codeLines.length,
+      `parse must stay thin (yaml.parse + Zod). got ${codeLines.length} LOC`,
+    ).toBeLessThan(100);
   });
 
-  it('preserves Context sub-sections on round-trip', () => {
-    const file = parse(SAMPLE_TASK);
-    const reparsed = parse(render(file));
-    expect(reparsed.context.plan).toContain('oauth4webapi');
-    expect(reparsed.context.build['Implement']).toContain('Map over Object');
-    expect(reparsed.context.build['task-check']).toContain('verdict: pass');
-  });
-
-  it('preserves rules on round-trip', () => {
-    const file = parse(SAMPLE_TASK);
-    const reparsed = parse(render(file));
-    expect(reparsed.phases[0]!.rules).toEqual(file.phases[0]!.rules);
+  it('render.ts is < 50 LOC (excluding blanks + comments)', async () => {
+    const src = await readFile(
+      join(__dirname, '..', 'src', 'parser', 'render.ts'),
+      'utf-8',
+    );
+    const codeLines = src
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0 && !l.startsWith('//') && !l.startsWith('*') && !l.startsWith('/*'));
+    expect(
+      codeLines.length,
+      `render must stay thin (yaml.stringify). got ${codeLines.length} LOC`,
+    ).toBeLessThan(50);
   });
 });

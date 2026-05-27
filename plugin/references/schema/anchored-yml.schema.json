@@ -1,0 +1,255 @@
+{
+  "$ref": "#/definitions/anchored-yml",
+  "definitions": {
+    "anchored-yml": {
+      "type": "object",
+      "properties": {
+        "task": {
+          "type": "object",
+          "properties": {
+            "phase": {
+              "type": "object",
+              "properties": {
+                "fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^[a-z][a-z0-9_]*$"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "enum"
+                        ]
+                      },
+                      "values": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "default": {}
+                    },
+                    "required": [
+                      "name",
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "default": []
+                }
+              },
+              "additionalProperties": false,
+              "default": {
+                "fields": []
+              }
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "phase": {
+              "fields": []
+            }
+          }
+        },
+        "plan": {
+          "type": "object",
+          "properties": {
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "run": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "use": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "steps": []
+          }
+        },
+        "refine": {
+          "type": "object",
+          "properties": {
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "run": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "use": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
+            "plan_check": {
+              "type": "object",
+              "properties": {
+                "instructions": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "default": {}
+            },
+            "rules_check": {
+              "type": "object",
+              "properties": {
+                "instructions": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "default": {}
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "steps": [],
+            "plan_check": {},
+            "rules_check": {}
+          }
+        },
+        "build": {
+          "type": "object",
+          "properties": {
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "run": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "use": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
+            "retry_limit": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 3
+            },
+            "task_validate": {
+              "type": "object",
+              "properties": {
+                "instructions": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "default": {}
+            },
+            "code_validate": {
+              "type": "object",
+              "properties": {
+                "instructions": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "default": {}
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "steps": [],
+            "retry_limit": 3,
+            "task_validate": {},
+            "code_validate": {}
+          }
+        },
+        "wrap": {
+          "type": "object",
+          "properties": {
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "run": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "use": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "steps": []
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Anchored project configuration (anchored.yml)",
+  "description": "Schema for the project-level anchored.yml file. Validates the task.phase.fields declarations and the plan/build/wrap pipeline configuration."
+}

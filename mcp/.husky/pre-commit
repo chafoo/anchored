@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Pre-commit hook — runs lint-staged on touched files only.
+# Auto-formats via Prettier; auto-fixes ESLint where possible;
+# blocks the commit if any ESLint errors remain.
+cd "$(dirname "$0")/.."
+npx lint-staged

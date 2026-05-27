@@ -86,28 +86,53 @@ doesn't actively trigger.
 Discard rules with no plausible connection. Padding the output makes
 the planner work harder to filter signal from noise.
 
-## Output contract
+## Return contract
 
-Return this structured summary to the orchestrator:
+After scanning project rules against the task's discovery summary,
+return:
 
-```
+```yaml
 must_follow:
   - rule: "<one-line summary of what the rule enforces>"
-    path: <rule-file-path>
+    path: <project-relative rule-file-path>
     why: "<one-line: why it applies to THIS task>"
   - rule: ...
     path: ...
     why: ...
 worth_knowing:
   - rule: "<one-line summary>"
-    path: <rule-file-path>
+    path: <project-relative rule-file-path>
 sources:
-  - <path scanned>
-  - <path scanned>
+  - <project-relative path scanned>
+  - <project-relative path scanned>
+
+partner_voice_summary: |
+  <1-2 sentence pair-programmer voice summary the orchestrator can
+  relay to the user (plan-agent uses this too as a quick signal
+  before consuming the structured output). Mention rule counts in
+  human terms, not tool counts. See
+  plugin/references/communication-style.md for the principle.>
 ```
 
-Plus one sentence in natural language:
-> "Found N must-follow rules + M worth-knowing rules across K source paths."
+**All paths MUST be project-relative**, e.g. `.claude/rules/_pattern/foo.md`
+— NEVER absolute paths like `/Users/jack/Dev/project/.claude/rules/...`.
+Glob returns absolute paths; strip the project-root prefix before
+including in your return. Absolute paths make task-files non-portable
+(they bake one developer's home directory into the file).
+
+Helper: project root is typically the working directory you're invoked
+from. Strip everything up to and including the project root from each
+path. If you can't tell where the root is, fall back to making the
+path relative to `.claude/` (e.g. `.claude/rules/...`) since that's
+always present.
+
+The `partner_voice_summary` field is **REQUIRED**. The orchestrator
+relays it verbatim to the user; the structured `must_follow` /
+`worth_knowing` / `sources` feed plan-agent's per-phase distribution.
+
+Example `partner_voice_summary`:
+> "Found 2 must-follow rules + 1 worth-knowing rule across 2 source
+> paths — the factory + config conventions both apply here."
 
 ### Empty result
 

@@ -1,197 +1,225 @@
-# Task-file schema
+# Task-file schema — v2 (YAML)
 
-The canonical shape of every `.claude/tasks/<slug>.md` created and
-mutated by anchored. Reference for agents (especially plan, implement,
-task-check, code-check) and the service-layer parser/renderer.
+The on-disk format for `.claude/tasks/<slug>.yml`. This document is
+the human-readable spec; the machine-readable spec is the Zod schema
+at `mcp/src/schema/task-file-v2.ts` and its derived JSON Schema at
+`dist/schema/task-file-v2.schema.json`. The two MUST stay in sync —
+when in doubt, the Zod schema wins.
 
-**Hard rule:** all field names, section names, and structural ordering
-listed here are **immutable core**. Everything else is opt-in via
-`anchored.yml` extensions.
+## Why YAML
 
----
+v0.1 used custom markdown with line-based regex parsing. Two bug
+classes shipped (missing H1 → manual recovery; multi-line evidence
+→ silent AC loss). Both are structurally impossible in v2 — the
+`yaml` package handles edge cases the regex parser missed.
 
-## Lifecycle status
+The mental model is the same one used by Kubernetes manifests,
+GitHub Actions workflows, Ansible playbooks, GitLab CI configs, and
+docker-compose: **structured workflow definition with embedded
+prose**. Markdown content (context intro, plan notes, evidence
+strings) still works — it lives inside YAML string values, with `|`
+block scalars preserving multi-line content verbatim.
 
-`status` reflects the **next action**:
+## Full structure
 
-| status   | Meaning                          | What's allowed                          |
-|----------|----------------------------------|-----------------------------------------|
-| `plan`   | next action is `/impl-plan`      | `/impl-plan` runs; build/wrap blocked   |
-| `build`  | next action is `/impl-build`     | `/impl-build` runs; plan/wrap blocked   |
-| `wrap`   | next action is `/impl-wrap`      | `/impl-wrap` runs; plan/build blocked   |
-| `done`   | terminal — nothing more          | no skill runs without manual reset      |
+```yaml
+schema_version: 2                    # literal; v2-only parser refuses other values
+slug: <kebab-case>                   # filename slug (matches <slug>.yml)
+status: plan | build | wrap | done   # next-action lifecycle marker
+created: YYYY-MM-DD                  # ISO date, set on creation, immutable
+title: <Title Case sentence>         # human-readable, can be edited freely
 
-Skill-completion flips status to the next value. Mid-flight crashes
-are safe: status stays put, phase-level statuses provide resume
-granularity.
+context:
+  intro: |                           # 3-8 sentences typical, multi-line via |
+    Why this task exists, what relevant code already exists,
+    what's missing that this task adds.
 
----
+  plan: |                            # optional — populated by /impl-plan
+    - decision: chose Map over Object for TTL perf
+    - decision: in-memory store for V1; Redis as V2
+    - Q: should we delete tasks on completion?
+      → resolved: no, mark done but keep them visible
+    - Q: [blocking] which storage backend?
+      → resolved: in-memory for V1 (confirmed by user, 2026-05-26)
 
-## The schema
+  build:                             # optional — populated by /impl-build
+    Implement: |                     # H4 sub-section per writing agent
+      - phase-one / Token Storage Layer
+        switched libraries mid-flight (factory.md pattern required it)
+    task-validate: |
+      - phase-one / Phase One (attempt 1)
+        verdict: pass — 4 of 4 ACs accepted, 0 rejected
+    code-validate: |
+      - phase-one / Phase One (attempt 1)
+        verdict: pass — 4 ACs clean, 0 with block findings
+    # any user-custom agent can append its own sub-section here
+    # — yaml record keyed by H4 name
 
-````markdown
----
-slug: <kebab-case identifier, matches filename without .md, immutable after creation>
-status: <one of: plan | build | wrap | done>
-created: <ISO date YYYY-MM-DD, set once at file creation, never changes>
----
+  wrap:                              # optional — populated by /impl-wrap
+    intro: |                         # TL;DR prose, optional
+      Shipped 4 phases done / 0 blocked / 0 deferred.
+      18 ACs with concrete evidence.
+    subsections:                     # optional — H4 sub-sections under wrap
+      review: |
+        All clear — no findings from /review.
 
-# <Task Title — human-readable, Title Case, freely editable>
+phases:                              # array, 2-6 typical
+  - name: <Phase Name>               # Title Case, unique within task
+    slug: <kebab-case>               # internal addressing, never user-facing
+    status: pending | in-progress | done | blocked | deferred
+    context: |                       # optional — phase-specific briefing
+      Implements src/auth/store.ts as the generic key-value
+      store with TTL. Used by phases 2 and 3 downstream.
+    rules:                           # optional — must-follow rules for THIS phase
+      - path: .claude/rules/_pattern/factory.md
+        why: this phase adds a new module in src/services/
+    acceptance_criteria:             # required, 2-6 typical, each testable
+      - text: token-store interface defined in src/auth/store.ts
+        evidence: —                  # em-dash sentinel until /impl-build fills
+      - text: in-memory impl with TTL eviction
+        evidence: |
+          src/auth/store.ts:42 — MemoryStore class
+          tests at src/auth/store.test.ts (8/8 green via pnpm test)
+    # passthrough — extension fields declared in anchored.yml.task.phase.fields
+    # land as flat top-level keys on the phase (no `extensions:` envelope)
+    commit: abc1234                  # only if `commit` is declared
+    coverage_pct: 87                 # only if `coverage_pct` is declared
 
-## Context
-<2–6 sentences: WHY this task exists, WHAT EXISTS, WHAT'S MISSING.
-the unchanging framing. written by /impl-plan at creation. rarely edited.>
+# optional — preserved verbatim, never modified by anchored
+customSections:
+  notes: |
+    Free-form section the user maintains by hand.
+```
 
-### Plan
-<written during /impl-plan. captures everything decided/discussed during
-the planning phase: structural decisions, Q&A trace, notes. permanent.>
+## Field reference
 
-- <a decision or note in free prose>
-- Q: <question raised during refinement>
-  → resolved: <answer>
-- Q: [blocking] <question that was tagged blocking>
-  → resolved: <answer>
-- Q: <question>
-  → deferred: <reason — e.g. "not blocking V1", "out of scope">
+### Top-level
 
-### Build
-<container for per-agent H4 sub-sections written during /impl-build.
-on-demand — section doesn't appear unless at least one sub-section
-has content. each contributing agent writes to its own H4 sub-section:>
+| Field            | Type                                  | Required | Notes                                                              |
+|------------------|---------------------------------------|----------|--------------------------------------------------------------------|
+| `schema_version` | `2` (literal)                         | yes      | Format gate. Parser refuses anything else.                         |
+| `slug`           | kebab-case string                     | yes      | Matches the filename `<slug>.yml`. Immutable.                      |
+| `status`         | `plan | build | wrap | done`          | yes      | Next-action marker. Forward-only transitions.                      |
+| `created`        | ISO date `YYYY-MM-DD`                 | yes      | Set on creation. Immutable.                                        |
+| `title`          | non-empty string                      | yes      | Human-readable. Can be edited freely.                              |
+| `context`        | `ContextSection` (see below)          | yes      | Holds intro + plan/build/wrap sub-sections.                        |
+| `phases`         | array of `Phase` (see below)          | yes      | 2-6 typical. Each represents one commit-ship-able unit of work.    |
+| `customSections` | record of name → markdown string      | no       | User-maintained free-form sections. Preserved verbatim, untouched. |
 
-#### Implement
-<written by implement agent. per-phase mid-flight notes — decisions
-made during implementation, architectural pivots. on-demand.>
+### `context`
 
-- <phase-slug> / <Phase Human Name>
-  <free-form note or decision in 1-3 sentences>
+| Field        | Type                              | Required | Written by                                                          |
+|--------------|-----------------------------------|----------|---------------------------------------------------------------------|
+| `intro`      | string                            | yes      | plan agent during /impl-plan                                        |
+| `plan`       | string                            | no       | plan agent (decisions, Q&A trace); orchestrator (Q&A resolutions)   |
+| `build`      | record of subsection → string     | no       | implement / task-validate / code-validate / custom agents           |
+| `wrap`       | `{ intro?, subsections? }`        | no       | /impl-wrap orchestrator                                             |
 
-#### task-check
-<written by task-check agent. per-phase verdict + findings. always
-writes at least a one-line verdict per phase processed.>
+Build sub-sections by convention:
+- `Implement` — per-phase decisions / notes from implement-agent
+- `task-validate` — per-phase rollups (one line per attempt) from task-validate
+- `code-validate` — per-phase rollups (one line per attempt) from code-validate
+- Any other key — for user-custom agents (record is open-keyed)
 
-- <phase-slug> / <Phase Human Name>
-  verdict: <pass | fail | warn> — <one-line summary>
-  finding [block|warn|info] ac_index=<N>: <reason>     # only if findings
+### `phases[]`
 
-#### code-check
-<written by code-check agent. per-phase verdict + findings.>
+| Field                  | Type                                                    | Required | Notes                                                                                                                          |
+|------------------------|---------------------------------------------------------|----------|--------------------------------------------------------------------------------------------------------------------------------|
+| `name`                 | string                                                  | yes      | Title Case. Unique within the task. User-facing in chat + commits.                                                            |
+| `slug`                 | kebab-case string                                       | yes      | Internal addressing for service-layer ops. Never user-facing.                                                                  |
+| `status`               | `pending | in-progress | done | blocked | deferred`     | yes      | State-machine — see transitions below.                                                                                         |
+| `context`              | string                                                  | no       | Per-phase briefing. Omit if task-level Context covers it.                                                                      |
+| `rules`                | array of `{ path, why }`                                | no       | Per-phase must-follow rules. Distributed by plan-agent from rules-agent output.                                                |
+| `acceptance_criteria`  | array of `{ text, evidence }` (min 1)                   | yes      | Each AC is one testable sentence + evidence string.                                                                            |
+| extension fields       | passthrough top-level keys                              | no       | Declared in `anchored.yml.task.phase.fields`. Lands as flat keys (no `extensions:` envelope). Validated against declared type. |
 
-- <phase-slug> / <Phase Human Name>
-  verdict: <pass | fail | warn> — <one-line summary>
-  finding [block|warn|info] <file>:<line>: <reason — rule violated>
+### `acceptance_criteria[]`
 
-### Wrap
-<written during /impl-wrap. mix of free-prose TL;DR (from summarize step)
-and optional H4 sub-sections from contributing skills/agents.>
+| Field      | Type   | Notes                                                                                                                                                                                  |
+|------------|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `text`     | string | One testable sentence. Concrete subject + behavior. Avoid compound ANDs.                                                                                                               |
+| `evidence` | string | Either the em-dash sentinel `"—"` (unfilled) or a concrete reference (file:line, command + outcome, test name + result, commit SHA). Service-layer rejects writes with embedded newlines. |
 
-<free-prose TL;DR>
+## State machine
 
-#### review
-<written if the wrap.review step ran (default config invokes /review).>
+### Task status
 
-- <finding 1: file:line — what's flagged>
-- <finding 2>
+```
+plan → build → wrap → done
+```
 
-## Phases
+- Forward-only. `task.status.set("plan")` from `build` is illegal.
+- Stay-in-place transitions (X → X) are idempotent no-ops (allowed).
+- `build → wrap` requires every phase to be terminal
+  (`done | blocked | deferred`). The service-layer throws
+  `IncompletePhases` otherwise.
 
-### <Human Phase Name — Title Case, 2–6 words, unique within this task>
-<!-- id: <kebab-case slug derived from phase name, internal only> -->
-- status: <one of: pending | in-progress | done | blocked | deferred>
-- <any optional phase-level fields declared in anchored.yml task.phase.fields appear here>
-- context: <optional. phase-specific briefing for the build agent.>
-- rules: <optional. must-follow rules that apply specifically to this phase.
-          set by plan-agent during /impl-plan, consumed by code-check.>
-  - path: <path to rule file>
-    why: <one-line: why this rule applies to this specific phase>
-- acceptance_criteria:
-  - <single-sentence testable criterion>
-    evidence: <after /impl-build fills: file:line + 1-liner | command + outcome | test-name + result.
-               "—" while pending. no AC done without a concrete evidence string.>
-  - <next criterion>
-    evidence: <—>
-````
+### Phase status
 
----
+```
+pending → in-progress → done | blocked | deferred
+                  ↑              ↓
+                  └──── blocked (retry path) ←──
+```
 
-## On-demand sections
+- `pending → in-progress` — start work on the phase
+- `pending → deferred` — explicitly defer without working
+- `in-progress → done` — service-layer rejects unless every AC has
+  non-sentinel evidence (`IncompleteEvidence`)
+- `in-progress → blocked` — work attempted but couldn't finish
+- `blocked → in-progress` / `blocked → pending` — retry path
 
-Sub-sections under `## Context` only exist if content has been written
-into them:
+`done` and `deferred` are terminal — no transitions out.
 
-- `### Plan` — appears once plan-agent writes (which it always does).
-- `### Build` — appears once any agent writes to one of its H4
-  sub-sections.
-- `### Build → #### Implement` — appears when implement-agent writes
-  mid-flight notes (optional).
-- `### Build → #### task-check` — appears when task-check writes its
-  first verdict (typically first phase processed).
-- `### Build → #### code-check` — appears when code-check writes
-  its first verdict.
-- `### Build → #### <custom-agent>` — appears when user-defined or
-  replacement agents write. H4 name = agent name.
-- `### Wrap` — appears once /impl-wrap's summarize step writes.
-- `### Wrap → #### review` — appears if /impl-wrap's review step ran.
+## Service-layer enforcement (USP)
 
-Parser treats missing sections as empty. Don't error on absence.
+The on-disk file is mutated exclusively through service-layer ops
+(MCP tools `mcp__task__*` for agents, `anchored` CLI for shells).
+The service-layer enforces:
 
----
+| Gate                                      | Op                              | Throws                |
+|-------------------------------------------|---------------------------------|-----------------------|
+| Forward-only task lifecycle               | `task.status.set`               | `InvalidTransition`   |
+| Valid phase lifecycle                     | `phase.status.set`              | `InvalidTransition`   |
+| Phase done ⇔ all ACs have real evidence   | `phase.status.set("done")`      | `IncompleteEvidence`  |
+| Task wrap ⇔ all phases terminal           | `task.status.set("wrap")`       | `IncompletePhases`    |
+| Evidence non-empty, no newlines           | `ac.evidence.set`               | `InvalidEvidence`     |
+| AC index in range                         | `ac.evidence.set`               | `OutOfRange`          |
+| Phase extension declared in anchored.yml  | `phase.field.set`               | `UnknownField`        |
+| Extension value matches declared type     | `phase.field.set`               | `InvalidFieldType`    |
 
-## Core fields (immutable)
+**Zero bootstrap exceptions** — see
+`plugin/references/state-mutations.md`. Every mutation, including the
+initial creation of a task-file by plan-agent and the Q&A
+resolutions during /impl-plan, goes through the MCP factory. No
+agent in `plugin/agents/*` has `Write` or `Edit` in its
+frontmatter (enforced by the
+`mcp/tests/agent-frontmatter.test.ts` test).
 
-### Frontmatter
+## IDE validation
 
-| Field     | Type   | Mutated by                                      | Purpose                          |
-|-----------|--------|-------------------------------------------------|----------------------------------|
-| `slug`    | string | set once at creation, never                      | task identity; matches filename  |
-| `status`  | enum   | `/impl-plan` (→build), `/impl-build` (→wrap), `/impl-wrap` (→done) | lifecycle gate |
-| `created` | date   | set once at creation, never                      | sorting / age signals            |
+Point your editor's `yaml-language-server` at the published JSON
+Schema for real-time validation while editing task-files by hand:
 
-### Per-phase core fields
+```yaml
+# yaml-language-server: $schema=./dist/schema/task-file-v2.schema.json
+```
 
-| Field                            | Type   | Mutated by                                | Purpose                          |
-|----------------------------------|--------|-------------------------------------------|----------------------------------|
-| heading (h3)                     | string | `/impl-plan` (sets), user may edit        | human phase name                 |
-| `<!-- id -->`                    | string | `/impl-plan` (derived from heading)        | internal slug for service-layer  |
-| `status`                         | enum   | `/impl-build` orchestrator                | pending → in-progress → done | blocked | deferred |
-| `context`                        | string | `/impl-plan` (optional)                   | phase-specific briefing          |
-| `rules`                          | list   | `/impl-plan` (plan-agent distributes)     | per-phase rules for code-check   |
-| `acceptance_criteria`            | list   | `/impl-plan` creates; `/impl-build` fills | testable criteria w/ evidence    |
-| `acceptance_criteria[].evidence` | string | `/impl-build` per criterion               | concrete proof — anchored's USP  |
+The schema is exported on every build and lives in
+`@anchored/mcp/dist/schema/task-file-v2.schema.json` (path adjusted
+for your install location). When the plugin is installed via
+marketplace, this resolves to the global node_modules location.
 
----
+## Migrating from v1
 
-## Extension points
+Run `anchored migrate <slug>` to convert a v1 `.md` task-file to a
+v2 `.yml` task-file. The command is idempotent (re-runs on already-
+converted files are safe no-ops). Use `anchored migrate --all` to
+convert every `.md` file under `.claude/tasks/` in one pass.
 
-| Slot in anchored.yml          | Where it lands in task-file            |
-|-------------------------------|----------------------------------------|
-| `task.phase.fields: [...]`    | per-phase fields as new `- key: val` lines after core fields |
-| `task.fields: [...]` (V0.3+)  | additional frontmatter top-level keys  |
-| `task.status.add: [...]` (V0.3+) | extends task `status` enum (additive) |
-| `task.phase.status.add: [...]` (V0.3+) | extends phase `status` enum (additive) |
-| `task.sections.add: [...]` (V0.3+) | custom body sections (position-controlled) |
-
-### Round-trip guarantee
-
-The service-layer reads, mutates, and re-renders task-files without
-losing any declared extension content. A `commit:` line in a phase
-block, once `task.phase.fields` declares it, survives every mutation
-cycle untouched unless explicitly modified through service-layer
-field ops.
-
----
-
-## Open conventions (codified)
-
-- **Phase-status enum:** `pending | in-progress | done | blocked | deferred`. Phase-level status is orthogonal to task-level status.
-- **`acceptance_criteria`** is fully spelled out (no `ac` abbreviation). Self-documenting, matches "evidence per criterion" pattern.
-- **Refinement Q&A:** `Q: <text>\n  → resolved: <answer>` or `→ deferred: <reason>`. Non-Q decisions as plain bullets in `### Plan`.
-- **HTML-comment slug:** `<!-- id: ... -->` (not inline bullet). Users see phase NAMES; slugs are for service-layer addressing only.
-- **H4 sub-sections under `### Build` named after the writing agent.** Default: `#### Implement`, `#### task-check`, `#### code-check`. User custom agents get their own name.
-- **Per-phase entry format under H4:** `- <slug> / <Human Phase Name>` as bullet header, content as indented sub-content.
-- **task-check + code-check write at least one verdict line per phase processed** (even `pass` with no findings). Implement only writes when there's a real mid-flight note.
-- **Per-phase `rules:` set by plan-agent.** Plan-agent matches rules-summary entries to phases based on scope. Code-check reads per-phase rules during build.
-- **Resume-after-crash is automatic.** Implement agent reads task-file first, skips done ACs, continues with rest.
-- **Explicit reset is opt-in.** Clear evidences + set phase status to pending in the file directly. Anchored treats it as fresh.
-- **task-check runs on blocked phases too.** Verifies partial evidence honesty; phase stays blocked regardless of verdict.
-- **Wrap section is hybrid:** free-prose TL;DR + optional `#### review` sub-section.
+Migration preserves: frontmatter (slug, status, created), title,
+context sub-sections (intro, plan, build H4 sub-sections, wrap intro
++ sub-sections), phases (name, slug, status, optional context,
+optional rules, acceptance_criteria with text + evidence), and
+extension fields (commit, coverage_pct, etc.) — these last flatten
+from v1's `extensions:` envelope to v2's top-level passthrough keys.

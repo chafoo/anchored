@@ -10,30 +10,70 @@
 import type { TaskStatus, PhaseStatus } from '../schema/task-file.js';
 import type { PhaseFieldDecl, PhaseFieldType } from '../schema/anchored-yml.js';
 
+// Re-export from this module for convenience — historical callers
+// import these types from `validate.js`.
+export type { TaskStatus, PhaseStatus };
+
 // ─────────────────────────────────────────────────────────────────────
 // Task-status state machine
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * Legal transitions for the task-level `status` field.
+ * Legal transitions for the task-level `status` field — V0.2 6-state machine.
  *
- * Forward-only in V0.2: plan → build → wrap → done. No back-edges.
- * Idempotent stay-in-place transitions (X → X) are allowed (no-op).
- * To "reset" a task, the user edits the file directly — there's no
- * service-layer op for it.
+ * Forward pipeline:
+ *
+ *   plan → drafted → refined → build → wrap → done
+ *
+ * Allowed shortcut:
+ *
+ *   drafted → build   skip refinement (orchestrator must warn the user)
+ *
+ * Update-mode back-edge — any forward state may step back to `drafted`
+ * so the user can revise scope/ACs/context mid-flight:
+ *
+ *   refined → drafted | build → drafted | wrap → drafted | done → drafted
+ *
+ * Idempotent self-transitions (X → X) are allowed as no-ops.
+ * No other back-edges are legal — they'd skip required gates.
  */
 const TASK_TRANSITIONS: Record<TaskStatus, ReadonlySet<TaskStatus>> = {
-  plan:  new Set<TaskStatus>(['plan', 'build']),
-  build: new Set<TaskStatus>(['build', 'wrap']),
-  wrap:  new Set<TaskStatus>(['wrap', 'done']),
-  done:  new Set<TaskStatus>(['done']),
+  plan:    new Set<TaskStatus>(['plan', 'drafted']),
+  drafted: new Set<TaskStatus>(['drafted', 'refined', 'build']),
+  refined: new Set<TaskStatus>(['refined', 'build', 'drafted']),
+  build:   new Set<TaskStatus>(['build', 'wrap', 'drafted']),
+  wrap:    new Set<TaskStatus>(['wrap', 'done', 'drafted']),
+  done:    new Set<TaskStatus>(['done', 'drafted']),
 };
 
 export function assertTaskTransition(from: TaskStatus, to: TaskStatus): void {
   if (!TASK_TRANSITIONS[from].has(to)) {
+    const legal = [...TASK_TRANSITIONS[from]].filter((s) => s !== from);
+    const suggestions: string[] = [];
+    if (legal.length > 0) {
+      suggestions.push(
+        `Use one of the legal next states: ${legal.join(', ')}.`,
+      );
+      const forward = legal.find((s) => s !== 'drafted');
+      if (forward !== undefined) {
+        suggestions.push(
+          `Run \`anchored task status set <slug> ${forward}\` to advance forward.`,
+        );
+      }
+      if (legal.includes('drafted')) {
+        suggestions.push(
+          `To enter update-mode and revise scope, transition back to "drafted" first.`,
+        );
+      }
+    } else {
+      suggestions.push(
+        `Status "${from}" is terminal — no further transitions allowed.`,
+      );
+    }
     throw new InvalidTransition(
       `task status: cannot transition ${from} → ${to}. ` +
         `Legal from ${from}: ${[...TASK_TRANSITIONS[from]].join(', ')}`,
+      suggestions,
     );
   }
 }
@@ -65,9 +105,33 @@ const PHASE_TRANSITIONS: Record<PhaseStatus, ReadonlySet<PhaseStatus>> = {
 
 export function assertPhaseTransition(from: PhaseStatus, to: PhaseStatus): void {
   if (!PHASE_TRANSITIONS[from].has(to)) {
+    const legal = [...PHASE_TRANSITIONS[from]].filter((s) => s !== from);
+    const suggestions: string[] = [];
+    if (legal.length > 0) {
+      suggestions.push(`Legal next phase states: ${legal.join(', ')}.`);
+      // Suggest the most useful concrete CLI command for common stuck states
+      if (from === 'pending') {
+        suggestions.push(
+          `Run \`anchored phase status set <slug> <phase> in-progress\` to start work.`,
+        );
+      } else if (from === 'in-progress') {
+        suggestions.push(
+          `Fill evidence + use \`anchored phase status set <slug> <phase> done\`, or transition to blocked/deferred to park.`,
+        );
+      } else if (from === 'blocked') {
+        suggestions.push(
+          `Retry via \`anchored phase status set <slug> <phase> in-progress\` once unblocked.`,
+        );
+      }
+    } else {
+      suggestions.push(
+        `Phase status "${from}" is terminal — no further transitions allowed.`,
+      );
+    }
     throw new InvalidTransition(
       `phase status: cannot transition ${from} → ${to}. ` +
         `Legal from ${from}: ${[...PHASE_TRANSITIONS[from]].join(', ')}`,
+      suggestions,
     );
   }
 }
@@ -93,6 +157,10 @@ export function coerceFieldValue(decl: PhaseFieldDecl, value: unknown): unknown 
       }
       throw new InvalidFieldType(
         `field ${decl.name}: expected string, got ${typeof value}`,
+        [
+          `Pass a string value (or a coercible primitive like number/boolean).`,
+          `Edit anchored.yml if the field should be a different type.`,
+        ],
       );
 
     case 'number': {
@@ -103,6 +171,10 @@ export function coerceFieldValue(decl: PhaseFieldDecl, value: unknown): unknown 
       }
       throw new InvalidFieldType(
         `field ${decl.name}: expected number, got "${value}" (${typeof value})`,
+        [
+          `Pass a finite number or a numeric string (e.g. "87.3").`,
+          `Edit anchored.yml if the field should be a different type.`,
+        ],
       );
     }
 
@@ -112,6 +184,10 @@ export function coerceFieldValue(decl: PhaseFieldDecl, value: unknown): unknown 
       if (value === 'false') return false;
       throw new InvalidFieldType(
         `field ${decl.name}: expected boolean, got "${value}"`,
+        [
+          `Pass true, false, "true", or "false".`,
+          `Edit anchored.yml if the field should be a different type.`,
+        ],
       );
     }
 
@@ -121,6 +197,10 @@ export function coerceFieldValue(decl: PhaseFieldDecl, value: unknown): unknown 
       if (allowed.includes(s)) return s;
       throw new InvalidFieldType(
         `field ${decl.name}: expected one of [${allowed.join(', ')}], got "${s}"`,
+        [
+          `Pass one of the allowed values: ${allowed.join(', ')}.`,
+          `Edit anchored.yml.task.phase.fields if the enum should change.`,
+        ],
       );
     }
 
@@ -135,8 +215,16 @@ export function coerceFieldValue(decl: PhaseFieldDecl, value: unknown): unknown 
 
 export function assertAcIndexInRange(acCount: number, acIndex: number): void {
   if (!Number.isInteger(acIndex) || acIndex < 0 || acIndex >= acCount) {
+    const validRange =
+      acCount === 0 ? 'none — phase has 0 ACs' : `0..${acCount - 1}`;
     throw new OutOfRange(
-      `ac_index ${acIndex} out of range (phase has ${acCount} acceptance_criteria, valid 0..${acCount - 1})`,
+      `ac_index ${acIndex} out of range (phase has ${acCount} acceptance_criteria, valid ${validRange})`,
+      [
+        `Use \`anchored ac list <slug> <phase>\` to see the actual AC indices for this phase.`,
+        acCount === 0
+          ? `The phase has no acceptance_criteria — add at least one before setting evidence.`
+          : `Pass an index between 0 and ${acCount - 1} (inclusive).`,
+      ],
     );
   }
 }
@@ -146,57 +234,149 @@ export function assertAcIndexInRange(acCount: number, acIndex: number): void {
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * Evidence cannot be empty, whitespace-only, or the em-dash sentinel.
- * Setting evidence is supposed to signal completion — empty values
- * defeat the USP. If the caller wants to "clear" evidence, they
- * should be using a different op (e.g., resetting the phase).
+ * Reject an AC evidence array that's empty or contains empty /
+ * whitespace-only / em-dash-sentinel elements. AC evidence in V0.2
+ * is a `string[]`, with each element being one concrete proof bullet
+ * (file:line, command + outcome, test name + result, commit SHA, etc.).
+ *
+ * Used by the `ac.evidence.set` op before persisting, and by the
+ * `phase.status.set('done')` gate when scanning a phase's ACs.
  */
-export function assertEvidenceNonEmpty(evidence: string): void {
-  const trimmed = evidence.trim();
-  if (trimmed === '' || trimmed === '—') {
+export function assertEvidenceArrayNonEmpty(evidence: string[]): void {
+  if (!Array.isArray(evidence) || evidence.length === 0) {
     throw new InvalidEvidence(
-      `evidence cannot be empty or "—". Provide a concrete reference ` +
-        `(file:line, command + outcome, test name + result, commit SHA).`,
+      `evidence must be a non-empty array of concrete proof strings.`,
+      [
+        `Pass at least one evidence string (file:line, command + outcome, etc.).`,
+        `If the AC genuinely can't be satisfied yet, transition the phase to blocked or deferred instead.`,
+      ],
     );
+  }
+  for (let i = 0; i < evidence.length; i++) {
+    const item = evidence[i];
+    if (typeof item !== 'string' || item.trim() === '' || item.trim() === '—') {
+      throw new InvalidEvidence(
+        `evidence[${i}] is empty, whitespace-only, or the legacy '—' sentinel. ` +
+          `Every element must be a concrete proof string.`,
+        [
+          `Replace the empty / sentinel entry with a real reference (file:line, command + outcome, commit SHA, etc.).`,
+          `Remove the entry if it was a placeholder — the array can shrink as long as it stays non-empty.`,
+        ],
+      );
+    }
   }
 }
 
+/**
+ * Pure predicate: does this evidence value count as "filled"?
+ * Non-throwing counterpart to the assert helpers.
+ *
+ * Accepts the shapes that exist on disk:
+ *
+ *   - `string[]` — AC evidence: filled iff non-empty AND every
+ *     element is non-empty, non-whitespace, and not the legacy `'—'`.
+ *   - `string` — single-line evidence fallback: filled iff non-empty,
+ *     non-whitespace, and not `'—'`.
+ *   - `null` / `undefined` → unfilled.
+ *
+ * Used by `phase.status.set("done")` enforcement to scan all ACs in
+ * the phase and refuse the transition if any are unfilled — this is
+ * how anchored prevents agents from marking phases done without
+ * concrete proof per criterion.
+ */
+export function isEvidenceFilled(evidence: unknown): boolean {
+  if (evidence == null) return false;
+  if (Array.isArray(evidence)) {
+    if (evidence.length === 0) return false;
+    return evidence.every(
+      (e) => typeof e === 'string' && e.trim() !== '' && e.trim() !== '—',
+    );
+  }
+  if (typeof evidence !== 'string') return false;
+  const trimmed = evidence.trim();
+  return trimmed !== '' && trimmed !== '—';
+}
+
 // ─────────────────────────────────────────────────────────────────────
-// Errors
+// Errors — every typed error carries an actionable `suggestions: string[]`
 // ─────────────────────────────────────────────────────────────────────
 
-export class InvalidTransition extends Error {
-  constructor(message: string) {
+/**
+ * Base class for service-layer errors. Carries a `suggestions` array
+ * with 1-3 concrete recovery actions (CLI commands, MCP-tool calls,
+ * or short steps). CLI prints them as a bulleted list under the
+ * error message; MCP tools surface them in error.data.suggestions so
+ * agents can read them programmatically.
+ */
+export class AnchoredError extends Error {
+  public readonly suggestions: string[];
+
+  constructor(message: string, suggestions: string[] = []) {
     super(message);
+    this.name = 'AnchoredError';
+    this.suggestions = suggestions;
+  }
+}
+
+export class InvalidTransition extends AnchoredError {
+  constructor(message: string, suggestions: string[] = []) {
+    super(message, suggestions);
     this.name = 'InvalidTransition';
   }
 }
 
-export class InvalidFieldType extends Error {
-  constructor(message: string) {
-    super(message);
+export class InvalidFieldType extends AnchoredError {
+  constructor(message: string, suggestions: string[] = []) {
+    super(message, suggestions);
     this.name = 'InvalidFieldType';
   }
 }
 
-export class OutOfRange extends Error {
-  constructor(message: string) {
-    super(message);
+export class OutOfRange extends AnchoredError {
+  constructor(message: string, suggestions: string[] = []) {
+    super(message, suggestions);
     this.name = 'OutOfRange';
   }
 }
 
-export class InvalidEvidence extends Error {
-  constructor(message: string) {
-    super(message);
+export class InvalidEvidence extends AnchoredError {
+  constructor(message: string, suggestions: string[] = []) {
+    super(message, suggestions);
     this.name = 'InvalidEvidence';
   }
 }
 
-export class NotFound extends Error {
-  constructor(message: string) {
-    super(message);
+export class NotFound extends AnchoredError {
+  constructor(message: string, suggestions: string[] = []) {
+    super(message, suggestions);
     this.name = 'NotFound';
+  }
+}
+
+/**
+ * Thrown by `phase.status.set("done")` when one or more acceptance
+ * criteria still have empty evidence. This enforces anchored's USP:
+ * a phase can't be marked done unless every AC has a concrete proof
+ * string. The agent or orchestrator must either fill the missing
+ * evidence (via ac.evidence.set) or transition to blocked/deferred.
+ */
+export class IncompleteEvidence extends AnchoredError {
+  constructor(message: string, suggestions: string[] = []) {
+    super(message, suggestions);
+    this.name = 'IncompleteEvidence';
+  }
+}
+
+/**
+ * Thrown by `task.status.set("wrap")` when one or more phases are
+ * still in pending or in-progress state. The build skill must drive
+ * every phase to a terminal state (done | blocked | deferred) before
+ * the task can transition to wrap. Prevents premature wrap-up.
+ */
+export class IncompletePhases extends AnchoredError {
+  constructor(message: string, suggestions: string[] = []) {
+    super(message, suggestions);
+    this.name = 'IncompletePhases';
   }
 }
 

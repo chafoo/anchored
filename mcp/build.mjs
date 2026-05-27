@@ -3,7 +3,7 @@
 // Run via `npm run build`.
 
 import { build } from 'esbuild';
-import { rm } from 'node:fs/promises';
+import { rm, chmod } from 'node:fs/promises';
 
 const shared = {
   bundle: true,
@@ -48,4 +48,56 @@ await build({
   },
 });
 
-console.log('Build complete: dist/cli/bin.js + dist/mcp/server.js');
+// Both outputs are bin entries — must be executable
+await chmod('dist/cli/bin.js', 0o755);
+await chmod('dist/mcp/server.js', 0o755);
+
+// Export JSON Schemas for IDE validation.
+// We bundle the schema modules separately (un-minified, ESM) so the
+// export script can import them via `node` without tsx. This keeps the
+// schema → JSON Schema pipeline a pure Node call, no extra runtime deps.
+await build({
+  ...shared,
+  entryPoints: ['src/schema/task-file.ts', 'src/schema/anchored-yml.ts'],
+  outdir: 'dist-schemas',
+  // schemas import each other and zod; bundle for self-containment
+  bundle: true,
+});
+
+// Now run the export script
+const { spawn } = await import('node:child_process');
+await new Promise((resolve, reject) => {
+  const child = spawn('node', ['scripts/export-schemas.mjs'], {
+    stdio: 'inherit',
+  });
+  child.on('exit', (code) =>
+    code === 0 ? resolve() : reject(new Error(`export-schemas exited ${code}`)),
+  );
+});
+
+// Clean up the intermediate schema bundles — only the JSON Schema files
+// in dist/schema/ are the user-facing artifact
+await rm('dist-schemas', { recursive: true, force: true });
+
+// Mirror the JSON Schema files into the versioned plugin tree so they
+// land in git AND ship with the marketplace plugin. The stable URL
+// `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/plugin/references/schema/<name>.schema.json`
+// then resolves to a known-version artifact — IDEs cache it,
+// yaml-language-server validates against it, no per-install setup.
+import { mkdir as mkdirP, copyFile, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
+
+const SCHEMA_SRC = 'dist/schema';
+const SCHEMA_PUBLISH = '../plugin/references/schema';
+
+await mkdirP(SCHEMA_PUBLISH, { recursive: true });
+const schemaFiles = await readdir(SCHEMA_SRC);
+for (const f of schemaFiles) {
+  if (!f.endsWith('.json')) continue;
+  await copyFile(join(SCHEMA_SRC, f), join(SCHEMA_PUBLISH, f));
+  console.log(`  ✓ published → plugin/references/schema/${f}`);
+}
+
+console.log(
+  'Build complete: dist/cli/bin.js + dist/mcp/server.js + dist/schema/*.schema.json + plugin/references/schema/*.schema.json',
+);

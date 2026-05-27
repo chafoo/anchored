@@ -1,50 +1,107 @@
 /**
- * Tool registry — assembles the 9 MCP tools anchored exposes.
+ * Tool registry — assembles the 33 MCP tools anchored exposes.
  *
- * Each tool is { name, description, inputSchema (JSON Schema),
- * handler (args → result) }. The server.ts iterates these to register
- * with the MCP SDK.
+ * Each tool is { name, description, inputSchema (JSON Schema), handler }.
+ * server.ts iterates ALL_TOOLS to register handlers with the MCP SDK.
+ *
+ * Tools are thin shims over the factory at src/core/factory.ts. Same
+ * code path as the CLI; different transport.
  */
 
-import { taskRead } from './task-read.js';
-import { taskStatusSet } from './task-status-set.js';
-import { phaseNextPending } from './phase-next-pending.js';
-import { phaseStatusSet } from './phase-status-set.js';
-import { phaseFieldSet } from './phase-field-set.js';
-import { phaseFieldGet } from './phase-field-get.js';
-import { acList } from './ac-list.js';
-import { acEvidenceSet } from './ac-evidence-set.js';
-import { contextAppend } from './context-append.js';
+import { type AnchoredTool } from './_shared.js';
 
-export interface AnchoredTool {
-  name: string;
-  description: string;
-  inputSchema: Record<string, unknown>;
-  handler: (args: Record<string, unknown>) => Promise<unknown>;
-}
+// task-lifecycle (4)
+import { createTool } from './create.js';
+import { readTool } from './read.js';
+import { setTaskStatusTool } from './set-task-status.js';
+import { setTitleTool } from './set-title.js';
+
+// context (8)
+import { setIntroTool } from './set-intro.js';
+import { appendPlanTool } from './append-plan.js';
+import { resolveQuestionTool } from './resolve-question.js';
+import { appendBuildSectionTool } from './append-build-section.js';
+import { setBuildSectionTool } from './set-build-section.js';
+import { setWrapIntroTool } from './set-wrap-intro.js';
+import { appendWrapSectionTool } from './append-wrap-section.js';
+import { setWrapSectionTool } from './set-wrap-section.js';
+
+// phase (10)
+import { listPhasesTool } from './list-phases.js';
+import { nextPhaseTool } from './next-phase.js';
+import { addPhaseTool } from './add-phase.js';
+import { removePhaseTool } from './remove-phase.js';
+import { movePhaseTool } from './move-phase.js';
+import { setPhaseStatusTool } from './set-phase-status.js';
+import { setPhaseNameTool } from './set-phase-name.js';
+import { setPhaseContextTool } from './set-phase-context.js';
+import { setPhaseRulesTool } from './set-phase-rules.js';
+import { incrementRetryTool } from './increment-retry.js';
+
+// ac (8)
+import { addAcTool } from './add-ac.js';
+import { removeAcTool } from './remove-ac.js';
+import { setAcTextTool } from './set-ac-text.js';
+import { setEvidenceTool } from './set-evidence.js';
+import { addEvidenceTool } from './add-evidence.js';
+import { setFailuresTool } from './set-failures.js';
+import { clearFailuresTool } from './clear-failures.js';
+import { setAcStatusTool } from './set-ac-status.js';
+
+// field (3)
+import { listFieldsTool } from './list-fields.js';
+import { setFieldTool } from './set-field.js';
+import { getFieldTool } from './get-field.js';
+
+export { type AnchoredTool } from './_shared.js';
 
 export const ALL_TOOLS: AnchoredTool[] = [
-  taskRead,
-  taskStatusSet,
-  phaseNextPending,
-  phaseStatusSet,
-  phaseFieldSet,
-  phaseFieldGet,
-  acList,
-  acEvidenceSet,
-  contextAppend,
+  // task-lifecycle
+  createTool,
+  readTool,
+  setTaskStatusTool,
+  setTitleTool,
+  // context
+  setIntroTool,
+  appendPlanTool,
+  resolveQuestionTool,
+  appendBuildSectionTool,
+  setBuildSectionTool,
+  setWrapIntroTool,
+  appendWrapSectionTool,
+  setWrapSectionTool,
+  // phase
+  listPhasesTool,
+  nextPhaseTool,
+  addPhaseTool,
+  removePhaseTool,
+  movePhaseTool,
+  setPhaseStatusTool,
+  setPhaseNameTool,
+  setPhaseContextTool,
+  setPhaseRulesTool,
+  incrementRetryTool,
+  // ac
+  addAcTool,
+  removeAcTool,
+  setAcTextTool,
+  setEvidenceTool,
+  addEvidenceTool,
+  setFailuresTool,
+  clearFailuresTool,
+  setAcStatusTool,
+  // field
+  listFieldsTool,
+  setFieldTool,
+  getFieldTool,
 ];
 
 // ─────────────────────────────────────────────────────────────────────
-// shared helper — resolve project root from args or env
+// shared helper — resolve project root from args or env (kept for any
+// transport/test code that still imports it; tool files no longer need
+// it since `_shared.ts:withOps` accepts the project_root arg directly)
 // ─────────────────────────────────────────────────────────────────────
 
-/**
- * MCP tools accept an optional `project_root` arg; if absent, fall
- * back to `ANCHORED_PROJECT_ROOT` env var (set by the orchestrator),
- * then `process.cwd()`. The orchestrator typically passes the user's
- * project root explicitly so the server can operate on any project.
- */
 export function resolveProjectRoot(args: Record<string, unknown>): string {
   if (typeof args['project_root'] === 'string' && args['project_root'].length > 0) {
     return args['project_root'];
@@ -54,7 +111,6 @@ export function resolveProjectRoot(args: Record<string, unknown>): string {
   return process.cwd();
 }
 
-/** Common required string arg with description. */
 export function strProp(description: string): Record<string, unknown> {
   return { type: 'string', description };
 }

@@ -19,6 +19,6 @@
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["src/**/*", "tests/**/*", "build.mjs"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "tests"]
 }

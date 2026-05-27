@@ -1,142 +1,239 @@
-# State mutations — service-layer API
+# State mutations — who writes what to the task-file
 
-Reference for the MCP tools and CLI commands that mutate the task-file.
-**Every task-file mutation goes through this API.** No agent or skill
-edits `.claude/tasks/<slug>.md` with Write/Edit directly — the
-service-layer validates schema, enforces state-machine transitions,
-and preserves user extensions on round-trip.
+## TL;DR
+
+All mutations to `.claude/tasks/<slug>.yml` go through the MCP factory
+tools (`mcp__task__*`). **NO agent uses Write or Edit on task-files.**
+The factory at `mcp/src/core/factory.ts` is the single source of
+truth — it validates schema, enforces state-machine transitions,
+and atomic-writes on every call.
+
+## Mutation paths by agent / skill
+
+| Actor              | Path                                                                          | Notes                                                                  |
+|--------------------|-------------------------------------------------------------------------------|------------------------------------------------------------------------|
+| plan-agent         | `task__create` + `task__append_plan` + `task__add_phase`                      | Initial file creation                                                  |
+| /impl-plan         | `task__resolve_question`                                                      | Q&A loop fills `→ ?` markers in `context.plan`                         |
+| /impl-refine       | `task__set_task_status` (`drafted → refined`)                                 | After plan-check + rules-check OK                                      |
+| plan-check         | `task__set_phase_rules`, `set_phase_context`, `append_plan`, `resolve_question` | Self-correct (additive / non-semantic) + question resolution         |
+| rules-check        | `task__set_phase_rules`, `append_plan`                                        | Additive only                                                          |
+| implement          | `task__set_evidence`, `add_evidence`, `set_phase_status`, `set_field`         | Per-AC evidence + per-phase status                                     |
+| task-validate      | `task__set_failures` (per rejected AC) + rollup via `append_build_section`    | NEVER writes evidence                                                  |
+| code-validate      | `task__set_failures` (per rejected AC) + rollup via `append_build_section`    | NEVER writes evidence                                                  |
+| /impl-build (orch) | `task__increment_retry`, `set_phase_status` (`blocked` on retry exhaustion), `set_task_status` (`build → wrap`) | Owns retry accounting                              |
+| /impl-wrap         | `task__set_wrap_intro`, `append_wrap_section`, `set_task_status` (`wrap → done`) | Final summary                                                        |
+
+Read-only paths (`task__read`, `task__list_phases`, `task__list_fields`,
+`task__get_field`, `task__next_phase`) are open to every actor — they
+never mutate.
+
+## Failures-driven re-do loop
+
+After implement completes a phase, task-validate fires per AC. For
+each AC it rejects, it calls `task__set_failures` — which atomically:
+
+- Sets the `failures` array on the AC
+- Flips AC status back to `pending`
+- **KEEPS** evidence as history — the implement-agent reads it on
+  re-run for context
+
+code-validate runs next with the same atomicity contract; if it
+rejects an AC that task-validate already rejected, its failures
+supersede (so the AC reflects the LATEST validator's findings).
+
+The /impl-build orchestrator then:
+
+1. Scans all ACs in the phase via `task__read`.
+2. If any has a non-empty `failures` field → re-spawn implement for
+   that phase.
+3. **Before re-spawning**, call `task__increment_retry(slug, phase_slug)`
+   — atomically bumps the counter and returns the new value `N`.
+4. If `N > anchored.yml.build.retry_limit` (default 3) → transition
+   the phase to `blocked` via `set_phase_status`. Failures are
+   preserved on the AC — no further retries.
+
+implement reads `ac.failures` on re-run, fixes the underlying issue,
+calls `task__set_evidence` with NEW proof. The set_evidence call
+atomically:
+
+- Stores the new evidence array
+- Flips status to `done`
+- Clears the `failures` field
+
+That single write is the recovery primitive — no separate
+"clear_failures" call is needed in the happy path.
+
+## Update-mode: the backward-transition exception
+
+Anchored's task-status state machine is forward-only EXCEPT for one
+documented exception: update-mode in `/impl-plan` can flip any
+post-plan status back to `drafted`. This is the ONLY legitimate path
+for `{refined, build, wrap, done} → drafted`.
+
+The exception lives only in `/impl-plan`. Agents, `/impl-refine`,
+`/impl-build`, and `/impl-wrap` cannot move a task backward. The
+factory's state-machine validator (`assertTaskTransition`) allows
+the backward edges to `drafted`, but only `/impl-plan` exercises
+them.
+
+After an update-mode edit lands, `/impl-plan` ALWAYS flips status
+back to `drafted` so `/impl-refine` re-fires before the next build
+attempt. `plan-check` + `rules-check` (the gates inside
+`/impl-refine`) then verify the modified plan against current code
+and rules — no stale "already refined" assumption is allowed to
+mask post-edit drift.
+
+Done phases inside a task on the backward path are additionally
+protected at the phase level: `phase.remove` throws
+`DonePhaseImmutable` unless the caller passes `{ force: true }`.
+The skill prompts the user before forcing; the factory enforces
+the contract even if the prompt is skipped.
+
+## Retry-limit guard
+
+`anchored.yml.build.retry_limit` (default 3) caps the re-do loop:
+
+- attempt 1 (fresh) + 2 retries = 3 total attempts before exhaustion
+- After exhaustion, the phase is `blocked` with all `failures`
+  preserved on each rejected AC
+- User intervention required — typical recovery paths:
+  - Review failures, fix manually, then
+    `anchored phase status set <slug> <ps> in-progress` to resume
+  - `anchored phase remove <slug> <ps>` if the AC was wrong
+  - `anchored ac status set <slug> <ps> <ac> pending` to clear
+    evidence + failures and start fresh on that AC
+
+## Bootstrap exceptions: zero
+
+V0.1 had one Write exception (plan-agent's initial task-file
+creation) and one Edit exception (the orchestrator's `→ ?` Q&A
+replacement). V0.2 retired both:
+
+- plan-agent now calls `task__create` + `task__append_plan` +
+  `task__add_phase` instead of Write
+- the /impl-plan orchestrator calls `task__resolve_question` instead
+  of Edit
+
+No agent in `plugin/agents/*` has `Write` or `Edit` in its frontmatter
+`tools:` list. The `mcp/tests/agent-frontmatter.test.ts` test
+enforces this — any reintroduction fails CI.
 
 ## Two frontends, one service-layer
 
 | Frontend | Used by                                            | Format                                  |
 |----------|----------------------------------------------------|-----------------------------------------|
-| **MCP**  | Subagents (called as `mcp__anchored__<tool>` tools) | Typed JSON inputs/outputs               |
-| **CLI**  | Shell hooks (`run:` steps in anchored.yml), humans  | `anchored <noun> <verb> <args...>`     |
+| **MCP**  | Subagents (called as `mcp__task__<tool>` tools)    | Typed JSON inputs/outputs               |
+| **CLI**  | Shell hooks (`run:` steps in anchored.yml), humans | `anchored <noun> <verb> <args...>`     |
 
-Both wrap the same `src/ops/` core in `@anchored/mcp`. They diverge
-only at the I/O boundary.
+Both wrap the same `mcp/src/core/factory.ts` surface. They diverge
+only at the I/O boundary — JSON over stdio vs. argv parsing + stdout.
 
----
+## Atomicity guarantees
 
-## Operations by domain
+The factory's per-AC write contract:
 
-### Task-level
+- `evidence.set(...)` — sets evidence, flips status → `done`, clears
+  failures. One write.
+- `evidence.add(...)` — appends evidence line, flips status → `done`,
+  clears failures. One write.
+- `failures.set(...)` — sets failures, flips status → `pending`,
+  KEEPS evidence as history. One write.
+- `failures.clear(...)` — removes failures field; status unchanged.
+  One write.
+- `status.set('pending')` — full reset: clears evidence + failures.
+  One write.
 
-#### `task.read(slug)` → task data
-- **MCP:** `mcp__anchored__task_read`
-- **CLI:** `anchored task read <slug>`
-- Returns the full parsed task-file (frontmatter, sections, phases).
-- Read-only. Never modifies.
-
-#### `task.status.set(slug, new_status)`
-- **MCP:** `mcp__anchored__task_status_set`
-- **CLI:** `anchored task status set <slug> <new_status>`
-- Validates the transition is legal (e.g., `plan → build` OK, `plan
-  → done` rejected).
-- Throws `InvalidTransition` if illegal.
-
-### Phase-level
-
-#### `phase.next_pending(slug)` → phase or null
-- **MCP:** `mcp__anchored__phase_next_pending`
-- **CLI:** `anchored phase next-pending <slug>`
-- Returns the next phase whose status is `pending` OR `in-progress`
-  (in declaration order; in-progress comes first for resume-safety).
-- Returns null if no such phase exists.
-
-#### `phase.status.set(slug, phase_slug, new_status)`
-- **MCP:** `mcp__anchored__phase_status_set`
-- **CLI:** `anchored phase status set <slug> <phase_slug> <new_status>`
-- Validates phase-status transition rules.
-- Reserved transitions: `pending → in-progress → done | blocked | deferred`.
-
-#### `phase.field.set(slug, phase_slug, field_name, value)`
-- **MCP:** `mcp__anchored__phase_field_set`
-- **CLI:** `anchored phase field set <slug> <phase_slug> <field_name> <value>`
-- Generic field op for user-declared phase fields (from
-  `anchored.yml.task.phase.fields`).
-- Validates the field is declared + type matches.
-- Used for: commit SHAs, coverage %, PR URLs, anything custom.
-
-#### `phase.field.get(slug, phase_slug, field_name)` → value or null
-- **MCP:** `mcp__anchored__phase_field_get`
-- **CLI:** `anchored phase field get <slug> <phase_slug> <field_name>`
-- Read-only.
-
-### AC-level
-
-#### `ac.list(slug, phase_slug)` → array of {text, evidence}
-- **MCP:** `mcp__anchored__ac_list`
-- **CLI:** `anchored ac list <slug> <phase_slug>`
-- Returns all acceptance criteria for the phase with their current
-  evidence strings (`"—"` for unfilled).
-
-#### `ac.evidence.set(slug, phase_slug, ac_index, evidence_string)`
-- **MCP:** `mcp__anchored__ac_evidence_set`
-- **CLI:** `anchored ac evidence set <slug> <phase_slug> <ac_index> "<evidence>"`
-- Sets the evidence for one AC.
-- `ac_index` is 0-based.
-- Rejects empty evidence strings (`""`, `"—"`, whitespace-only) —
-  that defeats the USP. Use a real value or don't call.
-
-### Context-level (the Markdown sections)
-
-#### `context.append(slug, section, subsection, content)`
-- **MCP:** `mcp__anchored__context_append`
-- **CLI:** `anchored context append <slug> <section> [<subsection>] "<content>"`
-- Appends content to a Context sub-section.
-- `section` is one of: `Plan`, `Build`, `Wrap`.
-- `subsection` is optional. If set, content goes under
-  `### <section> → #### <subsection>` (H4 sub-section, created
-  on-demand if it doesn't exist yet).
-- Used by:
-  - plan-agent → writes decisions + Q&A to `Plan` (no subsection)
-  - implement-agent → writes mid-flight notes to `Build` /
-    `Implement`
-  - task-check → writes verdicts to `Build` / `task-check`
-  - code-check → writes verdicts to `Build` / `code-check`
-  - wrap.review step → writes findings to `Wrap` / `review`
-  - wrap.summarize step → writes TL;DR to `Wrap` (no subsection)
-
----
-
-## Validation guarantees
-
-Every op runs through validation BEFORE writing:
-
-1. **Schema validity.** Mutation must produce a task-file that
-   still parses cleanly.
-2. **Type checking.** Field values must match their declared types
-   (especially `task.phase.fields` extensions — string vs number vs
-   enum).
-3. **Transition legality.** Status changes must follow the
-   state-machine (no `plan → done` shortcuts).
-4. **AC-index in range.** `ac.evidence.set(ac_index=99)` throws if
-   the phase only has 4 ACs.
-5. **Slug existence.** Operations on a nonexistent task slug or
-   phase slug throw `NotFound`.
-
-Failed validation throws a typed error. Callers (orchestrators,
-agents) catch and react — typically by surfacing the error to the
-user, never by trying to write past the validation.
-
----
+No torn-state bug class is possible on disk — every mutation either
+fully succeeds or no write happens.
 
 ## Round-trip safety
 
-The parser preserves:
-- Unknown frontmatter fields (forward compat)
-- Unknown body sections at H2 level (`## My Custom Section`)
-- Unknown H4 sub-sections under `### Build` or `### Wrap`
-- User-declared `task.phase.fields` (preserved across mutations)
-- HTML comments (used internally for phase slug IDs)
-- Trailing whitespace conventions
+The renderer preserves:
 
-This means: a user can hand-edit their task-file (e.g., add notes,
-add a `## Risk Assessment` section), and anchored will not eat their
-edits during subsequent mutations.
+- Unknown top-level keys (forward compat via Zod `.passthrough()`)
+- Unknown phase keys (per-phase extension fields declared in
+  `anchored.yml.task.phase.fields` land here; unknown extras pass
+  through verbatim)
+- `customSections` (user-maintained free-form sections)
+- Block-scalar (`|`) formatting for multi-line strings — no line-
+  splitting / re-joining hazards
 
----
+A user can hand-edit their task-file (add notes, add a top-level
+`risk_assessment:` key, etc.) and anchored will not eat their edits
+during subsequent mutations.
+
+## What MCP doesn't do
+
+- **No bulk operations.** Set evidence per AC, set status per phase.
+  Loops happen at the orchestrator level.
+- **No transactional batches across multiple ops.** Each call writes
+  immediately. The per-op atomicity (above) is the strongest unit;
+  for multi-op atomicity, your orchestrator handles rollback.
+- **No diff-against-history.** Once written, prior state isn't
+  recoverable from the service-layer. Use git for history.
+- **No cross-op transactions.** Each op is read → mutate → write.
+  Two ops running concurrently (e.g. `Promise.all`) each read
+  independently; if they target the same AC, the last write wins
+  (RMW race). The cross-process lock (next section) prevents *torn*
+  files but does NOT serialize read-modify-write. Sequentialize at
+  the orchestrator level when atomicity across ops is needed.
+
+## Concurrency model
+
+Anchored runs safely across multiple sessions / processes via 3 layers:
+
+1. **Event-loop atomicity** (intra-process, sequential awaits): each
+   factory op is one async function. As long as the caller awaits
+   them sequentially (`await op1; await op2;`), the read → mutate →
+   write of op1 completes before op2 reads. No interleaving, no lost
+   updates. This is the recommended pattern. `Promise.all` of ops
+   on the same task DOES interleave their reads — the lock keeps the
+   file uncorrupted, but the LATER write may overwrite the earlier
+   one if they touched the same field.
+
+2. **Atomic file writes** (filesystem): every write goes through
+   `core/io.ts:atomicWrite` — write to a per-pid + random-suffix
+   temp path, then `rename(2)` onto the target. Rename is atomic on
+   POSIX filesystems. Crashes mid-write leave the original file
+   intact (or a stale temp sibling that gets cleaned up on the next
+   write). Readers see either the old or the new file, never a
+   partial.
+
+3. **Cross-process locking** (multi-process): `proper-lockfile`
+   acquires a `<path>.lock` directory next to the target file
+   before every write. If another anchored process holds the lock,
+   the caller retries 3× with 100ms backoff (~400ms budget), then
+   throws `WriteContention`. Stale locks (10s+ old, no mtime
+   refresh — implies a crashed prior writer) auto-reclaim on the
+   next acquire.
+
+### Recommended pattern: 1 task = 1 worktree = 1 session
+
+For predictable behavior, treat each task as a single-writer domain:
+
+- One git worktree per active task
+- One Claude Code session in that worktree
+- `/impl-*` skills run sequentially within the session
+
+Multi-session / multi-process work on the same task is *supported*
+(the lock prevents file corruption) but creates avoidable contention
+and surfaces lost-update bugs that are easy to avoid with separate
+worktrees. Prefer the worktree pattern.
+
+### Parallel quality-gate execution
+
+`/impl-build` spawns `task-validate` + `code-validate` in PARALLEL
+(single message, two `Task` tool calls). They read the same task-file
+but write to DIFFERENT acceptance criteria (each validator emits
+`set_failures` per-rejection, and the two validators don't reject
+the same AC for the same reason — task-validate looks at evidence,
+code-validate at code-vs-rules). The cross-process lock serializes
+their writes; the parallelism saves wall-clock on the LLM-reasoning
+side without sacrificing safety.
+
+`/impl-refine`'s `plan-check` + `rules-check` run SEQUENTIALLY (not
+parallel) because rules-check needs to see any structural reshaping
+plan-check applied — they're a pipeline, not independent reviewers.
 
 ## CLI invocation patterns
 
@@ -161,20 +258,6 @@ anchored phase next-pending my-task
 # Manually mark a phase deferred
 anchored phase status set my-task tricky-thing deferred
 
-# Restart a phase (clear evidences, set pending)
-# (No single op for this in V0.2 — edit the file by hand)
+# Reset an AC to pending (clears evidence + failures atomically)
+anchored ac status set my-task tricky-thing 2 pending
 ```
-
----
-
-## What MCP doesn't do
-
-- **No bulk operations.** Set evidence per AC, set status per phase.
-  Loops happen at the orchestrator level.
-- **No transactional batches.** Each call writes immediately. If you
-  need atomicity for multiple changes, your orchestrator handles
-  rollback (or you accept eventual consistency in the file).
-- **No diff-against-history.** Once written, prior state isn't
-  recoverable from the service-layer. Use git for history.
-- **No locks.** Concurrent `/impl-*` calls on the same task-file can
-  race. V0.2 doesn't handle this (advisory locks are V0.3+).

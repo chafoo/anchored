@@ -1,5 +1,5 @@
 {
-  "anchored": {
+  "task": {
     "command": "npx",
     "args": ["-y", "@anchored/mcp"]
   }

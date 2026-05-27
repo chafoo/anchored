@@ -1,0 +1,8 @@
+dist/
+dist-schemas/
+node_modules/
+coverage/
+*.log
+.DS_Store
+# Auto-generated JSON Schema files
+dist/schema/

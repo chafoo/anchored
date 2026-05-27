@@ -11,6 +11,20 @@ description: |
 
 # /impl-wrap
 
+## Communication style
+
+See `plugin/references/communication-style.md` for the full principle —
+partner voice in chat. The wrap TL;DR in `context.wrap.intro` is the
+audit surface; the chat message is the partnership surface.
+
+Skill-specific:
+
+| Avoid (machinery voice) | Prefer (partner voice) |
+|---|---|
+| "Invoking /review skill against task diff..." | "Lass mich kurz drüberlesen bevor wir's abschließen." |
+| "set_wrap_intro written, set_task_status('done') succeeded" | "Wrapped — 5 von 6 phasen sauber durch, eine deferred. TL;DR steht im task-file." |
+| "Phase terminal-state validation: 4 done / 1 deferred / 0 blocked" | "Vier phasen durch, eine deferred — passt für wrap." |
+
 You are the orchestrator for the `/impl-wrap` lifecycle phase. The
 user invoked you on a task whose status is `wrap` — build has
 completed (all phases terminal: done | blocked | deferred). Your job:
@@ -24,14 +38,14 @@ pipeline steps — your job is the bookends + transition.
 
 1. **Load `anchored.yml`** from project root.
 2. **Resolve the task slug** (same logic as /impl-build).
-3. **State gate.** `mcp__anchored__task_read(slug)`:
+3. **State gate.** `mcp__task__read(slug)`:
    - `status: plan` / `build` → refuse with clear message about which
      skill to run instead.
    - `status: wrap` → proceed.
    - `status: done` → refuse: "Task is already done. To re-wrap,
      manually reset the task-file."
-4. **Validate phase terminal state.** Call `mcp__anchored__ac_list` or
-   iterate the file. Every phase should have `status` in
+4. **Validate phase terminal state.** Call `mcp__task__list_phases`
+   or iterate the file. Every phase should have `status` in
    `{done, blocked, deferred}`. If any are `pending` or `in-progress`,
    refuse with: "Task <slug> still has non-terminal phases (X
    pending, Y in-progress). Run `/impl-build` first."
@@ -51,8 +65,8 @@ defaults) instructs:
   the first phase's `commit` field if auto-commit is on, or against
   the working tree if not).
 - Capture notable findings — typically the most impactful 3-10.
-- Write them to `### Wrap → #### review` via
-  `mcp__anchored__context_append`:
+- Write them to `context.wrap → review` subsection via
+  `mcp__task__append_wrap_section(project_root, slug, "review", content)`:
   ```
   - <finding 1: file:line — what's flagged>
   - <finding 2>
@@ -65,11 +79,15 @@ entirely), follow their prose instead.
 
 ### Step: summarize
 
-Read everything from the task-file via `mcp__anchored__task_read`:
+Read everything from the task-file via `mcp__task__read`:
 - Phase outcomes (status + commit if present)
-- Findings from `#### task-check` and `#### code-check` (per phase)
-- Findings from `#### review` (just written)
-- AC counts: how many have non-empty evidence vs how many are `—`
+- Rollups from `context.build.task-validate` and
+  `context.build.code-validate` (per phase, one line per attempt)
+- Per-AC `failures` arrays on any AC where blocked phases left them
+- Findings from `context.wrap.review` (just written)
+- AC counts: how many ACs are `status: 'done'` (with evidence) vs
+  still `pending` (no evidence) — terminal-state phases may have
+  pending ACs if blocked / deferred
 
 Compose a TL;DR. Suggested structure:
 
@@ -81,8 +99,8 @@ Compose a TL;DR. Suggested structure:
 **ACs with evidence**: X of Y (Z% honest completion).
 
 **Notable findings during build**:
-- <task-check finding worth highlighting>
-- <code-check finding worth highlighting>
+- <task-validate finding worth highlighting>
+- <code-validate finding worth highlighting>
 
 **Notable findings from review**:
 - <review finding worth highlighting>
@@ -92,9 +110,10 @@ compares to the original plan; were there pivots, scope adjustments,
 discoveries>.
 ```
 
-Write this directly into `### Wrap` (NOT as an H4 sub-section — the
-free-prose TL;DR goes under `### Wrap` itself, parallel to the
-optional H4 `#### review` block above it).
+Write this directly into `context.wrap.intro` via
+`mcp__task__set_wrap_intro(project_root, slug, content)` — the free-
+prose TL;DR lives at the `intro` level, parallel to the optional
+`subsections` (review etc.).
 
 Per `anchored.yml.wrap.summarize` prose, the user may want additional
 content (e.g. "include token-usage stats", "highlight any AC marked
@@ -105,15 +124,15 @@ structure.
 
 After all wrap steps run:
 
-1. Final validation: re-call `mcp__anchored__task_read(slug)`. Confirm
-   the file parses cleanly.
-2. AC ratio: count `evidence: —` vs filled. Mention in the user
-   message if interesting (e.g. "23 of 25 ACs evidenced; 2 deferred
-   as documented").
-3. Transition: `mcp__anchored__task_status_set(slug, "done")`.
-4. Tell user:
+1. Final validation: re-call `mcp__task__read(project_root, slug)`.
+   Confirm the file parses cleanly.
+2. AC ratio: count ACs by `status` (`done` vs `pending`). Mention in
+   the user message if interesting (e.g. "23 of 25 ACs evidenced; 2
+   deferred as documented").
+3. Transition: `mcp__task__set_task_status(project_root, slug, "done")`.
+4. Tell the user:
    > "Wrapped `<slug>`. Status: done. <AC-ratio summary>. See
-   > `### Wrap` for the TL;DR."
+   > `context.wrap` for the TL;DR."
 
 ## Framework defaults (always run)
 
