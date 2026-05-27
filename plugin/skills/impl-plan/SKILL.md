@@ -1,12 +1,14 @@
 ---
 name: impl-plan
 description: |
-  Refine a raw task description into a structured task-file with phases
-  and testable acceptance criteria. Reads (or creates) anchored.yml,
-  runs code discovery (Explore), scans project conventions (rules
-  agent), decomposes the work via the plan agent, and runs a Q&A loop
-  on blocking questions before transitioning task status `plan → build`.
-  Explicit-only trigger — the user types `/impl-plan <description>`.
+  Brainstorm-mode skill — turns a raw task description into a draft
+  task-file with phases + testable acceptance criteria + ALL ambiguities
+  surfaced as priority-tagged structured questions. Reads (or creates)
+  anchored.yml, runs code discovery (Explore), scans project conventions
+  (rules agent), decomposes the work via the plan agent. Exits cleanly
+  with status=drafted and open questions untouched — /impl-refine is
+  where questions get walked with the user under the chosen autonomy
+  level. Explicit-only trigger — the user types `/impl-plan <description>`.
 ---
 
 # /impl-plan
@@ -23,8 +25,8 @@ Skill-specific:
 | Avoid (machinery voice) | Prefer (partner voice) |
 |---|---|
 | "Spawning plan-agent with task description..." | "Lass uns das durchsprechen — was genau willst du bauen?" |
-| "Q&A loop: 3 markers detected, processing..." | "Drei sachen sind noch unklar im plan. Lass uns die kurz klären." |
-| "Status transition: plan → drafted complete" | "Plan ist soweit. Run `/impl-refine` als nächstes." |
+| "Plan-agent surfaced 6 questions: 2 high, 3 medium, 1 low" | "Sechs sachen sind noch offen — 2 wichtige, 3 mittlere, 1 kleine. /impl-refine geht die mit dir durch." |
+| "Status transition: plan → drafted complete" | "Plan steht. Run `/impl-refine` als nächstes." |
 
 You are the orchestrator for the `/impl-plan` lifecycle phase. The
 user invoked you with a raw task description (or pointed at an
@@ -66,7 +68,7 @@ the user's attention (missing config, refused state gate, etc.).
    | Pre-flight state | /impl-plan behavior                                                                                                                                         |
    |------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
    | file missing     | **Initial-create.** Run the pipeline below (Explore → rules → plan) from scratch.                                                                            |
-   | `status: plan`   | **Resume refinement loop.** A previous `/impl-plan` started but didn't finish the Q&A. Re-read open questions and continue from where it left off.          |
+   | `status: plan`   | **Resume in-progress plan.** A previous `/impl-plan` started but exited before flipping to drafted. Re-read the task-file, finish any incomplete plan-agent work (missing phases, missing AC distributions), then flip to drafted. NO Q&A loop here — questions stay open for /impl-refine.    |
    | `status: drafted`| **Update-mode.** Read the plan, ask the user what to change, apply via MCP ops. Status stays `drafted` (no flip needed — it's already there).                |
    | `status: refined`| **Update-mode + flip-back-to-drafted.** BEFORE applying any edits, flip status `refined → drafted` so `/impl-refine` re-fires after. Then apply edits.       |
    | `status: build`  | **Update-mode + done-phase guard + flip back.** Pending / in-progress phases edit freely. Done phases require explicit per-change confirmation (AskUserQuestion) — see below. After edits, flip `build → drafted`. |
@@ -198,22 +200,39 @@ factory accepts `drafted → drafted` as a self-edge).
 Run each step from `anchored.yml.plan.steps` in declaration order
 (top-to-bottom in the user's config file).
 
-For the default pipeline (`explore` → `rules` → `refine`):
+For the default pipeline (`explore` + `rules` in parallel → `refine`):
 
-### Step: explore
+### Step: explore + rules (parallel)
+
+Spawn BOTH agents in a **single message** with two Agent tool
+calls. They share no dependencies — explore scans the codebase,
+rules scans `.claude/rules/`. Running them parallel cuts the
+wall-clock to `max(explore, rules)` instead of summing them
+(typically saves ~25-40s on a non-trivial task).
+
+**Step: explore**
 Spawn Claude Code's built-in `Explore` agent with the raw task
 description. Capture its return as the discovery summary
 (affected_paths, similar_code, patterns). If user's anchored.yml has
 `plan.steps.explore.instructions` prose, append it to the agent's
 brief.
 
-### Step: rules
+**Step: rules**
 Spawn the `rules` agent (`plugin/agents/rules.md`) with:
 - RAW_PLAN: user's task description
-- DISCOVERY: output from explore step
+- DISCOVERY: **null** (running parallel; rules-agent falls back to
+  keyword-match-only filtering on RAW_PLAN)
 - RULES_CONFIG: `anchored.yml.plan.rules` (paths, additional_keywords)
 
 Capture the rules summary (must_follow + worth_knowing + sources).
+The rules-agent is designed to handle empty DISCOVERY — it returns
+a slightly more inclusive list (keyword-matched only, no
+path-filtering), which rules-check tightens later in /impl-refine.
+
+If a future use case needs explore's output to feed rules (e.g.
+very large rules library where path-filtering is essential), the
+user can override `anchored.yml.plan.steps` to declare them
+sequentially.
 
 ### Step: refine
 Spawn the `plan` agent (`plugin/agents/plan.md`) with:
@@ -240,127 +259,88 @@ didn't complete — surface the agent's structured output to the user
 along with the error and consider re-spawning. If the file exists
 but is malformed (parser throws), surface the error to the user.
 
-## Q&A loop
+## Open questions stay open
 
-Plan-agent surfaces open questions in `context.plan` with `→ ?`
-markers. Each question is either `[blocking]` (planning can't proceed
-without an answer) or non-blocking (a default exists, but multiple
-reasonable interpretations are possible).
+In V0.3, `/impl-plan` does NOT run a Q&A loop with the user. The
+plan-agent surfaces every ambiguity as a structured question via
+`mcp__task__question_add` (with priority tags low/medium/high) and
+those questions live in the task-file's `questions[]` array at
+`status: 'open'`.
 
-After the pipeline finishes, run this sequence:
+**You exit with the questions still open.** That's the expected
+state for `drafted`.
 
-### 1. Read all open questions
-Use `mcp__task__read` to inspect the file. Extract every `Q: ...`
-entry and its `→ ?` marker. Split into:
-- `blocking`: tagged `[blocking]` — must be resolved
-- `non-blocking`: has a proposed default — could be auto-resolved
+`/impl-refine` is where the user gets walked through them — at its
+**stage 0** the user picks an autonomy level (`ask_all` /
+`ask_high_only` / `decide_all`), and at **stage 3** the orchestrator
+resolves each open question either by asking the user or by letting
+the AI decide (with `source='ai'` + `reasoning`) based on that
+autonomy level.
 
-Track each question's **0-based index** in the order they appear in
-`context.plan` — that's the `q_index` you'll pass to
-`mcp__task__resolve_question`.
+So your job after the plan-agent finishes is just to:
+1. Confirm the task-file parses (`mcp__task__read`)
+2. Tally the open questions for the completion message
+3. Flip status to `drafted`
 
-### 2. Always resolve blocking questions interactively
-For each blocking question, ask the user via `AskUserQuestion`.
+No `AskUserQuestion` calls. No `task__question_resolve` calls. No
+walking through anything. The brainstorm is done; refine takes it
+from here.
 
-**Resolve via `mcp__task__resolve_question`, not Edit.** V0.2 retired
-the Edit bootstrap exception — there is now a typed service-layer op
-that replaces the n-th `→ ?` marker in place. Call:
+### Why we moved Q&A out of plan
+
+The V0.2 dogfood (2026-05-27) caught the failure mode: when /impl-plan
+runs both the brainstorm AND the Q&A loop in one stretch, the
+plan-agent develops a bias toward *deciding* ambiguities (so the
+loop has less to walk through). That's the wrong incentive — we
+want the agent to surface generously, not optimize for fewer
+questions.
+
+V0.3 splits the work: /impl-plan is brainstorm-only, /impl-refine
+is decision-only. Each step has a single job, and the plan-agent
+no longer feels pressure to pre-resolve anything.
+
+### Tally for the completion message
+
+After the plan-agent's MCP calls land, read the questions array:
 
 ```
-mcp__task__resolve_question(
+const open = await mcp__task__question_list(
   project_root,
   slug,
-  q_index,
-  resolution = "resolved: <answer> (confirmed by user, <YYYY-MM-DD>)"
+  filter: { status: 'open' }
 )
+const high = open.filter(q => q.priority === 'high').length
+const medium = open.filter(q => q.priority === 'medium').length
+const low = open.filter(q => q.priority === 'low').length
 ```
 
-or for deferrals:
-
-```
-mcp__task__resolve_question(
-  project_root,
-  slug,
-  q_index,
-  resolution = "deferred: <reason> (confirmed by user, <YYYY-MM-DD>)"
-)
-```
-
-The factory replaces the matching `→ ?` line in place, validates the
-file still parses, and atomic-writes. Throws
-`RefinementMarkerNotFound` if `q_index` is out of range — re-read
-the file and recount if you see that.
-
-Do NOT append a separate "Question resolutions" section at the
-bottom of `context.plan` — that creates a duplicate audit trail and
-requires a clean-up pass. Replace-in-place keeps the Plan section
-chronologically readable.
-
-### 3. Triage non-blocking questions with one upfront prompt
-If there are any non-blocking questions, ask the user ONCE up front
-how they want to handle them, using `AskUserQuestion`:
-
-> "Found N non-blocking ambiguities in the ticket. I have proposed
-> defaults for each. How do you want to handle them?"
->
-> Options:
-> - "Walk through each — I'll show you the question and proposed
->   default, you confirm or override" (recommended for unfamiliar
->   work / first task)
-> - "Auto-resolve with my proposed defaults — proceed without
->   further interruption" (recommended for routine work / when
->   you trust the defaults)
-
-After their choice:
-- **Walk-through**: ask each non-blocking via `AskUserQuestion`, show
-  the proposed default as the first option, user picks or overrides.
-  Resolve each via `mcp__task__resolve_question` (same in-place
-  replacement pattern as blocking questions above) with
-  `resolved: <answer> (confirmed by user, <date>)`.
-- **Auto-resolve**: silently apply each proposed default. Resolve
-  each via `mcp__task__resolve_question` with
-  `resolved: <default> (auto-resolved per user permission, <date>)`
-  so the trail shows the user opted in to letting the agent decide.
-
-In both modes: use `mcp__task__resolve_question` for the replacement
-— never Edit. Same reasoning as above (inline replace, no duplicate
-sections) plus V0.2's no-bootstrap-exceptions design.
-
-**Index re-use caveat:** `q_index` refers to the n-th `→ ?` marker
-in the CURRENT file. After you resolve question 0, question 1
-becomes the new "first `→ ?`" — i.e. q_index 0 in the next call. The
-safest pattern is to resolve in REVERSE order (highest index first)
-so earlier indices stay stable. Alternatively, re-count via
-`mcp__task__read` between each call.
-
-### 4. Verify the file is clean
-After Q&A resolves, re-read the task-file. No `→ ?` markers should
-remain in `context.plan`. If any do, return to step 2/3 for them.
-
-### 5. Fallback: "decide yourself" on individual questions
-If during walk-through the user answers "decide yourself" for a
-specific question, treat that question as auto-resolved and proceed.
-Resolve with `resolved: <decision> (decided by agent per user permission)`.
+Use those counts in the wrap-up message below.
 
 ## Wrap-up
 
-When the pipeline + Q&A loop are clean:
+When the plan-agent has landed all MCP calls (create + append_plan +
+add_phase × N + question_add × M):
 
 1. Run framework defaults (see below).
-2. Call `mcp__task__set_task_status(project_root, slug, "drafted")`.
-3. Return a summary message to the user with a **clickable link to the
+2. Verify the file parses: `mcp__task__read(project_root, slug)`.
+3. Tally open questions (see "Tally for the completion message"
+   above).
+4. Call `mcp__task__set_task_status(project_root, slug, "drafted")`.
+5. Return a summary message to the user with a **clickable link to the
    task-file** so they can review what was planned:
 
    ```
    Plan drafted → [.claude/tasks/<slug>.yml](.claude/tasks/<slug>.yml)
 
-   N phases, M acceptance criteria, K open questions resolved.
+   N phasen, M ACs. K offene fragen (X high, Y medium, Z low).
    Status: plan → drafted.
 
-   Run `/impl-refine` next to validate against current code + apply
-   architecture preferences, then `/impl-build` to execute. For
-   trivial tasks you can skip refinement: `/impl-build` directly
-   (the skill warns + asks for confirmation).
+   Run `/impl-refine` next — du wirst gefragt wie autonom du den
+   run willst (alle fragen selbst beantworten, nur die wichtigen,
+   oder alle der AI überlassen), dann läuft das durch plan-check
+   + rules-check + Q&A-walk. Für trivial tasks kannst du refine
+   skippen: `/impl-build` direkt (warnt + fragt einmal ob du
+   sicher bist).
    ```
 
    The link is required — task-files can grow to hundreds of lines and
@@ -368,22 +348,29 @@ When the pipeline + Q&A loop are clean:
    refinement or build. Use a relative markdown link so it renders as
    a clickable file reference in Claude Code.
 
+   If K=0 (plan-agent surfaced no questions), still mention it
+   explicitly — that's unusual and worth a confirmation prompt to
+   the user ("Plan-agent hat keine fragen gestellt — sicher dass
+   nichts unklar war? Sonst /impl-refine läuft direkt durch.")
+
 ## Framework defaults (always run)
 
 - File-missing or `status: plan` → run the initial-create pipeline above.
   Any other existing status → branch into update-mode per the pre-flight
   table (never the initial-create pipeline on a populated file).
 - Plan-agent owns initial structure: `context.intro`, `context.plan`,
-  and per-phase blocks land via `mcp__task__create` +
-  `mcp__task__append_plan` + `mcp__task__add_phase`.
+  per-phase blocks, AND open questions — all land via
+  `mcp__task__create` + `mcp__task__append_plan` + `mcp__task__add_phase`
+  + `mcp__task__question_add`.
 - Generate phase slugs from phase names (kebab-case).
 - Every phase has ≥1 acceptance criterion. If plan-agent returns a
   phase with no ACs, that's an error — reject and ask for re-plan.
 - Every AC starts with `status: 'pending'` and no `evidence` field.
   Plan-agent doesn't pre-fill — implement does, atomically with
   status transition.
-- Open questions are resolved or explicitly deferred before status
-  transitions to `drafted` / `build`.
+- **Open questions stay open at the end of /impl-plan.** They do NOT
+  block the status transition to `drafted`. /impl-refine handles
+  resolution under the user's chosen autonomy level.
 - Validate task-file integrity via `mcp__task__read` before
   the final status flip — if it fails to parse, something went
   wrong; surface the error to the user.

@@ -72,10 +72,32 @@ prevailing language when generating your own lines.
 | "Atomic write to .claude/tasks/foo.yml completed (47B)" | (nothing — invisible; the audit trail logs it) |
 | "Question detected: blocking=true, q_index=0 — invoking AskUserQuestion" | "Eine sache ist noch unklar im ticket — kurz nachgefragt:" |
 | "Append_build_section('task-validate', rollup) — write succeeded" | (nothing — the rollup IS the receipt) |
+| "Stage 4 (custom steps): empty → skipping. Stage 5: flip auf refined." | (silent — empty pipeline stages need no narration; skip straight to the outcome) |
+| "Keine custom refine.steps in anchored.yml → Stage 4 skip" | (silent — referencing anchored.yml slots is plumbing) |
+| "Reading anchored.yml.build.retry_limit (default 3)" | (silent — config-loading is plumbing) |
+| "Stage 0 complete, advancing to Stage 1 (plan-check)" | "Okay, gehe weiter — check den plan." (or just stay silent and start) |
+| "Reminder zur Kenntnis genommen — nicht anwendbar." | (silent — never narrate dismissing system reminders; just keep working) |
+| "Status flip: drafted → refined via task__set_task_status" | "Plan ist refined." |
 
 The pattern: drop the verb when the verb is "I executed an internal
 operation". Keep the verb when it's "we made a real decision the
 user should know about".
+
+**Hard rule on stage-numbers + config slots:** "Stage N",
+"anchored.yml.<slot>", "skip step", "advancing to next stage" are
+internal flow control. The user picked the autonomy + answered (or
+delegated) questions; they don't need to track the orchestrator's
+bookkeeping. If a pipeline stage is empty (no custom steps, no
+work to do), the right output is **silence** — not a line announcing
+the skip. Same for any line that mentions a config slot, an MCP
+tool name, or a state-machine transition arrow.
+
+**Hard rule on system reminders:** Claude Code occasionally injects
+system reminders into the conversation (e.g. "consider using
+TaskCreate"). Do NOT narrate dismissing them ("reminder zur
+kenntnis genommen — nicht anwendbar"). Just keep working in your
+current task. Acknowledging the reminder in chat is itself a form
+of machinery-leakage.
 
 ## When the machinery DOES matter
 

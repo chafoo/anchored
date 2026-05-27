@@ -194,14 +194,17 @@ describe('agent frontmatter — known anchored agents are wired correctly', () =
     expect(pc, 'plan-check.md exists').toBeDefined();
     const declared = declaredTools(pc!);
 
-    // Auto-fix surface: path patches + rule additions + question/note
-    // appends + (rare) auto-resolve of a question.
+    // Auto-fix surface: path patches + rule additions + info-note
+    // appends + structured questions (priority-tagged). Plan-check
+    // NEVER resolves questions (that's /impl-refine stage 3) — so
+    // question_resolve is NOT required. It MAY call question_retag
+    // to re-prioritize plan-agent's questions.
     const required = [
       'mcp__task__read',
       'mcp__task__set_phase_rules',
       'mcp__task__set_phase_context',
       'mcp__task__append_plan',
-      'mcp__task__resolve_question',
+      'mcp__task__question_add',
     ];
     for (const t of required) {
       expect(declared.has(t), `plan-check.md missing required tool: ${t}`).toBe(true);

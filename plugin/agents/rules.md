@@ -60,6 +60,15 @@ normal, not an error.
      `RAW_PLAN` or `RULES_CONFIG.additional_keywords`, AND the rule
      is constraint-shaped (uses "must", "never", "always", "required").
 
+   **DISCOVERY may be null or empty** when /impl-plan runs you in
+   parallel with Explore (the default since V0.3 for performance).
+   In that case, path-match + pattern-match are skipped; lean on
+   keyword-match against RAW_PLAN alone. Be slightly more inclusive
+   than you would be with full discovery context — rules-check
+   tightens the rules-per-phase mapping later in /impl-refine, so
+   over-including here costs nothing while under-including would
+   miss real constraints.
+
 4. **Categorize** into two buckets:
    - `must_follow` — actively constrains this task. Default behavior
      will violate it if not respected.
@@ -74,8 +83,9 @@ normal, not an error.
 A rule is `must_follow` if at least one is true:
 
 - A path in the rule's `paths:` frontmatter or rule body intersects
-  with `DISCOVERY.affected_paths`.
-- The rule explicitly names a pattern from `DISCOVERY.patterns`.
+  with `DISCOVERY.affected_paths` (skipped if DISCOVERY is null).
+- The rule explicitly names a pattern from `DISCOVERY.patterns`
+  (skipped if DISCOVERY is null).
 - The rule body mentions a keyword from `RAW_PLAN` or
   `RULES_CONFIG.additional_keywords` AND the rule is constraint-shaped
   ("must", "never", "always", "required").

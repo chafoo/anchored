@@ -77,8 +77,92 @@ describe('task subcommands load', () => {
     ['task', 'read', '--help'],
     ['task', 'status', 'set', '--help'],
     ['task', 'title', 'set', '--help'],
+    // V0.3
+    ['task', 'autonomy', '--help'],
+    ['task', 'autonomy', 'set', '--help'],
+    ['task', 'question', '--help'],
+    ['task', 'question', 'add', '--help'],
+    ['task', 'question', 'list', '--help'],
+    ['task', 'question', 'resolve', '--help'],
+    ['task', 'question', 'retag', '--help'],
   ])('%s %s %s loads', (...args) => {
     expect(run(args.filter(Boolean))).toContain('Usage:');
+  });
+});
+
+describe('V0.3 task question + autonomy end-to-end', () => {
+  let tmpRoot: string;
+  beforeAll(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), 'anchored-cli-v03-'));
+    mkdirSync(join(tmpRoot, '.claude', 'tasks'), { recursive: true });
+    writeFileSync(
+      join(tmpRoot, 'anchored.yml'),
+      'task:\n  phase:\n    fields: []\nplan: {}\nrefine: {}\nbuild: {}\nwrap: {}\n',
+      'utf-8',
+    );
+    run(['task', 'create', 'cli-demo', '--title', 'CLI V0.3 Demo'], tmpRoot);
+  });
+
+  it('autonomy set persists and shows up in re-read', () => {
+    run(['task', 'autonomy', 'set', 'cli-demo', 'ask_high_only'], tmpRoot);
+    const yml = readFileSync(
+      join(tmpRoot, '.claude/tasks/cli-demo.yml'),
+      'utf-8',
+    );
+    const parsed = parseTaskFileYAML(yml);
+    expect(parsed.autonomy).toBe('ask_high_only');
+    expect(parsed.context.plan).toContain('autonomy set to');
+  });
+
+  it('question add → list → resolve flow lands on disk', () => {
+    run(
+      [
+        'task', 'question', 'add', 'cli-demo',
+        '--text', 'Is delete-task in scope?',
+        '--priority', 'high',
+        '--origin', 'plan-agent',
+      ],
+      tmpRoot,
+    );
+    const listOut = run(
+      ['task', 'question', 'list', 'cli-demo', '--status', 'open'],
+      tmpRoot,
+    );
+    const list = JSON.parse(listOut);
+    expect(list).toHaveLength(1);
+    expect(list[0].id).toBe('q1');
+    expect(list[0].priority).toBe('high');
+
+    run(
+      [
+        'task', 'question', 'resolve', 'cli-demo', 'q1',
+        '--answer', 'yes, in scope',
+        '--source', 'user',
+      ],
+      tmpRoot,
+    );
+    const yml = readFileSync(
+      join(tmpRoot, '.claude/tasks/cli-demo.yml'),
+      'utf-8',
+    );
+    const parsed = parseTaskFileYAML(yml);
+    expect(parsed.questions).toHaveLength(1);
+    expect(parsed.questions![0]!.status).toBe('resolved');
+    expect(parsed.questions![0]!.answer).toBe('yes, in scope');
+    expect(parsed.questions![0]!.source).toBe('user');
+  });
+
+  it('retag changes priority', () => {
+    run(
+      ['task', 'question', 'retag', 'cli-demo', 'q1', 'medium'],
+      tmpRoot,
+    );
+    const yml = readFileSync(
+      join(tmpRoot, '.claude/tasks/cli-demo.yml'),
+      'utf-8',
+    );
+    const parsed = parseTaskFileYAML(yml);
+    expect(parsed.questions![0]!.priority).toBe('medium');
   });
 });
 

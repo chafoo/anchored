@@ -22,8 +22,9 @@ Skill-specific:
 
 | Avoid (machinery voice) | Prefer (partner voice) |
 |---|---|
-| "Sub-skill /impl-plan exited with status: drafted; advancing to /impl-refine" | "Plan steht. Jetzt der refine-pass." |
+| "Sub-skill /impl-plan exited with status: drafted; advancing to /impl-refine" | "Plan steht — sechs fragen offen. Jetzt der refine-pass, wir gehen die zusammen durch." |
 | "Composition halted: state-gate refused advance (status: drafted, expected: refined)" | "Refine hat noch offene fragen — beantworte die, dann mach ich weiter." |
+| "Reading task.autonomy=decide_all from refined state, passing to /impl-build" | (silent — autonomy is internal flow control, user already declared at refine-time) |
 | "Autopilot complete: 4 stages executed, final state=done" | "Durch — plan, refine, build, wrap alle sauber. Status: done." |
 
 You are the autopilot orchestrator. The user typed
@@ -72,11 +73,14 @@ If status is `plan` (or file missing):
   follow its logic, OR delegate via Skill tool if the framework
   supports skill-to-skill invocation).
 - Inputs: the user's task description.
-- Wait for it to complete. It will run the Q&A loop with the user
-  for blocking questions — that's expected user interaction.
-- After it completes, the task-file should be `status: drafted`.
+- Wait for it to complete. **V0.3 note:** /impl-plan no longer runs
+  a Q&A loop — it exits cleanly with open questions still open.
+  The plan-agent surfaces ambiguities as structured questions
+  (priority-tagged); the Q&A walk happens in /impl-refine stage 3.
+- After it completes, the task-file should be `status: drafted`
+  with potentially many open questions in `questions[]`.
 
-**If plan fails or user cancels mid-Q&A:**
+**If plan fails:**
 - Don't advance. Tell the user what happened, leave the file at
   whatever status it reached, exit. They can re-run `/impl` to
   resume.
@@ -87,17 +91,21 @@ If status is now `drafted`:
 
 - Invoke `/impl-refine`.
 - Inputs: the task slug.
-- It runs plan-check + rules-check (the two mandatory gates), then
-  any user-defined refine steps from `anchored.yml.refine.steps`.
-  Each gate may surface new `→ ?` markers requiring Q&A with the
-  user.
-- After it completes, the task-file should be `status: refined`.
+- **V0.3 flow:** stage 0 asks the user for autonomy level
+  (`ask_all` / `ask_high_only` / `decide_all`), stages 1+2 run
+  plan-check + rules-check (which may surface additional questions),
+  stage 3 walks every open question priority-aware (user vs AI
+  decides based on autonomy), stage 4 runs custom user steps from
+  `anchored.yml.refine.steps`, stage 5 flips to `refined`.
+- After it completes, the task-file should be `status: refined`
+  with all questions resolved and `task.autonomy` set.
 
 **If refine fails or user aborts a Q&A:**
 - Don't advance. Status stays at `drafted`; auto-fixes already
-  applied by plan-check / rules-check are preserved (per-op
+  applied + questions already resolved are preserved (per-op
   atomicity). Surface the abort, exit. Re-running `/impl` picks up
-  from refine.
+  from refine — Stage 0 re-asks autonomy so the user can flip if
+  the initial pick was wrong.
 
 ### 3. Build stage
 
@@ -105,6 +113,13 @@ If status is now `refined`:
 
 - Invoke `/impl-build`.
 - Inputs: the task slug.
+- **V0.3 flow:** /impl-build reads `task.autonomy` set during refine
+  and uses it to drive failure-handling — first failure blocks +
+  asks on `ask_all`, retries up to `retry_limit` then blocks + asks
+  on `ask_high_only`, or retries then marks blocked + continues
+  (vibe-mode) on `decide_all`. Mid-build questions from
+  task-validate / code-validate always block the phase regardless
+  of autonomy.
 - It will loop through phases; each may take time (and tool calls).
 - After it completes, the task-file should be `status: wrap`.
 
@@ -128,8 +143,8 @@ Final user message:
 ```
 Autopilot complete on `<slug>`.
 
-  Plan:   <N phases planned, M ACs total>
-  Refine: <plan-check: P auto-fixes / rules-check: Q auto-fixes / R custom steps>
+  Plan:   <N phases planned, M ACs total, Q questions surfaced>
+  Refine: <autonomy: ask_high_only / plan-check: P fixes / rules-check: Q fixes / X user-answered, Y AI-decided>
   Build:  <S done / T blocked / U deferred>
   Wrap:   <summary highlights from ### Wrap>
 
@@ -138,8 +153,9 @@ Status: done. See `.claude/tasks/<slug>.yml` for the full audit trail.
 
 The refine line surfaces the gate outcomes the user might otherwise
 miss — plan-check + rules-check auto-fix counts capture how much
-drift the refine stage caught, custom-step count captures what their
-own pipeline added.
+drift the refine stage caught, the user-vs-AI split shows how much
+of the Q&A walk was autonomous, custom-step count captures what
+their own pipeline added.
 
 ## Halting behavior
 
