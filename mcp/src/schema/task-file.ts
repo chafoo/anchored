@@ -76,6 +76,30 @@ export const PhaseStatus = z.enum([
 ]);
 export type PhaseStatus = z.infer<typeof PhaseStatus>;
 
+/**
+ * Autonomy level — governs how /impl-build handles emergent decisions
+ * and failures. Set during /impl-refine (stage 0) or at the /impl-build
+ * gate when refine was skipped. Idempotent — overridable at any time;
+ * each set appends an audit entry to the plan-trail.
+ *
+ *   ask_all        — every open question goes to the user; failures
+ *                    block immediately on first occurrence
+ *   ask_high_only  — only high-priority questions go to user; AI
+ *                    resolves low + medium; failures retry up to
+ *                    `build.retry_limit` then block
+ *   decide_all     — AI resolves every question and every failure;
+ *                    phases that exhaust retry_limit get marked
+ *                    blocked but the build continues with remaining
+ *                    phases (vibe-coder hands-off mode)
+ *
+ * Priority taxonomy that pairs with this enum:
+ *   low     — cosmetic / easily-tweakable (newest at top vs bottom?)
+ *   medium  — affects UX/structure (whole-row click vs checkbox?)
+ *   high    — affects product direction/scope (is delete in-scope?)
+ */
+export const Autonomy = z.enum(['ask_all', 'ask_high_only', 'decide_all']);
+export type Autonomy = z.infer<typeof Autonomy>;
+
 // ─────────────────────────────────────────────────────────────────────
 // per-phase shape
 // ─────────────────────────────────────────────────────────────────────
@@ -157,6 +181,110 @@ export const Phase = z
 export type Phase = z.infer<typeof Phase>;
 
 // ─────────────────────────────────────────────────────────────────────
+// question — structured Q&A item
+// ─────────────────────────────────────────────────────────────────────
+
+export const QuestionPriority = z.enum(['low', 'medium', 'high']);
+export type QuestionPriority = z.infer<typeof QuestionPriority>;
+
+export const QuestionStatus = z.enum(['open', 'resolved']);
+export type QuestionStatus = z.infer<typeof QuestionStatus>;
+
+/**
+ * Which agent/role wrote the question. Used by /impl-wrap to surface
+ * "where did this question come from" in the review summary, and by
+ * downstream analytics to understand which gate caught what.
+ */
+export const QuestionOrigin = z.enum([
+  'plan-agent',
+  'plan-check',
+  'rules-check',
+  'task-validate',
+  'code-validate',
+  'user',
+]);
+export type QuestionOrigin = z.infer<typeof QuestionOrigin>;
+
+/**
+ * Who resolved the question. `user` answers come from interactive
+ * Q&A; `ai` answers are autonomous decisions the orchestrator made
+ * under the current autonomy level. `ai` resolutions MUST include
+ * `reasoning` — the audit trail for the /impl-wrap reviewer.
+ */
+export const QuestionSource = z.enum(['user', 'ai']);
+export type QuestionSource = z.infer<typeof QuestionSource>;
+
+const QuestionId = z.string().regex(/^q[0-9]+$/, {
+  message: 'question id must match /^q[0-9]+$/ (e.g. q1, q2, q3)',
+});
+
+/**
+ * One structured Q&A item. Lives in the top-level `questions[]`
+ * array on the task-file.
+ *
+ * Lifecycle:
+ *   - Created by an agent via `task.question.add` — starts at
+ *     status='open'
+ *   - Resolved by user or AI via `task.question.resolve` — sets
+ *     answer + source + resolved_at (+ reasoning when source='ai')
+ *     and flips status to 'resolved'
+ *   - Idempotent: re-resolving an already-resolved question updates
+ *     the fields and refreshes resolved_at
+ *
+ * Invariants:
+ *   - status='resolved' requires answer + source + resolved_at
+ *   - status='open' must not carry resolution fields
+ *   - source='ai' requires non-empty reasoning
+ *   - source='user' may omit reasoning (user answers are
+ *     self-explanatory — the question text + answer is the record)
+ */
+export const Question = z
+  .object({
+    id: QuestionId,
+    text: z.string().min(1),
+    priority: QuestionPriority,
+    origin: QuestionOrigin,
+    /** Optional phase context — the phase slug the question pertains to. */
+    phase: KebabSlug.optional(),
+    status: QuestionStatus,
+    answer: z.string().min(1).optional(),
+    source: QuestionSource.optional(),
+    reasoning: z.string().min(1).optional(),
+    /** ISO 8601 timestamp (with time + tz, not just date). */
+    created_at: z.string().min(1),
+    resolved_at: z.string().min(1).optional(),
+  })
+  .refine(
+    (q) => {
+      if (q.status === 'resolved') {
+        return (
+          q.answer !== undefined &&
+          q.source !== undefined &&
+          q.resolved_at !== undefined
+        );
+      }
+      // status === 'open' — resolution fields must all be absent
+      return (
+        q.answer === undefined &&
+        q.source === undefined &&
+        q.reasoning === undefined &&
+        q.resolved_at === undefined
+      );
+    },
+    {
+      message:
+        "question state mismatch: status='resolved' requires answer + source + resolved_at; status='open' must not carry any of those",
+    },
+  )
+  .refine(
+    (q) => q.source !== 'ai' || (q.reasoning !== undefined && q.reasoning.length > 0),
+    {
+      message: "question with source='ai' must include non-empty reasoning",
+    },
+  );
+export type Question = z.infer<typeof Question>;
+
+// ─────────────────────────────────────────────────────────────────────
 // context section — direct YAML shape (no markdown parsing)
 // ─────────────────────────────────────────────────────────────────────
 
@@ -228,6 +356,51 @@ export const TaskFile = z
       }
     }),
     customSections: z.record(z.string(), z.string()).optional(),
+    /**
+     * Set by `/impl-refine` stage 0 or `/impl-build` skip-refine gate.
+     * Idempotent — overridable at any time; each set appends an audit
+     * line to `context.plan`. Optional on the wire so V0.2 task-files
+     * created before autonomy existed still parse cleanly.
+     */
+    autonomy: Autonomy.optional(),
+    /**
+     * Structured Q&A items. Replaces the V0.2 free-text `→ ?` markers
+     * embedded in `context.plan`. Optional on the wire (empty array
+     * absent in YAML output when no questions exist).
+     *
+     * IDs must be unique within the task — enforced by the refinement
+     * below. The `task.question.add` op assigns sequential `q<N>`
+     * IDs (q1, q2, q3, ...) so callers never have to invent them.
+     */
+    questions: z
+      .array(Question)
+      .optional()
+      .superRefine((questions, ctx) => {
+        if (!questions) return;
+        const seen = new Map<string, number>();
+        const duplicates = new Map<string, number[]>();
+        questions.forEach((q, i) => {
+          const prev = seen.get(q.id);
+          if (prev !== undefined) {
+            const indices = duplicates.get(q.id) ?? [prev];
+            indices.push(i);
+            duplicates.set(q.id, indices);
+          } else {
+            seen.set(q.id, i);
+          }
+        });
+        for (const [id, indices] of duplicates) {
+          const lastIndex = indices[indices.length - 1];
+          if (lastIndex === undefined) continue;
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              `duplicate question id "${id}" at indices [${indices.join(', ')}] — ` +
+              `question ids must be unique within a task`,
+            path: [lastIndex, 'id'],
+          });
+        }
+      }),
   })
   .passthrough();
 export type TaskFile = z.infer<typeof TaskFile>;

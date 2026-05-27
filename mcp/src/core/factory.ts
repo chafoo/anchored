@@ -23,6 +23,9 @@ import type {
   PhaseStatus,
   TaskStatus,
   PhaseRule,
+  Autonomy,
+  Question,
+  QuestionPriority,
 } from '../schema/task-file.js';
 
 import {
@@ -30,8 +33,18 @@ import {
   makeTaskRead,
   makeTaskStatusSet,
   makeTaskTitleSet,
+  makeTaskAutonomySet,
   type TaskCreateInput,
 } from './ops/task.js';
+import {
+  makeQuestionAdd,
+  makeQuestionList,
+  makeQuestionResolve,
+  makeQuestionRetag,
+  type QuestionAddInput,
+  type QuestionResolveInput,
+  type QuestionListFilter,
+} from './ops/question.js';
 import {
   makeContextIntroSet,
   makeContextPlanAppend,
@@ -77,7 +90,15 @@ import {
 // re-export init shapes for callers
 // ─────────────────────────────────────────────────────────────────────
 
-export type { TaskCreateInput, PhaseInit, PhasePosition, AcInit };
+export type {
+  TaskCreateInput,
+  PhaseInit,
+  PhasePosition,
+  AcInit,
+  QuestionAddInput,
+  QuestionResolveInput,
+  QuestionListFilter,
+};
 
 // ─────────────────────────────────────────────────────────────────────
 // TaskOps surface
@@ -89,6 +110,25 @@ export interface TaskOps {
     read(slug: string): Promise<TaskFile>;
     status: { set(slug: string, status: TaskStatus): Promise<TaskFile> };
     title: { set(slug: string, title: string): Promise<TaskFile> };
+    autonomy: { set(slug: string, autonomy: Autonomy): Promise<TaskFile> };
+
+    question: {
+      add(
+        slug: string,
+        input: QuestionAddInput,
+      ): Promise<{ id: string; file: TaskFile }>;
+      list(slug: string, filter?: QuestionListFilter): Promise<Question[]>;
+      resolve(
+        slug: string,
+        id: string,
+        input: QuestionResolveInput,
+      ): Promise<TaskFile>;
+      retag(
+        slug: string,
+        id: string,
+        priority: QuestionPriority,
+      ): Promise<TaskFile>;
+    };
 
     context: {
       intro: { set(slug: string, content: string): Promise<TaskFile> };
@@ -270,6 +310,14 @@ export function createOps(config: AnchoredYml, root: string): TaskOps {
       read: makeTaskRead(deps),
       status: { set: makeTaskStatusSet(deps) },
       title: { set: makeTaskTitleSet(deps) },
+      autonomy: { set: makeTaskAutonomySet(deps) },
+
+      question: {
+        add: makeQuestionAdd(deps),
+        list: makeQuestionList(deps),
+        resolve: makeQuestionResolve(deps),
+        retag: makeQuestionRetag(deps),
+      },
 
       context: {
         intro: { set: makeContextIntroSet(deps) },

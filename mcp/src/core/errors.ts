@@ -133,3 +133,34 @@ export class WriteContention extends AnchoredError {
     this.name = 'WriteContention';
   }
 }
+
+/**
+ * Thrown by `task.question.resolve` and `task.question.retag` when
+ * the supplied question id doesn't exist in the task's `questions[]`
+ * array. The fix is to list open questions first to discover the
+ * valid ids (`task.question.list({ status: 'open' })`).
+ */
+export class QuestionNotFound extends AnchoredError {
+  constructor(message: string, suggestions: string[] = []) {
+    super(message, suggestions);
+    this.name = 'QuestionNotFound';
+  }
+}
+
+/**
+ * Thrown by `task.question.resolve` when the caller's input violates
+ * the resolution invariants:
+ *   - source='ai' without non-empty reasoning
+ *   - source='user' with a reasoning argument (user answers carry
+ *     no reasoning — the question text + answer is the record)
+ *   - empty/whitespace-only answer string
+ *
+ * Distinct from QuestionNotFound (which is "id wrong") — this is
+ * "id right, but the resolution payload is malformed".
+ */
+export class InvalidQuestionResolution extends AnchoredError {
+  constructor(message: string, suggestions: string[] = []) {
+    super(message, suggestions);
+    this.name = 'InvalidQuestionResolution';
+  }
+}
