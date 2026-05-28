@@ -9,6 +9,8 @@
  * Same code path as the CLI; different transport.
  */
 
+import { createRequire } from 'node:module';
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -19,6 +21,15 @@ import {
 
 import { ALL_TOOLS, type AnchoredTool } from './tools/index.js';
 
+// Read version from package.json at startup — single source of truth.
+// Path is `../../package.json` relative to dist/mcp/server.js (after
+// esbuild bundles), which resolves to the package's package.json in
+// both local-dev (npm link) and published-install layouts.
+const require = createRequire(import.meta.url);
+const { version: PKG_VERSION } = require('../../package.json') as {
+  version: string;
+};
+
 const server = new Server(
   {
     // serverInfo.name — matches the namespace key in .mcp.json so the
@@ -27,7 +38,7 @@ const server = new Server(
     // namespace is the shorter "task" since every tool operates on the
     // task-file.
     name: 'task',
-    version: '0.2.0',
+    version: PKG_VERSION,
   },
   {
     capabilities: { tools: {} },
@@ -134,4 +145,4 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 
 // Log to stderr (stdout is the MCP transport channel)
-process.stderr.write('anchored-mcp v0.2.0 ready\n');
+process.stderr.write(`anchored-mcp v${PKG_VERSION} ready\n`);

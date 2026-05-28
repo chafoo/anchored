@@ -7,6 +7,18 @@ documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.3] — 2026-05-28
+
+### Fixed
+
+- MCP server reported itself as `v0.2.0` regardless of the published
+  package version — a stale hardcoded string in `src/mcp/server.ts`
+  left over from the V0.2 era. Server now reads its version from
+  `package.json` at startup via `createRequire`, so the
+  `serverInfo.version` advertised to MCP clients and the
+  `anchored-mcp v<X> ready` startup line stay in sync with the
+  published version automatically. No more manual sync on release.
+
 ## [0.1.2] — 2026-05-28
 
 First successful npm publish via CI. (0.1.1 tagged but never reached

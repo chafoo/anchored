@@ -1,0 +1,14 @@
+{
+  "name": "chafoo",
+  "owner": {
+    "name": "chafoo",
+    "url": "https://github.com/chafoo"
+  },
+  "plugins": [
+    {
+      "name": "anchored",
+      "source": "./plugin",
+      "description": "Long autonomous AI coding runs you can actually trust. Every claim has proof. Every decision is on the record. Every step is configurable."
+    }
+  ]
+}
