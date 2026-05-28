@@ -82,10 +82,11 @@ jobs:
       # ───────────────────────────────────────────────────────────────
       # Publish to npm
       # ───────────────────────────────────────────────────────────────
+      # Trusted publishing via OIDC — no NPM_TOKEN needed.
+      # Requires trusted publisher configured on npm.com for this repo +
+      # workflow filename. See: https://docs.npmjs.com/trusted-publishers/
       - name: Publish to npm
         run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # ───────────────────────────────────────────────────────────────
       # Create GitHub Release

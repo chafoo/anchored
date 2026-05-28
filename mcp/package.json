@@ -1,6 +1,6 @@
 {
   "name": "@chaafoo/anchored-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server and CLI for the anchored Claude Code plugin — typed task-file state mutations with schema validation",
   "type": "module",
   "engines": {
@@ -33,8 +33,10 @@
     "claude-code",
     "mcp",
     "model-context-protocol",
+    "anchored",
     "task-management",
-    "autonomous-agents"
+    "autonomous-agents",
+    "agent-workflow"
   ],
   "scripts": {
     "build": "node build.mjs",
@@ -97,18 +99,5 @@
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.18.0",
     "vitest": "^2.1.0"
-  },
-  "keywords": [
-    "claude",
-    "claude-code",
-    "mcp",
-    "anchored",
-    "task-management",
-    "agent-workflow"
-  ],
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/anchored/anchored"
   }
 }

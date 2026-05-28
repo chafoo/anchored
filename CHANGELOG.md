@@ -7,6 +7,26 @@ documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] — 2026-05-28
+
+### Fixed
+
+- `mcp/package.json` had duplicate keys (`keywords`, `license`,
+  `repository`) from a botched merge. The duplicate `repository`
+  carried the wrong URL (`anchored/anchored` instead of
+  `chafoo/anchored`), which npm normalized into the published
+  metadata for 0.1.0. Removed the duplicates; canonical
+  `repository: chafoo/anchored` is the single source of truth now.
+
+### Changed
+
+- CI publish workflow (`.github/workflows/publish.yml`) switched
+  from `NODE_AUTH_TOKEN` to npm trusted publishing via OIDC. No
+  long-lived tokens; each release is authenticated by GitHub's
+  short-lived id-token signed against the workflow + repository
+  registered with npm. Removes the supply-chain attack surface
+  from stolen registry tokens.
+
 ## [0.1.0] — 2026-05-28
 
 Initial public release.
