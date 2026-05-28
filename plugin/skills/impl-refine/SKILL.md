@@ -153,68 +153,87 @@ audit entry to the plan-trail.
 
 ### Stage 1 — plan-check (mandatory gate, parallel-safe)
 
+**Read the current task-file first** (`mcp__task__read(project_root,
+slug)`) so you can pass its content to plan-check (V0.3.1: plugin
+subagents can't access MCP — bug #13605 workaround — so you
+pre-read and pass content).
+
 Spawn the `plan-check` agent (`plugin/agents/plan-check.md`) with:
 - PROJECT_ROOT: absolute path to the user's project root
 - TASK_SLUG: the slug
+- TASK_FILE_CONTENT: the YAML you just read
 - USER_EXTENSION: `anchored.yml.refine.plan_check.instructions` prose
   (appended to the agent's default brief; may be empty)
 
-The plan-check agent:
-- Reads the task-file via `mcp__task__read`.
-- Inspects each phase's affected paths against current code;
-  detects drift between what the plan says and what's actually there.
-- Auto-fixes additive / non-semantic items in place via
-  `mcp__task__set_phase_rules`, `set_phase_context`, `append_plan`.
-- **Surfaces semantic gaps as new structured questions via
-  `mcp__task__question_add` (priority-tagged).**
-- Scans for unilateral defaults the plan-agent may have hidden in
-  prose (the V0.2 dogfood failure mode) — surfaces those as
-  high-priority questions.
-- MAY retag plan-agent questions whose priority it disagrees with.
-- **Does NOT resolve questions.** That's Stage 3.
-- Returns a structured rollup: counts of auto-fixes + counts of new
-  questions by priority + retag count.
+The plan-check agent is a **pure thinker**:
+- Reads TASK_FILE_CONTENT + inspects code via Read/Glob/Grep
+- Detects drift, structural issues, hidden unilateral defaults
+- Returns a structured rollup (`verdict`, `auto_fixes`,
+  `questions_to_add`, `retags`, `partner_voice_summary`)
+- Does NOT call MCP — that's your job
 
-After plan-check returns:
+**After plan-check returns, YOU apply its findings via MCP:**
 
-1. Append its rollup to `context.build → plan-check` via
-   `mcp__task__append_build_section(project_root, slug,
-   "plan-check", rollup)` — the audit trail for the gate.
-2. **No Q&A here.** Open questions accumulate; they get walked in
-   Stage 3.
+1. For each `auto_fixes.path_patches[i]`:
+   `mcp__task__set_phase_context(project_root, slug, phase_slug, new_context)`
 
-**Parallel-safe with Stage 2**: plan-check and rules-check touch
-different file regions (phase.context + plan-trail vs phase.rules).
-For speed, you MAY spawn both agents in parallel and `await Promise.all`
-on their results. The cross-process lock in the factory serializes
-overlapping writes — neither agent will see a torn file.
+2. For each `auto_fixes.rule_additions[i]`:
+   `mcp__task__set_phase_rules(project_root, slug, phase_slug, rules)`
+   (agent provides FULL list; SKILL passes it wholesale)
+
+3. For each `auto_fixes.info_notes[i]`:
+   `mcp__task__append_plan(project_root, slug, content)`
+
+4. For each `questions_to_add[i]`:
+   `mcp__task__question_add(project_root, slug, { text, priority,
+   origin: 'plan-check', phase? })`
+
+5. For each `retags[i]`:
+   `mcp__task__question_retag(project_root, slug, id, priority)`
+
+6. Write the rollup to `context.build → plan-check` for the audit
+   trail:
+   `mcp__task__append_build_section(project_root, slug, 'plan-check',
+   rollup_summary)` where `rollup_summary` is a markdown rendering
+   of the verdict + counts.
+
+**No Q&A here.** Open questions accumulate; they get walked in
+Stage 3.
 
 ### Stage 2 — rules-check (mandatory gate, parallel-safe)
 
 Spawn the `rules-check` agent (`plugin/agents/rules-check.md`) with:
 - PROJECT_ROOT, TASK_SLUG
+- TASK_FILE_CONTENT: same pre-read YAML you passed to plan-check
 - USER_EXTENSION: `anchored.yml.refine.rules_check.instructions` prose
 
-The rules-check agent:
-- Inspects rules-coverage per phase (are the right rules attached
-  given each phase's affected paths?).
-- Detects orphaned rule references (path no longer exists on disk).
-- Detects cross-phase rule conflicts (same path with incompatible
-  rule sets).
-- Auto-fixes additive items via `mcp__task__set_phase_rules`.
-- Surfaces non-additive items as structured questions via
-  `mcp__task__question_add` (priority-tagged: conflicts=high,
-  orphans=medium, informational gaps=low).
-- MAY retag questions (rare).
-- **Does NOT resolve questions.** Stage 3 handles that.
+The rules-check agent is a **pure thinker**:
+- Inspects rules-coverage per phase (does each phase's affected paths
+  trigger any `.claude/rules/*.md` that aren't attached?)
+- Detects orphaned rule references (path no longer exists on disk)
+- Detects cross-phase rule conflicts (same path with incompatible rule
+  imperatives)
+- Returns structured rollup (`verdict`, `auto_fixes.rule_additions`,
+  `questions_to_add`, `retags`, `partner_voice_summary`)
+- Does NOT call MCP
 
-After rules-check returns:
+**After rules-check returns, YOU apply its findings via MCP:**
 
-1. Append rollup to `context.build → rules-check` via
+1. For each `auto_fixes.rule_additions[i]`:
+   `mcp__task__set_phase_rules(project_root, slug, phase_slug, rules)`
+
+2. For each `questions_to_add[i]`:
+   `mcp__task__question_add(project_root, slug, { text, priority,
+   origin: 'rules-check', phase? })`
+
+3. For each `retags[i]`:
+   `mcp__task__question_retag(project_root, slug, id, priority)`
+
+4. Write rollup to `context.build → rules-check`:
    `mcp__task__append_build_section(project_root, slug,
-   "rules-check", rollup)`.
-2. **No Q&A here.** Same as Stage 1 — questions accumulate for
-   Stage 3.
+   'rules-check', rollup_summary)`
+
+**No Q&A here.** Same as Stage 1 — questions accumulate for Stage 3.
 
 ### Stage 3 — consolidated priority-aware Q&A walk
 
