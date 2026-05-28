@@ -7,7 +7,11 @@ documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
-## [0.1.1] — 2026-05-28
+## [0.1.2] — 2026-05-28
+
+First successful npm publish via CI. (0.1.1 tagged but never reached
+npm registry due to npm CLI bundled with Node 20 not handling
+trusted-publisher OIDC reliably.)
 
 ### Fixed
 
@@ -26,6 +30,9 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   short-lived id-token signed against the workflow + repository
   registered with npm. Removes the supply-chain attack surface
   from stolen registry tokens.
+- CI now pins Node 22 (npm 11.x) and upgrades npm to latest before
+  publish — npm 10.x's trusted-publisher implementation had
+  intermittent registry-auth bugs.
 
 ## [0.1.0] — 2026-05-28
 

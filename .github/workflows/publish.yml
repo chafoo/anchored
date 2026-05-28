@@ -36,10 +36,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
           cache: npm
           cache-dependency-path: mcp/package-lock.json
+
+      # Ensure npm is recent enough for stable trusted-publisher OIDC.
+      # Trusted publishing requires npm 11.5.1+; Node 22 ships with 11.x
+      # but we pin latest explicitly for safety against minor regressions.
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+        working-directory: ${{ github.workspace }}
 
       # ───────────────────────────────────────────────────────────────
       # Verify tag version matches package.json + plugin.json
