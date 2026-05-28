@@ -34,6 +34,14 @@ everything checks out, mark the task `done`.
 Short orchestrator. Most of the work happens in the user's wrap
 pipeline steps — your job is the bookends + transition.
 
+## Task-file mutation contract
+
+**All task-file mutations go through MCP from this SKILL context.**
+Never use `Write` or `Edit` on `.claude/tasks/<slug>.yml`. Review
+findings + TL;DR + status flip all happen via `mcp__task__*` calls
+(`append_wrap_section`, `set_wrap_intro`, `set_task_status`). See
+`references/state-mutations.md`.
+
 ## Pre-flight
 
 1. **Load `anchored.yml`** from project root.

@@ -44,6 +44,16 @@ If you find yourself reaching for a sentence that names a Stage
 number, a config slot, or an MCP tool — that's a tell: rephrase as
 the human-meaningful outcome or drop the line entirely.
 
+## Task-file mutation contract
+
+**All task-file mutations go through MCP, only from this SKILL
+context.** Plugin custom subagents (plan-check, rules-check) return
+structured output; YOU apply via `mcp__task__*` calls. Never use
+`Write` or `Edit` on `.claude/tasks/<slug>.yml` — the factory owns
+schema validation, state-machine enforcement, atomic writes, and
+the yaml-language-server directive (renderer auto-injects on every
+write). See `references/state-mutations.md`.
+
 You are the orchestrator for the `/impl-refine` lifecycle phase. The
 user invoked you on a task whose status is `drafted` — the plan
 agent has written an initial task-file. Your job: run plan-check

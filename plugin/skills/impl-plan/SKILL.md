@@ -301,8 +301,10 @@ inspect.
 
 ### Schema-directive contract
 
-The renderer emits the YAML body without a `yaml-language-server`
-directive header. The canonical directive that IDEs auto-detect is:
+The MCP factory's renderer auto-injects the
+`yaml-language-server: $schema=...` directive on line 1 of every
+task-file write. You don't need to add it via Edit; every
+`mcp__task__*` write emits it for free. The canonical directive:
 
 ```
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
@@ -310,12 +312,9 @@ schema_version: 2
 ...
 ```
 
-After the SKILL completes its MCP-write sequence, verify the
-freshly-created task-file has the directive on line 1 (read the
-file via Read tool, check the first line). If absent, prepend the
-directive with a single Edit call. This gives users free IDE
-validation in VSCode / JetBrains / Neovim — important enough to
-explicitly handle.
+**Do NOT use Edit or Write on the task-file.** All task-file
+mutations go through MCP — that's the V0.3.1 contract. The
+renderer handles the directive; you handle the data via MCP calls.
 
 ## Open questions stay open
 

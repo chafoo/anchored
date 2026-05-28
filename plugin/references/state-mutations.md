@@ -2,30 +2,42 @@
 
 ## TL;DR
 
-All mutations to `.claude/tasks/<slug>.yml` go through the MCP factory
-tools (`mcp__task__*`). **NO agent uses Write or Edit on task-files.**
-The factory at `mcp/src/core/factory.ts` is the single source of
-truth — it validates schema, enforces state-machine transitions,
-and atomic-writes on every call.
+**All mutations to `.claude/tasks/<slug>.yml` go through the MCP
+factory tools (`mcp__task__*`), and ONLY the SKILLs (running in the
+main Claude session) call them.** Plugin-defined custom subagents
+(`plan`, `plan-check`, `rules-check`, `implement`, `task-validate`,
+`code-validate`, `rules`) return structured output and the SKILL
+applies it. NO direct `Write` or `Edit` of task-files from any
+actor — not agents, not SKILLs. The factory at
+`mcp/src/core/factory.ts` validates schema, enforces state-machine
+transitions, and atomic-writes on every call. The renderer
+auto-injects the `yaml-language-server: $schema=...` directive on
+every write, so even comment metadata stays consistent across
+mutations.
 
-## Mutation paths by agent / skill
+V0.3.1 architecture (workaround for Anthropic bugs #13605, #21560,
+#33689, #15810 — plugin-defined custom subagents cannot access MCP
+tools regardless of configuration).
 
-| Actor              | Path                                                                          | Notes                                                                  |
-|--------------------|-------------------------------------------------------------------------------|------------------------------------------------------------------------|
-| plan-agent         | `task__create` + `task__append_plan` + `task__add_phase`                      | Initial file creation                                                  |
-| /impl-plan         | `task__resolve_question`                                                      | Q&A loop fills `→ ?` markers in `context.plan`                         |
-| /impl-refine       | `task__set_task_status` (`drafted → refined`)                                 | After plan-check + rules-check OK                                      |
-| plan-check         | `task__set_phase_rules`, `set_phase_context`, `append_plan`, `resolve_question` | Self-correct (additive / non-semantic) + question resolution         |
-| rules-check        | `task__set_phase_rules`, `append_plan`                                        | Additive only                                                          |
-| implement          | `task__set_evidence`, `add_evidence`, `set_phase_status`, `set_field`         | Per-AC evidence + per-phase status                                     |
-| task-validate      | `task__set_failures` (per rejected AC) + rollup via `append_build_section`    | NEVER writes evidence                                                  |
-| code-validate      | `task__set_failures` (per rejected AC) + rollup via `append_build_section`    | NEVER writes evidence                                                  |
-| /impl-build (orch) | `task__increment_retry`, `set_phase_status` (`blocked` on retry exhaustion), `set_task_status` (`build → wrap`) | Owns retry accounting                              |
-| /impl-wrap         | `task__set_wrap_intro`, `append_wrap_section`, `set_task_status` (`wrap → done`) | Final summary                                                        |
+## Mutation paths by SKILL
 
-Read-only paths (`task__read`, `task__list_phases`, `task__list_fields`,
-`task__get_field`, `task__next_phase`) are open to every actor — they
-never mutate.
+All task-file writes happen in SKILL context (main session). Agents
+return structured output that the SKILL parses and applies.
+
+| SKILL          | MCP calls it makes                                                                          | Triggered by                                                |
+|----------------|---------------------------------------------------------------------------------------------|-------------------------------------------------------------|
+| /impl-plan     | `task__create`, `append_plan`, `add_phase` (×N), `question_add` (×M), `set_task_status` (`plan→drafted`) | plan-agent's structured return (Mode A)            |
+| /impl-plan     | `add_phase`, `remove_phase`, `move_phase`, `set_phase_name`, `set_phase_context`, `add_ac`, `remove_ac`, `set_ac_text` | plan-agent's diff[] return (Mode B restructure) |
+| /impl-refine   | `set_phase_rules`, `set_phase_context`, `append_plan`, `question_add`, `question_retag`, `append_build_section` | plan-check + rules-check agent returns           |
+| /impl-refine   | `set_autonomy`, `question_resolve` (×N), `set_task_status` (`drafted→refined`)              | stage 0 user input + stage 3 Q&A walk + stage 5 transition  |
+| /impl-build    | `set_phase_status` (`pending→in-progress` / `→done` / `→blocked`), `set_evidence`, `set_field`, `set_failures`, `append_build_section`, `increment_retry`, `set_task_status` (`build→wrap`) | implement + task-validate + code-validate returns + retry-loop accounting |
+| /impl-wrap     | `append_wrap_section` (review findings), `set_wrap_intro` (TL;DR), `set_task_status` (`wrap→done`) | /review skill output + summarize step              |
+
+Read-only paths (`task__read`, `task__list_phases`,
+`task__list_fields`, `task__get_field`, `task__next_phase`,
+`task__question_list`) are open to every actor — they never mutate.
+SKILLs typically pre-read task-file content and pass it to agents
+in their input (agents have no direct MCP access).
 
 ## Failures-driven re-do loop
 

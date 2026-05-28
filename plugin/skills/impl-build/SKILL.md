@@ -34,6 +34,19 @@ anchored's fixed quality gates, end with the task ready for
 
 This skill is **explicit-only**. User typed `/impl-build` — proceed.
 
+## Task-file mutation contract
+
+**All task-file mutations go through MCP, only from this SKILL
+context.** Plugin custom subagents (implement, task-validate,
+code-validate) return structured output; YOU apply via
+`mcp__task__*` calls. Never use `Write` or `Edit` on
+`.claude/tasks/<slug>.yml` — the factory owns schema validation,
+state-machine enforcement, atomic writes, and the
+yaml-language-server directive. Source code (`*.js`, `*.ts`, etc.)
+mutations DO go through Write/Edit/Bash — implement uses those
+freely (non-MCP, works in subagents). See
+`references/state-mutations.md`.
+
 ## Pre-flight
 
 1. **Load `anchored.yml`** from project root. If missing, refuse with
