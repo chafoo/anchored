@@ -62,6 +62,17 @@ contracts, deploy hooks), or
 [`references/default-config.yml`](./references/default-config.yml)
 for the full slot list with inline docs.
 
+## Known limitations
+
+**Plugin subagents currently can't directly call MCP tools** —
+confirmed in Anthropic claude-code issues
+[#13605](https://github.com/anthropics/claude-code/issues/13605) +
+[#21560](https://github.com/anthropics/claude-code/issues/21560).
+anchored handles this transparently: SKILLs (main session) own all
+task-file mutations after agents return structured output. Same
+audit trail, same outcome. When upstream fixes it, agents will
+use MCP directly without code changes here.
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).

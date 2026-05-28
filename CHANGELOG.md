@@ -7,75 +7,76 @@ documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
-## [0.3.0] — 2026-05-27
+## [0.1.0] — 2026-05-28
+
+Initial public release.
 
 ### Added
 
-- **Priority-aware Q&A.** Every ambiguity surfaced during `/impl-plan`
+- **5 SKILLs orchestrating the full lifecycle.** `/impl-plan` →
+  `/impl-refine` → `/impl-build` → `/impl-wrap`, plus `/impl` as
+  autopilot that chains all four. Each SKILL is resume-safe across
+  crashes and context compaction.
+- **Evidence-anchored acceptance criteria.** No AC flips to `done`
+  without concrete proof (file:line, command output, test results).
+  Stops AI from hallucinating done-ness — the framework's USP.
+- **Priority-tagged Q&A.** Every ambiguity surfaced during planning
   becomes a structured question tagged `low | medium | high` (by
-  impact, not difficulty). Questions live in the task-file's
-  `questions[]` array with full audit (`source`, `reasoning`,
-  timestamps).
-- **Autonomy declaration.** New mandatory stage in `/impl-refine`:
-  user picks `ask_all` (walk every question), `ask_high_only` (AI
-  decides routine, user decides important), or `decide_all` (full
-  autopilot). Autonomy is a framework-fixed task field; overridable
-  mid-run with audit entry.
-- **Autonomy-aware failure handling in `/impl-build`.** Retry
-  behavior branches on the autonomy level: `ask_all` blocks on first
-  failure, `ask_high_only` retries then asks, `decide_all` retries
-  then marks blocked and continues.
-- **Mid-build question support.** `task-validate` and `code-validate`
-  can surface new questions during build when they discover
-  implementation ambiguity; these get `priority: high` and always
-  ask the user regardless of autonomy.
-- **Subagent MCP access via inline `mcpServers:` frontmatter**
-  (replaces the user-scope `.mcp.json` workaround). Agents now talk
-  to the MCP factory directly from their isolated session.
+  impact, not difficulty). Stored in the task-file with full audit
+  (`source`, `reasoning`, timestamps).
+- **Autonomy declaration.** First stage of `/impl-refine`: user picks
+  how autonomous the run should be:
+  - `ask_all` — walk every question with the user
+  - `ask_high_only` — AI handles routine, user handles important
+  - `decide_all` — full autopilot, reasoning recorded for review
+- **Four mandatory quality gates.** `plan-check` + `rules-check` in
+  refine (parallel), `task-validate` + `code-validate` in build (per
+  phase, parallel). All four extensible via `instructions:` in
+  `anchored.yml`; none can be disabled.
+- **Failures-driven re-do loop.** Validators write failures per AC;
+  implement re-spawns reading them; bounded by `build.retry_limit`
+  (default 3). Retry behavior branches on autonomy level.
+- **Per-phase rules.** Rules from `.claude/rules/*.md` get attached
+  to phases based on affected paths + content. rules-check verifies
+  coverage before build.
+- **Configurable orchestration via `anchored.yml`.** Custom steps
+  per stage (per-phase commits, deploy hooks, custom validators,
+  PR creation, notify integrations). The file ships empty with
+  inline-documented defaults.
+- **6-state task lifecycle.** `plan → drafted → refined → build →
+  wrap → done` with strict transitions. Update-mode allows backward
+  jumps to `drafted` for plan changes.
+- **Pair-programmer voice.** Skills + agents speak like a partner,
+  not an automation engine — machinery details (Stage numbers, MCP
+  tool names, factory internals) stay out of chat.
+- **Atomic schema-validated task-file mutations.** All writes go
+  through `@chaafoo/anchored-mcp` factory ops with Zod validation,
+  state-machine enforcement, and cross-process locking
+  (`proper-lockfile`).
+- **YAML hardening.** 1MB document cap, alias-count limit
+  (billion-laughs guard), no custom tags. Yaml-language-server
+  directive auto-injected on every write for IDE schema validation.
 
-### Changed
+### Architecture
 
-- **plan-agent personality.** Brainstorm-only — no longer makes
-  unilateral decisions for ambiguities, every gap becomes a structured
-  question. Closes the six-unilateral-decisions failure mode from the
-  V0.2 dogfood.
-- **`/impl-plan` SKILL.** Drops the inline Q&A loop. Exits cleanly
-  with status `drafted` and open questions intact, deferring resolution
-  to `/impl-refine` where autonomy is declared first.
-- **`/impl-refine` SKILL.** Restructured into 6 stages: autonomy
-  declaration → plan-check + rules-check (parallel) → consolidated
-  priority-aware Q&A walk → custom steps → status transition.
-- **MCP tool surface.** 33 → 38 tools. Adds `task__set_autonomy`,
-  `task__question_add`, `task__question_list`, `task__question_resolve`,
-  `task__question_retag`. Legacy `task__resolve_question` (free-text
-  marker resolve) retained for compatibility.
-- **plan-check + rules-check.** Both gates now use structured
-  `question_add` calls (priority-tagged) instead of inline `→ ?`
-  markers. plan-check additionally scans plan-trail prose for hidden
-  unilateral defaults (the V0.2 failure mode) and surfaces them as
-  high-priority questions.
-- **Communication style.** Pair-programmer voice across all 5 skills
-  + 7 agents. Stage-N references, MCP tool names, and config slot
-  identifiers explicitly forbidden in user-facing chat. Each skill
-  ships with contrast pairs (machinery voice → partner voice).
-- **Package rename.** `@anchored/mcp` → `@chaafoo/anchored-mcp`. The
-  unscoped binary name `anchored-mcp` is now the package's primary
-  bin, matching npx auto-resolution.
+- SKILLs (running in the main Claude session) own all task-file
+  mutations via MCP. Plugin custom subagents return structured
+  output; SKILLs apply via `mcp__task__*` calls. Works around
+  Anthropic claude-code [#13605](https://github.com/anthropics/claude-code/issues/13605)
+  (plugin subagents can't access MCP tools).
+- `@chaafoo/anchored-mcp` MCP server exposes 38 tools across task,
+  question, autonomy, phase, AC, context, and field surfaces.
+- CLI mirror (`anchored ...`) for manual inspection + scripting.
 
-### Fixed
+### Known limitations
 
-- Voice leakage where the orchestrator narrated dismissing TaskCreate
-  reminders ("Reminder zur Kenntnis genommen — nicht anwendbar.").
-  Explicit hard rule in all 5 SKILLs.
-
-## [0.2.0] — 2026-05-26
-
-### Added
-
-- Initial public release of the V0.2 architecture: 6-state lifecycle
-  (`plan → drafted → refined → build → wrap → done`), factory pattern
-  for ops, mandatory quality gates, failures-driven retry loop,
-  cross-process locking, YAML hardening.
-
-See [git history](https://github.com/chafoo/anchored/commits/main)
-for everything pre-0.3 in detail.
+- **Plugin-defined subagents currently cannot directly call MCP
+  tools** — confirmed across Anthropic claude-code issues
+  [#13605](https://github.com/anthropics/claude-code/issues/13605),
+  [#21560](https://github.com/anthropics/claude-code/issues/21560),
+  [#33689](https://github.com/anthropics/claude-code/issues/33689),
+  [#15810](https://github.com/anthropics/claude-code/issues/15810).
+  anchored handles this transparently — agents return structured
+  output, SKILLs apply via MCP. Same audit trail, same outcome.
+  When upstream fixes it, agents will use MCP directly without code
+  changes here.
