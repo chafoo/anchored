@@ -10,9 +10,7 @@ description: |
   already have evidence and have no `failures` field. Failures-aware:
   on re-runs, reads the AC's failures from the prior validation pass
   and uses them as concrete fix targets.
-tools: Read, Bash, Glob, Grep, mcp__task__read, mcp__task__set_evidence, mcp__task__add_evidence, mcp__task__set_phase_status, mcp__task__set_field, mcp__task__append_build_section
-mcpServers:
-  - anchored
+tools: Read, Write, Edit, Bash, Glob, Grep
 model: opus
 ---
 

@@ -9,7 +9,7 @@ description: |
   ALWAYS runs; cannot be disabled. User prose in
   anchored.yml.refine.rules_check.instructions is appended to the
   default brief, never replaces it.
-tools: Read, Glob, Grep, mcp__task__read, mcp__task__set_phase_rules, mcp__task__append_plan, mcp__task__question_add, mcp__task__question_retag
+tools: Read, Glob, Grep
 mcpServers:
   - anchored
 model: opus

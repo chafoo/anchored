@@ -38,9 +38,7 @@ interface ParsedAgent {
 
 async function listAgents(): Promise<ParsedAgent[]> {
   const entries = await readdir(AGENTS_DIR, { withFileTypes: true });
-  const mdFiles = entries
-    .filter((e) => e.isFile() && e.name.endsWith('.md'))
-    .map((e) => e.name);
+  const mdFiles = entries.filter((e) => e.isFile() && e.name.endsWith('.md')).map((e) => e.name);
 
   return Promise.all(
     mdFiles.map(async (name) => {
@@ -60,20 +58,18 @@ async function listAgents(): Promise<ParsedAgent[]> {
 function declaredTools(agent: ParsedAgent): Set<string> {
   if (!agent.frontmatter.tools) return new Set();
   return new Set(
-    agent.frontmatter.tools.split(',').map((s) => s.trim()).filter(Boolean),
+    agent.frontmatter.tools
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
   );
 }
 
-function mentionedMcpTools(agent: ParsedAgent): Set<string> {
-  // Match `mcp__<server>__<tool>` references where <tool> is an actual
-  // identifier (starts with a letter, contains word chars).
-  //
-  // Explicitly EXCLUDES wildcard references like `mcp__task__*`
-  // that appear in documentation prose ("all mcp__task__* tools...")
-  // — those aren't tool invocations, they're patterns describing the
-  // namespace.
-  const matches =
-    agent.body.match(/\bmcp__[a-zA-Z][a-zA-Z0-9_]*__[a-zA-Z][a-zA-Z0-9_]*\b/g) ?? [];
+// V0.2-era helper kept for potential future use. Currently unused in
+// V0.3.1 because agents no longer declare MCP tools at all — see the
+// "no plugin agent has mcp__task__* tools" test below.
+function _mentionedMcpTools(agent: ParsedAgent): Set<string> {
+  const matches = agent.body.match(/\bmcp__[a-zA-Z][a-zA-Z0-9_]*__[a-zA-Z][a-zA-Z0-9_]*\b/g) ?? [];
   return new Set(matches);
 }
 
@@ -90,95 +86,137 @@ describe('agent frontmatter — declared tools cover what prompt uses', () => {
     }
   });
 
-  it('every MCP tool referenced in an agent prompt is in its tools list', async () => {
+  it('no plugin agent has mcp__task__* tools (V0.3.1 — SKILLs own MCP)', async () => {
+    // V0.3.1 architectural invariant: custom plugin subagents can't
+    // access MCP tools due to bug #13605/#21560/#33689 (plugin-
+    // subagent-MCP-unavailable). All plugin-defined agents in
+    // plugin/agents/ are pure thinkers that return structured
+    // output; the SKILL applies it via MCP. So no agent should
+    // declare mcp__task__* tools in its frontmatter.
     const agents = await listAgents();
     const errors: string[] = [];
 
     for (const a of agents) {
       const declared = declaredTools(a);
-      const mentioned = mentionedMcpTools(a);
-      const missing = [...mentioned].filter((m) => !declared.has(m));
-      if (missing.length > 0) {
+      const mcpTaskTools = [...declared].filter((t) => t.startsWith('mcp__task__'));
+      if (mcpTaskTools.length > 0) {
         errors.push(
-          `${a.name}.md: prompt mentions MCP tools not in frontmatter:\n  ` +
-            missing.map((m) => `- ${m}`).join('\n  '),
+          `${a.name}.md: declares mcp__task__* tools in frontmatter (forbidden in V0.3.1):\n  ` +
+            mcpTaskTools.map((t) => `- ${t}`).join('\n  '),
         );
       }
     }
 
     if (errors.length > 0) {
       throw new Error(
-        'Agent frontmatter / prompt mismatch detected:\n\n' +
+        'V0.3.1 invariant violation — plugin agents may not declare mcp__task__* tools:\n\n' +
           errors.join('\n\n') +
-          '\n\nFix by adding the missing tools to the agent\'s frontmatter ' +
-          '`tools:` line. This prevents the "tool not available" runtime ' +
-          'failure mode where the orchestrator has to do MCP work the ' +
-          'agent should have done.',
+          '\n\nPlugin-defined custom subagents cannot access MCP tools ' +
+          '(bug #13605). Remove the mcp__task__* tools from the ' +
+          'agent frontmatter; the agent should return structured output ' +
+          'and the SKILL applies it via MCP.',
       );
-    }
-  });
-
-  it('every agent that lists MCP tools also includes mcp__task__read (for state inspection)', async () => {
-    const agents = await listAgents();
-    for (const a of agents) {
-      const declared = declaredTools(a);
-      const mcpTools = [...declared].filter((t) => t.startsWith('mcp__task__'));
-      if (mcpTools.length > 0) {
-        // any agent doing MCP work should be able to read the task-file
-        // (otherwise they're mutating blind)
-        expect(
-          mcpTools.includes('mcp__task__read'),
-          `${a.name}.md declares MCP tools but is missing mcp__task__read — ` +
-            `agents that mutate without first reading the file are doing ` +
-            `blind writes against the service-layer`,
-        ).toBe(true);
-      }
     }
   });
 });
 
-describe('agent frontmatter — known anchored agents are wired correctly', () => {
-  it('implement agent has the write-path MCP tools it needs', async () => {
+describe('agent frontmatter — V0.3.1 architecture (skills own MCP, agents return structured output)', () => {
+  // V0.3.1 background: Anthropic bugs #13605, #21560, #33689, #15810
+  // confirm that custom plugin subagents cannot access MCP tools
+  // regardless of how MCP is configured (project, user, plugin
+  // scope — all fail). So all plugin/agents/* files in anchored are
+  // pure thinkers that return structured output; the SKILLs (running
+  // in the main session) apply the output via MCP. Each agent has
+  // ONLY the read/inspect tools it needs for its specific job.
+
+  it('plan agent: Read/Glob/Grep only (pure brainstorm thinker)', async () => {
     const agents = await listAgents();
-    const impl = agents.find((a) => a.name === 'implement');
-    expect(impl, 'implement.md exists').toBeDefined();
-    const declared = declaredTools(impl!);
-    const required = [
-      'mcp__task__read',
-      'mcp__task__set_evidence',
-      'mcp__task__set_phase_status',
-      'mcp__task__append_build_section',
-    ];
-    for (const t of required) {
-      expect(declared.has(t), `implement.md missing required tool: ${t}`).toBe(true);
-    }
+    const a = agents.find((x) => x.name === 'plan');
+    expect(a, 'plan.md exists').toBeDefined();
+    const declared = declaredTools(a!);
+    expect(declared.has('Read')).toBe(true);
+    expect(declared.has('Glob')).toBe(true);
+    expect(declared.has('Grep')).toBe(true);
+    expect(declared.has('Write'), 'plan must NOT have Write').toBe(false);
+    expect(declared.has('Edit'), 'plan must NOT have Edit').toBe(false);
   });
 
-  it('task-validate agent can write failures + rollup via MCP', async () => {
+  it('plan-check agent: Read/Glob/Grep only (pure inspector)', async () => {
     const agents = await listAgents();
-    const tv = agents.find((a) => a.name === 'task-validate');
-    expect(tv, 'task-validate.md exists').toBeDefined();
-    const declared = declaredTools(tv!);
-    expect(declared.has('mcp__task__set_failures')).toBe(true);
-    expect(declared.has('mcp__task__append_build_section')).toBe(true);
+    const a = agents.find((x) => x.name === 'plan-check');
+    expect(a, 'plan-check.md exists').toBeDefined();
+    const declared = declaredTools(a!);
+    expect(declared.has('Read')).toBe(true);
+    expect(declared.has('Glob')).toBe(true);
+    expect(declared.has('Grep')).toBe(true);
+    expect(declared.has('Write'), 'plan-check must NOT have Write').toBe(false);
+    expect(declared.has('Edit'), 'plan-check must NOT have Edit').toBe(false);
   });
 
-  it('code-validate agent can write failures + rollup via MCP', async () => {
+  it('rules-check agent: Read/Glob/Grep only (pure inspector)', async () => {
     const agents = await listAgents();
-    const cv = agents.find((a) => a.name === 'code-validate');
-    expect(cv, 'code-validate.md exists').toBeDefined();
-    const declared = declaredTools(cv!);
-    expect(declared.has('mcp__task__set_failures')).toBe(true);
-    expect(declared.has('mcp__task__append_build_section')).toBe(true);
+    const a = agents.find((x) => x.name === 'rules-check');
+    expect(a, 'rules-check.md exists').toBeDefined();
+    const declared = declaredTools(a!);
+    expect(declared.has('Read')).toBe(true);
+    expect(declared.has('Glob')).toBe(true);
+    expect(declared.has('Grep')).toBe(true);
+    expect(declared.has('Write'), 'rules-check must NOT have Write').toBe(false);
+    expect(declared.has('Edit'), 'rules-check must NOT have Edit').toBe(false);
   });
 
-  it('plan agent creates the task-file via MCP, not Write', async () => {
+  it('rules agent: Read/Glob/Grep only (pure rules scanner)', async () => {
     const agents = await listAgents();
-    const plan = agents.find((a) => a.name === 'plan');
-    expect(plan, 'plan.md exists').toBeDefined();
-    const declared = declaredTools(plan!);
-    expect(declared.has('mcp__task__read')).toBe(true);
-    expect(declared.has('mcp__task__create')).toBe(true);
+    const a = agents.find((x) => x.name === 'rules');
+    expect(a, 'rules.md exists').toBeDefined();
+    const declared = declaredTools(a!);
+    expect(declared.has('Read')).toBe(true);
+    expect(declared.has('Glob')).toBe(true);
+    expect(declared.has('Grep')).toBe(true);
+    expect(declared.has('Write'), 'rules must NOT have Write').toBe(false);
+    expect(declared.has('Edit'), 'rules must NOT have Edit').toBe(false);
+  });
+
+  it('implement agent: Read/Write/Edit/Bash/Glob/Grep (writes source code)', async () => {
+    // implement is the ONE agent that legitimately needs Write/Edit —
+    // it writes source code, which is NOT an MCP operation. Source-code
+    // mutations via Write/Edit work fine in plugin subagents (the bug
+    // only affects mcp__* tools). The /impl-build SKILL applies the
+    // evidence-recording side via MCP based on implement's return.
+    const agents = await listAgents();
+    const a = agents.find((x) => x.name === 'implement');
+    expect(a, 'implement.md exists').toBeDefined();
+    const declared = declaredTools(a!);
+    expect(declared.has('Read')).toBe(true);
+    expect(declared.has('Write'), 'implement needs Write to create source files').toBe(true);
+    expect(declared.has('Edit'), 'implement needs Edit to modify source files').toBe(true);
+    expect(declared.has('Bash'), 'implement needs Bash for running tests/lints').toBe(true);
+  });
+
+  it('task-validate agent: Read/Glob/Grep/Bash (runs commands to verify)', async () => {
+    const agents = await listAgents();
+    const a = agents.find((x) => x.name === 'task-validate');
+    expect(a, 'task-validate.md exists').toBeDefined();
+    const declared = declaredTools(a!);
+    expect(declared.has('Read')).toBe(true);
+    expect(declared.has('Bash'), 'task-validate needs Bash for command-based verification').toBe(
+      true,
+    );
+    expect(declared.has('Write'), 'task-validate is pure inspector — no Write').toBe(false);
+    expect(declared.has('Edit'), 'task-validate is pure inspector — no Edit').toBe(false);
+  });
+
+  it('code-validate agent: Read/Glob/Grep/Bash (runs commands to verify)', async () => {
+    const agents = await listAgents();
+    const a = agents.find((x) => x.name === 'code-validate');
+    expect(a, 'code-validate.md exists').toBeDefined();
+    const declared = declaredTools(a!);
+    expect(declared.has('Read')).toBe(true);
+    expect(declared.has('Bash'), 'code-validate needs Bash for command-based verification').toBe(
+      true,
+    );
+    expect(declared.has('Write'), 'code-validate is pure inspector — no Write').toBe(false);
+    expect(declared.has('Edit'), 'code-validate is pure inspector — no Edit').toBe(false);
   });
 
   it('the legacy task-check and code-check files no longer exist', async () => {
@@ -186,83 +224,5 @@ describe('agent frontmatter — known anchored agents are wired correctly', () =
     const names = agents.map((a) => a.name);
     expect(names).not.toContain('task-check');
     expect(names).not.toContain('code-check');
-  });
-
-  it('plan-check agent has the refinement-gate MCP tools it needs', async () => {
-    const agents = await listAgents();
-    const pc = agents.find((a) => a.name === 'plan-check');
-    expect(pc, 'plan-check.md exists').toBeDefined();
-    const declared = declaredTools(pc!);
-
-    // Auto-fix surface: path patches + rule additions + info-note
-    // appends + structured questions (priority-tagged). Plan-check
-    // NEVER resolves questions (that's /impl-refine stage 3) — so
-    // question_resolve is NOT required. It MAY call question_retag
-    // to re-prioritize plan-agent's questions.
-    const required = [
-      'mcp__task__read',
-      'mcp__task__set_phase_rules',
-      'mcp__task__set_phase_context',
-      'mcp__task__append_plan',
-      'mcp__task__question_add',
-    ];
-    for (const t of required) {
-      expect(declared.has(t), `plan-check.md missing required tool: ${t}`).toBe(true);
-    }
-  });
-
-  it('plan-check agent is FORBIDDEN from intent-losing ops + Write/Edit', async () => {
-    // plan-check's whole contract is: auto-fix only additive /
-    // non-semantic items, surface everything else as a question.
-    // Intent-bearing mutations (rewording an AC, removing an AC,
-    // removing or moving a phase) must come from the user via the
-    // Q&A loop or from /impl-plan, never from plan-check silently.
-    // The frontmatter is the enforcement boundary — if these tools
-    // aren't declared, the runtime simply can't call them.
-    const agents = await listAgents();
-    const pc = agents.find((a) => a.name === 'plan-check');
-    expect(pc, 'plan-check.md exists').toBeDefined();
-    const declared = declaredTools(pc!);
-
-    const forbidden = [
-      'Write',
-      'Edit',
-      'mcp__task__set_ac_text',
-      'mcp__task__remove_ac',
-      'mcp__task__remove_phase',
-      'mcp__task__move_phase',
-    ];
-    for (const t of forbidden) {
-      expect(
-        declared.has(t),
-        `plan-check.md must NOT declare ${t} — it's an intent-losing op ` +
-          `(or a direct task-file Write/Edit). Anything intent-bearing has ` +
-          `to surface as a question via append_plan, not be silently applied.`,
-      ).toBe(false);
-    }
-  });
-});
-
-describe('agent frontmatter — bootstrap exception retirement (P6)', () => {
-  // V0.2 retired every direct Write/Edit on the task-file from agent
-  // prompts. plan-agent used to author via Write; the orchestrator's
-  // Q&A loop used to Edit `→ ?` markers in place. Both are now driven
-  // through MCP factory ops (`task__create`, `task__append_plan`,
-  // `task__add_phase`, `task__resolve_question`). This test enforces
-  // the no-bootstrap-exceptions design at the frontmatter level —
-  // any agent that lists Write or Edit fails CI.
-  it('no agent in plugin/agents/* declares Write or Edit in tools:', async () => {
-    const agents = await listAgents();
-    const violations: string[] = [];
-    for (const a of agents) {
-      const declared = declaredTools(a);
-      if (declared.has('Write')) {
-        violations.push(`${a.name}.md still declares Write — drop it (V0.2 bootstrap exception retired)`);
-      }
-      if (declared.has('Edit')) {
-        violations.push(`${a.name}.md still declares Edit — drop it (V0.2 bootstrap exception retired)`);
-      }
-    }
-    expect(violations, violations.join('\n')).toEqual([]);
   });
 });

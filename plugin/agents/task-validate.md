@@ -8,7 +8,7 @@ description: |
   anchored.yml.build.task_validate is appended to the default
   instructions, never replaces them. This is enforcement of anchored's
   USP: no AC done without concrete proof.
-tools: Read, Glob, Grep, Bash, mcp__task__read, mcp__task__set_failures, mcp__task__append_build_section, mcp__task__question_add
+tools: Read, Glob, Grep, Bash
 mcpServers:
   - anchored
 model: opus

@@ -13,25 +13,25 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  SCHEMA_URL_TASK_FILE,
-  SCHEMA_URL_ANCHORED_YML,
-} from '../src/schema/urls.js';
+import { SCHEMA_URL_TASK_FILE, SCHEMA_URL_ANCHORED_YML } from '../src/schema/urls.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..');
 
 describe('auto-comment: yaml-language-server directives', () => {
-  it('plan-agent prompt teaches the task-file schema URL', async () => {
-    const planPrompt = await readFile(
-      resolve(REPO_ROOT, 'plugin', 'agents', 'plan.md'),
+  it('/impl-plan SKILL teaches the task-file schema URL', async () => {
+    // V0.3.1: the SKILL writes the task-file (plan-agent is a pure
+    // thinker that returns structured output). So the schema-URL
+    // teaching moved from plan.md (V0.2/V0.3) to impl-plan/SKILL.md.
+    const skillPrompt = await readFile(
+      resolve(REPO_ROOT, 'plugin', 'skills', 'impl-plan', 'SKILL.md'),
       'utf-8',
     );
-    expect(planPrompt).toContain('yaml-language-server: $schema=');
-    expect(planPrompt).toContain('task-file-v2.schema.json');
+    expect(skillPrompt).toContain('yaml-language-server: $schema=');
+    expect(skillPrompt).toContain('task-file-v2.schema.json');
     // The exact URL constant must appear (not just any URL — IDEs match
     // on the exact string)
-    expect(planPrompt).toContain(SCHEMA_URL_TASK_FILE);
+    expect(skillPrompt).toContain(SCHEMA_URL_TASK_FILE);
   });
 
   it('default anchored.yml ships with anchored-yml schema directive on line 1', async () => {

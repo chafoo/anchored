@@ -242,30 +242,88 @@ Spawn the `plan` agent (`plugin/agents/plan.md`) with:
 - PLAN_CONFIG: `anchored.yml.plan` (acceptance_criteria_defaults +
   instructions)
 
-The plan agent calls `mcp__task__create` to author the initial
-task-file, then `mcp__task__append_plan` for the Plan section, then
-`mcp__task__add_phase` once per phase. There is no longer a bootstrap
-Write exception — every mutation, including initial creation, goes
-through the MCP factory (which validates schema + atomic-writes).
+**The plan-agent is a pure thinker — it returns structured output,
+it does not call MCP.** This is the V0.3.1 architecture (necessary
+workaround for Anthropic's plugin-subagent-MCP-bug #13605/#21560/
+#33689 — custom plugin subagents can't access MCP tools regardless
+of configuration).
 
-After the plan agent returns, verify the file was created:
+After the plan-agent returns (Mode A), YOU (the SKILL, running in
+the main session with full MCP access) apply its output to disk:
+
+1. `mcp__task__create(project_root, slug, { title, intro })`
+   - `title` from agent return `title`
+   - `intro` from agent return `context`
+2. `mcp__task__append_plan(project_root, slug, content)` where
+   `content` is the joined bullet list from agent's `plan_section`
+3. For each phase in agent's `phases[]` (in order):
+   `mcp__task__add_phase(project_root, slug, { phase_slug, name,
+   context?, rules?, acceptance_criteria })` — ACs need
+   `{ text, status: 'pending' }` shape; the SKILL synthesizes
+   that from the agent's plain-text AC list.
+4. For each question in agent's `questions[]`:
+   `mcp__task__question_add(project_root, slug, { text, priority,
+   origin: 'plan-agent', phase? })`. Sequential ids are assigned
+   by the factory.
+
+If any step fails (DuplicateSlug, schema rejection, etc.), surface
+the failing call + the agent's full structured return to the user
+so they can decide whether to retry or refine the input. **Do not
+silently retry** — agent output is the source of truth and a write
+failure usually indicates a real schema issue (not a transient).
+
+For Mode B (restructure-existing), the agent returns a `diff:` array
+instead. Apply each diff op via the matching MCP call:
+- `add_phase` → `mcp__task__add_phase`
+- `remove_phase` → `mcp__task__remove_phase` (passes `force: true`
+  if the user has confirmed removing a done phase, see
+  DonePhaseImmutable handling below)
+- `move_phase` → `mcp__task__move_phase`
+- `set_phase_name` → `mcp__task__set_phase_name`
+- `set_phase_context` → `mcp__task__set_phase_context`
+- `add_ac` → `mcp__task__add_ac` (with `status: 'pending'`)
+- `remove_ac` → `mcp__task__remove_ac`
+- `set_ac_text` → `mcp__task__set_ac_text`
+
+For done-phase mutations in Mode B, surface an explicit
+AskUserQuestion before applying (the schema rejects without
+`force: true`; user must opt in per phase).
+
+After all writes complete, verify integrity:
 
 ```
 mcp__task__read(project_root, slug)
 ```
 
-If `task__read` fails with NotFound, the plan-agent's MCP sequence
-didn't complete — surface the agent's structured output to the user
-along with the error and consider re-spawning. If the file exists
-but is malformed (parser throws), surface the error to the user.
+If the read fails, the writes left the file in a bad state —
+surface the error + the agent's structured return so the user can
+inspect.
+
+### Schema-directive contract
+
+The renderer emits the YAML body without a `yaml-language-server`
+directive header. The canonical directive that IDEs auto-detect is:
+
+```
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
+schema_version: 2
+...
+```
+
+After the SKILL completes its MCP-write sequence, verify the
+freshly-created task-file has the directive on line 1 (read the
+file via Read tool, check the first line). If absent, prepend the
+directive with a single Edit call. This gives users free IDE
+validation in VSCode / JetBrains / Neovim — important enough to
+explicitly handle.
 
 ## Open questions stay open
 
 In V0.3, `/impl-plan` does NOT run a Q&A loop with the user. The
-plan-agent surfaces every ambiguity as a structured question via
-`mcp__task__question_add` (with priority tags low/medium/high) and
-those questions live in the task-file's `questions[]` array at
-`status: 'open'`.
+plan-agent surfaces every ambiguity as a structured question entry
+in its return (priority-tagged low/medium/high); the SKILL applies
+each via `mcp__task__question_add` so they live in the task-file's
+`questions[]` array at `status: 'open'`.
 
 **You exit with the questions still open.** That's the expected
 state for `drafted`.
@@ -318,8 +376,9 @@ Use those counts in the wrap-up message below.
 
 ## Wrap-up
 
-When the plan-agent has landed all MCP calls (create + append_plan +
-add_phase × N + question_add × M):
+When all SKILL-side MCP writes have landed (create + append_plan +
+add_phase × N + question_add × M, applied from plan-agent's
+structured return):
 
 1. Run framework defaults (see below).
 2. Verify the file parses: `mcp__task__read(project_root, slug)`.
@@ -358,10 +417,11 @@ add_phase × N + question_add × M):
 - File-missing or `status: plan` → run the initial-create pipeline above.
   Any other existing status → branch into update-mode per the pre-flight
   table (never the initial-create pipeline on a populated file).
-- Plan-agent owns initial structure: `context.intro`, `context.plan`,
-  per-phase blocks, AND open questions — all land via
-  `mcp__task__create` + `mcp__task__append_plan` + `mcp__task__add_phase`
-  + `mcp__task__question_add`.
+- Plan-agent designs structure (context, plan-trail, phases,
+  questions); the SKILL applies it via MCP: `mcp__task__create`
+  + `mcp__task__append_plan` + `mcp__task__add_phase` (×N) +
+  `mcp__task__question_add` (×M). The agent NEVER calls MCP itself
+  (plugin-subagent-MCP-bug workaround).
 - Generate phase slugs from phase names (kebab-case).
 - Every phase has ≥1 acceptance criterion. If plan-agent returns a
   phase with no ACs, that's an error — reject and ask for re-plan.
