@@ -108,24 +108,52 @@ mcp__task__set_phase_status(project_root, slug, phase.slug, "in-progress")
 
 ### 2. Run user steps from anchored.yml.build.steps (in order)
 
+**Pre-read task-file content** (`mcp__task__read`) so you can pass
+it to agents (V0.3.1: plugin subagents can't access MCP — bug
+#13605 — so YOU pre-read + pass content + apply their returns).
+
 For each user step (declaration order in anchored.yml):
 
 - **`implement`** (or whatever name the user gave their primary
   worker): spawn the `implement` agent with:
-  - PROJECT_ROOT, TASK_SLUG, PHASE (full block including rules + AC
-    statuses + any `failures` fields), TASK_CONTEXT (context.intro +
-    context.plan)
-  - RETRY_ATTEMPT: current `phase.retry_count + 1` (1 on first pass,
-    incremented for each re-spawn)
-  - USER_INSTRUCTIONS: `anchored.yml.build.implement` prose
-  - Capture return: `phase_done`, `evidences_set`, `retry_attempt`,
-    `failures_addressed`, `touched_files`, `blockers`
+  - PROJECT_ROOT, TASK_SLUG
+  - PHASE: the full phase block (slug, name, context, rules, ACs
+    with current evidence + failures fields)
+  - TASK_CONTEXT: { intro, plan, resolved_questions[] } — the
+    SKILL extracts resolved questions from task-file's
+    `questions[]` filter by status=resolved
+  - USER_EXTENSION: `anchored.yml.build.implement` prose
+  - RETRY_ATTEMPT: current `phase.retry_count + 1` (1 on first pass)
+
+  **The implement agent is a pure thinker** for the task-file —
+  but it DOES use Write/Edit/Bash for source code (those are
+  non-MCP, work fine in plugin subagents). It returns a structured
+  output with evidence drafts + build notes + optional phase field
+  updates + blockers + partner_voice_summary.
+
+  **After implement returns, YOU apply its output via MCP:**
+
+  1. For each `evidence_per_ac[i]`:
+     `mcp__task__set_evidence(project_root, slug, phase_slug, ac_index, evidence)`
+     (atomically flips AC status to `done` + clears any failures)
+
+  2. For each `phase_field_updates[i]`:
+     `mcp__task__set_field(project_root, slug, phase_slug, field_name, value)`
+
+  3. Apply `build_notes`:
+     `mcp__task__append_build_section(project_root, slug, 'Implement', content)`
+     (content prefixed with `- PHASE_SLUG / PHASE_NAME` so the
+     append-section visibly groups by phase)
+
+  4. If `blockers[]` is non-empty (i.e. `phase_done: false`): note
+     for step 5 outcome evaluation; the SKILL handles
+     `set_phase_status('blocked')` there.
 
 - **Custom user steps** (e.g. `coverage`, `commit`): execute as
   prose-driven actions. The user wrote prose; you interpret it. If
   the prose says "run X command", do that. If it says "spawn Y
-  agent", do that. Capture relevant outputs (especially
-  `touched_files` updates if the step adds to them).
+  agent", do that. Capture any phase-field outputs (e.g. commit
+  SHA) and apply via `mcp__task__set_field`.
 
 ### 3. Always run task-validate + code-validate (in PARALLEL)
 
@@ -147,24 +175,52 @@ In practice the two validators reject ACs for different reasons and
 overlap is rare.
 
 **task-validate inputs:**
-- PROJECT_ROOT, TASK_SLUG, PHASE (slug, name, context, current ACs)
+- PROJECT_ROOT, TASK_SLUG
+- PHASE (slug, name, context, current ACs — the post-implement state
+  with evidence implement just wrote)
+- TASK_FILE_CONTENT: full YAML (validators may cross-reference)
 - RETRY_ATTEMPT: same value passed to implement
-- USER_EXTENSION: `anchored.yml.build.task_validate` prose (appended
-  to agent's defaults, may be empty)
+- USER_EXTENSION: `anchored.yml.build.task_validate` prose
 
 **code-validate inputs:**
-- PROJECT_ROOT, TASK_SLUG, PHASE (slug, name, **rules**, acceptance_criteria)
-- TOUCHED_FILES from implement's output (accumulated across all user
-  steps that produced touched_files)
+- PROJECT_ROOT, TASK_SLUG
+- PHASE (slug, name, **rules**, acceptance_criteria)
+- TASK_FILE_CONTENT: full YAML
+- TOUCHED_FILES: files implement reported touching (from implement's
+  build_notes — accumulate any files the implement agent mentions or
+  that grep against the source diff shows)
 - RETRY_ATTEMPT: same value
 - USER_EXTENSION: `anchored.yml.build.code_validate` prose
 
-Each agent writes its rollup to `context.build → <validator-name>`
-via `mcp__task__append_build_section` and per-AC failures via
-`mcp__task__set_failures` for each rejection (which atomically flips
-the AC back to `pending` and keeps its evidence as history).
+**Both validators are pure inspectors** (Read/Glob/Grep/Bash, no
+MCP). They return structured output:
+- `verdict: pass | fail`
+- `ac_verdicts[]`: per-AC status (accepted/rejected) + failures
+- `build_section_content`: markdown rollup for context.build
+- `questions_to_add[]`: mid-build ambiguity questions (always high
+  priority)
+- `partner_voice_summary`
 
-Capture both verdicts + rejected_acs once both `Task` calls return.
+**After both validators return, YOU apply their outputs via MCP**
+(both return-payloads applied together so the file mutates once
+per validator-pair):
+
+For each validator's return:
+
+1. For each `ac_verdicts[i]` with `status: rejected`:
+   `mcp__task__set_failures(project_root, slug, phase_slug, ac_index, failures)`
+   (atomically flips AC back to `pending`, keeps its evidence as
+   history)
+
+2. Apply `build_section_content`:
+   `mcp__task__append_build_section(project_root, slug, '<task-validate|code-validate>', content)`
+
+3. For each `questions_to_add[i]`:
+   `mcp__task__question_add(project_root, slug, { text, priority,
+   origin: '<task-validate|code-validate>', phase? })`
+
+Capture the verdicts + rejected_acs after applying so step 4's
+re-do loop reads the post-application state.
 
 ### 4. Failures-driven re-do loop (autonomy-aware)
 
