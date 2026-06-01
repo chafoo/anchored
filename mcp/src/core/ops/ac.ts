@@ -17,11 +17,8 @@
 
 import { readTask, writeTask, type Deps } from './task.js';
 import type { TaskFile, AcceptanceCriterion } from '../../schema/task-file.js';
-import {
-  assertAcIndexInRange,
-  assertEvidenceArrayNonEmpty,
-} from '../../ops/validate.js';
-import { NotFound } from '../errors.js';
+import { assertAcIndexInRange, assertEvidenceArrayNonEmpty } from '../../ops/validate.js';
+import { NotFound, OutOfRange, AnchoredError } from '../errors.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // shared phase lookup
@@ -31,17 +28,32 @@ function findPhase(file: TaskFile, phaseSlug: string) {
   const phase = file.phases.find((p) => p.slug === phaseSlug);
   if (!phase) {
     const known = file.phases.map((p) => p.slug);
-    throw new NotFound(
-      `phase "${phaseSlug}" not found in task "${file.slug}"`,
-      [
-        known.length > 0
-          ? `Known phase slugs in this task: ${known.join(', ')}.`
-          : `This task has no phases yet — re-run \`/impl-plan\` to populate.`,
-        `Run \`anchored task read ${file.slug}\` to see the full task structure.`,
-      ],
-    );
+    throw new NotFound(`phase "${phaseSlug}" not found in task "${file.slug}"`, [
+      known.length > 0
+        ? `Known phase slugs in this task: ${known.join(', ')}.`
+        : `This task has no phases yet — re-run \`/impl-plan\` to populate.`,
+      `Run \`anchored task read ${file.slug}\` to see the full task structure.`,
+    ]);
   }
   return phase;
+}
+
+/**
+ * Range-checks `idx` and returns the AC, narrowing
+ * `AcceptanceCriterion | undefined` → `AcceptanceCriterion` without a
+ * non-null assertion. assertAcIndexInRange throws OutOfRange on a bad
+ * index, so the post-check guard is unreachable but is what lets the
+ * compiler drop the optionality.
+ */
+function acAt(phase: TaskFile['phases'][number], idx: number): AcceptanceCriterion {
+  assertAcIndexInRange(phase.acceptance_criteria.length, idx);
+  const ac = phase.acceptance_criteria[idx];
+  if (!ac) {
+    throw new OutOfRange(`ac_index ${idx} out of range after bounds check`, [
+      `Run \`anchored ac list <slug> <phase>\` to see valid AC indices.`,
+    ]);
+  }
+  return ac;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -65,23 +77,15 @@ export interface AcInit {
 // ─────────────────────────────────────────────────────────────────────
 
 export function makeAcAdd({ root }: Deps) {
-  return async (
-    slug: string,
-    phase_slug: string,
-    ac: AcInit,
-  ): Promise<TaskFile> => {
+  return async (slug: string, phase_slug: string, ac: AcInit): Promise<TaskFile> => {
     const file = await readTask(root, slug);
     const phase = findPhase(file, phase_slug);
     const status = ac.status ?? 'pending';
     const newAc: AcceptanceCriterion = {
       text: ac.text,
       status,
-      ...(ac.evidence !== undefined && ac.evidence.length > 0
-        ? { evidence: ac.evidence }
-        : {}),
-      ...(ac.failures !== undefined && ac.failures.length > 0
-        ? { failures: ac.failures }
-        : {}),
+      ...(ac.evidence !== undefined && ac.evidence.length > 0 ? { evidence: ac.evidence } : {}),
+      ...(ac.failures !== undefined && ac.failures.length > 0 ? { failures: ac.failures } : {}),
     };
     phase.acceptance_criteria.push(newAc);
     return writeTask(root, slug, file);
@@ -89,11 +93,7 @@ export function makeAcAdd({ root }: Deps) {
 }
 
 export function makeAcRemove({ root }: Deps) {
-  return async (
-    slug: string,
-    phase_slug: string,
-    idx: number,
-  ): Promise<TaskFile> => {
+  return async (slug: string, phase_slug: string, idx: number): Promise<TaskFile> => {
     const file = await readTask(root, slug);
     const phase = findPhase(file, phase_slug);
     assertAcIndexInRange(phase.acceptance_criteria.length, idx);
@@ -107,16 +107,10 @@ export function makeAcRemove({ root }: Deps) {
 }
 
 export function makeAcTextSet({ root }: Deps) {
-  return async (
-    slug: string,
-    phase_slug: string,
-    idx: number,
-    text: string,
-  ): Promise<TaskFile> => {
+  return async (slug: string, phase_slug: string, idx: number, text: string): Promise<TaskFile> => {
     const file = await readTask(root, slug);
     const phase = findPhase(file, phase_slug);
-    assertAcIndexInRange(phase.acceptance_criteria.length, idx);
-    const ac = phase.acceptance_criteria[idx]!;
+    const ac = acAt(phase, idx);
     ac.text = text;
     return writeTask(root, slug, file);
   };
@@ -144,8 +138,7 @@ export function makeAcEvidenceSet({ root }: Deps) {
     assertEvidenceArrayNonEmpty(evidence);
     const file = await readTask(root, slug);
     const phase = findPhase(file, phase_slug);
-    assertAcIndexInRange(phase.acceptance_criteria.length, idx);
-    const ac = phase.acceptance_criteria[idx]!;
+    const ac = acAt(phase, idx);
     ac.evidence = [...evidence];
     ac.status = 'done';
     delete (ac as { failures?: string[] }).failures;
@@ -155,26 +148,20 @@ export function makeAcEvidenceSet({ root }: Deps) {
 
 /**
  * Appends a single evidence line to the existing array (or creates
- * the array if absent), flips status → 'done' if it was 'pending',
- * and CLEARS failures.
+ * the array if absent), sets status → 'done' unconditionally
+ * (evidence is proof the AC is met), and CLEARS failures.
  *
  * Useful for incremental evidence capture — e.g. the impl agent
  * finds proof for one of several ACs and wants to record it without
  * touching the others.
  */
 export function makeAcEvidenceAdd({ root }: Deps) {
-  return async (
-    slug: string,
-    phase_slug: string,
-    idx: number,
-    line: string,
-  ): Promise<TaskFile> => {
+  return async (slug: string, phase_slug: string, idx: number, line: string): Promise<TaskFile> => {
     // Single-element non-empty check via the array assert.
     assertEvidenceArrayNonEmpty([line]);
     const file = await readTask(root, slug);
     const phase = findPhase(file, phase_slug);
-    assertAcIndexInRange(phase.acceptance_criteria.length, idx);
-    const ac = phase.acceptance_criteria[idx]!;
+    const ac = acAt(phase, idx);
     const current = ac.evidence ?? [];
     ac.evidence = [...current, line];
     ac.status = 'done';
@@ -203,14 +190,17 @@ export function makeAcFailuresSet({ root }: Deps) {
     failures: string[],
   ): Promise<TaskFile> => {
     if (!Array.isArray(failures) || failures.length === 0) {
-      throw new Error(
+      throw new AnchoredError(
         `failures must be a non-empty array — pass at least one failure description.`,
+        [
+          `Pass at least one failure description (what the validation gate caught).`,
+          `To remove failures instead, use \`anchored ac failures clear\`.`,
+        ],
       );
     }
     const file = await readTask(root, slug);
     const phase = findPhase(file, phase_slug);
-    assertAcIndexInRange(phase.acceptance_criteria.length, idx);
-    const ac = phase.acceptance_criteria[idx]!;
+    const ac = acAt(phase, idx);
     ac.failures = [...failures];
     ac.status = 'pending';
     // KEEP evidence — implement agent needs it for retry context.
@@ -227,15 +217,10 @@ export function makeAcFailuresSet({ root }: Deps) {
  * status (which `evidence.set` will flip to 'done').
  */
 export function makeAcFailuresClear({ root }: Deps) {
-  return async (
-    slug: string,
-    phase_slug: string,
-    idx: number,
-  ): Promise<TaskFile> => {
+  return async (slug: string, phase_slug: string, idx: number): Promise<TaskFile> => {
     const file = await readTask(root, slug);
     const phase = findPhase(file, phase_slug);
-    assertAcIndexInRange(phase.acceptance_criteria.length, idx);
-    const ac = phase.acceptance_criteria[idx]!;
+    const ac = acAt(phase, idx);
     delete (ac as { failures?: string[] }).failures;
     return writeTask(root, slug, file);
   };
@@ -267,8 +252,7 @@ export function makeAcStatusSet({ root }: Deps) {
     void status;
     const file = await readTask(root, slug);
     const phase = findPhase(file, phase_slug);
-    assertAcIndexInRange(phase.acceptance_criteria.length, idx);
-    const ac = phase.acceptance_criteria[idx]!;
+    const ac = acAt(phase, idx);
     ac.status = 'pending';
     delete (ac as { evidence?: string[] }).evidence;
     delete (ac as { failures?: string[] }).failures;

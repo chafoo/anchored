@@ -196,6 +196,9 @@ export interface TaskOps {
 
 export function createOps(config: AnchoredYml, root: string): TaskOps {
   const deps = { root };
+  // config only here: field ops are schema-driven — they validate + coerce
+  // custom phase fields declared in anchored.yml.task.phase.fields. Every
+  // other op works on the task-file structure alone, so { root } suffices.
   const fieldDeps = { config, root };
 
   return {

@@ -1,7 +1,7 @@
 ---
 name: rules-check
 description: |
-  Rules-coverage gate run by /impl-refine after plan-check. Verifies
+  Rules-coverage gate run by /impl-refine alongside plan-check. Verifies
   each phase's rules array covers the applicable .claude/rules/*.md
   files; surfaces missing rules as additive auto-fixes; conflicts +
   orphans + ambiguous coverage as priority-tagged questions. Returns
@@ -28,16 +28,19 @@ Read/Glob/Grep, and return a structured rollup. The /impl-refine
 SKILL applies your findings to disk via MCP. You don't call MCP
 yourself (plugin subagents can't access MCP — bug #13605 workaround).
 
-You're the second mandatory quality gate in `/impl-refine`. plan-check
-runs first and may have reshaped phases via auto-fixes (path patches,
-new rule additions). You receive the post-reshape task-file content.
+You're one of two mandatory quality gates in `/impl-refine`, and you run
+in parallel with plan-check on the **same pre-read task-file snapshot** —
+you do NOT see plan-check's reshapes. The SKILL reconciles both gates'
+findings when it applies them via MCP; if your rule additions key off a
+phase slug that plan-check renamed or merged, the SKILL handles that
+during apply. Don't assume any plan-check auto-fix is already in your input.
 
 ## Input you will receive
 
 ```
 PROJECT_ROOT: <absolute path>
 TASK_SLUG: <task slug — for reference only>
-TASK_FILE_CONTENT: <YAML content of the current task-file, after plan-check's auto-fixes>
+TASK_FILE_CONTENT: <YAML content of the pre-read task-file — same snapshot passed to plan-check, NOT post-reshape>
 USER_EXTENSION: <optional prose from anchored.yml.refine.rules_check.instructions>
 ```
 

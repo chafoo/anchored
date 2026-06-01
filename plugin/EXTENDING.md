@@ -50,8 +50,15 @@ build:
       run: 'git add -A && git commit -m "phase: ${PHASE_SLUG}"'
 ```
 
-Available env vars in `run` commands: `${TASK_SLUG}`, `${PHASE_SLUG}`,
-`${PHASE_NAME}`, `${TASK_TITLE}`.
+Available env vars depend on the stage — only `build.steps` runs inside a
+per-phase loop, so only it has phase context:
+
+| Stage         | Available env vars                                          |
+| ------------- | ----------------------------------------------------------- |
+| `plan.steps`  | `${TASK_SLUG}`, `${TASK_TITLE}`                             |
+| `refine.steps`| `${TASK_SLUG}`, `${TASK_TITLE}`                             |
+| `build.steps` | `${TASK_SLUG}`, `${TASK_TITLE}`, `${PHASE_SLUG}`, `${PHASE_NAME}` |
+| `wrap.steps`  | `${TASK_SLUG}`, `${TASK_TITLE}`                             |
 
 A non-zero exit code halts the pipeline.
 
