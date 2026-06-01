@@ -182,6 +182,16 @@
               "minimum": 1,
               "default": 3
             },
+            "implement": {
+              "type": "object",
+              "properties": {
+                "instructions": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "default": {}
+            },
             "task_validate": {
               "type": "object",
               "properties": {
@@ -201,14 +211,39 @@
               },
               "additionalProperties": false,
               "default": {}
+            },
+            "stop_check": {
+              "type": "object",
+              "properties": {
+                "instructions": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "default": {}
+            },
+            "stop": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "default": [
+                "a decision deviates from the plan"
+              ]
             }
           },
           "additionalProperties": false,
           "default": {
             "steps": [],
             "retry_limit": 3,
+            "implement": {},
             "task_validate": {},
-            "code_validate": {}
+            "code_validate": {},
+            "stop_check": {},
+            "stop": [
+              "a decision deviates from the plan"
+            ]
           }
         },
         "wrap": {

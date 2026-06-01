@@ -13,15 +13,8 @@ import { join } from 'node:path';
 import { parseTaskFileYAML } from '../../parser/parse.js';
 import { renderTaskFileYAML } from '../../parser/render.js';
 import { TaskFile } from '../../schema/task-file.js';
-import type {
-  TaskFile as TaskFileType,
-  TaskStatus,
-  Autonomy,
-} from '../../schema/task-file.js';
-import {
-  assertTaskTransition,
-  IncompletePhases,
-} from '../../ops/validate.js';
+import type { TaskFile as TaskFileType, TaskStatus } from '../../schema/task-file.js';
+import { assertTaskTransition, IncompletePhases } from '../../ops/validate.js';
 import { DuplicateSlug, NotFound } from '../errors.js';
 import { atomicWrite } from '../io.js';
 
@@ -108,13 +101,10 @@ export function makeTaskCreate({ root }: Deps) {
     // existing files.
     try {
       await access(path, constants.F_OK);
-      throw new DuplicateSlug(
-        `task-file already exists at ${path}`,
-        [
-          `Pick a different slug, or read the existing task with \`anchored task read ${slug}\`.`,
-          `If you want to overwrite, delete the file first (this op never clobbers).`,
-        ],
-      );
+      throw new DuplicateSlug(`task-file already exists at ${path}`, [
+        `Pick a different slug, or read the existing task with \`anchored task read ${slug}\`.`,
+        `If you want to overwrite, delete the file first (this op never clobbers).`,
+      ]);
     } catch (err: unknown) {
       // ENOENT is the happy path — anything else is real.
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -165,7 +155,7 @@ export function makeTaskStatusSet({ root }: Deps) {
           `Drive each non-terminal phase to done | blocked | deferred before retrying.`,
           `For phases you've started: \`anchored phase status set ${slug} <phase-slug> blocked\` (or deferred).`,
           nonTerminal.length === 1
-            ? `Only "${nonTerminal[0]!.name}" is blocking — focus there.`
+            ? `Only "${nonTerminal[0]?.name}" is blocking — focus there.`
             : `${nonTerminal.length} phases still active — \`anchored task read ${slug}\` to see all phase statuses.`,
         ];
         throw new IncompletePhases(
@@ -190,42 +180,6 @@ export function makeTaskTitleSet({ root }: Deps) {
   return async (slug: string, title: string): Promise<TaskFileType> => {
     const file = await readTask(root, slug);
     file.title = title;
-    return writeTask(root, slug, file);
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// task.autonomy.set
-// ─────────────────────────────────────────────────────────────────────
-
-/**
- * Set or override the task's autonomy level. Idempotent — calling
- * this on a task that already has an autonomy set replaces the value
- * and appends an audit line to context.plan capturing the change
- * (old → new + ISO timestamp).
- *
- * The audit entry is what makes overrides traceable: a user can
- * flip from `ask_high_only` to `decide_all` mid-flow and the
- * /impl-wrap reviewer can see exactly when + which decisions ran
- * under which level.
- */
-export function makeTaskAutonomySet({ root }: Deps) {
-  return async (slug: string, autonomy: Autonomy): Promise<TaskFileType> => {
-    const file = await readTask(root, slug);
-    const previous = file.autonomy;
-    file.autonomy = autonomy;
-
-    // Append audit trail entry. Distinguishes the initial set
-    // (previous === undefined) from an override.
-    const now = new Date().toISOString();
-    const entry =
-      previous === undefined
-        ? `→ autonomy set to \`${autonomy}\` at ${now}`
-        : `→ autonomy override: \`${previous}\` → \`${autonomy}\` at ${now}`;
-    const planTrail = file.context.plan ?? '';
-    const separator = planTrail.length === 0 || planTrail.endsWith('\n') ? '' : '\n';
-    file.context.plan = `${planTrail}${separator}${entry}\n`;
-
     return writeTask(root, slug, file);
   };
 }

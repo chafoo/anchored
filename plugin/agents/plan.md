@@ -450,10 +450,10 @@ task-file. Names everywhere fixes that.
 ### Surface gaps, don't guess (repeat — this is the failure point)
 
 See "Decision-making — your only rule" near the top of this doc.
-The user gets your questions in /impl-refine stage 3, decides on
-the autonomy level, and either answers each personally or delegates
-to the AI under explicit autonomy. Either path works because every
-ambiguity is on the table.
+The user gets your questions in /impl-refine stage 3, picks an
+ephemeral walk-style, and either answers each personally or delegates
+to the AI for that walk. Either path works because every ambiguity
+is on the table.
 
 Guessing produces plans that look complete but embed unvalidated
 assumptions. The V0.2 dogfood proved this empirically — six

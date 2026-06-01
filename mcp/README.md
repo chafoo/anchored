@@ -6,7 +6,7 @@
 The typed service layer behind the `anchored` Claude Code plugin. Ships
 two binaries sharing the same core:
 
-- **`anchored-mcp`** — MCP server. Exposes 38 typed tools for task-file
+- **`anchored-mcp`** — MCP server. Exposes 37 typed tools for task-file
   mutations to Claude Code subagents during `/impl-*` skills.
 - **`anchored`** — CLI. Same operations as shell commands for scripting
   in `anchored.yml` `run:` hooks.
@@ -63,11 +63,11 @@ anchored phase status set <slug> <phase> done
 # Set evidence for an acceptance criterion
 anchored ac evidence set <slug> <phase> <ac-index> "src/foo.ts:42 — works"
 
-# Set autonomy level
-anchored task autonomy set <slug> ask_high_only
-
 # Add a structured question
 anchored task question add <slug> --text "Toggle UX?" --priority medium --origin plan-agent
+
+# Record an autonomous build-time decision (stop-check 'proceed')
+anchored task question resolve <slug> <id> --answer "..." --source ai --reasoning "within plan"
 ```
 
 Useful inside `anchored.yml` step hooks — e.g. capture commit SHA per
@@ -87,12 +87,12 @@ Run `anchored --help` for the full command tree.
 
 ## Tool surface
 
-38 typed MCP tools (matching CLI subcommands) for evidence-anchored
+37 typed MCP tools (matching CLI subcommands) for evidence-anchored
 task-file mutations, grouped by domain:
 
 | Domain       | Operations                                                                 |
 | ------------ | -------------------------------------------------------------------------- |
-| **task**     | create, read, status, title, autonomy                                      |
+| **task**     | create, read, status, title                                                |
 | **context**  | intro, plan, build / wrap sub-sections                                     |
 | **phase**    | list, next, add, remove, move, status, name, context, rules, retry counter |
 | **ac**       | add, remove, text, evidence (set/add), failures (set/clear), status        |

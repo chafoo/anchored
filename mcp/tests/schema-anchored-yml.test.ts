@@ -28,6 +28,7 @@ describe('anchored.yml — defaults', () => {
     expect(parsed.build.retry_limit).toBe(3);
     expect(parsed.build.task_validate).toEqual({});
     expect(parsed.build.code_validate).toEqual({});
+    expect(parsed.build.stop_check).toEqual({});
     expect(parsed.wrap.steps).toEqual([]);
     expect(parsed.task.phase.fields).toEqual([]);
   });
@@ -176,27 +177,93 @@ describe('anchored.yml — build stage', () => {
   });
 
   it('rejects legacy build.commit slot (VCS-agnostic — no commit handling in V0.2)', () => {
-    expect(() =>
-      parseAnchoredYml({ build: { commit: { enabled: true } } }),
-    ).toThrow();
+    expect(() => parseAnchoredYml({ build: { commit: { enabled: true } } })).toThrow();
   });
 
   it('rejects renamed slot build.task_check (was task_check, now task_validate)', () => {
-    expect(() =>
-      parseAnchoredYml({ build: { task_check: { instructions: 'x' } } }),
-    ).toThrow();
+    expect(() => parseAnchoredYml({ build: { task_check: { instructions: 'x' } } })).toThrow();
   });
 
   it('rejects renamed slot build.code_check (was code_check, now code_validate)', () => {
-    expect(() =>
-      parseAnchoredYml({ build: { code_check: { instructions: 'x' } } }),
-    ).toThrow();
+    expect(() => parseAnchoredYml({ build: { code_check: { instructions: 'x' } } })).toThrow();
   });
 
   it('rejects build.task_validate.enabled (instructions-only slot)', () => {
-    expect(() =>
-      parseAnchoredYml({ build: { task_validate: { enabled: true } } }),
-    ).toThrow();
+    expect(() => parseAnchoredYml({ build: { task_validate: { enabled: true } } })).toThrow();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// build: implement reserved slot + global stop-conditions
+// ─────────────────────────────────────────────────────────────────────
+
+describe('anchored.yml — build.implement slot', () => {
+  it('accepts build.implement.instructions (resolves SKILL.md:138 latent bug)', () => {
+    const parsed = parseAnchoredYml({
+      build: { implement: { instructions: 'always TDD: red → green → refactor' } },
+    });
+    expect(parsed.build.implement.instructions).toContain('TDD');
+  });
+
+  it('applies an empty implement slot by default', () => {
+    const parsed = parseAnchoredYml({});
+    expect(parsed.build.implement).toEqual({});
+  });
+
+  it('rejects build.implement.enabled (instructions-only reserved slot)', () => {
+    expect(() => parseAnchoredYml({ build: { implement: { enabled: true } } })).toThrow();
+  });
+});
+
+describe('anchored.yml — build.stop_check slot', () => {
+  it('accepts build.stop_check.instructions (enriches the stop-check evaluator)', () => {
+    const parsed = parseAnchoredYml({
+      build: {
+        stop_check: { instructions: 'also halt if a new external dependency is introduced' },
+      },
+    });
+    expect(parsed.build.stop_check.instructions).toContain('external dependency');
+  });
+
+  it('applies an empty stop_check slot by default', () => {
+    const parsed = parseAnchoredYml({});
+    expect(parsed.build.stop_check).toEqual({});
+  });
+
+  it('rejects build.stop_check.enabled (instructions-only reserved slot — strict)', () => {
+    expect(() => parseAnchoredYml({ build: { stop_check: { enabled: true } } })).toThrow();
+  });
+});
+
+describe('anchored.yml — build.stop (global stop-conditions)', () => {
+  it('ships the default ON with the single plan-deviation rule', () => {
+    const parsed = parseAnchoredYml({});
+    expect(parsed.build.stop).toEqual(['a decision deviates from the plan']);
+  });
+
+  it('accepts a custom build.stop array of natural-language strings', () => {
+    const parsed = parseAnchoredYml({
+      build: { stop: ['a decision deviates from the plan', 'a test is deleted to pass a gate'] },
+    });
+    expect(parsed.build.stop).toHaveLength(2);
+    expect(parsed.build.stop[1]).toContain('test is deleted');
+  });
+
+  it('accepts an empty build.stop array (valid fully-autonomous state)', () => {
+    const parsed = parseAnchoredYml({ build: { stop: [] } });
+    expect(parsed.build.stop).toEqual([]);
+  });
+
+  it('rejects an empty-string stop rule (each rule must be non-empty)', () => {
+    expect(() => parseAnchoredYml({ build: { stop: [''] } })).toThrow();
+  });
+
+  it('rejects a non-array build.stop', () => {
+    expect(() => parseAnchoredYml({ build: { stop: 'stop on everything' } })).toThrow();
+  });
+
+  it('still .strict()-rejects an unknown key under build alongside valid stop', () => {
+    expect(() => parseAnchoredYml({ build: { stop: ['x'], bogus_slot: true } })).toThrow();
   });
 });
 

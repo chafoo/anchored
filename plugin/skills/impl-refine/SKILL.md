@@ -1,11 +1,11 @@
 ---
 name: impl-refine
 description: |
-  Engineering-review skill — declares autonomy, validates a drafted
-  plan against current code + rules, walks every open question with
-  the user (or AI under autonomy), then applies user-defined
-  architecture preferences. Use after /impl-plan to validate the plan
-  before /impl-build. Spawns plan-check + rules-check (mandatory
+  Engineering-review skill — picks an ephemeral walk-style, validates a
+  drafted plan against current code + rules, walks every open question
+  with the user (or AI, per the chosen walk-style), then applies
+  user-defined architecture preferences. Use after /impl-plan to validate
+  the plan before /impl-build. Spawns plan-check + rules-check (mandatory
   parallel gates), then consolidates all open questions (from
   plan-agent + plan-check + rules-check) into a single priority-aware
   walk, then runs custom steps from anchored.yml.refine.steps, then
@@ -24,7 +24,7 @@ Skill-specific:
 
 | Avoid (machinery voice) | Prefer (partner voice) |
 |---|---|
-| "Setting autonomy to ask_high_only" | "Okay — die wichtigen kläre ich mit dir, den rest mach ich selbst." |
+| "Walk-mode = high-together" | "Okay — die wichtigen kläre ich mit dir, den rest mach ich selbst." |
 | "Spawning plan-check + rules-check gates in parallel..." | "Lass mich den plan kurz gegen den aktuellen code-stand prüfen." |
 | "Stage 3: resolving question q4 via user input" | "Toggle-pattern — whole-row click oder dedicated checkbox?" |
 | "Status transition: drafted → refined" | "Plan ist refined. Run `/impl-build` als nächstes." |
@@ -35,10 +35,10 @@ Skill-specific:
 
 **Hard rule on machinery leakage:** "Stage N", "anchored.yml.<slot>",
 "calling task__...", "skip step", "flip status" are all internal flow
-control. The user picked autonomy + answered (or delegated) questions;
-they don't need to track the orchestrator's bookkeeping. Empty stages,
-config reads, MCP calls, status flips → SILENT. Only the outcome and
-decisions worth surfacing reach chat.
+control. The user picked a walk-style + answered (or delegated)
+questions; they don't need to track the orchestrator's bookkeeping.
+Empty stages, config reads, MCP calls, status flips → SILENT. Only the
+outcome and decisions worth surfacing reach chat.
 
 If you find yourself reaching for a sentence that names a Stage
 number, a config slot, or an MCP tool — that's a tell: rephrase as
@@ -103,20 +103,32 @@ are mandatory framework gates and cannot be disabled. Stage 4 runs
 user-defined steps. Stage 5 transitions status.
 
 ```
-Stage 0 — autonomy declaration  (NEW in V0.3)
-Stage 1 — plan-check            (mandatory gate, no Q&A here)
-Stage 2 — rules-check           (mandatory gate, no Q&A here)
-Stage 3 — consolidated Q&A walk (NEW in V0.3 — priority-aware)
+Stage 0 — walk-style choice       (ephemeral — never persisted)
+Stage 1 — plan-check              (mandatory gate, no Q&A here)
+Stage 2 — rules-check             (mandatory gate, no Q&A here)
+Stage 3 — consolidated Q&A walk   (priority-aware)
 Stage 4 — custom user steps
 Stage 5 — status transition (drafted → refined)
 ```
 
-### Stage 0 — autonomy declaration
+### Stage 0 — walk-style choice
 
-This is where the user picks how autonomous the rest of the run
-should be. The choice is **task-scoped + idempotent** — they can
-flip it later if they change their mind; each set appends an
-audit entry to the plan-trail.
+This is where the user picks **how this one Q&A walk runs** — whether
+they answer every question, only the important ones, or hand all the
+calls to the AI. The choice is **purely ephemeral**: it lives only for
+this refine session, drives only Stage 3's walk, and is **never written
+to the task-file**. There is no `task.autonomy` field — it was removed.
+If the user re-runs `/impl-refine` later, they just pick again; nothing
+about the choice persists or affects the later build.
+
+The three walk-styles:
+
+- **AI-all** — the AI decides every open question itself (each resolved
+  `source='ai'` with reasoning). Lowest-friction; good for low-stakes
+  tasks / vibe coding.
+- **high-together** — the AI walks the high-priority questions WITH the
+  user; medium + low it decides itself. The balanced default.
+- **all-together** — every open question is walked with the user.
 
 1. List open questions on the task to get the priority breakdown:
 
@@ -130,33 +142,30 @@ audit entry to the plan-trail.
    const low = open.filter(q => q.priority === 'low').length
    ```
 
-2. **If `open.length === 0`**: no questions to walk. Default
-   autonomy to `ask_high_only` silently (lowest-friction safe
-   default), call `mcp__task__set_autonomy(slug, 'ask_high_only')`,
-   and skip to Stage 1. Mention in the completion message that
-   the plan-agent surfaced no questions.
+2. **If `open.length === 0`**: no questions to walk. Default the
+   walk-style to `high-together` silently and skip to Stage 1. Mention
+   in the completion message that the plan-agent surfaced no questions.
 
 3. **Otherwise**, ask the user via `AskUserQuestion`:
 
    > "Es gibt {open.length} offene fragen — {high} high, {medium} medium, {low} low. Wie wollen wir die durchgehen?"
    >
    > Options:
-   > - "Alle gemeinsam durchgehen" (sets autonomy = `ask_all`)
-   > - "Nur die wichtigen (high), rest entscheidest du" (sets autonomy = `ask_high_only`) (recommended for medium/high mix)
-   > - "Du entscheidest alles — ich vertraue dir" (sets autonomy = `decide_all`) (recommended for low-stakes tasks / vibe coding)
+   > - "Alle gemeinsam durchgehen" (walk-style = `all-together`)
+   > - "Nur die wichtigen (high), rest entscheidest du" (walk-style = `high-together`) (recommended for medium/high mix)
+   > - "Du entscheidest alles — ich vertraue dir" (walk-style = `AI-all`) (recommended for low-stakes tasks / vibe coding)
 
    Adapt option count to question distribution:
-   - If `low === 0` and `medium === 0`: only show `ask_all` vs
-     `decide_all` (the `ask_high_only` option is identical to
-     `ask_all` when all questions are high)
-   - If `high === 0` and `medium === 0`: only show `ask_all` vs
-     `decide_all` (everything is low, no priority bucket to filter
-     by)
+   - If `low === 0` and `medium === 0`: only show `all-together` vs
+     `AI-all` (the `high-together` option is identical to `all-together`
+     when all questions are high)
+   - If `high === 0` and `medium === 0`: only show `all-together` vs
+     `AI-all` (everything is low, no priority bucket to filter by)
    - Otherwise: show all three
 
-4. Call `mcp__task__set_autonomy(project_root, slug, choice)`.
-   The op appends an audit line to `context.plan`:
-   `→ autonomy set to <choice> at <ISO>`.
+4. Hold the chosen walk-style in-memory for this refine session. It is
+   **ephemeral** — never persisted to the task-file, never written as a
+   field.
 
 5. Confirm to the user in pair-programmer voice ("Okay, die
    wichtigen kläre ich mit dir, den rest mach ich selbst.")
@@ -249,7 +258,7 @@ The rules-check agent is a **pure thinker**:
 
 This is where every open question (from the plan-agent's brainstorm
 PLUS plan-check's additions PLUS rules-check's additions) gets
-resolved in one consolidated pass. The autonomy level chosen at
+resolved in one consolidated pass. The ephemeral walk-style chosen at
 Stage 0 controls whether each question goes to the user or to AI
 judgment.
 
@@ -267,14 +276,16 @@ judgment.
    })
    ```
 
-2. Determine the **ask threshold** from the current autonomy:
+2. Determine the **ask threshold** from the ephemeral walk-style held
+   in-memory from Stage 0 (NOT read from the task-file — it isn't
+   stored there):
 
    ```
-   const autonomy = (await mcp__task__read(slug)).autonomy
+   // walkStyle is the in-memory choice from Stage 0
    const asksThisPriority = (priority) => {
-     if (autonomy === 'ask_all')      return true
-     if (autonomy === 'decide_all')   return false
-     // ask_high_only
+     if (walkStyle === 'all-together')  return true
+     if (walkStyle === 'AI-all')        return false
+     // high-together
      return priority === 'high'
    }
    ```
@@ -328,15 +339,14 @@ judgment.
    Status stays at `drafted`. Questions already resolved stay
    resolved (per-op atomicity); remaining open questions stay
    open. Re-running `/impl-refine` picks up at Stage 0 — the user
-   can switch autonomy if their initial choice was wrong, then
-   Stage 3 walks only the still-open questions.
+   can pick a different walk-style if their initial choice was wrong,
+   then Stage 3 walks only the still-open questions.
 
-5. **Override autonomy mid-walk.** If the user says "actually,
+5. **Override the walk-style mid-walk.** If the user says "actually,
    let me decide the rest" or "actually, you decide the rest"
-   during the walk, call `mcp__task__set_autonomy` with the new
-   value and continue the walk from where you were. The op
-   appends an override audit entry; the loop sees the new value
-   on the next iteration.
+   during the walk, update the in-memory walk-style and continue
+   the walk from where you were (the new value applies on the next
+   iteration). The walk-style is ephemeral — nothing is persisted.
 
 ### Stage 4 — custom user steps
 
@@ -367,7 +377,6 @@ After Stages 0-4 complete successfully (no aborts, no step failures):
 1. Re-read the task-file one last time to confirm:
    - It parses cleanly.
    - Every question has `status: 'resolved'` (no opens left).
-   - `autonomy` is set.
 2. Call `mcp__task__set_task_status(project_root, slug, "refined")`.
    The factory atomically flips status `drafted → refined`.
 3. Tell the user (see Completion message below).
@@ -380,22 +389,23 @@ everything above succeeded.
 - **Ctrl+C anywhere mid-pipeline** → status STAYS at `drafted`.
   Partial auto-fixes by plan-check / rules-check are preserved
   (each MCP op is atomic). Already-resolved questions stay
-  resolved. Already-set autonomy stays set.
+  resolved. (The walk-style was only ever in-memory — nothing about
+  it persists across runs.)
 - **Re-running `/impl-refine`** picks up from Stage 0. The user
-  gets re-asked the autonomy choice — they can switch from their
-  initial pick if it didn't work out. plan-check + rules-check fire
-  fresh (idempotent in practice; if everything's clean, they surface
-  no new questions). Stage 3 walks only the still-open questions
-  (already-resolved ones are skipped via the status filter).
+  gets re-asked the walk-style choice — they can pick differently if
+  it didn't work out. plan-check + rules-check fire fresh (idempotent
+  in practice; if everything's clean, they surface no new questions).
+  Stage 3 walks only the still-open questions (already-resolved ones
+  are skipped via the status filter).
 - **User aborts during Stage 3 Q&A walk** → same: status stays
   drafted, resolved-so-far questions preserved. Re-run to resume.
 
 ## Completion message
 
 When Stage 5 succeeds, tell the user. The shape depends on the
-autonomy chosen + question distribution:
+walk-style chosen + question distribution:
 
-**Full ask_all path** (user answered everything):
+**Full all-together path** (user answered everything):
 
 > Plan refined. Status: drafted → refined.
 >
@@ -404,7 +414,7 @@ autonomy chosen + question distribution:
 >
 > Next: `/impl-build` startet die phase-execution.
 
-**Hybrid ask_high_only path** (user answered high, AI answered the rest):
+**Hybrid high-together path** (user answered high, AI answered the rest):
 
 > Plan refined. Status: drafted → refined.
 >
@@ -415,7 +425,7 @@ autonomy chosen + question distribution:
 >
 > Next: `/impl-build` startet die phase-execution.
 
-**Full decide_all path** (AI answered everything):
+**Full AI-all path** (AI answered everything):
 
 > Plan refined. Status: drafted → refined.
 >
@@ -431,8 +441,7 @@ autonomy chosen + question distribution:
 > Plan refined. Status: drafted → refined.
 >
 > Plan-check + rules-check liefen sauber durch (N + M auto-fixes).
-> Plan-agent hatte keine fragen — autonomy auf `ask_high_only`
-> gesetzt als default.
+> Plan-agent hatte keine fragen — nichts zu walken.
 >
 > Next: `/impl-build` startet die phase-execution.
 
@@ -446,7 +455,8 @@ communication-style.md).
 - Refuse to run if task status ≠ `drafted` (manual revert via
   `anchored task status set <slug> drafted` is the documented
   escape-hatch).
-- ALWAYS run Stage 0 — autonomy declaration is framework-fixed.
+- ALWAYS run Stage 0 — the ephemeral walk-style choice is
+  framework-fixed (but the choice itself is never persisted).
 - ALWAYS spawn `plan-check` — Stage 1 is framework-fixed.
 - ALWAYS spawn `rules-check` — Stage 2 is framework-fixed (MAY
   run in parallel with Stage 1; cross-process lock keeps writes
@@ -458,7 +468,7 @@ communication-style.md).
 - Halt the pipeline (status stays drafted) on any step failure or
   user abort; per-op atomicity preserves partial progress.
 - Transition `drafted → refined` ONLY if all stages succeed cleanly
-  AND no questions remain open AND autonomy is set.
+  AND no questions remain open.
 
 ## References on demand
 

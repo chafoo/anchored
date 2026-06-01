@@ -7,8 +7,8 @@ description: |
   anchored.yml, runs code discovery (Explore), scans project conventions
   (rules agent), decomposes the work via the plan agent. Exits cleanly
   with status=drafted and open questions untouched — /impl-refine is
-  where questions get walked with the user under the chosen autonomy
-  level. Explicit-only trigger — the user types `/impl-plan <description>`.
+  where questions get walked with the user under the chosen ephemeral
+  walk-style. Explicit-only trigger — the user types `/impl-plan <description>`.
 ---
 
 # /impl-plan
@@ -328,11 +328,11 @@ each via `mcp__task__question_add` so they live in the task-file's
 state for `drafted`.
 
 `/impl-refine` is where the user gets walked through them — at its
-**stage 0** the user picks an autonomy level (`ask_all` /
-`ask_high_only` / `decide_all`), and at **stage 3** the orchestrator
-resolves each open question either by asking the user or by letting
-the AI decide (with `source='ai'` + `reasoning`) based on that
-autonomy level.
+**stage 0** the user picks an **ephemeral walk-style** (AI-all /
+high-together / all-together — how *that* walk runs; never persisted),
+and at **stage 3** the orchestrator resolves each open question either
+by asking the user or by letting the AI decide (with `source='ai'` +
+`reasoning`) based on that walk-style.
 
 So your job after the plan-agent finishes is just to:
 1. Confirm the task-file parses (`mcp__task__read`)
@@ -393,12 +393,11 @@ structured return):
    N phasen, M ACs. K offene fragen (X high, Y medium, Z low).
    Status: plan → drafted.
 
-   Run `/impl-refine` next — du wirst gefragt wie autonom du den
-   run willst (alle fragen selbst beantworten, nur die wichtigen,
-   oder alle der AI überlassen), dann läuft das durch plan-check
-   + rules-check + Q&A-walk. Für trivial tasks kannst du refine
-   skippen: `/impl-build` direkt (warnt + fragt einmal ob du
-   sicher bist).
+   Run `/impl-refine` next — du wirst gefragt wie wir die fragen
+   durchgehen (alle selbst beantworten, nur die wichtigen, oder alle
+   der AI überlassen), dann läuft das durch plan-check + rules-check
+   + Q&A-walk. Für trivial tasks kannst du refine skippen:
+   `/impl-build` direkt (warnt + fragt einmal ob du sicher bist).
    ```
 
    The link is required — task-files can grow to hundreds of lines and
@@ -429,7 +428,7 @@ structured return):
   status transition.
 - **Open questions stay open at the end of /impl-plan.** They do NOT
   block the status transition to `drafted`. /impl-refine handles
-  resolution under the user's chosen autonomy level.
+  resolution under the user's chosen ephemeral walk-style.
 - Validate task-file integrity via `mcp__task__read` before
   the final status flip — if it fails to parse, something went
   wrong; surface the error to the user.

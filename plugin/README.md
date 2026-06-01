@@ -15,7 +15,7 @@ setup. run. ship.
 
 ## How it works
 
-![anchored lifecycle: /impl-plan brainstorms, /impl-refine walks Q&A under autonomy, /impl-build implements and verifies phase-by-phase, /impl-wrap reviews and summarizes — or /impl to autopilot all four](./lifecycle.svg)
+![anchored lifecycle: /impl-plan brainstorms, /impl-refine walks Q&A with a chosen walk-style, /impl-build implements and verifies phase-by-phase, /impl-wrap reviews and summarizes — or /impl to autopilot all four](./lifecycle.svg)
 
 ## Quick start
 
@@ -38,7 +38,7 @@ Prefer step-by-step control? Run each command individually:
 
 ```
 /impl-plan <description>   # brainstorm + surface ambiguities
-/impl-refine               # autonomy + Q&A walk
+/impl-refine               # Q&A walk (pick a walk-style)
 /impl-build                # implement + verify per phase
 /impl-wrap                 # review + summary
 ```

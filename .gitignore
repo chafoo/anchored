@@ -36,6 +36,7 @@ pnpm-debug.log*
 # Anchored runtime artifacts in test/dogfood projects
 .claude/tasks/
 .anchored/
+anchored.yml
 
 # Misc
 *.tgz

@@ -177,14 +177,6 @@
             "type": "string"
           }
         },
-        "autonomy": {
-          "type": "string",
-          "enum": [
-            "ask_all",
-            "ask_high_only",
-            "decide_all"
-          ]
-        },
         "questions": {
           "type": "array",
           "items": {
@@ -214,6 +206,7 @@
                   "rules-check",
                   "task-validate",
                   "code-validate",
+                  "stop-check",
                   "user"
                 ]
               },

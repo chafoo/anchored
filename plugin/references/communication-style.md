@@ -85,7 +85,7 @@ user should know about".
 
 **Hard rule on stage-numbers + config slots:** "Stage N",
 "anchored.yml.<slot>", "skip step", "advancing to next stage" are
-internal flow control. The user picked the autonomy + answered (or
+internal flow control. The user picked a walk-style + answered (or
 delegated) questions; they don't need to track the orchestrator's
 bookkeeping. If a pipeline stage is empty (no custom steps, no
 work to do), the right output is **silence** — not a line announcing

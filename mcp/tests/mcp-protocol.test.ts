@@ -88,7 +88,7 @@ describe('MCP server protocol', () => {
     expect(init?.result?.serverInfo?.name).toBe('task');
   }, 10_000);
 
-  it('lists all 38 expected tools', async () => {
+  it('lists all 37 expected tools', async () => {
     const responses = await spawnServerAndExchange([
       {
         jsonrpc: '2.0',
@@ -105,16 +105,13 @@ describe('MCP server protocol', () => {
     ]);
     const list = responses.find((r) => r.id === 2);
     expect(list, 'should receive tools/list response').toBeDefined();
-    const toolNames = (list?.result?.tools ?? []).map(
-      (t: { name: string }) => t.name,
-    );
+    const toolNames = (list?.result?.tools ?? []).map((t: { name: string }) => t.name);
     const expected = [
-      // task-lifecycle (5 — adds set_autonomy in V0.3)
+      // task-lifecycle (4)
       'task__create',
       'task__read',
       'task__set_task_status',
       'task__set_title',
-      'task__set_autonomy',
       // question — V0.3 structured Q&A (4)
       'task__question_add',
       'task__question_list',
@@ -155,7 +152,7 @@ describe('MCP server protocol', () => {
       'task__get_field',
     ];
     expect(toolNames.sort()).toEqual(expected.sort());
-    expect(toolNames.length).toBe(38);
+    expect(toolNames.length).toBe(37);
   }, 10_000);
 
   it('each tool has a description and inputSchema', async () => {

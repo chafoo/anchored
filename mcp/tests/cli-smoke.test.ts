@@ -15,14 +15,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execFileSync, execSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  rmSync,
-} from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -78,8 +71,6 @@ describe('task subcommands load', () => {
     ['task', 'status', 'set', '--help'],
     ['task', 'title', 'set', '--help'],
     // V0.3
-    ['task', 'autonomy', '--help'],
-    ['task', 'autonomy', 'set', '--help'],
     ['task', 'question', '--help'],
     ['task', 'question', 'add', '--help'],
     ['task', 'question', 'list', '--help'],
@@ -90,7 +81,7 @@ describe('task subcommands load', () => {
   });
 });
 
-describe('V0.3 task question + autonomy end-to-end', () => {
+describe('V0.3 task question end-to-end', () => {
   let tmpRoot: string;
   beforeAll(() => {
     tmpRoot = mkdtempSync(join(tmpdir(), 'anchored-cli-v03-'));
@@ -103,31 +94,23 @@ describe('V0.3 task question + autonomy end-to-end', () => {
     run(['task', 'create', 'cli-demo', '--title', 'CLI V0.3 Demo'], tmpRoot);
   });
 
-  it('autonomy set persists and shows up in re-read', () => {
-    run(['task', 'autonomy', 'set', 'cli-demo', 'ask_high_only'], tmpRoot);
-    const yml = readFileSync(
-      join(tmpRoot, '.claude/tasks/cli-demo.yml'),
-      'utf-8',
-    );
-    const parsed = parseTaskFileYAML(yml);
-    expect(parsed.autonomy).toBe('ask_high_only');
-    expect(parsed.context.plan).toContain('autonomy set to');
-  });
-
   it('question add → list → resolve flow lands on disk', () => {
     run(
       [
-        'task', 'question', 'add', 'cli-demo',
-        '--text', 'Is delete-task in scope?',
-        '--priority', 'high',
-        '--origin', 'plan-agent',
+        'task',
+        'question',
+        'add',
+        'cli-demo',
+        '--text',
+        'Is delete-task in scope?',
+        '--priority',
+        'high',
+        '--origin',
+        'plan-agent',
       ],
       tmpRoot,
     );
-    const listOut = run(
-      ['task', 'question', 'list', 'cli-demo', '--status', 'open'],
-      tmpRoot,
-    );
+    const listOut = run(['task', 'question', 'list', 'cli-demo', '--status', 'open'], tmpRoot);
     const list = JSON.parse(listOut);
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe('q1');
@@ -135,16 +118,19 @@ describe('V0.3 task question + autonomy end-to-end', () => {
 
     run(
       [
-        'task', 'question', 'resolve', 'cli-demo', 'q1',
-        '--answer', 'yes, in scope',
-        '--source', 'user',
+        'task',
+        'question',
+        'resolve',
+        'cli-demo',
+        'q1',
+        '--answer',
+        'yes, in scope',
+        '--source',
+        'user',
       ],
       tmpRoot,
     );
-    const yml = readFileSync(
-      join(tmpRoot, '.claude/tasks/cli-demo.yml'),
-      'utf-8',
-    );
+    const yml = readFileSync(join(tmpRoot, '.claude/tasks/cli-demo.yml'), 'utf-8');
     const parsed = parseTaskFileYAML(yml);
     expect(parsed.questions).toHaveLength(1);
     expect(parsed.questions![0]!.status).toBe('resolved');
@@ -153,14 +139,8 @@ describe('V0.3 task question + autonomy end-to-end', () => {
   });
 
   it('retag changes priority', () => {
-    run(
-      ['task', 'question', 'retag', 'cli-demo', 'q1', 'medium'],
-      tmpRoot,
-    );
-    const yml = readFileSync(
-      join(tmpRoot, '.claude/tasks/cli-demo.yml'),
-      'utf-8',
-    );
+    run(['task', 'question', 'retag', 'cli-demo', 'q1', 'medium'], tmpRoot);
+    const yml = readFileSync(join(tmpRoot, '.claude/tasks/cli-demo.yml'), 'utf-8');
     const parsed = parseTaskFileYAML(yml);
     expect(parsed.questions![0]!.priority).toBe('medium');
   });
@@ -264,10 +244,7 @@ describe('end-to-end command sequence', () => {
 
   it('full create → phase → ac → evidence flow lands on disk', () => {
     // 1. Create task
-    const createOut = run(
-      ['task', 'create', 'demo-cli', '--title', 'Demo task'],
-      projectRoot,
-    );
+    const createOut = run(['task', 'create', 'demo-cli', '--title', 'Demo task'], projectRoot);
     expect(createOut).toContain('Updated: demo-cli');
     const taskPath = join(projectRoot, '.claude', 'tasks', 'demo-cli.yml');
     expect(existsSync(taskPath)).toBe(true);
@@ -280,10 +257,7 @@ describe('end-to-end command sequence', () => {
     expect(initial.phases).toEqual([]);
 
     // 2. Phase add
-    run(
-      ['phase', 'add', 'demo-cli', '--name', 'Setup', '--slug', 'setup'],
-      projectRoot,
-    );
+    run(['phase', 'add', 'demo-cli', '--name', 'Setup', '--slug', 'setup'], projectRoot);
     const afterPhase = parseTaskFileYAML(readFileSync(taskPath, 'utf-8'));
     expect(afterPhase.phases).toHaveLength(1);
     expect(afterPhase.phases[0]!.slug).toBe('setup');
@@ -291,10 +265,7 @@ describe('end-to-end command sequence', () => {
 
     // 3. AC add (replaces the placeholder TBD AC by appending — phases
     //    start with one auto-placeholder, so this becomes index 1).
-    run(
-      ['ac', 'add', 'demo-cli', 'setup', '--text', 'First criterion'],
-      projectRoot,
-    );
+    run(['ac', 'add', 'demo-cli', 'setup', '--text', 'First criterion'], projectRoot);
     const afterAc = parseTaskFileYAML(readFileSync(taskPath, 'utf-8'));
     expect(afterAc.phases[0]!.acceptance_criteria.length).toBeGreaterThanOrEqual(2);
     const acTexts = afterAc.phases[0]!.acceptance_criteria.map((a) => a.text);
@@ -322,14 +293,8 @@ describe('end-to-end command sequence', () => {
 
   it('phase list and phase next return useful output', () => {
     run(['task', 'create', 'flow-test', '--title', 'Flow'], projectRoot);
-    run(
-      ['phase', 'add', 'flow-test', '--name', 'First', '--slug', 'first'],
-      projectRoot,
-    );
-    run(
-      ['phase', 'add', 'flow-test', '--name', 'Second', '--slug', 'second'],
-      projectRoot,
-    );
+    run(['phase', 'add', 'flow-test', '--name', 'First', '--slug', 'first'], projectRoot);
+    run(['phase', 'add', 'flow-test', '--name', 'Second', '--slug', 'second'], projectRoot);
 
     const listOut = run(['phase', 'list', 'flow-test'], projectRoot);
     expect(listOut).toContain('first');

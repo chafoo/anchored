@@ -31,9 +31,12 @@ export const SCHEMA_VERSION = 2 as const;
 // shared primitives
 // ─────────────────────────────────────────────────────────────────────
 
-const KebabSlug = z.string().min(1).regex(/^[a-z][a-z0-9-]*$/, {
-  message: 'slug must be kebab-case (lower-case letters, digits, hyphens; starts with a letter)',
-});
+const KebabSlug = z
+  .string()
+  .min(1)
+  .regex(/^[a-z][a-z0-9-]*$/, {
+    message: 'slug must be kebab-case (lower-case letters, digits, hyphens; starts with a letter)',
+  });
 
 const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
   message: 'created must be ISO date YYYY-MM-DD',
@@ -57,48 +60,11 @@ const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
  * "update-mode" path — surface for user-driven scope changes mid-flight.
  * The shortcut `drafted → build` skips refinement (orchestrator warns).
  */
-export const TaskStatus = z.enum([
-  'plan',
-  'drafted',
-  'refined',
-  'build',
-  'wrap',
-  'done',
-]);
+export const TaskStatus = z.enum(['plan', 'drafted', 'refined', 'build', 'wrap', 'done']);
 export type TaskStatus = z.infer<typeof TaskStatus>;
 
-export const PhaseStatus = z.enum([
-  'pending',
-  'in-progress',
-  'done',
-  'blocked',
-  'deferred',
-]);
+export const PhaseStatus = z.enum(['pending', 'in-progress', 'done', 'blocked', 'deferred']);
 export type PhaseStatus = z.infer<typeof PhaseStatus>;
-
-/**
- * Autonomy level — governs how /impl-build handles emergent decisions
- * and failures. Set during /impl-refine (stage 0) or at the /impl-build
- * gate when refine was skipped. Idempotent — overridable at any time;
- * each set appends an audit entry to the plan-trail.
- *
- *   ask_all        — every open question goes to the user; failures
- *                    block immediately on first occurrence
- *   ask_high_only  — only high-priority questions go to user; AI
- *                    resolves low + medium; failures retry up to
- *                    `build.retry_limit` then block
- *   decide_all     — AI resolves every question and every failure;
- *                    phases that exhaust retry_limit get marked
- *                    blocked but the build continues with remaining
- *                    phases (vibe-coder hands-off mode)
- *
- * Priority taxonomy that pairs with this enum:
- *   low     — cosmetic / easily-tweakable (newest at top vs bottom?)
- *   medium  — affects UX/structure (whole-row click vs checkbox?)
- *   high    — affects product direction/scope (is delete in-scope?)
- */
-export const Autonomy = z.enum(['ask_all', 'ask_high_only', 'decide_all']);
-export type Autonomy = z.infer<typeof Autonomy>;
 
 // ─────────────────────────────────────────────────────────────────────
 // per-phase shape
@@ -135,8 +101,7 @@ const EvidenceItem = z
   .string()
   .min(1)
   .refine((s) => s.trim().length > 0 && s.trim() !== '—', {
-    message:
-      "evidence string cannot be whitespace-only or the legacy em-dash sentinel '—'",
+    message: "evidence string cannot be whitespace-only or the legacy em-dash sentinel '—'",
   });
 
 export const AcceptanceCriterion = z
@@ -146,11 +111,9 @@ export const AcceptanceCriterion = z
     evidence: z.array(EvidenceItem).min(1).optional(),
     failures: z.array(z.string().min(1)).min(1).optional(),
   })
-  .refine(
-    (ac) =>
-      ac.status !== 'done' || (ac.evidence !== undefined && ac.evidence.length > 0),
-    { message: "AC with status='done' must have non-empty evidence" },
-  );
+  .refine((ac) => ac.status !== 'done' || (ac.evidence !== undefined && ac.evidence.length > 0), {
+    message: "AC with status='done' must have non-empty evidence",
+  });
 export type AcceptanceCriterion = z.infer<typeof AcceptanceCriterion>;
 
 /**
@@ -201,15 +164,17 @@ export const QuestionOrigin = z.enum([
   'rules-check',
   'task-validate',
   'code-validate',
+  'stop-check',
   'user',
 ]);
 export type QuestionOrigin = z.infer<typeof QuestionOrigin>;
 
 /**
  * Who resolved the question. `user` answers come from interactive
- * Q&A; `ai` answers are autonomous decisions the orchestrator made
- * under the current autonomy level. `ai` resolutions MUST include
- * `reasoning` — the audit trail for the /impl-wrap reviewer.
+ * Q&A; `ai` answers are autonomous decisions the orchestrator made —
+ * either a refine-walk question the chosen walk-style delegated to the
+ * AI, or a build-time decision stop-check let proceed. `ai` resolutions
+ * MUST include `reasoning` — the audit trail for the /impl-wrap reviewer.
  */
 export const QuestionSource = z.enum(['user', 'ai']);
 export type QuestionSource = z.infer<typeof QuestionSource>;
@@ -257,11 +222,7 @@ export const Question = z
   .refine(
     (q) => {
       if (q.status === 'resolved') {
-        return (
-          q.answer !== undefined &&
-          q.source !== undefined &&
-          q.resolved_at !== undefined
-        );
+        return q.answer !== undefined && q.source !== undefined && q.resolved_at !== undefined;
       }
       // status === 'open' — resolution fields must all be absent
       return (
@@ -276,12 +237,9 @@ export const Question = z
         "question state mismatch: status='resolved' requires answer + source + resolved_at; status='open' must not carry any of those",
     },
   )
-  .refine(
-    (q) => q.source !== 'ai' || (q.reasoning !== undefined && q.reasoning.length > 0),
-    {
-      message: "question with source='ai' must include non-empty reasoning",
-    },
-  );
+  .refine((q) => q.source !== 'ai' || (q.reasoning !== undefined && q.reasoning.length > 0), {
+    message: "question with source='ai' must include non-empty reasoning",
+  });
 export type Question = z.infer<typeof Question>;
 
 // ─────────────────────────────────────────────────────────────────────
@@ -357,13 +315,6 @@ export const TaskFile = z
     }),
     customSections: z.record(z.string(), z.string()).optional(),
     /**
-     * Set by `/impl-refine` stage 0 or `/impl-build` skip-refine gate.
-     * Idempotent — overridable at any time; each set appends an audit
-     * line to `context.plan`. Optional on the wire so V0.2 task-files
-     * created before autonomy existed still parse cleanly.
-     */
-    autonomy: Autonomy.optional(),
-    /**
      * Structured Q&A items. Replaces the V0.2 free-text `→ ?` markers
      * embedded in `context.plan`. Optional on the wire (empty array
      * absent in YAML output when no questions exist).
@@ -423,11 +374,7 @@ export function parseTaskFile(raw: unknown): TaskFile {
  */
 export function safeParseTaskFile(
   raw: unknown,
-):
-  | { ok: true; value: TaskFile }
-  | { ok: false; error: z.ZodError } {
+): { ok: true; value: TaskFile } | { ok: false; error: z.ZodError } {
   const result = TaskFile.safeParse(raw);
-  return result.success
-    ? { ok: true, value: result.data }
-    : { ok: false, error: result.error };
+  return result.success ? { ok: true, value: result.data } : { ok: false, error: result.error };
 }

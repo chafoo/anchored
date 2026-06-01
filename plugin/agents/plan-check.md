@@ -189,7 +189,7 @@ Verdict logic:
   Plan matches current code; nothing to refine.
 - **`needs-attention`** — at least one auto-fix OR one question.
   /impl-refine stage 3 will walk the open questions under the
-  user's chosen autonomy level.
+  user's chosen ephemeral walk-style.
 
 Examples of `partner_voice_summary`:
 

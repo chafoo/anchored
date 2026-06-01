@@ -86,14 +86,51 @@ freely (non-MCP, works in subagents). See
 
      If the user picks **Skip refinement**: call
      `mcp__task__set_task_status(project_root, slug, "build")` to
-     transition `drafted → build`, then proceed with the pipeline
-     loop.
+     transition `drafted → build`. This flips ONLY the status — it
+     sets NO other field. Then run the **pre-build walk** (below) to
+     clear any still-open questions before the long autonomous run.
 
    - `status: plan` → refuse: "Task `<slug>` isn't ready for build
      yet (status: plan). Run `/impl-plan` first."
    - `status: wrap` → refuse: "Task `<slug>` is past build stage
      (status: wrap). Run `/impl-wrap` to finalize."
    - `status: done` → refuse: "Task `<slug>` is already done."
+
+## Pre-build walk (clear still-open questions before the run)
+
+Whether entry was the normal `refined` path or the `drafted`
+skip-refine shortcut, there may be open questions left on the task
+(the skip-refine path never ran refine's Q&A walk; a `refined` task
+should have none, but verify defensively).
+
+**Detection is programmatic — no AI judgment.** Just list the
+questions by status:
+
+```
+const open = await mcp__task__question_list(
+  project_root, slug,
+  filter: { status: 'open' }
+)
+```
+
+- **If `open.length === 0`** (the normal `refined` case): skip this
+  step silently and go straight to the pipeline loop.
+- **If `open.length > 0`** (typical on the skip-refine path): run the
+  SAME ephemeral walk that `/impl-refine` Stage 0 + Stage 3 run —
+  ask the user a one-shot walk-style choice (AI-all / high-together /
+  all-together), then walk each open question in priority order,
+  resolving via `mcp__task__question_resolve` (`source='user'` when the
+  user answers, `source='ai'` + reasoning when the chosen walk-style
+  delegates to the AI). The walk-style is **ephemeral** — held
+  in-memory for this walk only, never persisted, no field written.
+
+  This clears the plan-stage ambiguities BEFORE the long run. Build
+  does NOT autonomously resolve these pre-build questions on its own —
+  they go through the walk, exactly like refine. (Build's OWN
+  autonomy is for EMERGENT build-time decisions only; see section 4.)
+
+After the walk leaves zero open questions, proceed to the pipeline
+loop.
 
 ## Pipeline loop
 
@@ -235,106 +272,147 @@ For each validator's return:
 Capture the verdicts + rejected_acs after applying so step 4's
 re-do loop reads the post-application state.
 
-### 4. Failures-driven re-do loop (autonomy-aware)
+### 4. Failures-driven re-do loop + autonomous emergent-decision handling
+
+The build runs **maximally autonomous** over EMERGENT build-time
+decisions. The USP is the long uninterrupted run: the orchestrator
+retries, decides, and documents on its own, and stops ONLY when an
+emergent decision matches a rule in `anchored.yml.build.stop` (the
+shipped default carries exactly one rule: *'a decision deviates from
+the plan'*). **Minimize stops.** Every stop costs the user an
+interruption; the whole point is to keep going and leave an
+audit-grade trail of what was decided and why.
 
 After task-validate + code-validate complete:
 
 1. Re-read the phase via `mcp__task__read(project_root, slug)`.
 2. Scan `phase.acceptance_criteria`; collect ACs whose `failures`
    field is present and non-empty.
-3. **Check for new mid-build questions.** task-validate +
-   code-validate MAY surface new questions during build (e.g. they
-   discovered an ambiguity in implementing the ACs that the plan
-   didn't anticipate). Mid-build questions are tagged `priority: high`
-   regardless of autonomy — implementation ambiguity is unexpected
-   by definition.
 
-   ```
-   const newQuestions = await mcp__task__question_list(
-     project_root, slug,
-     filter: { status: 'open' }
-   )
-   ```
+3. **Retry on failures (autonomous).** If failures are present, the
+   orchestrator retries on its own — no asking, no autonomy knob:
 
-   **If any new open questions exist**: halt the phase loop, walk
-   the questions with the user via `AskUserQuestion` (build-time
-   ambiguity always asks the user, even under `decide_all` — the
-   contract is "AI decides what the PLAN couldn't predict ahead of
-   time, not what task-validate caught mid-execution"). Resolve
-   each via `task__question_resolve` with `source='user'`. After
-   resolution, re-spawn implement for the phase. Loop back to
-   step 3 (validators rerun).
+   - `mcp__task__increment_retry(project_root, slug, phase.slug)`
+     → returns new `retry_count` as `N`.
+   - **If `N ≤ retry_limit`** (default 3): re-spawn implement with
+     RETRY_ATTEMPT = `N + 1`, re-run validators, loop back to step 1.
+   - **If `N > retry_limit`**: the retries are exhausted. Mark the
+     phase blocked (`set_phase_status('blocked')`), append a summary
+     note to `context.build → Implement` describing what was tried +
+     which ACs hit the wall, then call `next_phase` and continue. The
+     /impl-wrap reviewer surfaces blocked phases for human attention
+     later. (Retry-exhaustion is NOT a build.stop match — it's a
+     bounded mechanical limit, not an emergent decision; the run keeps
+     going on the remaining phases.)
 
-4. **If failures present**, read the task's autonomy level to
-   decide retry behavior:
+4. **Emergent build-time decisions → evaluate against `build.stop`,
+   then proceed-and-document OR stop.** During implementation the
+   worker (and the validators) reach points the plan didn't fully
+   nail down — which library, which error-handling shape, whether to
+   extend or replace an existing handler. These surface two ways:
 
-   ```
-   const file = await mcp__task__read(project_root, slug)
-   const autonomy = file.autonomy ?? 'ask_high_only'   // safe default
-   ```
+   - the implement worker **self-reports** a decision it made or is
+     about to make (its `build_notes` / blockers / a question it
+     flagged), AND
+   - the validators may add open questions
+     (`mcp__task__question_list(filter: { status: 'open' })`) when
+     they catch an ambiguity mid-execution.
 
-   Then branch:
+   For **each** such emergent decision, run the **double safety net**
+   before acting on it:
 
-   **a. `autonomy === 'ask_all'` — block on first failure**
+   1. **The `stop-check` evaluator** (`plugin/agents/stop-check.md`,
+      phase-3 agent). Spawn it with the pending decision + the global
+      `anchored.yml.build.stop` rules + the plan/phase context:
+      - PROJECT_ROOT, TASK_SLUG
+      - PHASE (slug, name, context, acceptance_criteria)
+      - PENDING_DECISION: { description, options?, worker_self_report? }
+      - STOP_RULES: `anchored.yml.build.stop`
+      - PLAN_CONTEXT: `context.plan` + the phase context
+      - USER_EXTENSION: `anchored.yml.build.stop_check.instructions`
+        prose (appended to the stop-check agent's default brief, may be
+        empty) — extra halt-vs-proceed judgment criteria, symmetric with
+        the implement / task-validate / code-validate reserved slots.
+        Distinct from `build.stop`, which is the rules array the
+        evaluator judges against.
 
-   No silent retry. The user wanted to be in the loop on every
-   decision; that includes failure recovery. Call
-   `set_phase_status('blocked')` and surface the failures + the
-   accumulated `failures[]` strings to the user via AskUserQuestion:
+      It is a **pure thinker** (Read/Glob/Grep, no MCP) and returns
+      `{ verdict: stop | proceed, matched_rule?, reasoning,
+      partner_voice_summary? }`. **Relay `partner_voice_summary`** to
+      the user in chat (the proceed/stop gist in human terms) — it is
+      communication, not routing, so `classifyStopVerdict` ignores it;
+      you surface it directly.
 
-   > "Phase {phase.name} ist in {N} ACs hängengeblieben. Soll ich
-   > nochmal mit den failure-notes ran, oder willst du erstmal
-   > selber gucken?"
-   >
-   > Options:
-   > - "Retry mit den failures als input" (resume the retry path)
-   > - "Ich gucke mir das erstmal an" (halt + exit; user can run
-   >   `/impl-build` again to resume after manual fix)
-   > - "Skip + continue mit nächster phase" (leave phase blocked,
-   >   call `next_phase`, continue)
+   2. **The worker's own self-report** is the second eye — and it is
+      **deterministic, not a judgment call**. When the implement worker
+      self-reported a plan-deviation for this decision, pass
+      `workerFlaggedDeviation: true` to `classifyStopVerdict` (below). A
+      worker-flagged deviation on a `proceed` verdict is then FORCED to
+      a stop (escalated under the synthetic rule `"worker self-reported
+      a plan-deviation (second-eye override)"`). You do not waive it —
+      favor the human, per stop-check's asymmetric-cost rule.
 
-   **b. `autonomy === 'ask_high_only'` — retry then block + ask**
+   Route the verdict through `classifyStopVerdict(verdict, {
+   workerFlaggedDeviation })` (`mcp/src/core/stop-check.ts`) — the
+   deterministic seam that maps it onto existing question infra:
 
-   Standard V0.2 behavior. Call
-   `mcp__task__increment_retry(project_root, slug, phase.slug)`
-   → returns new `retry_count` as `N`.
+   - **`proceed`** (and the worker did NOT flag a deviation) →
+     `classifyStopVerdict` yields a `question_resolve` action. The
+     decision is **documented autonomously**. First make sure the
+     decision is an open question to resolve against:
+     - a **validator-raised** ambiguity is already an open question —
+       use its `q.id` directly.
+     - a **worker-self-reported** decision (surfaced in `build_notes`,
+       not raised as a validator question) has NO id yet → first
+       `mcp__task__question_add(project_root, slug, { text: '<the
+       decision>', priority: 'high', origin: 'stop-check', phase:
+       phase.slug })` to mint one, and capture the returned id.
 
-   - **If `N > retry_limit`** (default 3): `set_phase_status('blocked')`,
-     ask the user (same AskUserQuestion as case a) what to do next.
-   - **If `N ≤ retry_limit`**: re-spawn implement with
-     RETRY_ATTEMPT = `N + 1`, re-run validators, loop back to step 3.
+     Then `mcp__task__question_resolve(project_root, slug, q.id, {
+     answer: '<the decision>', source: 'ai', reasoning: '<the
+     evaluator's reasoning, verbatim>' })`. This way **both** emergent
+     sources (validator-raised AND worker-self-reported) land in the
+     decisions log `/impl-wrap` reviews. The build keeps going. (The
+     non-empty reasoning satisfies the `source='ai'`-requires-reasoning
+     invariant in `ops/question.ts`.)
 
-   **c. `autonomy === 'decide_all'` — retry then mark blocked + continue**
+   - **`stop`** → `classifyStopVerdict` yields a `question_add` action
+     (priority `high`, origin `stop-check`). **Escalate, do not
+     auto-resolve:** `mcp__task__question_add(project_root, slug, {
+     text: 'Build halted by stop-rule "<matched_rule>": <reasoning>',
+     priority: 'high', origin: 'stop-check', phase: phase.slug })`,
+     then **halt** the phase loop and walk the open question(s) with
+     the user via `AskUserQuestion`. Resolve each with `source='user'`.
+     After the user weighs in, re-spawn implement and loop back to
+     step 1.
 
-   Vibe-coder hands-off mode. Same retry path as case b, but on
-   exhaustion the orchestrator does NOT ask the user — it marks
-   the phase blocked, logs the accumulated failures to
-   `context.build`, and continues to the next phase via
-   `next_phase`. The /impl-wrap reviewer surfaces the blocked
-   phases for human attention later.
+   The **mid-build ambiguity rule is the seed example** of this:
+   historically, any open question a validator raised mid-build was
+   treated as an automatic halt-and-ask. That's now just the *first*
+   case of the general rule — a validator-raised ambiguity is an
+   emergent decision the plan didn't predict; run it through
+   stop-check like any other. Under the shipped default rule, a
+   genuine plan-deviation stops; a within-plan call proceeds and is
+   documented.
 
-   Specifically:
-   - `mcp__task__increment_retry` → `N`
-   - **If `N > retry_limit`**: `set_phase_status('blocked')`, append
-     a summary note to `context.build → Implement` describing what
-     was tried + which ACs hit the wall, then call `next_phase`
-     and continue.
-   - **If `N ≤ retry_limit`**: re-spawn implement as usual.
+5. **If no failures present AND no emergent decision triggers a stop**
+   (all ACs accepted by both validators, every emergent call proceeded
+   + documented): continue to step 5 (phase outcome evaluation).
 
-5. **If no failures present** (all ACs accepted by both validators):
-   - Continue to step 5 (phase outcome evaluation).
+The orchestrator owns retry accounting + the stop-check routing. The
+agents (implement, task-validate, code-validate, stop-check) never
+call `increment_retry`, never resolve their own decisions, and never
+read any persisted autonomy field (there is none). They return
+structured output; the orchestrator applies the MCP consequence. Keep
+those decisions at the orchestrator layer.
 
-The orchestrator owns retry accounting + autonomy interpretation.
-The agents (implement, task-validate, code-validate) never call
-`increment_retry` themselves and never read `task.autonomy` — they
-operate the same regardless. Keep those decisions at the orchestrator
-layer.
-
-**Autonomy override mid-build.** If the user says during a Q&A walk
-or at a block-and-ask prompt "actually, switch to decide_all" (or
-similar), call `mcp__task__set_autonomy` with the new value before
-continuing. The op appends an override audit entry; subsequent
-failure-handling reads the new value.
+**Walk-style override at a stop.** When a stop escalates and you walk
+the question(s) with the user, the user may say "actually, just decide
+the rest yourself like that" — for the REMAINING questions in *that
+walk* you may resolve `source='ai'` with reasoning. This is an
+ephemeral, in-the-moment choice for the current walk only; nothing is
+persisted, and it does not change how the next emergent decision is
+evaluated (each still runs through stop-check).
 
 ### 5. Evaluate phase outcome
 

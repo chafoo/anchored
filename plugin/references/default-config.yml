@@ -24,10 +24,25 @@
 # build:
 #   retry_limit: 3       # max failures-driven implement re-spawns per phase before phase → blocked
 #   steps: []            # custom shell/tool steps run during /impl-build (default: implement)
+#   implement:
+#     instructions: ""   # prose appended to the implement-worker prompt — your methodology
+#                        # (e.g. "always TDD: red → green → refactor", "functional core / imperative shell")
 #   task_validate:
 #     instructions: ""   # prose appended to task-validate default prompt (extend-only; cannot disable)
 #   code_validate:
 #     instructions: ""   # prose appended to code-validate default prompt (extend-only; cannot disable)
+#   stop_check:
+#     instructions: ""   # prose appended to the stop-check evaluator's default brief — extra
+#                        # halt-vs-proceed judgment criteria (extend-only). Distinct from `stop`
+#                        # below: `stop` is the rules the evaluator judges; this tunes the judge.
+#   # stop — GLOBAL stop-conditions for the autonomous build run.
+#   # A flat list of plain natural-language rules (one per element). The build
+#   # runs autonomously and halts back to you on the FIRST matching condition.
+#   #   - empty list / omitted  → fully autonomous: the build never self-halts.
+#   #   - non-empty             → stops when any rule matches.
+#   # The goal is to MINIMIZE stops; the shipped default is a single rule:
+#   stop:
+#     - 'a decision deviates from the plan'
 
 # ─── wrap — /impl-wrap pipeline ──────────────────────────────────────
 # wrap:

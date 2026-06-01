@@ -9,7 +9,7 @@ const InputSchema = BaseSchema.extend({
   source: z
     .enum(['user', 'ai'])
     .describe(
-      "`user` = answer came from interactive Q&A; `ai` = autonomous decision under the current autonomy level. `ai` requires `reasoning`.",
+      '`user` = answer came from interactive Q&A; `ai` = autonomous decision made by the agent. `ai` requires `reasoning`.',
     ),
   reasoning: z
     .string()

@@ -1,5 +1,5 @@
 /**
- * task.question.* + task.autonomy.* op tests — V0.3 structured Q&A.
+ * task.question.* op tests — V0.3 structured Q&A.
  *
  * Covers:
  *   - question.add: sequential id assignment, initial open state,
@@ -9,19 +9,18 @@
  *   - question.resolve: idempotent, validates source/reasoning
  *     invariants, throws QuestionNotFound + InvalidQuestionResolution
  *   - question.retag: changes priority without touching other fields
- *   - autonomy.set: idempotent + appends audit trail entry to plan
  *   - schema invariants: status='resolved' requires answer + source
  *     + resolved_at; source='ai' requires reasoning; duplicate ids
  *     rejected at parse time
+ *   - legacy migration: an on-disk task-file carrying the removed
+ *     `autonomy` field still loads (key stripped before strict parse)
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
 import { createOps } from '../../src/core/factory.js';
-import {
-  QuestionNotFound,
-  InvalidQuestionResolution,
-} from '../../src/core/errors.js';
+import { QuestionNotFound, InvalidQuestionResolution } from '../../src/core/errors.js';
 import { parseTaskFile } from '../../src/schema/task-file.js';
+import { parseTaskFileYAML } from '../../src/parser/parse.js';
 import { createFixture, type Fixture } from './_fixture.js';
 
 let fixture: Fixture | null = null;
@@ -108,7 +107,11 @@ describe('task.question.list', () => {
   it('filters by status (open vs resolved)', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    const { id: id1 } = await ops.task.question.add('sample', { text: 'a', priority: 'medium', origin: 'plan-agent' });
+    const { id: id1 } = await ops.task.question.add('sample', {
+      text: 'a',
+      priority: 'medium',
+      origin: 'plan-agent',
+    });
     await ops.task.question.add('sample', { text: 'b', priority: 'medium', origin: 'plan-agent' });
     await ops.task.question.resolve('sample', id1, { answer: 'option A', source: 'user' });
 
@@ -122,8 +125,18 @@ describe('task.question.list', () => {
   it('filters by phase', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    await ops.task.question.add('sample', { text: 'a', priority: 'medium', origin: 'plan-agent', phase: 'first' });
-    await ops.task.question.add('sample', { text: 'b', priority: 'medium', origin: 'plan-agent', phase: 'second' });
+    await ops.task.question.add('sample', {
+      text: 'a',
+      priority: 'medium',
+      origin: 'plan-agent',
+      phase: 'first',
+    });
+    await ops.task.question.add('sample', {
+      text: 'b',
+      priority: 'medium',
+      origin: 'plan-agent',
+      phase: 'second',
+    });
     await ops.task.question.add('sample', { text: 'c', priority: 'medium', origin: 'plan-agent' });
     const firstPhase = await ops.task.question.list('sample', { phase: 'first' });
     expect(firstPhase).toHaveLength(1);
@@ -297,30 +310,8 @@ describe('task.question.retag', () => {
   it('throws QuestionNotFound for an unknown id', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    await expect(
-      ops.task.question.retag('sample', 'q99', 'high'),
-    ).rejects.toBeInstanceOf(QuestionNotFound);
-  });
-});
-
-describe('task.autonomy.set', () => {
-  it('sets initial autonomy + appends audit entry to context.plan', async () => {
-    fixture = await createFixture();
-    const ops = createOps(fixture.config, fixture.root);
-    const file = await ops.task.autonomy.set('sample', 'ask_high_only');
-    expect(file.autonomy).toBe('ask_high_only');
-    expect(file.context.plan).toContain('autonomy set to `ask_high_only`');
-  });
-
-  it('is idempotent — override appends a distinct audit entry', async () => {
-    fixture = await createFixture();
-    const ops = createOps(fixture.config, fixture.root);
-    await ops.task.autonomy.set('sample', 'ask_all');
-    const file = await ops.task.autonomy.set('sample', 'decide_all');
-    expect(file.autonomy).toBe('decide_all');
-    expect(file.context.plan).toContain('autonomy set to `ask_all`');
-    expect(file.context.plan).toContain(
-      'autonomy override: `ask_all` → `decide_all`',
+    await expect(ops.task.question.retag('sample', 'q99', 'high')).rejects.toBeInstanceOf(
+      QuestionNotFound,
     );
   });
 });
@@ -413,8 +404,22 @@ describe('schema invariants', () => {
         context: { intro: 'i' },
         phases: [],
         questions: [
-          { id: 'q1', text: 'a', priority: 'low', origin: 'plan-agent', status: 'open', created_at: '2026-05-27T12:00:00Z' },
-          { id: 'q1', text: 'b', priority: 'low', origin: 'plan-agent', status: 'open', created_at: '2026-05-27T12:00:00Z' },
+          {
+            id: 'q1',
+            text: 'a',
+            priority: 'low',
+            origin: 'plan-agent',
+            status: 'open',
+            created_at: '2026-05-27T12:00:00Z',
+          },
+          {
+            id: 'q1',
+            text: 'b',
+            priority: 'low',
+            origin: 'plan-agent',
+            status: 'open',
+            created_at: '2026-05-27T12:00:00Z',
+          },
         ],
       }),
     ).toThrow(/duplicate question id/);
@@ -431,13 +436,20 @@ describe('schema invariants', () => {
         context: { intro: 'i' },
         phases: [],
         questions: [
-          { id: 'question-1', text: 'a', priority: 'low', origin: 'plan-agent', status: 'open', created_at: '2026-05-27T12:00:00Z' },
+          {
+            id: 'question-1',
+            text: 'a',
+            priority: 'low',
+            origin: 'plan-agent',
+            status: 'open',
+            created_at: '2026-05-27T12:00:00Z',
+          },
         ],
       }),
     ).toThrow();
   });
 
-  it('accepts task-file with no autonomy and no questions field (V0.2 shape)', () => {
+  it('accepts task-file with no questions field (V0.2 shape)', () => {
     expect(() =>
       parseTaskFile({
         schema_version: 2,
@@ -450,36 +462,33 @@ describe('schema invariants', () => {
       }),
     ).not.toThrow();
   });
+});
 
-  it('accepts task-file with autonomy set to each enum value', () => {
-    for (const value of ['ask_all', 'ask_high_only', 'decide_all'] as const) {
-      expect(() =>
-        parseTaskFile({
-          schema_version: 2,
-          slug: 'a',
-          status: 'plan',
-          created: '2026-05-27',
-          title: 't',
-          context: { intro: 'i' },
-          phases: [],
-          autonomy: value,
-        }),
-      ).not.toThrow();
-    }
+describe('legacy autonomy-field migration', () => {
+  // The persisted `autonomy` field was removed in V0.3. The on-disk
+  // loader strips a stray top-level `autonomy` key before the strict
+  // schema runs, so existing artifacts (e.g. dynamic-workflow-executor.yml
+  // carrying `autonomy: ask_all`) keep loading and the field drops away.
+  const legacyYaml = [
+    'schema_version: 2',
+    'slug: legacy-autonomy',
+    'status: plan',
+    'created: 2026-05-27',
+    'title: Legacy file with autonomy',
+    'context:',
+    '  intro: had an autonomy field',
+    'phases: []',
+    'autonomy: ask_all',
+    '',
+  ].join('\n');
+
+  it('loads an on-disk task-file carrying a legacy `autonomy: ask_all` key', () => {
+    expect(() => parseTaskFileYAML(legacyYaml)).not.toThrow();
   });
 
-  it('rejects invalid autonomy enum value', () => {
-    expect(() =>
-      parseTaskFile({
-        schema_version: 2,
-        slug: 'a',
-        status: 'plan',
-        created: '2026-05-27',
-        title: 't',
-        context: { intro: 'i' },
-        phases: [],
-        autonomy: 'full', // old name we rejected
-      }),
-    ).toThrow();
+  it('drops the legacy `autonomy` key from the parsed structure', () => {
+    const parsed = parseTaskFileYAML(legacyYaml);
+    expect('autonomy' in parsed).toBe(false);
+    expect((parsed as Record<string, unknown>).autonomy).toBeUndefined();
   });
 });

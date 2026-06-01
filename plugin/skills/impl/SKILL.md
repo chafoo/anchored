@@ -24,7 +24,7 @@ Skill-specific:
 |---|---|
 | "Sub-skill /impl-plan exited with status: drafted; advancing to /impl-refine" | "Plan steht — sechs fragen offen. Jetzt der refine-pass, wir gehen die zusammen durch." |
 | "Composition halted: state-gate refused advance (status: drafted, expected: refined)" | "Refine hat noch offene fragen — beantworte die, dann mach ich weiter." |
-| "Reading task.autonomy=decide_all from refined state, passing to /impl-build" | (silent — autonomy is internal flow control, user already declared at refine-time) |
+| "Build halted by stop-check: matched_rule='a decision deviates from the plan'" | "Eine build-entscheidung weicht vom plan ab — kurz zu dir zurück, dann läufts weiter." |
 | "Autopilot complete: 4 stages executed, final state=done" | "Durch — plan, refine, build, wrap alle sauber. Status: done." |
 
 You are the autopilot orchestrator. The user typed
@@ -91,21 +91,23 @@ If status is now `drafted`:
 
 - Invoke `/impl-refine`.
 - Inputs: the task slug.
-- **V0.3 flow:** stage 0 asks the user for autonomy level
-  (`ask_all` / `ask_high_only` / `decide_all`), stages 1+2 run
-  plan-check + rules-check (which may surface additional questions),
-  stage 3 walks every open question priority-aware (user vs AI
-  decides based on autonomy), stage 4 runs custom user steps from
-  `anchored.yml.refine.steps`, stage 5 flips to `refined`.
+- **Flow:** stage 0 asks the user for an **ephemeral walk-style**
+  (AI-all / high-together / all-together — how *this* Q&A walk runs;
+  never persisted), stages 1+2 run plan-check + rules-check (which may
+  surface additional questions), stage 3 walks every open question
+  priority-aware (user vs AI decides based on the chosen walk-style),
+  stage 4 runs custom user steps from `anchored.yml.refine.steps`,
+  stage 5 flips to `refined`.
 - After it completes, the task-file should be `status: refined`
-  with all questions resolved and `task.autonomy` set.
+  with all questions resolved. (Nothing about the walk-style is
+  stored — it lived only for that walk.)
 
 **If refine fails or user aborts a Q&A:**
 - Don't advance. Status stays at `drafted`; auto-fixes already
   applied + questions already resolved are preserved (per-op
   atomicity). Surface the abort, exit. Re-running `/impl` picks up
-  from refine — Stage 0 re-asks autonomy so the user can flip if
-  the initial pick was wrong.
+  from refine — Stage 0 re-asks the walk-style so the user can pick
+  differently if the initial choice was wrong.
 
 ### 3. Build stage
 
@@ -113,13 +115,16 @@ If status is now `refined`:
 
 - Invoke `/impl-build`.
 - Inputs: the task slug.
-- **V0.3 flow:** /impl-build reads `task.autonomy` set during refine
-  and uses it to drive failure-handling — first failure blocks +
-  asks on `ask_all`, retries up to `retry_limit` then blocks + asks
-  on `ask_high_only`, or retries then marks blocked + continues
-  (vibe-mode) on `decide_all`. Mid-build questions from
-  task-validate / code-validate always block the phase regardless
-  of autonomy.
+- **Flow:** /impl-build first clears any still-open questions with an
+  ephemeral pre-build walk (on the skip-refine path; a `refined` task
+  has none), then runs **maximally autonomous** over the phases. It
+  retries failures on its own (up to `anchored.yml.build.retry_limit`,
+  then marks the phase blocked + continues). For EMERGENT build-time
+  decisions the plan didn't predict, it evaluates each against
+  `anchored.yml.build.stop` via the stop-check evaluator: a within-plan
+  call **proceeds + is documented** (`source='ai'` resolution with
+  reasoning), a plan-deviating call **stops** and escalates to the
+  user. The goal is the long uninterrupted run — stops are minimized.
 - It will loop through phases; each may take time (and tool calls).
 - After it completes, the task-file should be `status: wrap`.
 
@@ -144,8 +149,8 @@ Final user message:
 Autopilot complete on `<slug>`.
 
   Plan:   <N phases planned, M ACs total, Q questions surfaced>
-  Refine: <autonomy: ask_high_only / plan-check: P fixes / rules-check: Q fixes / X user-answered, Y AI-decided>
-  Build:  <S done / T blocked / U deferred>
+  Refine: <walk-style: high-together / plan-check: P fixes / rules-check: Q fixes / X user-answered, Y AI-decided>
+  Build:  <S done / T blocked / U deferred / V autonomous decisions documented>
   Wrap:   <summary highlights from ### Wrap>
 
 Status: done. See `.claude/tasks/<slug>.yml` for the full audit trail.
@@ -154,8 +159,10 @@ Status: done. See `.claude/tasks/<slug>.yml` for the full audit trail.
 The refine line surfaces the gate outcomes the user might otherwise
 miss — plan-check + rules-check auto-fix counts capture how much
 drift the refine stage caught, the user-vs-AI split shows how much
-of the Q&A walk was autonomous, custom-step count captures what
-their own pipeline added.
+of the Q&A walk the chosen walk-style delegated, custom-step count
+captures what their own pipeline added. The build line's
+"autonomous decisions documented" count is how many emergent calls
+stop-check let proceed (all reviewable at wrap).
 
 ## Halting behavior
 

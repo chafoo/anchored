@@ -29,8 +29,9 @@ return structured output that the SKILL parses and applies.
 | /impl-plan     | `task__create`, `append_plan`, `add_phase` (×N), `question_add` (×M), `set_task_status` (`plan→drafted`) | plan-agent's structured return (Mode A)            |
 | /impl-plan     | `add_phase`, `remove_phase`, `move_phase`, `set_phase_name`, `set_phase_context`, `add_ac`, `remove_ac`, `set_ac_text` | plan-agent's diff[] return (Mode B restructure) |
 | /impl-refine   | `set_phase_rules`, `set_phase_context`, `append_plan`, `question_add`, `question_retag`, `append_build_section` | plan-check + rules-check agent returns           |
-| /impl-refine   | `set_autonomy`, `question_resolve` (×N), `set_task_status` (`drafted→refined`)              | stage 0 user input + stage 3 Q&A walk + stage 5 transition  |
+| /impl-refine   | `question_resolve` (×N), `set_task_status` (`drafted→refined`)                              | stage 3 Q&A walk (under the ephemeral walk-style) + stage 5 transition |
 | /impl-build    | `set_phase_status` (`pending→in-progress` / `→done` / `→blocked`), `set_evidence`, `set_field`, `set_failures`, `append_build_section`, `increment_retry`, `set_task_status` (`build→wrap`) | implement + task-validate + code-validate returns + retry-loop accounting |
+| /impl-build    | `question_resolve` (`source='ai'`, autonomous decision) OR `question_add` (`origin='stop-check'`, halt) | stop-check verdict routed through `classifyStopVerdict` (build-time stop-conditions; see below) |
 | /impl-wrap     | `append_wrap_section` (review findings), `set_wrap_intro` (TL;DR), `set_task_status` (`wrap→done`) | /review skill output + summarize step              |
 
 Read-only paths (`task__read`, `task__list_phases`,
@@ -38,6 +39,49 @@ Read-only paths (`task__read`, `task__list_phases`,
 `task__question_list`) are open to every actor — they never mutate.
 SKILLs typically pre-read task-file content and pass it to agents
 in their input (agents have no direct MCP access).
+
+## Build-time stop-conditions (the decision evaluator)
+
+During an autonomous build run, the implement worker reaches points
+where it must make a decision the plan didn't fully nail down. The build
+is configured to run autonomously and halt ONLY on conditions the user
+listed in `anchored.yml.build.stop` (a global natural-language array;
+shipped default: exactly one rule, `'a decision deviates from the
+plan'`). The mechanism that decides halt-vs-proceed is a DOUBLE safety
+net:
+
+1. **The `stop-check` mini-agent** (`plugin/agents/stop-check.md`) — a
+   pure-thinker that, given ONE pending build-time decision + the
+   `build.stop` rules + plan/phase context, returns
+   `{verdict: 'stop'|'proceed', matched_rule?, reasoning}`. Build-time
+   ONLY — it never judges pre-build plan questions.
+2. **The implement worker's own self-report** — implement flags
+   plan-deviations it notices while working. Two independent eyes on
+   every autonomous call.
+
+`anchored.yml.build.stop_check.instructions` enriches the evaluator —
+prose appended to its default brief (extend-only, may be empty),
+symmetric with the implement / task_validate / code_validate reserved
+slots. Distinct from `build.stop`, which is the rules array the
+evaluator judges against.
+
+The agent CANNOT call MCP (bug #13605). The /impl-build SKILL routes the
+verdict through the deterministic seam
+`classifyStopVerdict` (`mcp/src/core/stop-check.ts`) and applies the
+single resulting task-op:
+
+| verdict   | routed op                                                          | meaning |
+|-----------|--------------------------------------------------------------------|---------|
+| `proceed` | `question_resolve(source='ai', reasoning=<verdict.reasoning>)`     | The decision matched NO stop-rule → recorded autonomously in the decisions log /impl-wrap reviews. Non-empty reasoning satisfies the `source='ai'`-requires-reasoning invariant (`ops/question.ts` resolve guard, lines ~199-207). |
+| `stop`    | `question_add(priority='high', origin='stop-check', …)`            | The decision matched at least one stop-rule → a NEW open question for the user, citing `matched_rule` + reasoning. NOT auto-resolved; the build halts and hands control back. |
+
+`classifyStopVerdict` validates the verdict's own invariants (proceed
+must carry reasoning; stop must carry a `matched_rule`) so a malformed
+agent return fails fast at the seam rather than producing a
+silently-wrong task-op. The Phase-5 dynamic-workflow-executor's
+phase-end gate consumes the SAME seam — one contract, two callers. The
+detailed SKILL wiring (when/how /impl-build invokes the agent per
+decision point) lives in `plugin/skills/impl-build/SKILL.md`.
 
 ## Failures-driven re-do loop
 

@@ -7,6 +7,34 @@ documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **Build autonomy reworked from persisted levels to ephemeral
+  walk-style + global stop-conditions.** The persisted `task.autonomy`
+  field (`ask_all` / `ask_high_only` / `decide_all`) is gone. In its
+  place:
+  - `/impl-refine` Stage 0 now picks an **ephemeral walk-style**
+    (AI-all / high-together / all-together) that governs only that
+    one Q&A walk — it is never written to the task-file. `/impl-build`
+    runs the same ephemeral walk to clear any still-open questions
+    before its run (open-question detection is programmatic).
+  - `/impl-build` runs **maximally autonomous** over emergent
+    build-time decisions: retry → decide → document via
+    `question_resolve(source='ai', reasoning)`. It halts ONLY when an
+    emergent decision matches a rule in `anchored.yml.build.stop`
+    (shipped default: a single rule, `'a decision deviates from the
+    plan'`), judged by the new `stop-check` evaluator + the implement
+    worker's own self-report (double safety net). The old three-way
+    autonomy branch in the failures loop is removed.
+  - `/impl-wrap` now surfaces every `source='ai'` resolution with its
+    reasoning, grouped by phase, as a decisions review.
+- The MCP tool surface dropped the `task.autonomy` op — **37 typed
+  tools** now (was 38). Old on-disk task-files carrying a top-level
+  `autonomy:` key still load: the parser silently drops the legacy
+  field.
+
 ## [0.1.3] — 2026-05-28
 
 ### Fixed

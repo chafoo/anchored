@@ -1,5 +1,5 @@
 /**
- * Tool registry — assembles the 38 MCP tools anchored exposes.
+ * Tool registry — assembles the 37 MCP tools anchored exposes.
  *
  * Each tool is { name, description, inputSchema (JSON Schema), handler }.
  * server.ts iterates ALL_TOOLS to register handlers with the MCP SDK.
@@ -10,12 +10,11 @@
 
 import { type AnchoredTool } from './_shared.js';
 
-// task-lifecycle (5 — adds set_autonomy in V0.3)
+// task-lifecycle (4)
 import { createTool } from './create.js';
 import { readTool } from './read.js';
 import { setTaskStatusTool } from './set-task-status.js';
 import { setTitleTool } from './set-title.js';
-import { setAutonomyTool } from './set-autonomy.js';
 
 // question — V0.3 structured Q&A (4)
 import { questionAddTool } from './question-add.js';
@@ -68,7 +67,6 @@ export const ALL_TOOLS: AnchoredTool[] = [
   readTool,
   setTaskStatusTool,
   setTitleTool,
-  setAutonomyTool,
   // question (V0.3 structured Q&A)
   questionAddTool,
   questionListTool,

@@ -23,7 +23,6 @@ import type {
   PhaseStatus,
   TaskStatus,
   PhaseRule,
-  Autonomy,
   Question,
   QuestionPriority,
 } from '../schema/task-file.js';
@@ -33,7 +32,6 @@ import {
   makeTaskRead,
   makeTaskStatusSet,
   makeTaskTitleSet,
-  makeTaskAutonomySet,
   type TaskCreateInput,
 } from './ops/task.js';
 import {
@@ -80,11 +78,7 @@ import {
   makeAcStatusSet,
   type AcInit,
 } from './ops/ac.js';
-import {
-  makeFieldList,
-  makeFieldSet,
-  makeFieldGet,
-} from './ops/field.js';
+import { makeFieldList, makeFieldSet, makeFieldGet } from './ops/field.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // re-export init shapes for callers
@@ -110,24 +104,12 @@ export interface TaskOps {
     read(slug: string): Promise<TaskFile>;
     status: { set(slug: string, status: TaskStatus): Promise<TaskFile> };
     title: { set(slug: string, title: string): Promise<TaskFile> };
-    autonomy: { set(slug: string, autonomy: Autonomy): Promise<TaskFile> };
 
     question: {
-      add(
-        slug: string,
-        input: QuestionAddInput,
-      ): Promise<{ id: string; file: TaskFile }>;
+      add(slug: string, input: QuestionAddInput): Promise<{ id: string; file: TaskFile }>;
       list(slug: string, filter?: QuestionListFilter): Promise<Question[]>;
-      resolve(
-        slug: string,
-        id: string,
-        input: QuestionResolveInput,
-      ): Promise<TaskFile>;
-      retag(
-        slug: string,
-        id: string,
-        priority: QuestionPriority,
-      ): Promise<TaskFile>;
+      resolve(slug: string, id: string, input: QuestionResolveInput): Promise<TaskFile>;
+      retag(slug: string, id: string, priority: QuestionPriority): Promise<TaskFile>;
     };
 
     context: {
@@ -135,11 +117,7 @@ export interface TaskOps {
       plan: {
         append(slug: string, content: string): Promise<TaskFile>;
         refinement: {
-          resolve(
-            slug: string,
-            q_index: number,
-            resolution: string,
-          ): Promise<TaskFile>;
+          resolve(slug: string, q_index: number, resolution: string): Promise<TaskFile>;
         };
       };
       build: {
@@ -158,64 +136,26 @@ export interface TaskOps {
     };
 
     phase: {
-      list(
-        slug: string,
-      ): Promise<{ name: string; slug: string; status: PhaseStatus }[]>;
+      list(slug: string): Promise<{ name: string; slug: string; status: PhaseStatus }[]>;
       next(slug: string): Promise<{ name: string; slug: string } | null>;
-      add(
-        slug: string,
-        init: PhaseInit,
-        position?: PhasePosition,
-      ): Promise<TaskFile>;
-      remove(
-        slug: string,
-        phase_slug: string,
-        opts?: { force?: boolean },
-      ): Promise<TaskFile>;
-      move(
-        slug: string,
-        phase_slug: string,
-        target: PhasePosition,
-      ): Promise<TaskFile>;
+      add(slug: string, init: PhaseInit, position?: PhasePosition): Promise<TaskFile>;
+      remove(slug: string, phase_slug: string, opts?: { force?: boolean }): Promise<TaskFile>;
+      move(slug: string, phase_slug: string, target: PhasePosition): Promise<TaskFile>;
 
       status: {
-        set(
-          slug: string,
-          phase_slug: string,
-          status: PhaseStatus,
-        ): Promise<TaskFile>;
+        set(slug: string, phase_slug: string, status: PhaseStatus): Promise<TaskFile>;
       };
       name: {
-        set(
-          slug: string,
-          phase_slug: string,
-          name: string,
-        ): Promise<TaskFile>;
+        set(slug: string, phase_slug: string, name: string): Promise<TaskFile>;
       };
       context: {
-        set(
-          slug: string,
-          phase_slug: string,
-          content: string,
-        ): Promise<TaskFile>;
+        set(slug: string, phase_slug: string, content: string): Promise<TaskFile>;
       };
 
       rules: {
-        set(
-          slug: string,
-          phase_slug: string,
-          rules: PhaseRule[],
-        ): Promise<TaskFile>;
-        add(
-          slug: string,
-          phase_slug: string,
-          rule: PhaseRule,
-        ): Promise<TaskFile>;
-        remove(
-          slug: string,
-          phase_slug: string,
-          idx: number,
-        ): Promise<TaskFile>;
+        set(slug: string, phase_slug: string, rules: PhaseRule[]): Promise<TaskFile>;
+        add(slug: string, phase_slug: string, rule: PhaseRule): Promise<TaskFile>;
+        remove(slug: string, phase_slug: string, idx: number): Promise<TaskFile>;
       };
 
       retry_count: {
@@ -223,74 +163,28 @@ export interface TaskOps {
       };
 
       ac: {
-        add(
-          slug: string,
-          phase_slug: string,
-          ac: AcInit,
-        ): Promise<TaskFile>;
-        remove(
-          slug: string,
-          phase_slug: string,
-          idx: number,
-        ): Promise<TaskFile>;
+        add(slug: string, phase_slug: string, ac: AcInit): Promise<TaskFile>;
+        remove(slug: string, phase_slug: string, idx: number): Promise<TaskFile>;
         text: {
-          set(
-            slug: string,
-            phase_slug: string,
-            idx: number,
-            text: string,
-          ): Promise<TaskFile>;
+          set(slug: string, phase_slug: string, idx: number, text: string): Promise<TaskFile>;
         };
         evidence: {
-          set(
-            slug: string,
-            phase_slug: string,
-            idx: number,
-            evidence: string[],
-          ): Promise<TaskFile>;
-          add(
-            slug: string,
-            phase_slug: string,
-            idx: number,
-            line: string,
-          ): Promise<TaskFile>;
+          set(slug: string, phase_slug: string, idx: number, evidence: string[]): Promise<TaskFile>;
+          add(slug: string, phase_slug: string, idx: number, line: string): Promise<TaskFile>;
         };
         failures: {
-          set(
-            slug: string,
-            phase_slug: string,
-            idx: number,
-            failures: string[],
-          ): Promise<TaskFile>;
-          clear(
-            slug: string,
-            phase_slug: string,
-            idx: number,
-          ): Promise<TaskFile>;
+          set(slug: string, phase_slug: string, idx: number, failures: string[]): Promise<TaskFile>;
+          clear(slug: string, phase_slug: string, idx: number): Promise<TaskFile>;
         };
         status: {
-          set(
-            slug: string,
-            phase_slug: string,
-            idx: number,
-            status: 'pending',
-          ): Promise<TaskFile>;
+          set(slug: string, phase_slug: string, idx: number, status: 'pending'): Promise<TaskFile>;
         };
       };
 
       field: {
         list(): { name: string; type: string }[];
-        set(
-          slug: string,
-          phase_slug: string,
-          name: string,
-          value: unknown,
-        ): Promise<TaskFile>;
-        get(
-          slug: string,
-          phase_slug: string,
-          name: string,
-        ): Promise<unknown>;
+        set(slug: string, phase_slug: string, name: string, value: unknown): Promise<TaskFile>;
+        get(slug: string, phase_slug: string, name: string): Promise<unknown>;
       };
     };
   };
@@ -310,7 +204,6 @@ export function createOps(config: AnchoredYml, root: string): TaskOps {
       read: makeTaskRead(deps),
       status: { set: makeTaskStatusSet(deps) },
       title: { set: makeTaskTitleSet(deps) },
-      autonomy: { set: makeTaskAutonomySet(deps) },
 
       question: {
         add: makeQuestionAdd(deps),

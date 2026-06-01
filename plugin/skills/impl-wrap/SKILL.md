@@ -96,6 +96,22 @@ Read everything from the task-file via `mcp__task__read`:
 - AC counts: how many ACs are `status: 'done'` (with evidence) vs
   still `pending` (no evidence) — terminal-state phases may have
   pending ACs if blocked / deferred
+- **All `source='ai'` resolved questions** — the autonomous decisions
+  the run made on its own. Pull them programmatically:
+
+  ```
+  const decisions = (await mcp__task__question_list(
+    project_root, slug,
+    filter: { status: 'resolved' }
+  )).filter(q => q.source === 'ai')
+  ```
+
+  Each carries `answer` + `reasoning` (the `source='ai'` invariant
+  guarantees non-empty reasoning) + an optional `phase`. These are
+  every call the AI made without asking — both refine-time delegated
+  Q&A and build-time emergent decisions that stop-check let proceed.
+  The user never saw most of them in the moment; wrap is where they
+  get the review.
 
 Compose a TL;DR. Suggested structure:
 
@@ -105,6 +121,16 @@ Compose a TL;DR. Suggested structure:
 **Shipped**: N phases done (out of M planned).
 **Blocked/Deferred**: <list with one-line reason each>.
 **ACs with evidence**: X of Y (Z% honest completion).
+
+**Autonomous decisions (review these)**: K decisions the AI made on
+its own, grouped by phase. For each: the call + the one-line why.
+
+  <phase name or "plan/refine" for phase-less decisions>
+  - <answer> — <reasoning>
+  - <answer> — <reasoning>
+
+  <next phase>
+  - <answer> — <reasoning>
 
 **Notable findings during build**:
 - <task-validate finding worth highlighting>
@@ -117,6 +143,16 @@ Compose a TL;DR. Suggested structure:
 compares to the original plan; were there pivots, scope adjustments,
 discoveries>.
 ```
+
+**Grouping the decisions.** Bucket the `source='ai'` questions by
+their `phase` field. Decisions with no `phase` (refine-stage Q&A the
+plan-agent surfaced) go under a "plan / refine" heading first; then
+one heading per phase in declaration order, each listing that phase's
+autonomous decisions with the reasoning verbatim. If there are zero
+`source='ai'` decisions (the user answered everything, full
+all-together walk + no build-time deviations let through), say so
+explicitly — "Keine autonomen entscheidungen — du hast alles selbst
+abgesegnet." — rather than dropping the section.
 
 Write this directly into `context.wrap.intro` via
 `mcp__task__set_wrap_intro(project_root, slug, content)` — the free-
