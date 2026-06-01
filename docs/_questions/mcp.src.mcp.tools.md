@@ -1,0 +1,6 @@
+# Offene Fragen — mcp/src/mcp/tools
+
+| Frage | Vorschlag | Entscheidung | Status |
+|---|---|---|---|
+| **`add_evidence`-Kontrakt: Doku vs. Code** — *Die Tool-Beschreibung sagt, status flippe nur auf `'done'`, „wenn es pending war"; `makeAcEvidenceAdd` in `core/ops/ac.ts` setzt `ac.status = 'done'` jedoch **unbedingt**.* | Entweder die Beschreibung korrigieren (setzt unbedingt auf `'done'`) **oder** im Op ein `if (ac.status === 'pending')`-Guard ergänzen. | Beschreibung + Doc-Kommentar korrigiert (`ac.ts:157`, `add-evidence.ts:13`): setzt `'done'` **unbedingt** — Evidence ist der Beweis. Doku angeglichen ([tools.md](../mcp/src/mcp/tools/tools.md), [ac-ops.md](../mcp/src/core/ops/ac-ops.md)). | entschieden |
+| **`withOps` lädt Config bei jedem Call neu** — *Kommentar begründet das als „cheap". War ein Per-Session-Cache bewusst verworfen (z. B. um Hot-Reload von `anchored.yml` mid-session zu erlauben)?* | Klären, ob mid-session-Hot-Reload gewünschtes Verhalten ist: falls ja, dokumentieren; falls nein, Caching erwägen. | Code-Kommentar bestätigt: bewusst — „field declarations stay in sync if anchored.yml changes during a session". Dokumentiert in [tools.md](../mcp/src/mcp/tools/tools.md). | entschieden |
