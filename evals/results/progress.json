@@ -1,0 +1,12 @@
+{
+  "suite": "anchored-lifecycle-skills",
+  "started_head": "e91b293",
+  "next_order": 5,
+  "slugs": { "A": "todo-filter-bar" },
+  "results": [
+    { "order": 1, "id": "1-plan-filter", "skill": "impl-plan", "verdict": "pass", "passed_count": 7, "failed_count": 0, "notes": "3 phases / 12 ACs / 7 open Qs. Core-dependency surfaced as 2 high Qs. FINDING: rules agent whiffed (missed rules under underscore dirs)." },
+    { "order": 2, "id": "2-refine-filter", "skill": "impl-refine", "verdict": "pass", "passed_count": 6, "failed_count": 0, "notes": "drafted→refined, 9 resolved (AI-all). rules-check caught real coverage gap + ROOT-CAUSED the eval-1 whiff (Glob **/*.md skips underscore dirs). plan-check added 2 cross-task integration Qs." },
+    { "order": 3, "id": "3-build-filter", "skill": "impl-build", "verdict": "pass", "passed_count": 6, "failed_count": 0, "partial": "AC7 partial BY DESIGN (phase 3 blocked on unbuilt core)", "notes": "refined→build→wrap, 2 done / 1 blocked. HIGHLIGHT: evidence-honesty USP end-to-end — implement REFUSED to fabricate render(), blocked honestly; task-validate re-ran the worker's Node harness (10/10). +118 lines real source. NIT: refined→build flip not issued at entry (manual flip needed)." },
+    { "order": 4, "id": "4-wrap-filter", "skill": "impl-wrap", "verdict": "pass", "passed_count": 4, "failed_count": 0, "notes": "wrap→done. TL;DR audit-grade: honest 8/12 AC ratio, blocked phase surfaced with unblock path, all 9 source='ai' decisions enumerated by phase. Review pass clean." }
+  ]
+}

@@ -1,0 +1,172 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
+schema_version: 2
+slug: todo-filter-bar
+status: drafted
+created: 2026-06-01
+title: Todo Filter Bar (All / Active / Completed)
+context:
+  intro: "The todo app needs a filter bar with three modes — All, Active, Completed — that controls
+    which todos are visible, with the selected mode persisted across page reloads. The app is a
+    small vanilla-JS project: index.html provides an .input-row (#new-task + #add-task) and an empty
+    #task-list <ul>, styled via style.css. Crucially, app.js is currently an 8-line comment-only
+    skeleton — the actual todo CRUD, render(), and persistence are themselves not yet built (tracked
+    in a separate drafted task, tasks-list-persistence). So this filter feature layers on top of a
+    data model that is planned but not yet implemented: a module-scoped `tasks` array of {id, title,
+    done}, localStorage key `tasks:items`, and a render() that rebuilds <li> nodes applying a .done
+    class. The filter itself implies new state (a mode of 'all'|'active'|'completed'), persisted
+    under `tasks:filter-mode`, applied as a predicate inside render(), with the active button
+    visually highlighted. What's missing: the filter-bar markup, the mode state + persistence, the
+    render-time predicate, and the active-button highlighting — plus a decision on how this task
+    relates to the not-yet-built todo core."
+  plan: >-
+    - Hard dependency tension: render() and the tasks data model don't exist yet (app.js is a
+    skeleton). The filter's central mechanic — a predicate inside render() — has nothing to hook
+    into until the sibling tasks-list-persistence task ships. This shapes phasing and is the top
+    open question.
+
+    - Discovery confirmed: only index.html, style.css, app.js exist; app.js is comment-only. The
+    filter bar slots between .input-row and #task-list per the existing layout.
+
+    - Patterns to mirror (from discovery): addEventListener per control, state read on init +
+    written on every mutation, render() re-run to reflect state, kebab-case DOM ids/CSS classes,
+    module-scoped camelCase state, `tasks:<feature>` localStorage namespace.
+
+    - Rules in play: vanilla JS only (no framework), DOM nodes via createElement + textContent (no
+    innerHTML), localStorage under `tasks:` namespace with graceful read/parse-failure handling.
+phases:
+  - name: Filter Bar Markup + Styling
+    slug: filter-bar-markup
+    status: pending
+    context: "Add the three-mode filter bar between .input-row and #task-list in index.html. Mirror
+      existing kebab-case conventions: a container (e.g. .filter-bar) holding three buttons (All /
+      Active / Completed). Style in style.css consistent with .input-row, including an
+      active/selected visual state class. No JS behavior in this phase — just static markup + styles
+      the next phase wires up."
+    rules:
+      - path: .claude/rules/_concern/dom.md
+        why: this phase adds DOM structure; if buttons are created in JS rather than static HTML, they must
+          use createElement + textContent, not innerHTML
+    acceptance_criteria:
+      - text: "A filter-bar element sits between .input-row and #task-list in index.html, containing three
+          controls labelled All, Active, and Completed"
+        status: pending
+      - text: "DOM ids and CSS classes use kebab-case, matching existing #new-task / .input-row conventions"
+        status: pending
+      - text: style.css defines a visually distinct active/selected state for the currently-selected filter
+          control
+        status: pending
+      - text: Page renders with the filter bar visible and no console errors when opened in a browser
+        status: pending
+  - name: Filter Mode State + Persistence
+    slug: filter-mode-state
+    status: pending
+    context: Introduce a module-scoped camelCase filter-mode state ('all' | 'active' | 'completed').
+      Read it on init from localStorage key `tasks:filter-mode`, write it on every change. Handle
+      absent/corrupt values by falling back to a safe default. Clicking a filter control updates the
+      state, persists it, and updates the active-button highlight. This phase manages state +
+      persistence + button highlight; it does not yet filter what render() shows (that's the next
+      phase), though the click handler should call render() so the wiring is in place.
+    rules:
+      - path: .claude/rules/_concern/storage.md
+        why: "this phase reads/writes the filter mode under localStorage; must use the tasks: namespace
+          (tasks:filter-mode) and degrade gracefully on absent/corrupt values"
+      - path: .claude/rules/_pattern/vanilla-only.md
+        why: state + event wiring here must be plain JS / addEventListener, no framework or build step
+    acceptance_criteria:
+      - text: A module-scoped filter-mode variable holds one of 'all' | 'active' | 'completed'
+        status: pending
+      - text: On init, the mode is read from localStorage key `tasks:filter-mode`; absent or corrupt values
+          fall back to a safe default without throwing
+        status: pending
+      - text: Clicking a filter control updates the mode, writes it to `tasks:filter-mode`, and updates
+          which control shows the active state
+        status: pending
+      - text: The persisted mode is restored on page reload (verified by selecting a mode, reloading, and
+          observing the same control active)
+        status: pending
+  - name: Apply Filter In Render
+    slug: filter-apply-render
+    status: pending
+    context: "Apply the filter mode as a predicate inside render() so only matching todos appear: 'all'
+      shows everything, 'active' shows todos where done is false, 'completed' shows done === true.
+      render() continues to build <li> nodes via createElement + textContent (no innerHTML) and
+      apply the .done class. This phase depends on a render() and tasks data model existing — see
+      the open question about ordering relative to tasks-list-persistence."
+    rules:
+      - path: .claude/rules/_concern/dom.md
+        why: render() rebuilds task <li> nodes here; must use createElement + textContent, never innerHTML
+      - path: .claude/rules/_pattern/vanilla-only.md
+        why: the predicate + render logic must remain plain vanilla JS
+    acceptance_criteria:
+      - text: "render() filters the tasks array by the current mode: 'active' shows only done === false,
+          'completed' shows only done === true, 'all' shows every task"
+        status: pending
+      - text: Task <li> nodes are built with createElement + textContent (no innerHTML) and completed items
+          carry the .done class
+        status: pending
+      - text: Changing the filter mode re-runs render() and the visible task set updates immediately to
+          match the selected mode
+        status: pending
+      - text: Switching back to All after filtering restores the full task list
+        status: pending
+questions:
+  - id: q1
+    text: "Does this task assume tasks-list-persistence (the todo core: tasks array, render(),
+      tasks:items persistence) ships FIRST, or must the filter bar stand alone and define its own
+      minimal task model + render()? (lean: depend on tasks-list-persistence landing first, since
+      the filter's whole mechanic is a predicate inside render())"
+    priority: high
+    origin: plan-agent
+    status: open
+    created_at: 2026-06-01T23:21:04.521Z
+  - id: q2
+    text: If the filter must stand alone, should this task build a minimal tasks array + render() stub
+      itself (risking divergence from the sibling plan), or stop at markup + state and leave the
+      render integration as a follow-up? (this changes phase 3's scope entirely)
+    priority: high
+    origin: plan-agent
+    status: open
+    created_at: 2026-06-01T23:21:07.062Z
+  - id: q3
+    text: "When the active filter hides all matching todos (e.g. 'Completed' selected but nothing is
+      done), should an empty-state message be shown, or just an empty list? (lean: simple empty list
+      for now)"
+    priority: medium
+    origin: plan-agent
+    phase: filter-apply-render
+    status: open
+    created_at: 2026-06-01T23:21:08.775Z
+  - id: q4
+    text: "Filter controls as <button> elements, or a different control (e.g. segmented radio group /
+      tabs with ARIA roles)? (lean: three <button>s, matching the existing #add-task button
+      pattern)"
+    priority: medium
+    origin: plan-agent
+    phase: filter-bar-markup
+    status: open
+    created_at: 2026-06-01T23:21:10.658Z
+  - id: q5
+    text: "What is the default/safe-fallback filter mode on first load or when tasks:filter-mode is
+      absent or corrupt? (lean: 'all')"
+    priority: medium
+    origin: plan-agent
+    phase: filter-mode-state
+    status: open
+    created_at: 2026-06-01T23:21:13.012Z
+  - id: q6
+    text: "Should the filter bar be hidden or disabled when there are zero todos, or always visible?
+      (lean: always visible for layout stability)"
+    priority: low
+    origin: plan-agent
+    phase: filter-bar-markup
+    status: open
+    created_at: 2026-06-01T23:21:14.626Z
+  - id: q7
+    text: "Where should the active control be visually indicated — a highlighted background, an
+      underline, an aria-pressed/aria-selected attribute, or a combination? (lean: a .active class
+      with highlighted background, plus aria-pressed for accessibility)"
+    priority: low
+    origin: plan-agent
+    phase: filter-bar-markup
+    status: open
+    created_at: 2026-06-01T23:21:19.871Z

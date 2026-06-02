@@ -1,0 +1,482 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
+schema_version: 2
+slug: todo-filter-bar
+status: done
+created: 2026-06-01
+title: Todo Filter Bar (All / Active / Completed)
+context:
+  intro: "The todo app needs a filter bar with three modes — All, Active, Completed — that controls
+    which todos are visible, with the selected mode persisted across page reloads. The app is a
+    small vanilla-JS project: index.html provides an .input-row (#new-task + #add-task) and an empty
+    #task-list <ul>, styled via style.css. Crucially, app.js is currently an 8-line comment-only
+    skeleton — the actual todo CRUD, render(), and persistence are themselves not yet built (tracked
+    in a separate drafted task, tasks-list-persistence). So this filter feature layers on top of a
+    data model that is planned but not yet implemented: a module-scoped `tasks` array of {id, title,
+    done}, localStorage key `tasks:items`, and a render() that rebuilds <li> nodes applying a .done
+    class. The filter itself implies new state (a mode of 'all'|'active'|'completed'), persisted
+    under `tasks:filter-mode`, applied as a predicate inside render(), with the active button
+    visually highlighted. What's missing: the filter-bar markup, the mode state + persistence, the
+    render-time predicate, and the active-button highlighting — plus a decision on how this task
+    relates to the not-yet-built todo core."
+  plan: >-
+    - Hard dependency tension: render() and the tasks data model don't exist yet (app.js is a
+    skeleton). The filter's central mechanic — a predicate inside render() — has nothing to hook
+    into until the sibling tasks-list-persistence task ships. This shapes phasing and is the top
+    open question.
+
+    - Discovery confirmed: only index.html, style.css, app.js exist; app.js is comment-only. The
+    filter bar slots between .input-row and #task-list per the existing layout.
+
+    - Patterns to mirror (from discovery): addEventListener per control, state read on init +
+    written on every mutation, render() re-run to reflect state, kebab-case DOM ids/CSS classes,
+    module-scoped camelCase state, `tasks:<feature>` localStorage namespace.
+
+    - Rules in play: vanilla JS only (no framework), DOM nodes via createElement + textContent (no
+    innerHTML), localStorage under `tasks:` namespace with graceful read/parse-failure handling.
+
+    - plan-check (refine): verified all path/line refs against the sandbox — index.html (.input-row,
+    #new-task, #add-task, #task-list), style.css (.done at lines 49-52), app.js (confirmed
+    comment-only skeleton, no render()/CRUD/persistence). The three cited rule files exist and are
+    correctly attached. No stale refs, no missing-rule gaps.
+
+    - plan-check (refine): the sibling task tasks-list-persistence is a REAL active task (status:
+    drafted) — the dependency framing in this plan's intro + q1/q2 is accurate, not a hidden
+    assumption. Both tasks namespace localStorage correctly (tasks:items vs tasks:filter-mode);
+    init-time load ordering is a trivial sequencing detail, not a conflict.
+  build:
+    plan-check: "verdict: needs-attention. 0 auto-fixes — all path/line refs resolve against the
+      sandbox, no stale refs, no hidden unilateral defaults (every UX call is hedged inside an open
+      question). 2 info-notes appended to the plan trail. 2 questions surfaced (q8 high:
+      render()-integration ownership vs sibling task; q9 medium: task-object shape / `done` field
+      stability). Process note: Glob-with-path returned no files for files that exist
+      (underscore-dir quirk) — worked around with Grep + direct Read."
+    rules-check: "verdict: needs-attention. 1 additive auto-fix: vanilla-only.md added to
+      filter-bar-markup (it edits index.html + style.css, both root files the rule governs;
+      previously only dom.md was attached). Phases filter-mode-state + filter-apply-render already
+      correctly covered. No orphaned rule refs, no cross-phase conflicts, no questions. Root-cause
+      flag: recursive Glob `.claude/rules/**/*.md` returns ZERO files because the rules live under
+      underscore-prefixed dirs (_concern/, _pattern/) which the glob treats as hidden — confirmed
+      via direct Read. This is the same defect that made the plan-stage rules agent whiff in Eval
+      1."
+    Implement: >-
+      - filter-bar-markup / Filter Bar Markup + Styling (attempt 1): Added static three-mode filter
+      bar. index.html:16-20 — <div class="filter-bar" role="group" aria-label="Filter tasks"> with
+      three <button class="filter-btn"> (All/Active/Completed) between .input-row and #task-list.
+      style.css:35-53 — .filter-bar flex layout, .filter-btn default + :hover, .filter-btn.active
+      highlighted state. "All" defaults active (.active + aria-pressed=true). No JS this phase (q4
+      plain buttons, q6 always visible, q7 .active+aria-pressed). AC3 (no console errors) verified
+      structurally — no browser harness in repo.
+
+      - filter-mode-state / Filter Mode State + Persistence (attempt 1): Implemented in app.js only
+      (index.html markup wired via getElementById, no edits). Single FILTER_BUTTON_IDS map drives
+      event wiring + highlight (no drift). Storage hardened per storage.md: key 'tasks:filter-mode'
+      (tasks: namespace), getItem+setItem both try/catch, stored value validated vs FILTER_MODES →
+      corrupt/absent/throw fall back to 'all' (q5). aria-pressed set on all three each update (q7).
+      render() called DEFENSIVELY `if (typeof render === 'function')` (q1/q8/q2 — core not built, no
+      stub added). Verified via `node --check` + a Node DOM/localStorage harness across 5 scenarios
+      (default-absent, click+persist, corrupt-fallback, reload-restore-completed, storage-throws) —
+      all green. Honest note: AC3 reload-restore visual depends only on this phase's
+      updateFilterButtons(), not render() — works fully today.
+
+      - filter-apply-render / Apply Filter In Render (attempt 1): **BLOCKED — non-recoverable
+      missing precondition.** All 4 ACs operate on a render() function + tasks array that do NOT
+      exist (verified: app.js is the only JS, no render() definition — only two inert `if (typeof
+      render === 'function')` guards from phase 2; no tasks array, only the localStorage key
+      string). That core is the separate still-drafted task `tasks-list-persistence`. Resolved q8
+      mandates editing the core's render() IN PLACE; resolved q2 forbids a standalone render()/tasks
+      stub — so with no render() present, the only way to "pass" would author the forbidden stub.
+      Implement wrote NOTHING and declined to leave a speculative predicate helper (dead code).
+      Honest blocker, not a stall. TO UNBLOCK: build tasks-list-persistence first, then re-run this
+      phase to add the filter predicate as a guard in the real per-task loop (wiring already in
+      place — setFilterMode()/init() call render() once it becomes a function). NOT a build.stop
+      plan-deviation: the plan explicitly anticipated this dependency (q1 resolved "depend on core
+      first"), so retries/stop-check don't apply — bounded blocked terminal state.
+    task-validate: >-
+      - filter-bar-markup (attempt 1): pass — 4/4 ACs accepted. file:line refs verified against
+      index.html + style.css. AC3 (no console errors): accepted as honest structural verification —
+      markup-only phase, app.js untouched (no JS = no console-error source), tag-balance re-checked
+      independently; implement disclosed the no-browser-harness limitation rather than fabricating a
+      run.
+
+      - filter-mode-state (attempt 1): pass — 4/4 ACs accepted. All cited line refs resolved exactly
+      against app.js (102 lines). Independently RE-RAN the worker's 5 Node DOM/localStorage
+      scenarios + extra setItem-throws case: 10/10 assertions green — the harness claim is honest,
+      not fabricated. Defensive `if (typeof render === 'function')` @78/@98 correct per resolved
+      q1/q8/q2 (core not built), not a gap.
+    code-validate: >-
+      - filter-bar-markup (attempt 1): pass — 0 block / 0 warn. vanilla-only.md upheld (only
+      index.html+style.css changed, package.json untouched/dep-free, no framework/build artifact).
+      dom.md upheld (no JS this phase, zero innerHTML). kebab-case + styles coherent with existing
+      .input-row/#add-task idiom.
+
+      - filter-mode-state (attempt 1): pass — 0 block / 0 warn. storage.md upheld: key
+      'tasks:filter-mode' (correct namespace), getItem guarded (try/catch→default), value validated
+      vs FILTER_MODES (corrupt/absent→'all'), setItem guarded (swallows quota/disabled).
+      vanilla-only.md upheld (node --check clean, no import/framework/build). dom.md spirit upheld
+      (classList.toggle + setAttribute, no innerHTML). render() is a guarded call with NO stub
+      defined — matches q1/q2/q8.
+  wrap:
+    intro: >-
+      ## Wrap-up summary
+
+
+      **Shipped**: 2 of 3 phases done — filter-bar-markup (static three-mode bar + active-state CSS)
+      and filter-mode-state (module-scoped mode + `tasks:filter-mode` persistence + button
+      highlight, storage fully guarded).
+
+
+      **Blocked/Deferred**: filter-apply-render — BLOCKED. Its 4 ACs all operate on a render()
+      function + tasks array that don't exist yet; the todo core is the separate, still-drafted task
+      `tasks-list-persistence`. Resolved q8 mandates editing that core's render() in place and q2
+      forbids a standalone stub, so there was no honest path today. The implement worker wrote zero
+      code and blocked rather than fabricate. UNBLOCK: build tasks-list-persistence first, then
+      re-run this phase to add the filter predicate as a guard inside the core's real per-task loop
+      — wiring is already in place (setFilterMode()/init() call render() once it becomes a
+      function).
+
+
+      **ACs with evidence**: 8 of 12 (67% honest completion). The 4 unevidenced ACs are exactly the
+      blocked phase's; they remain `pending` with no fabricated evidence.
+
+
+      **Autonomous decisions (review these)**: 9 decisions the AI made on its own (walk-style AI-all
+      at refine), grouped by phase:
+
+        plan / refine (task-level)
+        - Depend on tasks-list-persistence shipping first — app.js is a skeleton; the filter is a predicate inside render(), so building a parallel core would diverge from the sibling plan.
+        - Do NOT build a standalone tasks/render() stub — follows from depend-on-core; a stub risks divergence.
+
+        filter-bar-markup
+        - Three plain <button> elements (not a radio/tab group) — mirrors the existing #add-task button; aria-pressed covers a11y.
+        - Filter bar always visible, even with zero todos — constant layout, negligible cost.
+        - Active control = .active class (highlighted bg) + aria-pressed="true" — drives the visual + gives screen-reader state.
+
+        filter-mode-state
+        - Default/safe-fallback mode = 'all' on first load or absent/corrupt storage — least-surprising, satisfies storage.md graceful-degradation.
+
+        filter-apply-render
+        - On empty filtered set, show just an empty list (no empty-state message) — keeps scope minimal, trivial follow-up later.
+        - Integrate the predicate by editing the core's render() IN PLACE (guard at top of its per-task loop), one render() owned by the core — avoids divergence.
+        - Assume the boolean `done` field is final ({id,title,done}) — both plans converge on it; risk isolated to one predicate line.
+
+      **Notable findings during build**:
+
+      - task-validate independently RE-RAN the implement worker's Node DOM/localStorage harness
+      (10/10 green) rather than trusting the claim — the harness assertion is honest.
+
+      - code-validate confirmed storage.md (`tasks:` namespace, guarded read/write) + vanilla-only
+      adherence; recognized the defensive render() guard as correct (no stub).
+
+
+      **Notable findings from review**:
+
+      - Clean implementation; localStorage fully guarded, no innerHTML, accessible. `defer` script
+      load makes init()'s DOM access safe.
+
+      - Real incompleteness: render-time visibility filtering absent until the todo core ships (the
+      blocked phase).
+
+
+      **Outcome vs plan**: The plan anticipated the core dependency from the start (q1/q2 surfaced
+      it as the top question at plan time; q8 at refine). The build delivered everything that does
+      NOT depend on the core — the bar, the mode state, persistence, and the highlight — and
+      honestly stopped at the one phase that does. No scope was silently dropped or faked; the
+      partial outcome is a faithful consequence of building a filter on top of a not-yet-built list.
+      Re-running this phase after tasks-list-persistence ships will complete the feature with a
+      one-line predicate.
+    subsections:
+      review: >-
+        Review pass over the working-tree diff (app.js +95, index.html +5, style.css +19):
+
+        - app.js — clean, no blocking findings. localStorage fully guarded (getItem + setItem both
+        try/catch), stored value validated against FILTER_MODES, no innerHTML, aria-pressed
+        maintained on all three buttons. Single FILTER_BUTTON_IDS map keeps state↔DOM in sync.
+
+        - index.html:16-20 — filter bar well-formed, role="group" + aria-label, kebab-case ids,
+        "All" default-active. Loaded via `<script src="app.js" defer>` so init()'s getElementById
+        calls are safe (DOM parsed before execution).
+
+        - The two `if (typeof render === 'function') render()` guards (app.js setFilterMode + init)
+        are correct, NOT dead code — the todo core ships render() separately; wiring is ready for it
+        (resolved q1/q8/q2).
+
+        - INCOMPLETENESS (expected): render-time visibility filtering is absent — phase
+        filter-apply-render is BLOCKED on the unbuilt todo core. Selecting a filter persists +
+        highlights but does not yet hide/show todos. Documented with unblock path.
+
+        - Nit (non-blocking): no automated browser/console test harness in the repo, so the "renders
+        without console errors" guarantee rests on static + Node-harness checks, not a real browser
+        run.
+phases:
+  - name: Filter Bar Markup + Styling
+    slug: filter-bar-markup
+    status: done
+    context: "Add the three-mode filter bar between .input-row and #task-list in index.html. Mirror
+      existing kebab-case conventions: a container (e.g. .filter-bar) holding three buttons (All /
+      Active / Completed). Style in style.css consistent with .input-row, including an
+      active/selected visual state class. No JS behavior in this phase — just static markup + styles
+      the next phase wires up."
+    rules:
+      - path: .claude/rules/_concern/dom.md
+        why: this phase adds DOM structure; if buttons are created in JS rather than static HTML, they must
+          use createElement + textContent, not innerHTML
+      - path: .claude/rules/_pattern/vanilla-only.md
+        why: this phase edits index.html and style.css in the project root; vanilla-only.md applies to all
+          root .js/.html/.css files — no framework, no build step, browser-native markup and CSS
+          only
+    acceptance_criteria:
+      - text: "A filter-bar element sits between .input-row and #task-list in index.html, containing three
+          controls labelled All, Active, and Completed"
+        status: done
+        evidence:
+          - index.html:16-20 — <div class="filter-bar"> sits directly between .input-row (closes
+            line 15) and <ul id="task-list"> (line 21)
+          - "index.html:17-19 — three <button> controls labelled All, Active, Completed (refine q4:
+            plain buttons, not radio/tab)"
+      - text: "DOM ids and CSS classes use kebab-case, matching existing #new-task / .input-row conventions"
+        status: done
+        evidence:
+          - "index.html:16-19 — ids filter-all/filter-active/filter-completed and classes
+            filter-bar/filter-btn are all kebab-case, mirroring #new-task / #add-task / .input-row"
+          - Only capitalized tokens are the button TEXT labels (All/Active/Completed); no
+            camelCase/underscores in any id= or class= value
+      - text: style.css defines a visually distinct active/selected state for the currently-selected filter
+          control
+        status: done
+        evidence:
+          - style.css:48-52 — .filter-bar .filter-btn.active gives the selected control a distinct
+            state (color:#fff; background:var(--accent); border-color:var(--accent)) vs default
+            .filter-btn at style.css:37-45
+          - 'index.html:17 — #filter-all carries class="filter-btn active" + aria-pressed="true" as
+            initial default (refine q7); other two aria-pressed="false"'
+      - text: Page renders with the filter bar visible and no console errors when opened in a browser
+        status: done
+        evidence:
+          - No JS added this phase — app.js reference unchanged; filter bar is pure static markup +
+            CSS, no new runtime/console error source
+          - HTML tag-balance parse passed (balanced stack); only void self-closing tags, valid HTML5
+          - "Filter bar always renders (refine q6): .filter-bar has display:flex unconditionally at
+            style.css:36, no display:none/conditional"
+          - "NOTE: no browser/console harness in repo — AC3 verified structurally, not via an actual
+            browser run"
+  - name: Filter Mode State + Persistence
+    slug: filter-mode-state
+    status: done
+    context: Introduce a module-scoped camelCase filter-mode state ('all' | 'active' | 'completed').
+      Read it on init from localStorage key `tasks:filter-mode`, write it on every change. Handle
+      absent/corrupt values by falling back to a safe default. Clicking a filter control updates the
+      state, persists it, and updates the active-button highlight. This phase manages state +
+      persistence + button highlight; it does not yet filter what render() shows (that's the next
+      phase), though the click handler should call render() so the wiring is in place.
+    rules:
+      - path: .claude/rules/_concern/storage.md
+        why: "this phase reads/writes the filter mode under localStorage; must use the tasks: namespace
+          (tasks:filter-mode) and degrade gracefully on absent/corrupt values"
+      - path: .claude/rules/_pattern/vanilla-only.md
+        why: state + event wiring here must be plain JS / addEventListener, no framework or build step
+    acceptance_criteria:
+      - text: A module-scoped filter-mode variable holds one of 'all' | 'active' | 'completed'
+        status: done
+        evidence:
+          - app.js:24 — `let filterMode = DEFAULT_FILTER_MODE;` module-scoped, constrained to
+            FILTER_MODES (app.js:19 ['all','active','completed'])
+          - app.js:74 — setFilterMode() guards `if (!FILTER_MODES.includes(mode)) return;` so the
+            var can never hold an out-of-set value
+          - "Node harness scenario C: stored 'garbage-xyz' → filterMode resolves to 'all'"
+      - text: On init, the mode is read from localStorage key `tasks:filter-mode`; absent or corrupt values
+          fall back to a safe default without throwing
+        status: done
+        evidence:
+          - app.js:95 — init() sets filterMode = readFilterMode() on load
+          - "app.js:37-45 — readFilterMode() reads localStorage.getItem('tasks:filter-mode') and
+            returns FILTER_MODES.includes(stored) ? stored : DEFAULT_FILTER_MODE; getItem wrapped in
+            try/catch returning default on throw"
+          - "Node harness: absent→'all', corrupt→'all', getItem-throws→'all', none threw
+            (ALL_PASS_CDE)"
+      - text: Clicking a filter control updates the mode, writes it to `tasks:filter-mode`, and updates
+          which control shows the active state
+        status: done
+        evidence:
+          - app.js:86 — each button wired btn.addEventListener('click', () => setFilterMode(mode))
+          - app.js:73-79 — setFilterMode() sets filterMode, calls writeFilterMode() (setItem
+            'tasks:filter-mode'), then updateFilterButtons()
+          - app.js:60-67 — updateFilterButtons() toggles .active (classList.toggle) + sets
+            aria-pressed true/false across all three buttons
+          - "Node harness scenario B: click Active → store['tasks:filter-mode']='active',
+            filter-active active+pressed, others not (ALL_PASS_AB)"
+      - text: The persisted mode is restored on page reload (verified by selecting a mode, reloading, and
+          observing the same control active)
+        status: done
+        evidence:
+          - app.js:95-97 — init() reads persisted mode then calls updateFilterButtons(), so the
+            restored mode's button shows active on load (independent of render())
+          - "Node harness scenario D: store seeded 'completed' → on init filter-completed active +
+            aria-pressed true, filter-all aria-pressed false"
+          - Persist (AC2) + restore both use the same key 'tasks:filter-mode' — value written by a
+            click is the value read on reload
+  - name: Apply Filter In Render
+    slug: filter-apply-render
+    status: blocked
+    context: "Apply the filter mode as a predicate inside render() so only matching todos appear: 'all'
+      shows everything, 'active' shows todos where done is false, 'completed' shows done === true.
+      render() continues to build <li> nodes via createElement + textContent (no innerHTML) and
+      apply the .done class. This phase depends on a render() and tasks data model existing — see
+      the open question about ordering relative to tasks-list-persistence."
+    rules:
+      - path: .claude/rules/_concern/dom.md
+        why: render() rebuilds task <li> nodes here; must use createElement + textContent, never innerHTML
+      - path: .claude/rules/_pattern/vanilla-only.md
+        why: the predicate + render logic must remain plain vanilla JS
+    acceptance_criteria:
+      - text: "render() filters the tasks array by the current mode: 'active' shows only done === false,
+          'completed' shows only done === true, 'all' shows every task"
+        status: pending
+      - text: Task <li> nodes are built with createElement + textContent (no innerHTML) and completed items
+          carry the .done class
+        status: pending
+      - text: Changing the filter mode re-runs render() and the visible task set updates immediately to
+          match the selected mode
+        status: pending
+      - text: Switching back to All after filtering restores the full task list
+        status: pending
+questions:
+  - id: q1
+    text: "Does this task assume tasks-list-persistence (the todo core: tasks array, render(),
+      tasks:items persistence) ships FIRST, or must the filter bar stand alone and define its own
+      minimal task model + render()? (lean: depend on tasks-list-persistence landing first, since
+      the filter's whole mechanic is a predicate inside render())"
+    priority: high
+    origin: plan-agent
+    status: resolved
+    answer: Depend on tasks-list-persistence shipping first. The filter's entire mechanic is a predicate
+      inside render(), which the sibling task owns and builds — this task sequences after it and
+      integrates into the existing render() rather than inventing its own.
+    source: ai
+    reasoning: app.js is an 8-line skeleton with no tasks array or render() to hook into; building a
+      parallel core here would guarantee divergence from the sibling plan. Depending on the core
+      landing first is the only non-duplicative ordering.
+    created_at: 2026-06-01T23:21:04.521Z
+    resolved_at: 2026-06-01T23:26:57.581Z
+  - id: q2
+    text: If the filter must stand alone, should this task build a minimal tasks array + render() stub
+      itself (risking divergence from the sibling plan), or stop at markup + state and leave the
+      render integration as a follow-up? (this changes phase 3's scope entirely)
+    priority: high
+    origin: plan-agent
+    status: resolved
+    answer: "Moot given q1: do NOT build a standalone tasks/render() stub. This task depends on the
+      core; phase filter-apply-render edits the sibling-authored render() in place."
+    source: ai
+    reasoning: q1 resolved to depend-on-core-first, which eliminates the standalone branch entirely. A
+      stub would risk the exact divergence q2 warned about.
+    created_at: 2026-06-01T23:21:07.062Z
+    resolved_at: 2026-06-01T23:26:59.574Z
+  - id: q3
+    text: "When the active filter hides all matching todos (e.g. 'Completed' selected but nothing is
+      done), should an empty-state message be shown, or just an empty list? (lean: simple empty list
+      for now)"
+    priority: medium
+    origin: plan-agent
+    phase: filter-apply-render
+    status: resolved
+    answer: Just an empty list when a filter hides everything — no empty-state message for now.
+    source: ai
+    reasoning: Matches the plan's lean hint and keeps phase 3 scope minimal; an empty-state message is a
+      trivial additive follow-up if desired later.
+    created_at: 2026-06-01T23:21:08.775Z
+    resolved_at: 2026-06-01T23:27:02.278Z
+  - id: q4
+    text: "Filter controls as <button> elements, or a different control (e.g. segmented radio group /
+      tabs with ARIA roles)? (lean: three <button>s, matching the existing #add-task button
+      pattern)"
+    priority: medium
+    origin: plan-agent
+    phase: filter-bar-markup
+    status: resolved
+    answer: "Three plain &lt;button&gt; elements, mirroring the existing #add-task button."
+    source: ai
+    reasoning: Matches the lean hint and the existing vanilla button pattern; a radio/tab group adds
+      ARIA complexity unjustified for three mutually-exclusive controls. aria-pressed (q7) covers
+      accessibility.
+    created_at: 2026-06-01T23:21:10.658Z
+    resolved_at: 2026-06-01T23:27:05.058Z
+  - id: q5
+    text: "What is the default/safe-fallback filter mode on first load or when tasks:filter-mode is
+      absent or corrupt? (lean: 'all')"
+    priority: medium
+    origin: plan-agent
+    phase: filter-mode-state
+    status: resolved
+    answer: Default to 'all' on first load and whenever tasks:filter-mode is absent or holds an
+      unrecognized value.
+    source: ai
+    reasoning: "'all' is the least-surprising default (shows everything) and the storage.md rule
+      mandates graceful fallback on absent/corrupt values; validating against the known set and
+      falling back to 'all' satisfies both."
+    created_at: 2026-06-01T23:21:13.012Z
+    resolved_at: 2026-06-01T23:27:07.625Z
+  - id: q6
+    text: "Should the filter bar be hidden or disabled when there are zero todos, or always visible?
+      (lean: always visible for layout stability)"
+    priority: low
+    origin: plan-agent
+    phase: filter-bar-markup
+    status: resolved
+    answer: Always visible, even with zero todos.
+    source: ai
+    reasoning: Lean hint; constant layout avoids a jarring show/hide as the list empties, and the cost
+      of an always-present three-button bar is negligible.
+    created_at: 2026-06-01T23:21:14.626Z
+    resolved_at: 2026-06-01T23:27:10.205Z
+  - id: q7
+    text: "Where should the active control be visually indicated — a highlighted background, an
+      underline, an aria-pressed/aria-selected attribute, or a combination? (lean: a .active class
+      with highlighted background, plus aria-pressed for accessibility)"
+    priority: low
+    origin: plan-agent
+    phase: filter-bar-markup
+    status: resolved
+    answer: An .active class with a highlighted background on the selected control, plus
+      aria-pressed="true" on it for accessibility.
+    source: ai
+    reasoning: Lean hint; the class drives the visual per the markup phase's active-state AC, and
+      aria-pressed gives screen-reader state for the plain-button choice from q4 without extra
+      markup.
+    created_at: 2026-06-01T23:21:19.871Z
+    resolved_at: 2026-06-01T23:27:13.143Z
+  - id: q8
+    text: Phase filter-apply-render injects a predicate INTO render(), but render() is authored from
+      scratch by the sibling tasks-list-persistence task (its data-and-render phase) — how does the
+      filter predicate get integrated into that externally-owned render() without the two tasks
+      diverging on render()'s structure?
+    priority: high
+    origin: plan-check
+    phase: filter-apply-render
+    status: resolved
+    answer: "phase filter-apply-render modifies the sibling-authored render() IN PLACE: it adds a single
+      guard at the top of the existing per-task loop that skips tasks not matching the module-scoped
+      filterMode. One render() owned by the core; the filter contributes only the predicate.
+      Coordinate so this task is built after tasks-list-persistence's data-and-render phase."
+    source: ai
+    reasoning: Keeps a single source of truth for render() (the core task) and avoids the divergence
+      plan-check flagged — the filter is an additive predicate line, not a competing render()
+      implementation. Consistent with q1/q2 (depend-on-core).
+    created_at: 2026-06-01T23:26:19.365Z
+    resolved_at: 2026-06-01T23:27:16.629Z
+  - id: q9
+    text: The filter predicate keys off each task's `done` field, but the sibling task's q1 leaves the
+      task-object shape open ({id,title,done} vs minimal {title,done}) — does this plan assume
+      `done` is final, and is it resilient if the core ships a different shape?
+    priority: medium
+    origin: plan-check
+    phase: filter-apply-render
+    status: resolved
+    answer: Assume the boolean `done` field is final — both this plan and the sibling's leaning shape
+      use {id, title, done}. Phase 3's predicate keys off task.done. If the core ultimately ships a
+      different completion field, phase 3's predicate AC is the single point to adjust.
+    source: ai
+    reasoning: Both task plans converge on {id, title, done}, so `done` is the well-founded assumption;
+      the risk is isolated to one predicate line and cheap to change, so it doesn't warrant blocking
+      or a defensive abstraction now.
+    created_at: 2026-06-01T23:26:20.926Z
+    resolved_at: 2026-06-01T23:27:20.146Z

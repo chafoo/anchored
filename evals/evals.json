@@ -1,0 +1,94 @@
+{
+  "suite": "anchored-lifecycle-skills",
+  "description": "Behavioral evals for all five anchored lifecycle skills, run against the anchored-test sandbox via /loop (one eval per iteration). Evals 1-4 are a CHAINED lifecycle on Feature A — each stage consumes the prior stage's task-file, so they must run in order. Eval 5 exercises the /impl autopilot end-to-end on a separate Feature B. The gradeable artifact for every eval is the resulting .claude/tasks/<slug>.yml (status, phase/AC statuses, evidence, resolved questions, context.build/​context.wrap audit trail) plus the real source diff in the sandbox.",
+  "target_project": "/Users/jack/Dev/anchored-test",
+  "mcp": "Tools resolve as mcp__anchored__task__* (project .mcp.json → local dev build) or mcp__plugin_anchored_task__task__* (loaded plugin); either works.",
+  "reset": "Before the FIRST eval of a fresh suite run: delete any prior suite task-files (slugs containing 'filter' or 'clear-completed') from .claude/tasks/ in the sandbox. Do NOT touch tasks-list-persistence.yml (Jack's separate drafted task) or _archive/. Snapshot each stage's task-file into evals/results/<run>/fixtures/ after it passes so an isolated (non-chained) suite can reuse them later.",
+  "autonomy": "Run every skill non-interactively so the loop never blocks: /impl-refine uses walk-style AI-all (AI resolves every question with reasoning); /impl-build runs in its default autonomous mode (proceeds+documents, stops only on a build.stop plan-deviation). If a skill WOULD escalate to the user (a genuine stop / blocking question), do NOT answer it — record it as the eval's outcome ('halted: <reason>') and move on. A halt is a finding, not a loop failure.",
+  "evals": [
+    {
+      "id": "1-plan-filter",
+      "skill": "impl-plan",
+      "order": 1,
+      "feature": "A",
+      "precondition": "No sandbox task whose slug contains 'filter' exists.",
+      "prompt": "/impl-plan add a filter bar to the todo app with three modes — All / Active / Completed — that controls which todos are visible, and remember the selected mode across page reloads",
+      "expected_output": "A new .claude/tasks/<filter-slug>.yml at status 'drafted' with 2+ phases, every phase carrying testable acceptance criteria, and at least one open priority-tagged question surfaced (not silently decided).",
+      "assertions": [
+        "A new task-file matching the filter feature was created in the sandbox .claude/tasks/",
+        "Task status is exactly 'drafted'",
+        "The task has at least 2 phases",
+        "Every phase has at least one acceptance criterion with non-empty text",
+        "Every acceptance criterion is status 'pending' with no evidence (drafted carries no proof)",
+        "At least one question exists with status 'open'",
+        "No source files in the sandbox were modified (plan does not write code)"
+      ]
+    },
+    {
+      "id": "2-refine-filter",
+      "skill": "impl-refine",
+      "order": 2,
+      "feature": "A",
+      "precondition": "Eval 1 passed — the filter task exists at status 'drafted' with open questions.",
+      "prompt": "/impl-refine <filter-slug>  (walk-style: AI-all — resolve every open question via AI with reasoning, no user prompts)",
+      "expected_output": "Status flips drafted → refined; every open question becomes 'resolved' (source 'ai' entries carry reasoning); plan-check and rules-check rollups land in context.build; no acceptance-criterion text is mangled and no phase is silently dropped.",
+      "assertions": [
+        "Task status is exactly 'refined'",
+        "Zero questions remain at status 'open'",
+        "Every resolved question has a non-empty answer; every source='ai' resolution also has non-empty reasoning",
+        "context.build contains a 'plan-check' section and a 'rules-check' section",
+        "Phase count is unchanged from the drafted state (or any change is traceable in the plan log, not silent)",
+        "All acceptance-criterion texts from the drafted state are still present"
+      ]
+    },
+    {
+      "id": "3-build-filter",
+      "skill": "impl-build",
+      "order": 3,
+      "feature": "A",
+      "precondition": "Eval 2 passed — the filter task is at status 'refined'.",
+      "prompt": "/impl-build <filter-slug>",
+      "expected_output": "Every phase reaches a terminal state (done/blocked/deferred); done-phases have all ACs proven with non-empty evidence; task-validate and code-validate rollups land in context.build; the sandbox source (app.js / index.html / style.css) is actually modified to implement the filter; task status flips build → wrap.",
+      "assertions": [
+        "Task status is exactly 'wrap'",
+        "Every phase is in a terminal state (done, blocked, or deferred)",
+        "At least one phase reached 'done' (the build produced real progress, not all-blocked)",
+        "For every phase at status 'done', every acceptance criterion is status 'done' with non-empty evidence",
+        "context.build contains both a 'task-validate' and a 'code-validate' section",
+        "Sandbox source files were actually modified (git diff shows changes to app.js or index.html or style.css)",
+        "The implemented filter is functionally present in the code (All/Active/Completed visibility control + persisted selection)"
+      ]
+    },
+    {
+      "id": "4-wrap-filter",
+      "skill": "impl-wrap",
+      "order": 4,
+      "feature": "A",
+      "precondition": "Eval 3 passed — the filter task is at status 'wrap'.",
+      "prompt": "/impl-wrap <filter-slug>",
+      "expected_output": "A final review pass runs; a TL;DR summary is written to context.wrap; all phases remain terminal; task status flips wrap → done.",
+      "assertions": [
+        "Task status is exactly 'done'",
+        "All phases are in a terminal state",
+        "context.wrap contains a non-empty summary / TL;DR",
+        "Any blocked phases (if present) are surfaced in the wrap summary for human attention"
+      ]
+    },
+    {
+      "id": "5-impl-autopilot-clear-completed",
+      "skill": "impl",
+      "order": 5,
+      "feature": "B",
+      "precondition": "No sandbox task whose slug contains 'clear-completed' exists. Independent of Feature A.",
+      "prompt": "/impl add a 'Clear completed' button that deletes all completed todos in one click; it should be disabled when there are no completed todos",
+      "expected_output": "The autopilot sequences plan → refine → build → wrap on its own. It either drives the task to status 'done' (all phases terminal, source implements the button), or halts cleanly at a documented blocking question / stop — and the halt is recorded rather than silently swallowed.",
+      "assertions": [
+        "A new task-file matching the clear-completed feature was created",
+        "The task advanced beyond 'drafted' (the autopilot chained at least into refine/build, not stopping after plan)",
+        "If the run completed: status is 'done', all phases terminal, and the 'Clear completed' button is present in the sandbox source",
+        "If the run halted: the halt reason is captured as the eval outcome (which skill/phase, why) — a halt is a finding, not a crash",
+        "context.build contains plan-check + rules-check + task-validate + code-validate sections (evidence the full chain executed)"
+      ]
+    }
+  ]
+}
