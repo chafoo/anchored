@@ -55,14 +55,30 @@ read. Therefore:
 > contract.**
 
 You use the **`anchored` CLI binary** (Bash), never plugin-MCP. This is
-deliberate and unrelated to bug #13605: the anchored CLI needs **zero
-user `.mcp.json` setup** to run from a subagent — it is a plain
-executable. (MCP-in-subagent, by contrast, is the thing #13605 makes
-unusable out-of-the-box; that is why this path is CLI-only.) Every CLI
-mutation routes through the **same `createOps` factory** the MCP server
-uses, so schema validation, the state machine, and the atomic
-cross-process lock are all enforced identically — you get the exact same
-guarantees as an MCP write, with none of the subagent-MCP wiring.
+deliberate and unrelated to bug #13605: MCP-in-subagent is unusable
+out-of-the-box (#13605), so this path is CLI-only. Every CLI mutation
+routes through the **same `createOps` factory** the MCP server uses, so
+schema validation, the state machine, and the atomic cross-process lock
+are all enforced identically — the exact same guarantees as an MCP
+write, with none of the subagent-MCP wiring.
+
+> **Invocation — required form.** The `anchored` binary is **NOT on the
+> PATH** in a plugin install or a subagent (the plugin loads the MCP
+> server via `npx`; it does not globally install the CLI — bare
+> `anchored …` fails with `command not found`). So every CLI call below
+> is **shorthand**: wherever a step shows `anchored <args>`, the literal
+> command you run is
+>
+> ```bash
+> npx -y -p @chaafoo/anchored-mcp anchored <args…>
+> ```
+>
+> This resolves the binary from the published package — the **same
+> mechanism that loaded the MCP server**, so if the server is up the CLI
+> resolves too — with no global install or PATH entry. **Exception:** if
+> the dispatching skill passed an explicit CLI-invocation override in
+> your input (e.g. a maintainer testing unreleased changes points at the
+> local `node <repo>/mcp/dist/cli/bin.js`), use that verbatim instead.
 
 ## Input you will receive
 
@@ -256,6 +272,17 @@ is to be **VERIFIED EMPIRICALLY at build/dispatch time** — it is **not**
 confirmed here. Do not write or rely on code that assumes the runtime
 resolves this `agentType` or grants Bash. The dispatch wiring (Phase 4)
 owns the empirical feature-detection check.
+
+> **Verified (2026-06):** the **CLI half** of the write-contract is
+> confirmed — a subagent CAN write evidence/failures to the task-file
+> via `npx -y -p @chaafoo/anchored-mcp anchored ac evidence set …` (the
+> required invocation form above); bare `anchored …` is NOT on the PATH
+> and fails with `command not found`. So given Bash (item 2), the CLI
+> contract holds. What remains genuinely unverified is only items 1-2
+> themselves — whether the live Workflow runtime resolves the
+> `agentType` and grants Bash — confirmed empirically by
+> `workflowsAvailable()` at dispatch, with the documented fallbacks
+> below when it does not.
 
 **Documented fallback (used only if the verification fails):** if the
 runtime does **not** resolve `agentType: 'anchored:workflow'`, or does

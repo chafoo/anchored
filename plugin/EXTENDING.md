@@ -220,8 +220,12 @@ runtime); there is no config flag to toggle.
 ### Required: pre-approve the `anchored` CLI in the tool allowlist
 
 Workflow unit-workers write their own evidence/failures to the
-task-file via the `anchored` CLI (not MCP). A **background** workflow
-has no one to answer an interactive permission prompt, so these
+task-file via the `anchored` CLI (not MCP). The `anchored` binary is
+**not on the PATH** for a plugin install (the plugin loads the MCP
+server via `npx`; it does not globally install the CLI), so the workers
+invoke it as `npx -y -p @chaafoo/anchored-mcp anchored …` — the same
+package-resolution mechanism that loads the MCP server. A **background**
+workflow has no one to answer an interactive permission prompt, so these
 commands **must be pre-approved in your tool allowlist** before a
 workflow phase runs — otherwise the first unit-worker hangs forever
 on a permission prompt and stalls the whole fan-out. Add (e.g. in
@@ -231,9 +235,11 @@ on a permission prompt and stalls the whole fan-out. Add (e.g. in
 {
   "permissions": {
     "allow": [
-      "Bash(anchored ac evidence set:*)",
-      "Bash(anchored ac failures set:*)"
-      // or broaden to "Bash(anchored ac:*)" / "Bash(anchored:*)"
+      "Bash(npx -y -p @chaafoo/anchored-mcp anchored ac evidence set:*)",
+      "Bash(npx -y -p @chaafoo/anchored-mcp anchored ac failures set:*)"
+      // or broaden to "Bash(npx -y -p @chaafoo/anchored-mcp anchored ac:*)"
+      // (if you globally install @chaafoo/anchored-mcp so `anchored` is on
+      //  PATH, the shorter "Bash(anchored ac:*)" forms work too)
     ]
   }
 }
