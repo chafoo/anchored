@@ -1,0 +1,79 @@
+{
+  "suite": "anchored-setup-skill",
+  "skill": "setup",
+  "description": "Behavioral evals for the /setup skill (the conversational anchored.yml config assistant). Unlike the lifecycle suite (evals.json, /loop-driven), these are skill-creator-style and run AD-HOC: each eval hands an independent with-skill subagent a starting anchored.yml + a verbatim user request and grades the RESULTING anchored.yml — schema-valid + structural assertions — plus the skill's behavior (right config surface, name+instructions on every custom step, type only on use steps, preserve pre-existing config, NO power-user funnel, advise only when explicitly asked). See setup-runner.md for how to run + grade. The deliberate behavioral risks under test: (1) funnel resistance — the skill must NOT push a power-user setup unless asked (s4), and (2) correct surface mapping — a request maps to the right slot (step vs gate vs field), not a reflexive custom step (s2).",
+  "evals": [
+    {
+      "id": "s1-multi-step-toolchain",
+      "axis": "multi-step request with toolchain given (baseline behavior)",
+      "start_config": "empty",
+      "prompt": "Run my tests and lint after each phase, and commit every phase. It's a Go project — tests are `go test ./...`, lint is `golangci-lint run`.",
+      "expect": "Adds build.steps (test, lint, commit) using the user's exact commands; every step carries name + instructions; no type on run steps; ordering gates the commit (green-only); does not consult power-user-setups.md; at most one one-line proportional suggestion.",
+      "assertions": [
+        "Schema-valid",
+        "build.steps contains the requested test + lint + commit steps",
+        "Every custom step has both name and instructions",
+        "No `type` on any run step",
+        "Did NOT open power-user-setups.md (no advice requested)",
+        "Only what was asked + at most one one-line suggestion"
+      ]
+    },
+    {
+      "id": "s2-maps-to-gate-not-step",
+      "axis": "request must map to a quality-gate instructions slot, not a custom step",
+      "start_config": "empty",
+      "prompt": "I keep seeing 'should work' and vague hand-waving in the acceptance-criteria evidence. Make anchored stricter about proof — I want real, concrete evidence per AC.",
+      "expect": "Edits build.task_validate.instructions (the gate that adjudicates AC evidence), NOT a custom step or phase field; explains why task_validate over code_validate; leaves the rest of the config untouched.",
+      "assertions": [
+        "Schema-valid",
+        "build.task_validate.instructions is set (non-empty)",
+        "No invented build.steps",
+        "Did NOT open power-user-setups.md",
+        "Only what was asked"
+      ]
+    },
+    {
+      "id": "s3-use-skill-scoping",
+      "axis": "use: skill with type + scoped instructions",
+      "start_config": "empty",
+      "prompt": "After a task is wrapped, run my docu-scan skill to refresh the docs — but only for the files the task actually changed, not the whole repo.",
+      "expect": "Adds a wrap.steps entry `use: docu:docu-scan, type: skill` (docu-scan is an in-session skill) with name + instructions; the instructions encode the changed-files-only scoping (wrap.steps has no per-file env var, so scoping lives in prose).",
+      "assertions": [
+        "Schema-valid",
+        "wrap step has type: skill",
+        "use is the fully-qualified skill id (e.g. docu:docu-scan)",
+        "Step has name + instructions",
+        "Instructions encode the changed-files-only scoping",
+        "Did NOT open power-user-setups.md"
+      ]
+    },
+    {
+      "id": "s4-advice-path-no-funnel",
+      "axis": "explicit advice request — the ONE case where consulting power-user tiers is correct; must propose, not force-install",
+      "start_config": "empty",
+      "prompt": "I'm setting up anchored for a Rust project and I'm honestly not sure what a good config looks like. What would you recommend?",
+      "expect": "Consults power-user-setups.md (the user ASKED), gives tiered recommendations with the correct Rust toolchain (cargo clippy / cargo build / cargo test), a clear 'start here' pick + one follow-up question — and writes NOTHING to disk (proposes, does not install a wholesale config the user hasn't approved).",
+      "assertions": [
+        "Consulted power-user-setups.md and gave tiered recommendations (advice was requested)",
+        "Used the correct Rust toolchain, not a generic placeholder",
+        "Proposed rather than installed — the anchored.yml file is left UNCHANGED (zero config keys written)",
+        "Advice is proportional and decision-useful (a menu + a start-here pick, not a wall)"
+      ]
+    },
+    {
+      "id": "s5-preserve-existing-one-step",
+      "axis": "funnel-bait minimal request + must preserve pre-existing config",
+      "start_config": "# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/anchored-yml.schema.json\n# anchored.yml — your project's anchored config.\n\nbuild:\n  steps:\n    - name: commit\n      run: 'git add -A && git commit -m \"phase: ${PHASE_SLUG}\"'\n      instructions: |\n        Phase = one commit; keeps a clean per-phase history.\n",
+      "prompt": "Add something so it opens a pull request once the task is finished.",
+      "expect": "Adds a single wrap.steps entry (run: gh pr create, guarded so it no-ops without a remote) with name + instructions; PRESERVES the pre-existing build.commit step byte-for-byte; no type on the run step; at most one declinable one-line suggestion.",
+      "assertions": [
+        "Schema-valid",
+        "Pre-existing build.commit step is preserved (not dropped/clobbered)",
+        "Exactly one new wrap step added",
+        "Wrap step has name + instructions and is remote-guarded",
+        "No `type` on the run step",
+        "Only what was asked + at most one one-line suggestion"
+      ]
+    }
+  ]
+}
