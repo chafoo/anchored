@@ -87,10 +87,10 @@ describe('communication-style.md — canonical voice reference', () => {
 });
 
 describe('SKILL.md files — every skill points to the voice reference', () => {
-  it('finds the 5 expected lifecycle skills', async () => {
+  it('finds the expected skills (5 lifecycle + setup)', async () => {
     const files = await listSkillFiles();
     const names = files.map((f) => f.split('/').slice(-2, -1)[0]).sort();
-    expect(names).toEqual(['impl', 'impl-build', 'impl-plan', 'impl-refine', 'impl-wrap']);
+    expect(names).toEqual(['impl', 'impl-build', 'impl-plan', 'impl-refine', 'impl-wrap', 'setup']);
   });
 
   it('every SKILL.md has a "Communication style" section', async () => {

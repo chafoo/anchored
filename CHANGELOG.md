@@ -11,6 +11,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **`/setup` skill — a conversational `anchored.yml` configuration
+  assistant.** Auto-triggers whenever the user wants to create, change, or
+  extend their `anchored.yml` (add a step, wire an agent/skill into a
+  stage, tune a gate, set up commit/PR/TDD automation) — even without
+  naming the file. It translates the user's stated requirements into
+  correct, schema-valid config, writes `name` + `instructions` on every
+  custom step, and validates before finishing. It clarifies genuine
+  ambiguities with the user and advises on request (backed by
+  `plugin/references/power-user-setups.md`), but never pushes a setup the
+  user didn't ask for — no power-user onboarding funnel.
 - **Custom steps gain `instructions` (any step) + `type` (use steps), and
   `use:` dispatch is now real.** A lifecycle step
   (`plan`/`refine`/`build`/`wrap`.`steps`) can now declare:

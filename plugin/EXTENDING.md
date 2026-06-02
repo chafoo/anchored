@@ -4,6 +4,11 @@ Everything you can configure lives in one file: `anchored.yml` at your
 project root. The framework ships with sensible defaults — you only
 write what you want to change.
 
+> Prefer to do it conversationally? Run **`/setup`** and describe what you
+> want ("commit each phase", "run my linter after implement", "open a PR on
+> wrap") — it edits `anchored.yml` for you, validates it, and advises if you
+> ask. The rest of this doc is the reference behind it.
+
 ## The anchored.yml shape
 
 ```yaml
