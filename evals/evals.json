@@ -1,6 +1,6 @@
 {
   "suite": "anchored-lifecycle-skills",
-  "description": "Behavioral evals for all five anchored lifecycle skills, run against the anchored-test sandbox via /loop (one eval per iteration). Evals 1-4 are a CHAINED lifecycle on Feature A — each stage consumes the prior stage's task-file, so they must run in order. Eval 5 exercises the /impl autopilot end-to-end on a separate Feature B. The gradeable artifact for every eval is the resulting .claude/tasks/<slug>.yml (status, phase/AC statuses, evidence, resolved questions, context.build/​context.wrap audit trail) plus the real source diff in the sandbox.",
+  "description": "Behavioral evals for the anchored lifecycle skills, run against the anchored-test sandbox via /loop (one eval per iteration). Evals 1-4 are a CHAINED lifecycle on Feature A — each stage consumes the prior stage's task-file, so they must run in order. Eval 5 exercises the /impl autopilot end-to-end on a separate Feature B. Eval 6 (Feature C, independent + config-mutating) verifies the use:/type/instructions step-dispatch: it seeds a wrap-status task plus a probe `use:` wrap step, runs /impl-wrap, and checks the dispatched agent's observable marker — restoring anchored.yml afterward. The gradeable artifact for every eval is the resulting .claude/tasks/<slug>.yml (status, phase/AC statuses, evidence, resolved questions, context.build/​context.wrap audit trail) plus the real source diff in the sandbox.",
   "target_project": "/Users/jack/Dev/anchored-test",
   "mcp": "Tools resolve as mcp__anchored__task__* (project .mcp.json → local dev build) or mcp__plugin_anchored_task__task__* (loaded plugin); either works.",
   "reset": "Before the FIRST eval of a fresh suite run: delete any prior suite task-files (slugs containing 'filter' or 'clear-completed') from .claude/tasks/ in the sandbox. Do NOT touch tasks-list-persistence.yml (Jack's separate drafted task) or _archive/. Snapshot each stage's task-file into evals/results/<run>/fixtures/ after it passes so an isolated (non-chained) suite can reuse them later.",
@@ -88,6 +88,29 @@
         "If the run completed: status is 'done', all phases terminal, and the 'Clear completed' button is present in the sandbox source",
         "If the run halted: the halt reason is captured as the eval outcome (which skill/phase, why) — a halt is a finding, not a crash",
         "context.build contains plan-check + rules-check + task-validate + code-validate sections (evidence the full chain executed)"
+      ]
+    },
+    {
+      "id": "6-use-step-dispatch",
+      "skill": "impl-wrap",
+      "order": 6,
+      "feature": "C",
+      "precondition": "Independent of A/B. Requires a one-time SETUP before running and a TEARDOWN after grading (see fields below) — this is the only eval that mutates anchored.yml, so it MUST restore the default config afterward or it corrupts evals 1-5.",
+      "setup": [
+        "Seed the task: copy evals/results/fixtures/wrap-todo-filter-bar.yml into the sandbox .claude/tasks/ as usestep-dispatch-demo.yml, with its internal `slug:` rewritten to `usestep-dispatch-demo` and `title:` to a demo label. Status stays `wrap`; phases stay terminal.",
+        "Back up the sandbox anchored.yml, then set its wrap.steps to a single probe step: `- { name: dispatch-probe-agent, use: general-purpose, type: agent, instructions: \"Create a file named USESTEP_AGENT.txt in the project root containing exactly this text and nothing else: agent-step-ran\" }`."
+      ],
+      "prompt": "/impl-wrap usestep-dispatch-demo",
+      "expected_output": "The wrap pipeline dispatches the custom `use: general-purpose, type: agent` step as an ISOLATED subagent (Agent tool), threading `instructions` verbatim → USESTEP_AGENT.txt appears at the sandbox project root containing exactly `agent-step-ran`. The framework-default summarize still writes a non-empty TL;DR to context.wrap, and task status flips wrap → done. The step is NOT misinterpreted as a shell command and NOT silently skipped.",
+      "assertions": [
+        "The use:-step was dispatched as an agent (not run as a shell command, not skipped): USESTEP_AGENT.txt exists at the sandbox project root",
+        "instructions were threaded into the worker verbatim: USESTEP_AGENT.txt content is exactly 'agent-step-ran' (trailing whitespace/newline ignored)",
+        "context.wrap contains a non-empty summary / TL;DR (the framework-default summarize still ran after the custom step)",
+        "Task status is exactly 'done'",
+        "All phases remain in a terminal state (the custom step did not regress phase/AC state)"
+      ],
+      "teardown": [
+        "Delete USESTEP_AGENT.txt and .claude/tasks/usestep-dispatch-demo.yml from the sandbox; restore the backed-up anchored.yml so the default-config evals (1-5) are unaffected."
       ]
     }
   ]

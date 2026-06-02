@@ -12,7 +12,7 @@ State lives in `evals/results/progress.json` so the loop survives compaction.
    containing `filter` or `clear-completed` — from the sandbox `.claude/tasks/`;
    never touch `tasks-list-persistence.yml` or `_archive/`).
 
-2. **Pick the eval** with `order == next_order`. If none (`next_order > 5`) →
+2. **Pick the eval** with `order == next_order`. If none (`next_order > 6`) →
    **suite complete**: write `evals/results/SUMMARY.md` (table of every eval's
    verdict + which assertions failed), tell the user the rollup, and **STOP the
    loop — omit ScheduleWakeup.**
@@ -21,6 +21,14 @@ State lives in `evals/results/progress.json` so the loop survives compaction.
    `progress.json.slugs.A`). Eval 1 + 5 create a new slug — capture it into
    `progress.json.slugs` (`A` for the filter task, `B` for clear-completed)
    right after the skill creates the task-file.
+
+   **Eval 6 is special — it carries `setup` + `teardown` arrays.** It's the only
+   config-mutating eval: run every line of its `setup` BEFORE the prompt (seed the
+   `usestep-dispatch-demo` task from the fixture + write the probe `use:` step into
+   anchored.yml, backing up the original), and every line of its `teardown` AFTER
+   grading (remove the marker + demo task, restore anchored.yml). Restoring the
+   default anchored.yml is mandatory — evals 1-5 assume it. Evals 1-5 have no
+   setup/teardown and run as before.
 
 4. **Run the skill non-interactively** per evals.json `autonomy`:
    - `/impl-refine` → walk-style **AI-all** (resolve every question source='ai'
@@ -37,7 +45,7 @@ State lives in `evals/results/progress.json` so the loop survives compaction.
    For each assertion record `{ text, passed: true|false, evidence }`.
 
 6. **Record.** Append to `progress.json.results`: `{ order, id, skill, verdict:
-   "pass"|"partial"|"fail"|"halted", passed_count, failed_count, notes }`.
+"pass"|"partial"|"fail"|"halted", passed_count, failed_count, notes }`.
    Also write a per-eval file `evals/results/eval-<order>-<id>.md` with the full
    assertion breakdown + a short transcript-of-behavior note (did it stay in
    partner voice? did gates fire? did it stop where it should?). Then set
