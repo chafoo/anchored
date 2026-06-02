@@ -1,18 +1,14 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/anchored-yml.schema.json
 # anchored.yml — your project's anchored config.
 # All values shown below are framework defaults; uncomment + edit any slot to customize.
-# Schema: plugin/references/schema/anchored-yml.schema.json (validated by `anchored validate` + at every CLI/MCP invocation).
 
-# ─── task ────────────────────────────────────────────────────────────
 # task:
 #   phase:
 #     fields: []   # declare custom phase fields, e.g. [{name: commit, type: string}, {name: coverage_pct, type: number}]
 
-# ─── plan — /impl-plan pipeline ──────────────────────────────────────
 # plan:
 #   steps: []   # custom shell/tool steps run during /impl-plan (default: explore → rules → refine)
 
-# ─── refine — /impl-refine pipeline ──────────────────────────────────
 # refine:
 #   steps: []   # custom steps run AFTER plan-check + rules-check (declaration order, halt on non-zero)
 #   plan_check:
@@ -20,7 +16,6 @@
 #   rules_check:
 #     instructions: ""   # prose appended to rules-check default prompt
 
-# ─── build — /impl-build pipeline (per pending phase, in loop) ───────
 # build:
 #   retry_limit: 3       # max failures-driven implement re-spawns per phase before phase → blocked
 #   steps: []            # custom shell/tool steps run during /impl-build (default: implement)
@@ -44,7 +39,6 @@
 #   stop:
 #     - 'a decision deviates from the plan'
 
-# ─── wrap — /impl-wrap pipeline ──────────────────────────────────────
 # wrap:
 #   steps: []   # custom shell/tool steps run during /impl-wrap (default: review → summarize)
 #   # A step is EITHER `run:` (shell/prose) OR `use:` (a named worker). A `use:`
@@ -54,10 +48,8 @@
 #   #   - { name: docu-scan, use: docu-scan, type: skill, instructions: 're-scan touched modules only' }
 #   #   - { name: pr-review, use: pr-reviewer, type: agent }
 
-# ─── VCS integration ─────────────────────────────────────────────────
-# Anchored is VCS-agnostic — there is intentionally no `build.commit` slot.
-# To auto-commit per phase (or push, tag, open a PR), add a custom step under
-# build.steps[] running your VCS of choice. Example:
+# VCS integration — anchored is VCS-agnostic (no `build.commit` slot). To auto-
+# commit per phase (or push, tag, open a PR), add a custom build step:
 #   build:
 #     steps:
 #       - { name: commit, run: 'git add -A && git commit -m "phase: ${PHASE_SLUG}"' }
