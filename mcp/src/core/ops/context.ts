@@ -34,9 +34,7 @@ export function makeContextPlanAppend({ root }: Deps) {
     const file = await readTask(root, slug);
     const trimmed = content.trim();
     if (trimmed !== '') {
-      file.context.plan = file.context.plan
-        ? `${file.context.plan}\n${trimmed}`
-        : trimmed;
+      file.context.plan = file.context.plan ? `${file.context.plan}\n${trimmed}` : trimmed;
     }
     return writeTask(root, slug, file);
   };
@@ -56,11 +54,7 @@ export function makeContextPlanAppend({ root }: Deps) {
  * before or after.
  */
 export function makeContextPlanRefinementResolve({ root }: Deps) {
-  return async (
-    slug: string,
-    q_index: number,
-    resolution: string,
-  ): Promise<TaskFile> => {
+  return async (slug: string, q_index: number, resolution: string): Promise<TaskFile> => {
     const file = await readTask(root, slug);
     const plan = file.context.plan ?? '';
     const marker = '→ ?';
@@ -113,9 +107,7 @@ export function makeContextBuildSubsection({ root }: Deps) {
       if (trimmed !== '') {
         if (!file.context.build) file.context.build = {};
         const existing = file.context.build[name] ?? '';
-        file.context.build[name] = existing
-          ? `${existing}\n${trimmed}`
-          : trimmed;
+        file.context.build[name] = existing ? `${existing}\n${trimmed}` : trimmed;
       }
       return writeTask(root, slug, file);
     },
@@ -152,9 +144,7 @@ export function makeContextWrapSubsection({ root }: Deps) {
           file.context.wrap.subsections = {};
         }
         const existing = file.context.wrap.subsections[name] ?? '';
-        file.context.wrap.subsections[name] = existing
-          ? `${existing}\n${trimmed}`
-          : trimmed;
+        file.context.wrap.subsections[name] = existing ? `${existing}\n${trimmed}` : trimmed;
       }
       return writeTask(root, slug, file);
     },

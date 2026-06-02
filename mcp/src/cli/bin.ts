@@ -26,9 +26,7 @@ const program = new Command();
 
 program
   .name('anchored')
-  .description(
-    'CLI for the anchored Claude Code plugin — typed task-file mutations',
-  )
+  .description('CLI for the anchored Claude Code plugin — typed task-file mutations')
   .version('0.2.0');
 
 registerTaskCommands(program);
@@ -84,8 +82,7 @@ function printError(err: unknown): void {
   const DIM = isTTY ? '[2m' : '';
   const RESET = isTTY ? '[0m' : '';
 
-  const errorName =
-    err instanceof Error && err.name && err.name !== 'Error' ? err.name : '';
+  const errorName = err instanceof Error && err.name && err.name !== 'Error' ? err.name : '';
   const message = err instanceof Error ? err.message : String(err);
   const prefix = errorName ? `${errorName}: ` : '';
   process.stderr.write(`${RED}${BOLD}anchored:${RESET} ${prefix}${message}\n`);

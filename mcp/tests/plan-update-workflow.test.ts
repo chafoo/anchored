@@ -42,11 +42,7 @@ async function makeProject(taskYml: string, slug = 'sample') {
   const root = await mkdtemp(join(tmpdir(), 'anchored-plan-update-'));
   await mkdir(join(root, '.claude', 'tasks'), { recursive: true });
   await writeFile(join(root, 'anchored.yml'), ANCHORED_YML, 'utf-8');
-  await writeFile(
-    join(root, '.claude', 'tasks', `${slug}.yml`),
-    taskYml,
-    'utf-8',
-  );
+  await writeFile(join(root, '.claude', 'tasks', `${slug}.yml`), taskYml, 'utf-8');
   const config = parseAnchoredYml(yamlParse(ANCHORED_YML));
   const ops = createOps(config, root);
   return {
@@ -57,10 +53,7 @@ async function makeProject(taskYml: string, slug = 'sample') {
       await rm(root, { recursive: true, force: true });
     },
     async readRaw() {
-      return await readFile(
-        join(root, '.claude', 'tasks', `${slug}.yml`),
-        'utf-8',
-      );
+      return await readFile(join(root, '.claude', 'tasks', `${slug}.yml`), 'utf-8');
     },
   };
 }
@@ -125,8 +118,8 @@ phases:
         status: pending
 `);
     const beforeFile = await project.ops.task.read('sample');
-    const initialAcCount =
-      beforeFile.phases.find((p) => p.slug === 'p1')!.acceptance_criteria.length;
+    const initialAcCount = beforeFile.phases.find((p) => p.slug === 'p1')!.acceptance_criteria
+      .length;
     expect(initialAcCount).toBe(1);
 
     await project.ops.task.phase.ac.add('sample', 'p1', {
@@ -134,10 +127,7 @@ phases:
     });
 
     const audit = `Updated 2026-05-27: added 'input validation' AC to phase 1`;
-    const afterFile = await project.ops.task.context.plan.append(
-      'sample',
-      audit,
-    );
+    const afterFile = await project.ops.task.context.plan.append('sample', audit);
 
     const phase = afterFile.phases.find((p) => p.slug === 'p1')!;
     expect(phase.acceptance_criteria.length).toBe(2);
@@ -219,10 +209,7 @@ phases:
     // Done phases keep their evidence verbatim.
     const doneOne = after.phases.find((p) => p.slug === 'done-one')!;
     expect(doneOne.status).toBe('done');
-    expect(doneOne.acceptance_criteria[0]!.evidence).toEqual([
-      'src/one.ts:42',
-      'commit abc123',
-    ]);
+    expect(doneOne.acceptance_criteria[0]!.evidence).toEqual(['src/one.ts:42', 'commit abc123']);
     const doneTwo = after.phases.find((p) => p.slug === 'done-two')!;
     expect(doneTwo.status).toBe('done');
     expect(doneTwo.acceptance_criteria[0]!.evidence).toEqual(['src/two.ts:7']);
@@ -231,9 +218,7 @@ phases:
     const inserted = after.phases.find((p) => p.slug === 'inserted-mid')!;
     expect(inserted.status).toBe('pending');
     expect(inserted.acceptance_criteria.length).toBe(1);
-    expect(inserted.acceptance_criteria[0]!.text).toBe(
-      'new mid-build work',
-    );
+    expect(inserted.acceptance_criteria[0]!.text).toBe('new mid-build work');
 
     // Audit lands in plan.
     const audited = await project.ops.task.context.plan.append(
@@ -276,23 +261,16 @@ phases:
 `);
 
     // Without force → throws.
-    await expect(
-      project.ops.task.phase.remove('sample', 'done-already'),
-    ).rejects.toBeInstanceOf(DonePhaseImmutable);
+    await expect(project.ops.task.phase.remove('sample', 'done-already')).rejects.toBeInstanceOf(
+      DonePhaseImmutable,
+    );
 
     // The file is still intact after the rejected remove.
     const stillThere = await project.ops.task.read('sample');
-    expect(stillThere.phases.map((p) => p.slug)).toEqual([
-      'done-already',
-      'keep',
-    ]);
+    expect(stillThere.phases.map((p) => p.slug)).toEqual(['done-already', 'keep']);
 
     // With force → succeeds and phase is gone.
-    const removed = await project.ops.task.phase.remove(
-      'sample',
-      'done-already',
-      { force: true },
-    );
+    const removed = await project.ops.task.phase.remove('sample', 'done-already', { force: true });
     expect(removed.phases.map((p) => p.slug)).toEqual(['keep']);
   });
 
@@ -325,19 +303,10 @@ phases:
         status: pending
 `);
 
-    const afterFirst = await project.ops.task.phase.remove(
-      'sample',
-      'pending-phase',
-    );
-    expect(afterFirst.phases.map((p) => p.slug)).toEqual([
-      'in-prog-phase',
-      'keep',
-    ]);
+    const afterFirst = await project.ops.task.phase.remove('sample', 'pending-phase');
+    expect(afterFirst.phases.map((p) => p.slug)).toEqual(['in-prog-phase', 'keep']);
 
-    const afterSecond = await project.ops.task.phase.remove(
-      'sample',
-      'in-prog-phase',
-    );
+    const afterSecond = await project.ops.task.phase.remove('sample', 'in-prog-phase');
     expect(afterSecond.phases.map((p) => p.slug)).toEqual(['keep']);
   });
 });

@@ -58,7 +58,7 @@ describe('communication-style.md — canonical voice reference', () => {
 
   it('has a Self-check section', async () => {
     const body = await readFile(REF_DOC, 'utf-8');
-    expect(/^##\s+Self-check/mi.test(body), 'expected "## Self-check" heading').toBe(true);
+    expect(/^##\s+Self-check/im.test(body), 'expected "## Self-check" heading').toBe(true);
   });
 
   it('has at least 6 contrast pairs (machinery voice vs partner voice)', async () => {

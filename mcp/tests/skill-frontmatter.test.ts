@@ -79,10 +79,7 @@ describe('skill frontmatter — every SKILL.md has valid frontmatter', () => {
   it('every skill declares a `name` matching its directory name', async () => {
     const skills = await listSkills();
     for (const s of skills) {
-      expect(
-        s.frontmatter.name,
-        `skill ${s.name} is missing a frontmatter name`,
-      ).toBe(s.name);
+      expect(s.frontmatter.name, `skill ${s.name} is missing a frontmatter name`).toBe(s.name);
     }
   });
 });

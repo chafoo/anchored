@@ -38,12 +38,12 @@ export type { TaskStatus, PhaseStatus };
  * No other back-edges are legal — they'd skip required gates.
  */
 const TASK_TRANSITIONS: Record<TaskStatus, ReadonlySet<TaskStatus>> = {
-  plan:    new Set<TaskStatus>(['plan', 'drafted']),
+  plan: new Set<TaskStatus>(['plan', 'drafted']),
   drafted: new Set<TaskStatus>(['drafted', 'refined', 'build']),
   refined: new Set<TaskStatus>(['refined', 'build', 'drafted']),
-  build:   new Set<TaskStatus>(['build', 'wrap', 'drafted']),
-  wrap:    new Set<TaskStatus>(['wrap', 'done', 'drafted']),
-  done:    new Set<TaskStatus>(['done', 'drafted']),
+  build: new Set<TaskStatus>(['build', 'wrap', 'drafted']),
+  wrap: new Set<TaskStatus>(['wrap', 'done', 'drafted']),
+  done: new Set<TaskStatus>(['done', 'drafted']),
 };
 
 export function assertTaskTransition(from: TaskStatus, to: TaskStatus): void {
@@ -51,14 +51,10 @@ export function assertTaskTransition(from: TaskStatus, to: TaskStatus): void {
     const legal = [...TASK_TRANSITIONS[from]].filter((s) => s !== from);
     const suggestions: string[] = [];
     if (legal.length > 0) {
-      suggestions.push(
-        `Use one of the legal next states: ${legal.join(', ')}.`,
-      );
+      suggestions.push(`Use one of the legal next states: ${legal.join(', ')}.`);
       const forward = legal.find((s) => s !== 'drafted');
       if (forward !== undefined) {
-        suggestions.push(
-          `Run \`anchored task status set <slug> ${forward}\` to advance forward.`,
-        );
+        suggestions.push(`Run \`anchored task status set <slug> ${forward}\` to advance forward.`);
       }
       if (legal.includes('drafted')) {
         suggestions.push(
@@ -66,9 +62,7 @@ export function assertTaskTransition(from: TaskStatus, to: TaskStatus): void {
         );
       }
     } else {
-      suggestions.push(
-        `Status "${from}" is terminal — no further transitions allowed.`,
-      );
+      suggestions.push(`Status "${from}" is terminal — no further transitions allowed.`);
     }
     throw new InvalidTransition(
       `task status: cannot transition ${from} → ${to}. ` +
@@ -96,11 +90,11 @@ export function assertTaskTransition(from: TaskStatus, to: TaskStatus): void {
  * evidence and reset).
  */
 const PHASE_TRANSITIONS: Record<PhaseStatus, ReadonlySet<PhaseStatus>> = {
-  pending:        new Set<PhaseStatus>(['pending', 'in-progress', 'deferred']),
-  'in-progress':  new Set<PhaseStatus>(['in-progress', 'done', 'blocked', 'deferred']),
-  blocked:        new Set<PhaseStatus>(['blocked', 'pending', 'in-progress']),
-  done:           new Set<PhaseStatus>(['done']),
-  deferred:       new Set<PhaseStatus>(['deferred']),
+  pending: new Set<PhaseStatus>(['pending', 'in-progress', 'deferred']),
+  'in-progress': new Set<PhaseStatus>(['in-progress', 'done', 'blocked', 'deferred']),
+  blocked: new Set<PhaseStatus>(['blocked', 'pending', 'in-progress']),
+  done: new Set<PhaseStatus>(['done']),
+  deferred: new Set<PhaseStatus>(['deferred']),
 };
 
 export function assertPhaseTransition(from: PhaseStatus, to: PhaseStatus): void {
@@ -124,9 +118,7 @@ export function assertPhaseTransition(from: PhaseStatus, to: PhaseStatus): void 
         );
       }
     } else {
-      suggestions.push(
-        `Phase status "${from}" is terminal — no further transitions allowed.`,
-      );
+      suggestions.push(`Phase status "${from}" is terminal — no further transitions allowed.`);
     }
     throw new InvalidTransition(
       `phase status: cannot transition ${from} → ${to}. ` +
@@ -155,13 +147,10 @@ export function coerceFieldValue(decl: PhaseFieldDecl, value: unknown): unknown 
       if (typeof value === 'number' || typeof value === 'boolean') {
         return String(value);
       }
-      throw new InvalidFieldType(
-        `field ${decl.name}: expected string, got ${typeof value}`,
-        [
-          `Pass a string value (or a coercible primitive like number/boolean).`,
-          `Edit anchored.yml if the field should be a different type.`,
-        ],
-      );
+      throw new InvalidFieldType(`field ${decl.name}: expected string, got ${typeof value}`, [
+        `Pass a string value (or a coercible primitive like number/boolean).`,
+        `Edit anchored.yml if the field should be a different type.`,
+      ]);
 
     case 'number': {
       if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -182,13 +171,10 @@ export function coerceFieldValue(decl: PhaseFieldDecl, value: unknown): unknown 
       if (typeof value === 'boolean') return value;
       if (value === 'true') return true;
       if (value === 'false') return false;
-      throw new InvalidFieldType(
-        `field ${decl.name}: expected boolean, got "${value}"`,
-        [
-          `Pass true, false, "true", or "false".`,
-          `Edit anchored.yml if the field should be a different type.`,
-        ],
-      );
+      throw new InvalidFieldType(`field ${decl.name}: expected boolean, got "${value}"`, [
+        `Pass true, false, "true", or "false".`,
+        `Edit anchored.yml if the field should be a different type.`,
+      ]);
     }
 
     case 'enum': {
@@ -215,8 +201,7 @@ export function coerceFieldValue(decl: PhaseFieldDecl, value: unknown): unknown 
 
 export function assertAcIndexInRange(acCount: number, acIndex: number): void {
   if (!Number.isInteger(acIndex) || acIndex < 0 || acIndex >= acCount) {
-    const validRange =
-      acCount === 0 ? 'none — phase has 0 ACs' : `0..${acCount - 1}`;
+    const validRange = acCount === 0 ? 'none — phase has 0 ACs' : `0..${acCount - 1}`;
     throw new OutOfRange(
       `ac_index ${acIndex} out of range (phase has ${acCount} acceptance_criteria, valid ${validRange})`,
       [
@@ -244,13 +229,10 @@ export function assertAcIndexInRange(acCount: number, acIndex: number): void {
  */
 export function assertEvidenceArrayNonEmpty(evidence: string[]): void {
   if (!Array.isArray(evidence) || evidence.length === 0) {
-    throw new InvalidEvidence(
-      `evidence must be a non-empty array of concrete proof strings.`,
-      [
-        `Pass at least one evidence string (file:line, command + outcome, etc.).`,
-        `If the AC genuinely can't be satisfied yet, transition the phase to blocked or deferred instead.`,
-      ],
-    );
+    throw new InvalidEvidence(`evidence must be a non-empty array of concrete proof strings.`, [
+      `Pass at least one evidence string (file:line, command + outcome, etc.).`,
+      `If the AC genuinely can't be satisfied yet, transition the phase to blocked or deferred instead.`,
+    ]);
   }
   for (let i = 0; i < evidence.length; i++) {
     const item = evidence[i];
@@ -288,9 +270,7 @@ export function isEvidenceFilled(evidence: unknown): boolean {
   if (evidence == null) return false;
   if (Array.isArray(evidence)) {
     if (evidence.length === 0) return false;
-    return evidence.every(
-      (e) => typeof e === 'string' && e.trim() !== '' && e.trim() !== '—',
-    );
+    return evidence.every((e) => typeof e === 'string' && e.trim() !== '' && e.trim() !== '—');
   }
   if (typeof evidence !== 'string') return false;
   const trimmed = evidence.trim();
@@ -385,6 +365,7 @@ export class IncompletePhases extends AnchoredError {
 // ─────────────────────────────────────────────────────────────────────
 
 function assertExhaustive(_: never): never {
+  // eslint-disable-next-line no-restricted-syntax -- unreachable exhaustiveness guard; never reaches a user surface
   throw new Error('exhaustive switch missed a case');
 }
 

@@ -108,10 +108,7 @@ phases:
     const onDisk = await fixture.readTaskRaw();
     const ac = onDisk.phases[0]!.acceptance_criteria[0]!;
     expect(ac.status).toBe('done');
-    expect(ac.evidence).toEqual([
-      'src/foo.ts:42 — implemented',
-      'npm test — green',
-    ]);
+    expect(ac.evidence).toEqual(['src/foo.ts:42 — implemented', 'npm test — green']);
     expect((ac as { failures?: string[] }).failures).toBeUndefined();
   });
 });
@@ -124,12 +121,7 @@ describe('ac.evidence.add — atomicity', () => {
   it('appends to pending AC and flips status to done', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    await ops.task.phase.ac.evidence.add(
-      'sample',
-      'first',
-      0,
-      'src/foo.ts:1',
-    );
+    await ops.task.phase.ac.evidence.add('sample', 'first', 0, 'src/foo.ts:1');
     const onDisk = await fixture.readTaskRaw();
     const ac = onDisk.phases[0]!.acceptance_criteria[0]!;
     expect(ac.evidence).toEqual(['src/foo.ts:1']);
@@ -191,15 +183,11 @@ phases:
 `,
     });
     const ops = createOps(fixture.config, fixture.root);
-    await ops.task.phase.ac.failures.set('sample', 'p', 0, [
-      'task-check found a bug',
-    ]);
+    await ops.task.phase.ac.failures.set('sample', 'p', 0, ['task-check found a bug']);
     const onDisk = await fixture.readTaskRaw();
     const ac = onDisk.phases[0]!.acceptance_criteria[0]!;
     expect(ac.status).toBe('pending');
-    expect((ac as { failures?: string[] }).failures).toEqual([
-      'task-check found a bug',
-    ]);
+    expect((ac as { failures?: string[] }).failures).toEqual(['task-check found a bug']);
     // Critical: evidence is KEPT as history for retry context.
     expect(ac.evidence).toEqual(['claimed proof']);
   });

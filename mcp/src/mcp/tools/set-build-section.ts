@@ -16,8 +16,6 @@ export const setBuildSectionTool: AnchoredTool = {
   handler: async (args) => {
     const input = InputSchema.parse(args);
     const ops = await withOps(input.project_root);
-    return ops.task.context.build
-      .subsection(input.section)
-      .set(input.slug, input.content);
+    return ops.task.context.build.subsection(input.section).set(input.slug, input.content);
   },
 };

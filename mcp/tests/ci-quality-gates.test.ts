@@ -129,7 +129,10 @@ describe('size-limit config in package.json', () => {
       expect(entry.limit, `${entry.path} missing limit`).toBeDefined();
       // Parse "800 KB" form
       const m = entry.limit?.match(/^(\d+)\s*KB$/i);
-      expect(m, `${entry.path}: limit must be in KB form (e.g. "800 KB"), got "${entry.limit}"`).not.toBeNull();
+      expect(
+        m,
+        `${entry.path}: limit must be in KB form (e.g. "800 KB"), got "${entry.limit}"`,
+      ).not.toBeNull();
       const kb = m ? Number(m[1]) : 0;
       expect(kb).toBeGreaterThan(0);
       expect(kb).toBeLessThanOrEqual(1024); // ≤ 1MB
@@ -140,7 +143,9 @@ describe('size-limit config in package.json', () => {
     const pkg = await readPkg();
     const dev = pkg.devDependencies as Record<string, string>;
     expect(dev['size-limit']).toBeTruthy();
-    expect(dev['@size-limit/preset-small-lib']).toBeTruthy();
+    // measures the pre-built node bundles directly (no re-bundling) — the
+    // preset re-bundled for web and choked on node: builtins
+    expect(dev['@size-limit/file']).toBeTruthy();
     expect(dev['license-checker']).toBeTruthy();
   });
 });

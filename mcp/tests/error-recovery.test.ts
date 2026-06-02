@@ -115,11 +115,7 @@ let projectRoot: string;
 
 async function setup(taskSlug = 't', customYml?: string): Promise<TaskOps> {
   await mkdir(join(projectRoot, '.claude', 'tasks'), { recursive: true });
-  await writeFile(
-    join(projectRoot, '.claude', 'tasks', `${taskSlug}.yml`),
-    SAMPLE_TASK,
-    'utf-8',
-  );
+  await writeFile(join(projectRoot, '.claude', 'tasks', `${taskSlug}.yml`), SAMPLE_TASK, 'utf-8');
   await writeFile(join(projectRoot, 'anchored.yml'), customYml ?? ANCHORED_YML, 'utf-8');
   const config = await readConfig(projectRoot);
   return createOps(config, projectRoot);

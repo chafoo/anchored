@@ -27,10 +27,7 @@ describe('CLI bundle (dist/cli/bin.js)', () => {
     const content = await readFile(CLI_DIST, 'utf-8');
     const lines = content.split('\n');
     expect(lines[0], 'line 1 must be shebang').toMatch(/^#!\/usr\/bin\/env node$/);
-    expect(
-      lines[1],
-      'line 2 must NOT be a second shebang (regression check)',
-    ).not.toMatch(/^#!/);
+    expect(lines[1], 'line 2 must NOT be a second shebang (regression check)').not.toMatch(/^#!/);
   });
 
   it('has user-execute bit set', async () => {
@@ -55,10 +52,7 @@ describe('MCP server bundle (dist/mcp/server.js)', () => {
     const content = await readFile(MCP_DIST, 'utf-8');
     const lines = content.split('\n');
     expect(lines[0], 'line 1 must be shebang').toMatch(/^#!\/usr\/bin\/env node$/);
-    expect(
-      lines[1],
-      'line 2 must NOT be a second shebang (regression check)',
-    ).not.toMatch(/^#!/);
+    expect(lines[1], 'line 2 must NOT be a second shebang (regression check)').not.toMatch(/^#!/);
   });
 
   it('has user-execute bit set', async () => {

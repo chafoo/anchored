@@ -14,11 +14,6 @@ export const setAcTextTool: AnchoredTool = {
   handler: async (args) => {
     const input = InputSchema.parse(args);
     const ops = await withOps(input.project_root);
-    return ops.task.phase.ac.text.set(
-      input.slug,
-      input.phase_slug,
-      input.ac_index,
-      input.text,
-    );
+    return ops.task.phase.ac.text.set(input.slug, input.phase_slug, input.ac_index, input.text);
   },
 };

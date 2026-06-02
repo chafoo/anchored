@@ -16,10 +16,6 @@ export const resolveQuestionTool: AnchoredTool = {
   handler: async (args) => {
     const input = InputSchema.parse(args);
     const ops = await withOps(input.project_root);
-    return ops.task.context.plan.refinement.resolve(
-      input.slug,
-      input.q_index,
-      input.resolution,
-    );
+    return ops.task.context.plan.refinement.resolve(input.slug, input.q_index, input.resolution);
   },
 };

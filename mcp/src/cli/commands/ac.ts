@@ -18,26 +18,23 @@
 
 import type { Command } from 'commander';
 import { loadOps, parseIntArg, printUpdated } from '../helpers.js';
+import { AnchoredError } from '../../core/errors.js';
 
 export function registerAcCommands(program: Command): void {
   const ac = program.command('ac').description('Acceptance-criterion operations');
 
-  ac
-    .command('add <slug> <phase-slug>')
+  ac.command('add <slug> <phase-slug>')
     .description('append a new acceptance criterion to the phase')
     .requiredOption('--text <text>', 'AC text (required)')
-    .action(
-      async (slug: string, phaseSlug: string, opts: { text: string }) => {
-        const ops = await loadOps(process.cwd());
-        const file = await ops.task.phase.ac.add(slug, phaseSlug, {
-          text: opts.text,
-        });
-        printUpdated(file);
-      },
-    );
+    .action(async (slug: string, phaseSlug: string, opts: { text: string }) => {
+      const ops = await loadOps(process.cwd());
+      const file = await ops.task.phase.ac.add(slug, phaseSlug, {
+        text: opts.text,
+      });
+      printUpdated(file);
+    });
 
-  ac
-    .command('remove <slug> <phase-slug> <idx>')
+  ac.command('remove <slug> <phase-slug> <idx>')
     .description('remove the AC at the given 0-based index')
     .action(async (slug: string, phaseSlug: string, idxArg: string) => {
       const idx = parseIntArg(idxArg, 'idx');
@@ -51,14 +48,12 @@ export function registerAcCommands(program: Command): void {
   text
     .command('set <slug> <phase-slug> <idx> <text>')
     .description('rewrite the AC text in place (status + evidence unchanged)')
-    .action(
-      async (slug: string, phaseSlug: string, idxArg: string, newText: string) => {
-        const idx = parseIntArg(idxArg, 'idx');
-        const ops = await loadOps(process.cwd());
-        const file = await ops.task.phase.ac.text.set(slug, phaseSlug, idx, newText);
-        printUpdated(file);
-      },
-    );
+    .action(async (slug: string, phaseSlug: string, idxArg: string, newText: string) => {
+      const idx = parseIntArg(idxArg, 'idx');
+      const ops = await loadOps(process.cwd());
+      const file = await ops.task.phase.ac.text.set(slug, phaseSlug, idx, newText);
+      printUpdated(file);
+    });
 
   // ac evidence set / add
   const evidence = ac.command('evidence').description('AC evidence ops');
@@ -67,66 +62,33 @@ export function registerAcCommands(program: Command): void {
     .description(
       "set evidence (atomically: status → 'done', failures cleared). Each <evidence> arg becomes one array element.",
     )
-    .action(
-      async (
-        slug: string,
-        phaseSlug: string,
-        idxArg: string,
-        evidenceArgs: string[],
-      ) => {
-        const idx = parseIntArg(idxArg, 'idx');
-        const ops = await loadOps(process.cwd());
-        const file = await ops.task.phase.ac.evidence.set(
-          slug,
-          phaseSlug,
-          idx,
-          evidenceArgs,
-        );
-        printUpdated(file);
-      },
-    );
+    .action(async (slug: string, phaseSlug: string, idxArg: string, evidenceArgs: string[]) => {
+      const idx = parseIntArg(idxArg, 'idx');
+      const ops = await loadOps(process.cwd());
+      const file = await ops.task.phase.ac.evidence.set(slug, phaseSlug, idx, evidenceArgs);
+      printUpdated(file);
+    });
   evidence
     .command('add <slug> <phase-slug> <idx> <line>')
     .description("append one evidence line (atomically: status → 'done')")
-    .action(
-      async (slug: string, phaseSlug: string, idxArg: string, line: string) => {
-        const idx = parseIntArg(idxArg, 'idx');
-        const ops = await loadOps(process.cwd());
-        const file = await ops.task.phase.ac.evidence.add(
-          slug,
-          phaseSlug,
-          idx,
-          line,
-        );
-        printUpdated(file);
-      },
-    );
+    .action(async (slug: string, phaseSlug: string, idxArg: string, line: string) => {
+      const idx = parseIntArg(idxArg, 'idx');
+      const ops = await loadOps(process.cwd());
+      const file = await ops.task.phase.ac.evidence.add(slug, phaseSlug, idx, line);
+      printUpdated(file);
+    });
 
   // ac failures set / clear
   const failures = ac.command('failures').description('AC failures ops');
   failures
     .command('set <slug> <phase-slug> <idx> <failures...>')
-    .description(
-      "record failures (atomically: status → 'pending', evidence preserved as history)",
-    )
-    .action(
-      async (
-        slug: string,
-        phaseSlug: string,
-        idxArg: string,
-        failureArgs: string[],
-      ) => {
-        const idx = parseIntArg(idxArg, 'idx');
-        const ops = await loadOps(process.cwd());
-        const file = await ops.task.phase.ac.failures.set(
-          slug,
-          phaseSlug,
-          idx,
-          failureArgs,
-        );
-        printUpdated(file);
-      },
-    );
+    .description("record failures (atomically: status → 'pending', evidence preserved as history)")
+    .action(async (slug: string, phaseSlug: string, idxArg: string, failureArgs: string[]) => {
+      const idx = parseIntArg(idxArg, 'idx');
+      const ops = await loadOps(process.cwd());
+      const file = await ops.task.phase.ac.failures.set(slug, phaseSlug, idx, failureArgs);
+      printUpdated(file);
+    });
   failures
     .command('clear <slug> <phase-slug> <idx>')
     .description('clear the failures array (status unchanged)')
@@ -144,27 +106,18 @@ export function registerAcCommands(program: Command): void {
     .description(
       "set AC status to 'pending' (full reset: clears evidence + failures). 'done' is not accepted here — use `ac evidence set` instead.",
     )
-    .action(
-      async (
-        slug: string,
-        phaseSlug: string,
-        idxArg: string,
-        statusArg: string,
-      ) => {
-        if (statusArg !== 'pending') {
-          throw new Error(
-            "ac status set only accepts 'pending' (use `ac evidence set` to drive an AC to 'done')",
-          );
-        }
-        const idx = parseIntArg(idxArg, 'idx');
-        const ops = await loadOps(process.cwd());
-        const file = await ops.task.phase.ac.status.set(
-          slug,
-          phaseSlug,
-          idx,
-          'pending',
+    .action(async (slug: string, phaseSlug: string, idxArg: string, statusArg: string) => {
+      if (statusArg !== 'pending') {
+        throw new AnchoredError(
+          "ac status set only accepts 'pending' (use `ac evidence set` to drive an AC to 'done')",
+          [
+            'To mark an AC done, run `anchored ac evidence set <slug> <phase-slug> <idx> <evidence…>` — evidence is filled atomically with the status flip.',
+          ],
         );
-        printUpdated(file);
-      },
-    );
+      }
+      const idx = parseIntArg(idxArg, 'idx');
+      const ops = await loadOps(process.cwd());
+      const file = await ops.task.phase.ac.status.set(slug, phaseSlug, idx, 'pending');
+      printUpdated(file);
+    });
 }

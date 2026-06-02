@@ -64,19 +64,13 @@ describe('retry-loop — failures-driven re-do cycle', () => {
     ]);
     // task-validate caught the bogus line; orchestrator stores per-AC
     // failures via set_failures (which keeps evidence as history).
-    await ops.task.phase.ac.failures.set(
-      'stubborn',
-      'stubborn-phase',
-      0,
-      ['evidence cites src/foo.ts:9999 but file has only 8 lines'],
-    );
+    await ops.task.phase.ac.failures.set('stubborn', 'stubborn-phase', 0, [
+      'evidence cites src/foo.ts:9999 but file has only 8 lines',
+    ]);
 
     // Orchestrator scans the phase, sees failures, bumps the retry
     // counter before re-spawning implement.
-    let count = await ops.task.phase.retry_count.increment(
-      'stubborn',
-      'stubborn-phase',
-    );
+    let count = await ops.task.phase.retry_count.increment('stubborn', 'stubborn-phase');
     expect(count).toBe(1);
 
     // After increment, the retry_count is persisted on disk.
@@ -96,32 +90,20 @@ describe('retry-loop — failures-driven re-do cycle', () => {
     await ops.task.phase.ac.evidence.set('stubborn', 'stubborn-phase', 0, [
       'attempt 2 — src/foo.ts:8888 — still bogus',
     ]);
-    await ops.task.phase.ac.failures.set(
-      'stubborn',
-      'stubborn-phase',
-      0,
-      ['evidence cites src/foo.ts:8888 — file still has only 8 lines'],
-    );
-    count = await ops.task.phase.retry_count.increment(
-      'stubborn',
-      'stubborn-phase',
-    );
+    await ops.task.phase.ac.failures.set('stubborn', 'stubborn-phase', 0, [
+      'evidence cites src/foo.ts:8888 — file still has only 8 lines',
+    ]);
+    count = await ops.task.phase.retry_count.increment('stubborn', 'stubborn-phase');
     expect(count).toBe(2);
 
     // ─── Attempt 3: implement still wrong → validate rejects ──────
     await ops.task.phase.ac.evidence.set('stubborn', 'stubborn-phase', 0, [
       'attempt 3 — src/foo.ts:7777 — STILL bogus',
     ]);
-    await ops.task.phase.ac.failures.set(
-      'stubborn',
-      'stubborn-phase',
-      0,
-      ['evidence cites src/foo.ts:7777 — really still bogus'],
-    );
-    count = await ops.task.phase.retry_count.increment(
-      'stubborn',
-      'stubborn-phase',
-    );
+    await ops.task.phase.ac.failures.set('stubborn', 'stubborn-phase', 0, [
+      'evidence cites src/foo.ts:7777 — really still bogus',
+    ]);
+    count = await ops.task.phase.retry_count.increment('stubborn', 'stubborn-phase');
     expect(count).toBe(3);
 
     // Orchestrator check: count (3) is still ≤ retry_limit (3), so
@@ -131,16 +113,10 @@ describe('retry-loop — failures-driven re-do cycle', () => {
     await ops.task.phase.ac.evidence.set('stubborn', 'stubborn-phase', 0, [
       'attempt 4 — src/foo.ts:6666 — give up',
     ]);
-    await ops.task.phase.ac.failures.set(
-      'stubborn',
-      'stubborn-phase',
-      0,
-      ['evidence cites src/foo.ts:6666 — exhausted patience'],
-    );
-    count = await ops.task.phase.retry_count.increment(
-      'stubborn',
-      'stubborn-phase',
-    );
+    await ops.task.phase.ac.failures.set('stubborn', 'stubborn-phase', 0, [
+      'evidence cites src/foo.ts:6666 — exhausted patience',
+    ]);
+    count = await ops.task.phase.retry_count.increment('stubborn', 'stubborn-phase');
     expect(count).toBe(4);
     // count (4) > retry_limit (3) — orchestrator transitions to blocked.
     expect(count).toBeGreaterThan(RETRY_LIMIT);
@@ -172,20 +148,10 @@ describe('retry-loop — failures-driven re-do cycle', () => {
     const ops = createOps(fixture.config, fixture.root);
 
     // Drive the loop to blocked state.
-    await ops.task.phase.ac.evidence.set('stubborn', 'stubborn-phase', 0, [
-      'bogus',
-    ]);
-    await ops.task.phase.ac.failures.set(
-      'stubborn',
-      'stubborn-phase',
-      0,
-      ['bogus'],
-    );
+    await ops.task.phase.ac.evidence.set('stubborn', 'stubborn-phase', 0, ['bogus']);
+    await ops.task.phase.ac.failures.set('stubborn', 'stubborn-phase', 0, ['bogus']);
     for (let i = 0; i < RETRY_LIMIT + 1; i++) {
-      await ops.task.phase.retry_count.increment(
-        'stubborn',
-        'stubborn-phase',
-      );
+      await ops.task.phase.retry_count.increment('stubborn', 'stubborn-phase');
     }
     await ops.task.phase.status.set('stubborn', 'stubborn-phase', 'blocked');
 
@@ -217,26 +183,14 @@ describe('retry-loop — failures-driven re-do cycle', () => {
     const ops = createOps(fixture.config, fixture.root);
 
     // Attempt 1: bogus.
-    await ops.task.phase.ac.evidence.set('stubborn', 'stubborn-phase', 0, [
-      'attempt 1 — bogus',
-    ]);
-    await ops.task.phase.ac.failures.set(
-      'stubborn',
-      'stubborn-phase',
-      0,
-      ['evidence is bogus'],
-    );
-    const n1 = await ops.task.phase.retry_count.increment(
-      'stubborn',
-      'stubborn-phase',
-    );
+    await ops.task.phase.ac.evidence.set('stubborn', 'stubborn-phase', 0, ['attempt 1 — bogus']);
+    await ops.task.phase.ac.failures.set('stubborn', 'stubborn-phase', 0, ['evidence is bogus']);
+    const n1 = await ops.task.phase.retry_count.increment('stubborn', 'stubborn-phase');
     expect(n1).toBe(1);
 
     // Pre-retry on disk: failures present, status pending, evidence preserved.
     let onDisk = await fixture.readTaskRaw();
-    expect(onDisk.phases[0]!.acceptance_criteria[0]!.failures).toEqual([
-      'evidence is bogus',
-    ]);
+    expect(onDisk.phases[0]!.acceptance_criteria[0]!.failures).toEqual(['evidence is bogus']);
     expect(onDisk.phases[0]!.acceptance_criteria[0]!.status).toBe('pending');
 
     // Attempt 2: implement reads failures, fixes, writes real evidence.

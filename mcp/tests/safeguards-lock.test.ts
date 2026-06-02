@@ -108,9 +108,7 @@ describe('atomicWrite contention handling', () => {
     try {
       // atomicWrite should retry 3 times then give up. 3 × 100ms +
       // overhead ~= 500ms tops; we give the test a generous timeout.
-      await expect(
-        atomicWrite(path, 'whatever: value\n'),
-      ).rejects.toBeInstanceOf(WriteContention);
+      await expect(atomicWrite(path, 'whatever: value\n')).rejects.toBeInstanceOf(WriteContention);
     } finally {
       await release();
     }
@@ -164,7 +162,10 @@ describe('atomicWrite contention handling', () => {
     // Now atomicWrite should reclaim the stale lock and succeed.
     // We don't release the original lock — the staleness check
     // should handle it.
-    await atomicWrite(path, 'schema_version: 2\nslug: sample\nstatus: plan\ncreated: 2026-05-26\ntitle: T\ncontext:\n  intro: x\nphases: []\n');
+    await atomicWrite(
+      path,
+      'schema_version: 2\nslug: sample\nstatus: plan\ncreated: 2026-05-26\ntitle: T\ncontext:\n  intro: x\nphases: []\n',
+    );
 
     // The file should have been written.
     const { readFile } = await import('node:fs/promises');

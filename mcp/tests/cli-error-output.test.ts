@@ -17,13 +17,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { execSync } from 'node:child_process';
-import {
-  mkdtempSync,
-  writeFileSync,
-  mkdirSync,
-  rmSync,
-  existsSync,
-} from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,10 +26,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLI_DIST = resolve(__dirname, '..', 'dist', 'cli', 'bin.js');
 const SKIP = !existsSync(CLI_DIST);
 
-function runCli(
-  args: string[],
-  cwd: string,
-): { stdout: string; stderr: string; status: number } {
+function runCli(args: string[], cwd: string): { stdout: string; stderr: string; status: number } {
   try {
     const stdout = execSync(`node ${CLI_DIST} ${args.map((a) => JSON.stringify(a)).join(' ')}`, {
       encoding: 'utf-8',
@@ -89,28 +80,14 @@ describe.skipIf(SKIP)('CLI error output — suggestions surface to stderr', () =
   it('refuses to remove a done phase without --force (DonePhaseImmutable)', () => {
     // Set up a task with a single phase + AC, then drive AC + phase to done
     runCli(['task', 'create', 'rm-done', '--title', 'Done test'], projectRoot);
-    runCli(
-      ['phase', 'add', 'rm-done', '--name', 'P1', '--slug', 'p1'],
-      projectRoot,
-    );
+    runCli(['phase', 'add', 'rm-done', '--name', 'P1', '--slug', 'p1'], projectRoot);
     // Fill evidence on the auto-placeholder AC (index 0) — flips it to done
     runCli(
-      [
-        'ac',
-        'evidence',
-        'set',
-        'rm-done',
-        'p1',
-        '0',
-        'src/x.ts:1 — implemented',
-      ],
+      ['ac', 'evidence', 'set', 'rm-done', 'p1', '0', 'src/x.ts:1 — implemented'],
       projectRoot,
     );
     // Mark phase done via the state machine: pending → in-progress → done
-    runCli(
-      ['phase', 'status', 'set', 'rm-done', 'p1', 'in-progress'],
-      projectRoot,
-    );
+    runCli(['phase', 'status', 'set', 'rm-done', 'p1', 'in-progress'], projectRoot);
     runCli(['phase', 'status', 'set', 'rm-done', 'p1', 'done'], projectRoot);
 
     // Now try to remove without --force
@@ -122,10 +99,7 @@ describe.skipIf(SKIP)('CLI error output — suggestions surface to stderr', () =
 
   it('rejects invalid task status enum with a clear error', () => {
     runCli(['task', 'create', 'enum-test', '--title', 'X'], projectRoot);
-    const r = runCli(
-      ['task', 'status', 'set', 'enum-test', 'not-a-status'],
-      projectRoot,
-    );
+    const r = runCli(['task', 'status', 'set', 'enum-test', 'not-a-status'], projectRoot);
     expect(r.status).toBe(1);
     // Zod's parse error names the invalid enum
     expect(r.stderr.toLowerCase()).toMatch(/invalid|enum|plan|drafted/);
@@ -134,10 +108,7 @@ describe.skipIf(SKIP)('CLI error output — suggestions surface to stderr', () =
   it('rejects illegal task status transition with suggestions', () => {
     runCli(['task', 'create', 'trans-test', '--title', 'X'], projectRoot);
     // status=plan — illegal jump to done
-    const r = runCli(
-      ['task', 'status', 'set', 'trans-test', 'done'],
-      projectRoot,
-    );
+    const r = runCli(['task', 'status', 'set', 'trans-test', 'done'], projectRoot);
     expect(r.status).toBe(1);
     expect(r.stderr).toMatch(/InvalidTransition|transition/i);
     expect(r.stderr).toMatch(/Suggestions:/);

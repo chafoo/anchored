@@ -73,11 +73,7 @@ async function createRulesFixture(opts: {
   await mkdir(join(root, '.claude', 'tasks'), { recursive: true });
   await mkdir(join(root, '.claude', 'rules'), { recursive: true });
   await writeFile(join(root, 'anchored.yml'), ANCHORED_YML, 'utf-8');
-  await writeFile(
-    join(root, '.claude', 'tasks', `${opts.slug}.yml`),
-    opts.taskYml,
-    'utf-8',
-  );
+  await writeFile(join(root, '.claude', 'tasks', `${opts.slug}.yml`), opts.taskYml, 'utf-8');
   for (const [name, body] of Object.entries(opts.rules)) {
     await writeFile(join(root, '.claude', 'rules', name), body, 'utf-8');
   }

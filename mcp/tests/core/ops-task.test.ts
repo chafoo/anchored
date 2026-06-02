@@ -39,9 +39,9 @@ describe('task.create', () => {
   it('rejects DuplicateSlug if a task-file already exists at that slug', async () => {
     fixture = await createFixture({ slug: 'collision' });
     const ops = createOps(fixture.config, fixture.root);
-    await expect(
-      ops.task.create('collision', { title: 'Collides' }),
-    ).rejects.toBeInstanceOf(DuplicateSlug);
+    await expect(ops.task.create('collision', { title: 'Collides' })).rejects.toBeInstanceOf(
+      DuplicateSlug,
+    );
   });
 });
 
@@ -58,9 +58,7 @@ describe('task.read', () => {
   it('throws NotFound when the task-file is missing', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    await expect(ops.task.read('does-not-exist')).rejects.toBeInstanceOf(
-      NotFound,
-    );
+    await expect(ops.task.read('does-not-exist')).rejects.toBeInstanceOf(NotFound);
   });
 });
 
@@ -87,9 +85,7 @@ phases: []
     const ops = createOps(fixture.config, fixture.root);
     // The fixture seeds status=build. build → plan is illegal
     // (only drafted is allowed as the back-edge).
-    await expect(
-      ops.task.status.set('sample', 'plan'),
-    ).rejects.toBeInstanceOf(InvalidTransition);
+    await expect(ops.task.status.set('sample', 'plan')).rejects.toBeInstanceOf(InvalidTransition);
   });
 });
 

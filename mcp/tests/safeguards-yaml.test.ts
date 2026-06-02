@@ -131,7 +131,9 @@ describe('callsite discipline: yaml.parse routed through parseYamlSafe', () => {
     const allowed = new Set(['core/parser.ts']);
 
     const unexpected = offenders.filter((rel) => !allowed.has(rel));
-    expect(unexpected, `unexpected bare yaml.parse callsites: ${unexpected.join(', ')}`).toEqual([]);
+    expect(unexpected, `unexpected bare yaml.parse callsites: ${unexpected.join(', ')}`).toEqual(
+      [],
+    );
   });
 
   it('the centralized wrapper is the only callsite of the underlying yaml lib parse', async () => {

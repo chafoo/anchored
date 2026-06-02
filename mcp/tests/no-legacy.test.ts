@@ -40,14 +40,10 @@ async function fileExists(path: string): Promise<boolean> {
 
 function grepLines(pattern: string, paths: string): string[] {
   try {
-    const result = execSync(
-      `grep -rn "${pattern}" ${paths} 2>/dev/null || true`,
-      { encoding: 'utf8' },
-    );
-    return result
-      .trim()
-      .split('\n')
-      .filter(Boolean);
+    const result = execSync(`grep -rn "${pattern}" ${paths} 2>/dev/null || true`, {
+      encoding: 'utf8',
+    });
+    return result.trim().split('\n').filter(Boolean);
   } catch {
     return [];
   }
@@ -55,10 +51,9 @@ function grepLines(pattern: string, paths: string): string[] {
 
 describe('no-legacy — V0.2 cleanup landed', () => {
   it('no -v2.ts files in src/', () => {
-    const result = execSync(
-      `find ${SRC_DIR} -name "*-v2.ts" 2>/dev/null || true`,
-      { encoding: 'utf8' },
-    );
+    const result = execSync(`find ${SRC_DIR} -name "*-v2.ts" 2>/dev/null || true`, {
+      encoding: 'utf8',
+    });
     expect(result.trim()).toBe('');
   });
 
@@ -67,9 +62,7 @@ describe('no-legacy — V0.2 cleanup landed', () => {
   });
 
   it('migrate CLI command does not exist', async () => {
-    expect(await fileExists(join(SRC_DIR, 'cli', 'commands', 'migrate.ts'))).toBe(
-      false,
-    );
+    expect(await fileExists(join(SRC_DIR, 'cli', 'commands', 'migrate.ts'))).toBe(false);
   });
 
   it('no EvidenceV2 / EVIDENCE_PLACEHOLDER references in src/', () => {
@@ -105,10 +98,9 @@ describe('no-legacy — V0.2 cleanup landed', () => {
     // This catches `TaskFileV2`, `ParseV2`, `SCHEMA_VERSION_V2` etc.
     // The URL string `task-file-v2.schema.json` is lowercase + has a
     // hyphen-v, NOT identifier-V2, so it's untouched.
-    const result = execSync(
-      `grep -rEn "[A-Za-z0-9_]V2\\b" ${SRC_DIR} 2>/dev/null || true`,
-      { encoding: 'utf8' },
-    );
+    const result = execSync(`grep -rEn "[A-Za-z0-9_]V2\\b" ${SRC_DIR} 2>/dev/null || true`, {
+      encoding: 'utf8',
+    });
     const offenders = result.trim().split('\n').filter(Boolean);
     expect(offenders).toEqual([]);
   });

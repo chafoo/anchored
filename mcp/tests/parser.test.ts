@@ -15,11 +15,7 @@ import { describe, it, expect } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  parseTaskFileYAML,
-  ParseError,
-  SCHEMA_VERSION,
-} from '../src/parser/parse.js';
+import { parseTaskFileYAML, ParseError, SCHEMA_VERSION } from '../src/parser/parse.js';
 import { renderTaskFileYAML } from '../src/parser/render.js';
 import type { TaskFile } from '../src/schema/task-file.js';
 
@@ -317,12 +313,8 @@ describe('parser-v2 — newline-corruption bug-class is impossible', () => {
     const rendered = renderTaskFileYAML(file);
     const reparsed = parseTaskFileYAML(rendered);
     expect(reparsed.phases[0]?.acceptance_criteria).toHaveLength(2);
-    expect(reparsed.phases[0]?.acceptance_criteria[0]?.evidence?.[0]).toContain(
-      '</evidence>',
-    );
-    expect(reparsed.phases[0]?.acceptance_criteria[1]?.evidence?.[0]).toContain(
-      '</invoke>',
-    );
+    expect(reparsed.phases[0]?.acceptance_criteria[0]?.evidence?.[0]).toContain('</evidence>');
+    expect(reparsed.phases[0]?.acceptance_criteria[1]?.evidence?.[0]).toContain('</invoke>');
   });
 });
 
@@ -332,14 +324,13 @@ describe('parser-v2 — newline-corruption bug-class is impossible', () => {
 
 describe('parser — LOC budget (architecture-as-test)', () => {
   it('parse.ts is < 100 LOC (excluding blanks + comments)', async () => {
-    const src = await readFile(
-      join(__dirname, '..', 'src', 'parser', 'parse.ts'),
-      'utf-8',
-    );
+    const src = await readFile(join(__dirname, '..', 'src', 'parser', 'parse.ts'), 'utf-8');
     const codeLines = src
       .split('\n')
       .map((l) => l.trim())
-      .filter((l) => l.length > 0 && !l.startsWith('//') && !l.startsWith('*') && !l.startsWith('/*'));
+      .filter(
+        (l) => l.length > 0 && !l.startsWith('//') && !l.startsWith('*') && !l.startsWith('/*'),
+      );
     expect(
       codeLines.length,
       `parse must stay thin (yaml.parse + Zod). got ${codeLines.length} LOC`,
@@ -347,14 +338,13 @@ describe('parser — LOC budget (architecture-as-test)', () => {
   });
 
   it('render.ts is < 50 LOC (excluding blanks + comments)', async () => {
-    const src = await readFile(
-      join(__dirname, '..', 'src', 'parser', 'render.ts'),
-      'utf-8',
-    );
+    const src = await readFile(join(__dirname, '..', 'src', 'parser', 'render.ts'), 'utf-8');
     const codeLines = src
       .split('\n')
       .map((l) => l.trim())
-      .filter((l) => l.length > 0 && !l.startsWith('//') && !l.startsWith('*') && !l.startsWith('/*'));
+      .filter(
+        (l) => l.length > 0 && !l.startsWith('//') && !l.startsWith('*') && !l.startsWith('/*'),
+      );
     expect(
       codeLines.length,
       `render must stay thin (yaml.stringify). got ${codeLines.length} LOC`,

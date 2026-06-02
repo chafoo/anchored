@@ -18,10 +18,7 @@ describe('context.intro.set', () => {
   it('replaces the intro', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    const file = await ops.task.context.intro.set(
-      'sample',
-      'New intro paragraph.',
-    );
+    const file = await ops.task.context.intro.set('sample', 'New intro paragraph.');
     expect(file.context.intro).toBe('New intro paragraph.');
   });
 });
@@ -30,10 +27,7 @@ describe('context.plan.append', () => {
   it('creates the plan field on first append', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    const file = await ops.task.context.plan.append(
-      'sample',
-      'First line of plan.',
-    );
+    const file = await ops.task.context.plan.append('sample', 'First line of plan.');
     expect(file.context.plan).toBe('First line of plan.');
   });
 
@@ -71,11 +65,7 @@ phases:
     });
     const ops = createOps(fixture.config, fixture.root);
 
-    const file = await ops.task.context.plan.refinement.resolve(
-      'sample',
-      1,
-      'yes — ship Monday',
-    );
+    const file = await ops.task.context.plan.refinement.resolve('sample', 1, 'yes — ship Monday');
     expect(file.context.plan).toContain('Q: should we cache → ?');
     expect(file.context.plan).toContain('Q: should we ship → yes — ship Monday');
     // First marker is untouched.
@@ -123,9 +113,7 @@ describe('context.build.subsection', () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
     await ops.task.context.build.subsection('Implement').append('sample', 'one');
-    const file = await ops.task.context.build
-      .subsection('Implement')
-      .append('sample', 'two');
+    const file = await ops.task.context.build.subsection('Implement').append('sample', 'two');
     expect(file.context.build?.Implement).toContain('one');
     expect(file.context.build?.Implement).toContain('two');
   });
@@ -152,9 +140,7 @@ describe('context.wrap', () => {
   it('wrap.subsection(name).set creates the subsection', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    const file = await ops.task.context.wrap
-      .subsection('code-check')
-      .set('sample', 'lgtm');
+    const file = await ops.task.context.wrap.subsection('code-check').set('sample', 'lgtm');
     expect(file.context.wrap?.subsections?.['code-check']).toBe('lgtm');
   });
 
@@ -162,9 +148,7 @@ describe('context.wrap', () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
     await ops.task.context.wrap.subsection('notes').append('sample', 'A');
-    const file = await ops.task.context.wrap
-      .subsection('notes')
-      .append('sample', 'B');
+    const file = await ops.task.context.wrap.subsection('notes').append('sample', 'B');
     expect(file.context.wrap?.subsections?.notes).toContain('A');
     expect(file.context.wrap?.subsections?.notes).toContain('B');
   });

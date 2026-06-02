@@ -197,12 +197,8 @@ describe('plan-check integration: aligned plan (clean verdict)', () => {
     // Assert: on-disk state is unchanged after the no-op pass.
     const after = await ops.task.read('aligned-sample');
     expect(after.context.plan).toBe(planBefore);
-    expect(after.phases.find((p) => p.slug === 'first')!.rules).toEqual(
-      firstRulesBefore,
-    );
-    expect(after.phases.find((p) => p.slug === 'first')!.context).toBe(
-      firstContextBefore,
-    );
+    expect(after.phases.find((p) => p.slug === 'first')!.rules).toEqual(firstRulesBefore);
+    expect(after.phases.find((p) => p.slug === 'first')!.context).toBe(firstContextBefore);
 
     // Crucially: no new `→ ?` markers added.
     expect(countQuestions(after.context.plan)).toBe(0);
@@ -220,8 +216,7 @@ describe('plan-check integration: auto-fixable drift (path patch)', () => {
 
     // Simulate plan-check detecting that src/old/foo.ts has moved to
     // src/new/foo.ts and applying the patch via set_phase_context.
-    const patched =
-      'Implements TokenStore in src/new/foo.ts following factory pattern.';
+    const patched = 'Implements TokenStore in src/new/foo.ts following factory pattern.';
     await ops.task.phase.context.set('drift-sample', 'storage', patched);
 
     const after = await ops.task.read('drift-sample');
@@ -309,9 +304,7 @@ describe('plan-check integration: semantic-gap surfaces question', () => {
     expect(routesAfter.context).toBe(routesContextBefore);
 
     // acceptance_criteria untouched — no silent text changes.
-    expect(routesAfter.acceptance_criteria.map((ac) => ac.text)).toEqual(
-      routesAcsBefore,
-    );
+    expect(routesAfter.acceptance_criteria.map((ac) => ac.text)).toEqual(routesAcsBefore);
   });
 });
 
@@ -328,9 +321,7 @@ describe('plan-check integration: parallelism detection (info-only)', () => {
     const ops = createOps(fixture.config, fixture.root);
 
     const notesBefore = countNotes((await ops.task.read('disjoint-sample')).context.plan);
-    const questionsBefore = countQuestions(
-      (await ops.task.read('disjoint-sample')).context.plan,
-    );
+    const questionsBefore = countQuestions((await ops.task.read('disjoint-sample')).context.plan);
 
     // Simulate plan-check flagging the parallelism candidate as an
     // info note (NOT a question — no `→ ?` suffix). The orchestrator's

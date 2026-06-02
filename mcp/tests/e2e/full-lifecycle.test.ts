@@ -22,10 +22,7 @@ import { parse as yamlParse } from 'yaml';
 import { performance } from 'node:perf_hooks';
 
 import { createOps, type TaskOps } from '../../src/core/factory.js';
-import {
-  parseAnchoredYml,
-  type AnchoredYml,
-} from '../../src/schema/anchored-yml.js';
+import { parseAnchoredYml, type AnchoredYml } from '../../src/schema/anchored-yml.js';
 import { parseTaskFile } from '../../src/schema/task-file.js';
 import {
   IncompletePhase,
@@ -65,8 +62,7 @@ async function createE2EFixture(): Promise<E2EFixture> {
     root,
     config,
     ops,
-    taskFilePath: (slug: string) =>
-      join(root, '.claude', 'tasks', `${slug}.yml`),
+    taskFilePath: (slug: string) => join(root, '.claude', 'tasks', `${slug}.yml`),
     cleanup: () => rm(root, { recursive: true, force: true }),
   };
 }
@@ -84,9 +80,7 @@ function assertNoUnexpectedControlChars(raw: string): void {
       throw new Error(`unexpected NUL byte at offset ${i}`);
     }
     if (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) {
-      throw new Error(
-        `unexpected control char 0x${code.toString(16)} at offset ${i}`,
-      );
+      throw new Error(`unexpected control char 0x${code.toString(16)} at offset ${i}`);
     }
     if (code === 0x7f) {
       throw new Error(`unexpected DEL char (0x7f) at offset ${i}`);
@@ -157,10 +151,7 @@ describe('e2e: full task lifecycle', () => {
     expect(afterCreate.status).toBe('plan');
 
     // plan context — initial brainstorm
-    await f.ops.task.context.plan.append(
-      slug,
-      'Decisions:\n- Use JWT\n- Token TTL = 1h',
-    );
+    await f.ops.task.context.plan.append(slug, 'Decisions:\n- Use JWT\n- Token TTL = 1h');
     await assertRoundTrip(f, slug);
 
     // plan context — open refinement questions
@@ -176,18 +167,12 @@ describe('e2e: full task lifecycle', () => {
     // Resolve first question.
     await f.ops.task.context.plan.refinement.resolve(slug, 0, 'HS256');
     const afterFirstResolve = await assertRoundTrip(f, slug);
-    expect((afterFirstResolve.context.plan ?? '').match(/→ \?/g)?.length).toBe(
-      1,
-    );
+    expect((afterFirstResolve.context.plan ?? '').match(/→ \?/g)?.length).toBe(1);
     expect(afterFirstResolve.context.plan).toContain('→ HS256');
 
     // Resolve the (now first / originally second) question. Index 0 again,
     // because the original index 0 marker is gone.
-    await f.ops.task.context.plan.refinement.resolve(
-      slug,
-      0,
-      'Sliding window, 30d max',
-    );
+    await f.ops.task.context.plan.refinement.resolve(slug, 0, 'Sliding window, 30d max');
     const afterAllResolved = await assertRoundTrip(f, slug);
     expect(afterAllResolved.context.plan ?? '').not.toContain('→ ?');
     expect(afterAllResolved.context.plan).toContain('→ Sliding window');
@@ -206,25 +191,17 @@ describe('e2e: full task lifecycle', () => {
     await f.ops.task.phase.add(slug, {
       name: 'Login endpoint',
       slug: 'login',
-      acceptance_criteria: [
-        { text: 'POST /login returns token', status: 'pending' },
-      ],
+      acceptance_criteria: [{ text: 'POST /login returns token', status: 'pending' }],
     });
     await assertRoundTrip(f, slug);
 
     await f.ops.task.phase.add(slug, {
       name: 'Logout endpoint',
       slug: 'logout',
-      acceptance_criteria: [
-        { text: 'POST /logout clears token', status: 'pending' },
-      ],
+      acceptance_criteria: [{ text: 'POST /logout clears token', status: 'pending' }],
     });
     const afterPhases = await assertRoundTrip(f, slug);
-    expect(afterPhases.phases.map((p) => p.slug)).toEqual([
-      'token-storage',
-      'login',
-      'logout',
-    ]);
+    expect(afterPhases.phases.map((p) => p.slug)).toEqual(['token-storage', 'login', 'logout']);
 
     // ─── 2. plan → drafted ─────────────────────────────────────────
     await f.ops.task.status.set(slug, 'drafted');
@@ -245,12 +222,8 @@ describe('e2e: full task lifecycle', () => {
       .append(slug, 'Rules scan complete. 3 rules applied across phases.');
     const afterRefine = await assertRoundTrip(f, slug);
     expect(afterRefine.context.build).toBeDefined();
-    expect(afterRefine.context.build?.['plan-check']).toContain(
-      'Plan reviewed',
-    );
-    expect(afterRefine.context.build?.['rules-check']).toContain(
-      'Rules scan complete',
-    );
+    expect(afterRefine.context.build?.['plan-check']).toContain('Plan reviewed');
+    expect(afterRefine.context.build?.['rules-check']).toContain('Rules scan complete');
 
     // ─── 4. drafted → refined ─────────────────────────────────────
     await f.ops.task.status.set(slug, 'refined');
@@ -286,9 +259,7 @@ describe('e2e: full task lifecycle', () => {
 
     await f.ops.task.phase.status.set(slug, 'token-storage', 'done');
     const afterPhase1Done = await assertRoundTrip(f, slug);
-    expect(
-      afterPhase1Done.phases.find((p) => p.slug === 'token-storage')!.status,
-    ).toBe('done');
+    expect(afterPhase1Done.phases.find((p) => p.slug === 'token-storage')!.status).toBe('done');
 
     // ─── 6. build stage — phase 2 (login) ─────────────────────────
     await f.ops.task.phase.status.set(slug, 'login', 'in-progress');
@@ -300,8 +271,7 @@ describe('e2e: full task lifecycle', () => {
     ]);
     const afterLoginAc = await assertRoundTrip(f, slug);
     expect(
-      afterLoginAc.phases.find((p) => p.slug === 'login')!
-        .acceptance_criteria[0]!.status,
+      afterLoginAc.phases.find((p) => p.slug === 'login')!.acceptance_criteria[0]!.status,
     ).toBe('done');
 
     await f.ops.task.phase.status.set(slug, 'login', 'done');
@@ -374,9 +344,7 @@ describe('e2e: full task lifecycle', () => {
     const afterFirst = await assertRoundTrip(f, slug);
     const acAfterFirst = afterFirst.phases[0]!.acceptance_criteria[0]!;
     expect(acAfterFirst.status).toBe('done');
-    expect(acAfterFirst.evidence).toEqual([
-      'stub implementation in src/auth.ts:10',
-    ]);
+    expect(acAfterFirst.evidence).toEqual(['stub implementation in src/auth.ts:10']);
     expect(acAfterFirst.failures).toBeUndefined();
 
     // Step 2: task-validate rejects it — set failures.
@@ -387,14 +355,9 @@ describe('e2e: full task lifecycle', () => {
     const afterFailures = await assertRoundTrip(f, slug);
     const acAfterFailures = afterFailures.phases[0]!.acceptance_criteria[0]!;
     expect(acAfterFailures.status).toBe('pending');
-    expect(acAfterFailures.failures).toEqual([
-      're-ran test → 0/3 passing',
-      'curl returns 404',
-    ]);
+    expect(acAfterFailures.failures).toEqual(['re-ran test → 0/3 passing', 'curl returns 404']);
     // Critical: evidence is PRESERVED for retry context.
-    expect(acAfterFailures.evidence).toEqual([
-      'stub implementation in src/auth.ts:10',
-    ]);
+    expect(acAfterFailures.evidence).toEqual(['stub implementation in src/auth.ts:10']);
 
     // Step 3: implement-agent retries with real proof.
     await f.ops.task.phase.ac.evidence.set(slug, 'one', 0, [
@@ -433,13 +396,9 @@ describe('e2e: full task lifecycle', () => {
     });
 
     // (6) Task at status=plan: status.set('done') → InvalidTransition.
-    await expect(f.ops.task.status.set(slug, 'done')).rejects.toBeInstanceOf(
-      InvalidTransition,
-    );
+    await expect(f.ops.task.status.set(slug, 'done')).rejects.toBeInstanceOf(InvalidTransition);
     // (7) Task at status=plan: status.set('refined') → InvalidTransition.
-    await expect(
-      f.ops.task.status.set(slug, 'refined'),
-    ).rejects.toBeInstanceOf(InvalidTransition);
+    await expect(f.ops.task.status.set(slug, 'refined')).rejects.toBeInstanceOf(InvalidTransition);
 
     // Walk to build with one phase + one AC.
     await f.ops.task.phase.add(slug, {
@@ -453,37 +412,33 @@ describe('e2e: full task lifecycle', () => {
 
     // (1) Task at status=build with one phase still in-progress:
     // status.set('wrap') → IncompletePhases.
-    await expect(f.ops.task.status.set(slug, 'wrap')).rejects.toBeInstanceOf(
-      IncompletePhases,
-    );
+    await expect(f.ops.task.status.set(slug, 'wrap')).rejects.toBeInstanceOf(IncompletePhases);
 
     // (2) Phase with one AC still status=pending: phase.status.set('done')
     // → IncompletePhase.
-    await expect(
-      f.ops.task.phase.status.set(slug, 'gate', 'done'),
-    ).rejects.toBeInstanceOf(IncompletePhase);
+    await expect(f.ops.task.phase.status.set(slug, 'gate', 'done')).rejects.toBeInstanceOf(
+      IncompletePhase,
+    );
 
     // (3-5) Evidence.set rejects bad input — empty string, empty array,
     // and em-dash sentinel.
-    await expect(
-      f.ops.task.phase.ac.evidence.set(slug, 'gate', 0, ['']),
-    ).rejects.toBeInstanceOf(InvalidEvidence);
+    await expect(f.ops.task.phase.ac.evidence.set(slug, 'gate', 0, [''])).rejects.toBeInstanceOf(
+      InvalidEvidence,
+    );
 
-    await expect(
-      f.ops.task.phase.ac.evidence.set(slug, 'gate', 0, []),
-    ).rejects.toBeInstanceOf(InvalidEvidence);
+    await expect(f.ops.task.phase.ac.evidence.set(slug, 'gate', 0, [])).rejects.toBeInstanceOf(
+      InvalidEvidence,
+    );
 
-    await expect(
-      f.ops.task.phase.ac.evidence.set(slug, 'gate', 0, ['—']),
-    ).rejects.toBeInstanceOf(InvalidEvidence);
+    await expect(f.ops.task.phase.ac.evidence.set(slug, 'gate', 0, ['—'])).rejects.toBeInstanceOf(
+      InvalidEvidence,
+    );
 
     // Final sanity: file is still valid after all the failed mutations.
     const stillValid = await assertRoundTrip(f, slug);
     expect(stillValid.status).toBe('build');
     expect(stillValid.phases[0]!.status).toBe('in-progress');
-    expect(stillValid.phases[0]!.acceptance_criteria[0]!.status).toBe(
-      'pending',
-    );
+    expect(stillValid.phases[0]!.acceptance_criteria[0]!.status).toBe('pending');
   });
 
   // ───────────────────────────────────────────────────────────────────
@@ -511,8 +466,7 @@ describe('e2e: full task lifecycle', () => {
     });
     opsList.push({
       label: 'context.intro.set',
-      fn: () =>
-        f.ops.task.context.intro.set(slug, 'Intro updated by round-trip test.'),
+      fn: () => f.ops.task.context.intro.set(slug, 'Intro updated by round-trip test.'),
     });
     opsList.push({
       label: 'context.plan.append #1',
@@ -520,13 +474,11 @@ describe('e2e: full task lifecycle', () => {
     });
     opsList.push({
       label: 'context.plan.append #2',
-      fn: () =>
-        f.ops.task.context.plan.append(slug, '\nQ: refinement marker? → ?'),
+      fn: () => f.ops.task.context.plan.append(slug, '\nQ: refinement marker? → ?'),
     });
     opsList.push({
       label: 'context.plan.refinement.resolve',
-      fn: () =>
-        f.ops.task.context.plan.refinement.resolve(slug, 0, 'resolved'),
+      fn: () => f.ops.task.context.plan.refinement.resolve(slug, 0, 'resolved'),
     });
     opsList.push({
       label: 'phase.add a',
@@ -555,12 +507,7 @@ describe('e2e: full task lifecycle', () => {
     });
     opsList.push({
       label: 'phase.context.set',
-      fn: () =>
-        f.ops.task.phase.context.set(
-          slug,
-          'alpha',
-          'Phase-specific context for alpha.',
-        ),
+      fn: () => f.ops.task.phase.context.set(slug, 'alpha', 'Phase-specific context for alpha.'),
     });
     opsList.push({
       label: 'phase.rules.add',
@@ -592,13 +539,7 @@ describe('e2e: full task lifecycle', () => {
     });
     opsList.push({
       label: 'ac.text.set',
-      fn: () =>
-        f.ops.task.phase.ac.text.set(
-          slug,
-          'alpha',
-          0,
-          'first ac (text updated)',
-        ),
+      fn: () => f.ops.task.phase.ac.text.set(slug, 'alpha', 0, 'first ac (text updated)'),
     });
     opsList.push({
       label: 'phase.move',
@@ -623,26 +564,16 @@ describe('e2e: full task lifecycle', () => {
     opsList.push({
       label: 'ac.evidence.set',
       fn: () =>
-        f.ops.task.phase.ac.evidence.set(slug, 'alpha', 0, [
-          'src/alpha.ts:10 — initial impl',
-        ]),
+        f.ops.task.phase.ac.evidence.set(slug, 'alpha', 0, ['src/alpha.ts:10 — initial impl']),
     });
     opsList.push({
       label: 'ac.evidence.add',
       fn: () =>
-        f.ops.task.phase.ac.evidence.add(
-          slug,
-          'alpha',
-          0,
-          'src/alpha.test.ts:5 — 1/1 passing',
-        ),
+        f.ops.task.phase.ac.evidence.add(slug, 'alpha', 0, 'src/alpha.test.ts:5 — 1/1 passing'),
     });
     opsList.push({
       label: 'ac.failures.set',
-      fn: () =>
-        f.ops.task.phase.ac.failures.set(slug, 'alpha', 1, [
-          'expected: nope',
-        ]),
+      fn: () => f.ops.task.phase.ac.failures.set(slug, 'alpha', 1, ['expected: nope']),
     });
     opsList.push({
       label: 'ac.failures.clear',
@@ -650,10 +581,7 @@ describe('e2e: full task lifecycle', () => {
     });
     opsList.push({
       label: 'context.build.subsection(impl).append',
-      fn: () =>
-        f.ops.task.context.build
-          .subsection('Implement')
-          .append(slug, 'impl notes line 1'),
+      fn: () => f.ops.task.context.build.subsection('Implement').append(slug, 'impl notes line 1'),
     });
     opsList.push({
       label: 'context.build.subsection(impl).set',
@@ -687,10 +615,7 @@ describe('e2e: full task lifecycle', () => {
       title: 'Perf check',
       intro: 'meta-assertion: pure ops drive in < 10s',
     });
-    await f.ops.task.context.plan.append(
-      slug,
-      'Quick decisions; Q: any blockers? → ?',
-    );
+    await f.ops.task.context.plan.append(slug, 'Quick decisions; Q: any blockers? → ?');
     await f.ops.task.context.plan.refinement.resolve(slug, 0, 'no');
     await f.ops.task.phase.add(slug, {
       name: 'Only phase',
@@ -701,9 +626,7 @@ describe('e2e: full task lifecycle', () => {
     await f.ops.task.status.set(slug, 'refined');
     await f.ops.task.status.set(slug, 'build');
     await f.ops.task.phase.status.set(slug, 'only', 'in-progress');
-    await f.ops.task.phase.ac.evidence.set(slug, 'only', 0, [
-      'src/x.ts:1 — done',
-    ]);
+    await f.ops.task.phase.ac.evidence.set(slug, 'only', 0, ['src/x.ts:1 — done']);
     await f.ops.task.phase.status.set(slug, 'only', 'done');
     await f.ops.task.status.set(slug, 'wrap');
     await f.ops.task.context.wrap.intro.set(slug, 'shipped');

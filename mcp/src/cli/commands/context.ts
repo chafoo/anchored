@@ -23,9 +23,7 @@ import type { Command } from 'commander';
 import { loadOps, parseIntArg, printUpdated } from '../helpers.js';
 
 export function registerContextCommands(program: Command): void {
-  const ctx = program
-    .command('context')
-    .description('Context-section operations');
+  const ctx = program.command('context').description('Context-section operations');
 
   // intro
   const intro = ctx.command('intro').description('Context intro ops');
@@ -50,17 +48,11 @@ export function registerContextCommands(program: Command): void {
     });
   plan
     .command('resolve <slug> <q-index> <resolution>')
-    .description(
-      "swap the q-indexth '→ ?' marker in context.plan for '→ <resolution>'",
-    )
+    .description("swap the q-indexth '→ ?' marker in context.plan for '→ <resolution>'")
     .action(async (slug: string, qIdxArg: string, resolution: string) => {
       const qIdx = parseIntArg(qIdxArg, 'q-index');
       const ops = await loadOps(process.cwd());
-      const file = await ops.task.context.plan.refinement.resolve(
-        slug,
-        qIdx,
-        resolution,
-      );
+      const file = await ops.task.context.plan.refinement.resolve(slug, qIdx, resolution);
       printUpdated(file);
     });
 
@@ -71,9 +63,7 @@ export function registerContextCommands(program: Command): void {
     .description('append content to context.build[<subsection>]')
     .action(async (slug: string, subsection: string, content: string) => {
       const ops = await loadOps(process.cwd());
-      const file = await ops.task.context.build
-        .subsection(subsection)
-        .append(slug, content);
+      const file = await ops.task.context.build.subsection(subsection).append(slug, content);
       printUpdated(file);
     });
   build
@@ -81,9 +71,7 @@ export function registerContextCommands(program: Command): void {
     .description('replace context.build[<subsection>] with the given content')
     .action(async (slug: string, subsection: string, content: string) => {
       const ops = await loadOps(process.cwd());
-      const file = await ops.task.context.build
-        .subsection(subsection)
-        .set(slug, content);
+      const file = await ops.task.context.build.subsection(subsection).set(slug, content);
       printUpdated(file);
     });
 
@@ -103,21 +91,15 @@ export function registerContextCommands(program: Command): void {
     .description('append content to context.wrap.subsections[<subsection>]')
     .action(async (slug: string, subsection: string, content: string) => {
       const ops = await loadOps(process.cwd());
-      const file = await ops.task.context.wrap
-        .subsection(subsection)
-        .append(slug, content);
+      const file = await ops.task.context.wrap.subsection(subsection).append(slug, content);
       printUpdated(file);
     });
   wrap
     .command('set <slug> <subsection> <content>')
-    .description(
-      'replace context.wrap.subsections[<subsection>] with the given content',
-    )
+    .description('replace context.wrap.subsections[<subsection>] with the given content')
     .action(async (slug: string, subsection: string, content: string) => {
       const ops = await loadOps(process.cwd());
-      const file = await ops.task.context.wrap
-        .subsection(subsection)
-        .set(slug, content);
+      const file = await ops.task.context.wrap.subsection(subsection).set(slug, content);
       printUpdated(file);
     });
 }

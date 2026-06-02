@@ -31,10 +31,7 @@ import type {
   QuestionSource,
   QuestionStatus,
 } from '../../schema/task-file.js';
-import {
-  QuestionNotFound,
-  InvalidQuestionResolution,
-} from '../errors.js';
+import { QuestionNotFound, InvalidQuestionResolution } from '../errors.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // caller-facing input shapes
@@ -99,10 +96,7 @@ function findQuestionOrThrow(file: TaskFile, id: string): Question {
         `List open questions: \`task.question.list({ status: 'open' })\`.`,
       );
     }
-    throw new QuestionNotFound(
-      `question id "${id}" not found in task "${file.slug}"`,
-      suggestions,
-    );
+    throw new QuestionNotFound(`question id "${id}" not found in task "${file.slug}"`, suggestions);
   }
   return question;
 }
@@ -117,10 +111,7 @@ function findQuestionOrThrow(file: TaskFile, id: string): Question {
  * without re-scanning the array.
  */
 export function makeQuestionAdd({ root }: Deps) {
-  return async (
-    slug: string,
-    input: QuestionAddInput,
-  ): Promise<{ id: string; file: TaskFile }> => {
+  return async (slug: string, input: QuestionAddInput): Promise<{ id: string; file: TaskFile }> => {
     const file = await readTask(root, slug);
 
     const id = nextQuestionId(file.questions);
@@ -155,10 +146,7 @@ export function makeQuestionAdd({ root }: Deps) {
  * Q&A loop).
  */
 export function makeQuestionList({ root }: Deps) {
-  return async (
-    slug: string,
-    filter?: QuestionListFilter,
-  ): Promise<Question[]> => {
+  return async (slug: string, filter?: QuestionListFilter): Promise<Question[]> => {
     const file = await readTask(root, slug);
     const questions = file.questions ?? [];
     if (!filter) return [...questions];
@@ -182,19 +170,12 @@ export function makeQuestionList({ root }: Deps) {
  * touching the file.
  */
 export function makeQuestionResolve({ root }: Deps) {
-  return async (
-    slug: string,
-    id: string,
-    input: QuestionResolveInput,
-  ): Promise<TaskFile> => {
+  return async (slug: string, id: string, input: QuestionResolveInput): Promise<TaskFile> => {
     if (input.answer.trim() === '') {
-      throw new InvalidQuestionResolution(
-        `cannot resolve question "${id}" with an empty answer`,
-        [
-          `Pass a non-empty answer string.`,
-          `For "I don't know yet", leave the question status='open' and revisit.`,
-        ],
-      );
+      throw new InvalidQuestionResolution(`cannot resolve question "${id}" with an empty answer`, [
+        `Pass a non-empty answer string.`,
+        `For "I don't know yet", leave the question status='open' and revisit.`,
+      ]);
     }
     if (input.source === 'ai' && (input.reasoning === undefined || input.reasoning.trim() === '')) {
       throw new InvalidQuestionResolution(
@@ -246,11 +227,7 @@ export function makeQuestionResolve({ root }: Deps) {
  * are unchanged.
  */
 export function makeQuestionRetag({ root }: Deps) {
-  return async (
-    slug: string,
-    id: string,
-    priority: QuestionPriority,
-  ): Promise<TaskFile> => {
+  return async (slug: string, id: string, priority: QuestionPriority): Promise<TaskFile> => {
     const file = await readTask(root, slug);
     const question = findQuestionOrThrow(file, id);
     question.priority = priority;

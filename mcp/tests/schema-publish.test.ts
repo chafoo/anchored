@@ -73,8 +73,12 @@ describe('canonical schema URLs', () => {
     // The URL contract: path AFTER ref/branch must be exactly
     // "plugin/references/schema/<name>.schema.json" (matching where
     // build.mjs copies the files). If they drift, IDE validation breaks.
-    expect(SCHEMA_URL_TASK_FILE.endsWith('/plugin/references/schema/task-file-v2.schema.json')).toBe(true);
-    expect(SCHEMA_URL_ANCHORED_YML.endsWith('/plugin/references/schema/anchored-yml.schema.json')).toBe(true);
+    expect(
+      SCHEMA_URL_TASK_FILE.endsWith('/plugin/references/schema/task-file-v2.schema.json'),
+    ).toBe(true);
+    expect(
+      SCHEMA_URL_ANCHORED_YML.endsWith('/plugin/references/schema/anchored-yml.schema.json'),
+    ).toBe(true);
   });
 
   it('languageServerDirective formats the yaml-language-server comment line', () => {

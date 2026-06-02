@@ -16,6 +16,7 @@ import { stringify as yamlStringify } from 'yaml';
 import { createOps, type TaskOps } from '../core/factory.js';
 import { readConfig } from '../core/config.js';
 import type { TaskFile } from '../schema/task-file.js';
+import { AnchoredError } from '../core/errors.js';
 
 /**
  * Load anchored.yml + build the ops factory rooted at `root`. Returns
@@ -49,9 +50,7 @@ export function printTaskFile(file: TaskFile): void {
  * Print a list of phases as a 3-column plain-text table. Columns:
  * name | slug | status. Used by `phase list`.
  */
-export function printPhaseList(
-  phases: { name: string; slug: string; status: string }[],
-): void {
+export function printPhaseList(phases: { name: string; slug: string; status: string }[]): void {
   if (phases.length === 0) {
     process.stdout.write('(no phases)\n');
     return;
@@ -72,7 +71,9 @@ export function printPhaseList(
 export function parseIntArg(arg: string, fieldName: string): number {
   const n = parseInt(arg, 10);
   if (!Number.isInteger(n)) {
-    throw new Error(`${fieldName} must be an integer (got "${arg}")`);
+    throw new AnchoredError(`${fieldName} must be an integer (got "${arg}")`, [
+      `Pass a whole number for ${fieldName} (e.g. 0, 1, 2).`,
+    ]);
   }
   return n;
 }
@@ -89,16 +90,14 @@ export function parsePhasePosition(opts: {
   after?: string;
   before?: string;
   to?: string;
-}):
-  | { after: string }
-  | { before: string }
-  | { to: 'start' | 'end' }
-  | undefined {
+}): { after: string } | { before: string } | { to: 'start' | 'end' } | undefined {
   if (opts.after !== undefined) return { after: opts.after };
   if (opts.before !== undefined) return { before: opts.before };
   if (opts.to !== undefined) {
     if (opts.to !== 'start' && opts.to !== 'end') {
-      throw new Error(`--to must be "start" or "end" (got "${opts.to}")`);
+      throw new AnchoredError(`--to must be "start" or "end" (got "${opts.to}")`, [
+        'Use --to start or --to end (or --after/--before <phase-slug>).',
+      ]);
     }
     return { to: opts.to };
   }

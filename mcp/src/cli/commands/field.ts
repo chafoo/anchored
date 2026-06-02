@@ -16,9 +16,7 @@ import type { Command } from 'commander';
 import { loadOps, printUpdated } from '../helpers.js';
 
 export function registerFieldCommands(program: Command): void {
-  const field = program
-    .command('field')
-    .description('Phase extension-field operations');
+  const field = program.command('field').description('Phase extension-field operations');
 
   field
     .command('list')
@@ -31,8 +29,7 @@ export function registerFieldCommands(program: Command): void {
         return;
       }
       const nameW = Math.max(...fields.map((f) => f.name.length), 'name'.length);
-      const pad = (s: string, w: number): string =>
-        s + ' '.repeat(Math.max(0, w - s.length));
+      const pad = (s: string, w: number): string => s + ' '.repeat(Math.max(0, w - s.length));
       process.stdout.write(`${pad('name', nameW)}  type\n`);
       for (const f of fields) {
         process.stdout.write(`${pad(f.name, nameW)}  ${f.type}\n`);
@@ -41,26 +38,12 @@ export function registerFieldCommands(program: Command): void {
 
   field
     .command('set <slug> <phase-slug> <name> <value>')
-    .description(
-      'set a declared phase field value (type-coerced against anchored.yml)',
-    )
-    .action(
-      async (
-        slug: string,
-        phaseSlug: string,
-        fieldName: string,
-        value: string,
-      ) => {
-        const ops = await loadOps(process.cwd());
-        const file = await ops.task.phase.field.set(
-          slug,
-          phaseSlug,
-          fieldName,
-          value,
-        );
-        printUpdated(file);
-      },
-    );
+    .description('set a declared phase field value (type-coerced against anchored.yml)')
+    .action(async (slug: string, phaseSlug: string, fieldName: string, value: string) => {
+      const ops = await loadOps(process.cwd());
+      const file = await ops.task.phase.field.set(slug, phaseSlug, fieldName, value);
+      printUpdated(file);
+    });
 
   field
     .command('get <slug> <phase-slug> <name>')
@@ -68,8 +51,6 @@ export function registerFieldCommands(program: Command): void {
     .action(async (slug: string, phaseSlug: string, fieldName: string) => {
       const ops = await loadOps(process.cwd());
       const value = await ops.task.phase.field.get(slug, phaseSlug, fieldName);
-      process.stdout.write(
-        value === null || value === undefined ? 'null\n' : `${String(value)}\n`,
-      );
+      process.stdout.write(value === null || value === undefined ? 'null\n' : `${String(value)}\n`);
     });
 }

@@ -15,11 +15,6 @@ export const setAcStatusTool: AnchoredTool = {
   handler: async (args) => {
     const input = InputSchema.parse(args);
     const ops = await withOps(input.project_root);
-    return ops.task.phase.ac.status.set(
-      input.slug,
-      input.phase_slug,
-      input.ac_index,
-      input.status,
-    );
+    return ops.task.phase.ac.status.set(input.slug, input.phase_slug, input.ac_index, input.status);
   },
 };

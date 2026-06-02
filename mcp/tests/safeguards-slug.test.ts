@@ -183,8 +183,6 @@ describe('op-level phase.add slug-uniqueness gate', () => {
     ).rejects.toBeInstanceOf(DuplicateSlug);
     const after = await fixture.readTaskRaw();
     expect(after.phases.length).toBe(before.phases.length);
-    expect(after.phases.map((p) => p.slug)).toEqual(
-      before.phases.map((p) => p.slug),
-    );
+    expect(after.phases.map((p) => p.slug)).toEqual(before.phases.map((p) => p.slug));
   });
 });

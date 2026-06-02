@@ -18,14 +18,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const CONFIG_PATH = join(
-  __dirname,
-  '..',
-  '..',
-  'plugin',
-  'references',
-  'default-config.yml',
-);
+const CONFIG_PATH = join(__dirname, '..', '..', 'plugin', 'references', 'default-config.yml');
 
 async function loadConfig(): Promise<string> {
   return readFile(CONFIG_PATH, 'utf-8');
@@ -85,13 +78,12 @@ describe('default-config.yml — tsconfig-style template', () => {
     // commit-as-key lines that are themselves slots (not list-item dicts
     // like `- { name: commit, ... }`).
     const lines = raw.split('\n');
-    const commitSlotLines = lines.filter((l) =>
-      // `commit:` or `# commit:` as a key — leading whitespace + optional `#`
-      // followed by a comment marker, then `commit:` at end of token.
-      // Excludes inline-flow-mapping list items like `- { name: commit, ... }`.
-      /^\s*#?\s*commit\s*:\s*($|[^,}])/.test(l) &&
-      !l.includes('{') &&
-      !l.includes('}'),
+    const commitSlotLines = lines.filter(
+      (l) =>
+        // `commit:` or `# commit:` as a key — leading whitespace + optional `#`
+        // followed by a comment marker, then `commit:` at end of token.
+        // Excludes inline-flow-mapping list items like `- { name: commit, ... }`.
+        /^\s*#?\s*commit\s*:\s*($|[^,}])/.test(l) && !l.includes('{') && !l.includes('}'),
     );
     expect(
       commitSlotLines,

@@ -20,7 +20,7 @@ const shared = {
   banner: {
     js: [
       "import { createRequire as __anchoredCR } from 'node:module';",
-      "const require = __anchoredCR(import.meta.url);"
+      'const require = __anchoredCR(import.meta.url);',
     ].join('\n'),
   },
 };
@@ -71,6 +71,7 @@ await new Promise((resolve, reject) => {
     stdio: 'inherit',
   });
   child.on('exit', (code) =>
+    // eslint-disable-next-line no-restricted-syntax -- build script, not a CLI/MCP service surface; a plain Error is appropriate
     code === 0 ? resolve() : reject(new Error(`export-schemas exited ${code}`)),
   );
 });

@@ -35,8 +35,7 @@ async function getRegisteredToolNames(): Promise<string[]> {
   const entries = await readdir(TOOLS_DIR);
   const names: string[] = [];
   for (const entry of entries) {
-    if (entry === 'index.ts' || entry === '_shared.ts' || !entry.endsWith('.ts'))
-      continue;
+    if (entry === 'index.ts' || entry === '_shared.ts' || !entry.endsWith('.ts')) continue;
     const content = await readFile(join(TOOLS_DIR, entry), 'utf-8');
     // Match `name: 'foo_bar'` or `name: 'task__foo_bar'` declarations
     const match = content.match(/name:\s*['"]([a-z_]+)['"]/);
@@ -72,9 +71,7 @@ async function getReferencedTools(): Promise<Map<string, string[]>> {
 
 describe('plugin spec adherence', () => {
   it('every referenced mcp__task__* tool exists in the MCP server', async () => {
-    const registered = new Set(
-      (await getRegisteredToolNames()).map(stripNamespacePrefix),
-    );
+    const registered = new Set((await getRegisteredToolNames()).map(stripNamespacePrefix));
     const referenced = await getReferencedTools();
 
     const orphans: { tool: string; files: string[] }[] = [];

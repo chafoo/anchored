@@ -72,16 +72,18 @@ export interface Fixture {
   cleanup: () => Promise<void>;
 }
 
-export async function createFixture(opts: {
-  /** Slug for the seeded task-file. Defaults to "sample". */
-  slug?: string;
-  /** Override the seeded task-file body. */
-  taskYml?: string;
-  /** Override the seeded anchored.yml body. */
-  anchoredYml?: string;
-  /** Skip seeding the task-file (e.g. for task.create tests). */
-  noTaskFile?: boolean;
-} = {}): Promise<Fixture> {
+export async function createFixture(
+  opts: {
+    /** Slug for the seeded task-file. Defaults to "sample". */
+    slug?: string;
+    /** Override the seeded task-file body. */
+    taskYml?: string;
+    /** Override the seeded anchored.yml body. */
+    anchoredYml?: string;
+    /** Skip seeding the task-file (e.g. for task.create tests). */
+    noTaskFile?: boolean;
+  } = {},
+): Promise<Fixture> {
   const slug = opts.slug ?? 'sample';
   const root = await mkdtemp(join(tmpdir(), 'anchored-core-test-'));
   await mkdir(join(root, '.claude', 'tasks'), { recursive: true });
@@ -89,11 +91,7 @@ export async function createFixture(opts: {
   await writeFile(join(root, 'anchored.yml'), anchored, 'utf-8');
   if (!opts.noTaskFile) {
     const yml = opts.taskYml ?? SAMPLE_TASK_YML;
-    await writeFile(
-      join(root, '.claude', 'tasks', `${slug}.yml`),
-      yml,
-      'utf-8',
-    );
+    await writeFile(join(root, '.claude', 'tasks', `${slug}.yml`), yml, 'utf-8');
   }
   const config = parseAnchoredYml(yamlParse(anchored));
   return {
@@ -101,10 +99,7 @@ export async function createFixture(opts: {
     config,
     async readTaskRaw(readSlug?: string): Promise<TaskFile> {
       const s = readSlug ?? slug;
-      const raw = await readFile(
-        join(root, '.claude', 'tasks', `${s}.yml`),
-        'utf-8',
-      );
+      const raw = await readFile(join(root, '.claude', 'tasks', `${s}.yml`), 'utf-8');
       return parseTaskFileYAML(raw);
     },
     async cleanup() {
