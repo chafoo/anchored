@@ -38,14 +38,29 @@ describe('createOps factory', () => {
     // build.subsection (factory), wrap.intro.set, wrap.subsection (factory))
     { path: 'task.context.intro.set', getter: (o) => o.task.context.intro.set },
     { path: 'task.context.plan.append', getter: (o) => o.task.context.plan.append },
-    { path: 'task.context.plan.refinement.resolve', getter: (o) => o.task.context.plan.refinement.resolve },
+    {
+      path: 'task.context.plan.refinement.resolve',
+      getter: (o) => o.task.context.plan.refinement.resolve,
+    },
     { path: 'task.context.build.subsection', getter: (o) => o.task.context.build.subsection },
-    { path: 'task.context.build.subsection(X).append', getter: (o) => o.task.context.build.subsection('X').append },
-    { path: 'task.context.build.subsection(X).set', getter: (o) => o.task.context.build.subsection('X').set },
+    {
+      path: 'task.context.build.subsection(X).append',
+      getter: (o) => o.task.context.build.subsection('X').append,
+    },
+    {
+      path: 'task.context.build.subsection(X).set',
+      getter: (o) => o.task.context.build.subsection('X').set,
+    },
     { path: 'task.context.wrap.intro.set', getter: (o) => o.task.context.wrap.intro.set },
     { path: 'task.context.wrap.subsection', getter: (o) => o.task.context.wrap.subsection },
-    { path: 'task.context.wrap.subsection(X).append', getter: (o) => o.task.context.wrap.subsection('X').append },
-    { path: 'task.context.wrap.subsection(X).set', getter: (o) => o.task.context.wrap.subsection('X').set },
+    {
+      path: 'task.context.wrap.subsection(X).append',
+      getter: (o) => o.task.context.wrap.subsection('X').append,
+    },
+    {
+      path: 'task.context.wrap.subsection(X).set',
+      getter: (o) => o.task.context.wrap.subsection('X').set,
+    },
 
     // task.phase — list / next / add / remove / move
     { path: 'task.phase.list', getter: (o) => o.task.phase.list },
@@ -56,6 +71,7 @@ describe('createOps factory', () => {
 
     // task.phase scalar mutators
     { path: 'task.phase.status.set', getter: (o) => o.task.phase.status.set },
+    { path: 'task.phase.executor.set', getter: (o) => o.task.phase.executor.set },
     { path: 'task.phase.name.set', getter: (o) => o.task.phase.name.set },
     { path: 'task.phase.context.set', getter: (o) => o.task.phase.context.set },
 

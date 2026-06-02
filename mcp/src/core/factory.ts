@@ -21,6 +21,7 @@ import type { AnchoredYml } from '../schema/anchored-yml.js';
 import type {
   TaskFile,
   PhaseStatus,
+  PhaseExecutor,
   TaskStatus,
   PhaseRule,
   Question,
@@ -58,6 +59,7 @@ import {
   makePhaseRemove,
   makePhaseMove,
   makePhaseStatusSet,
+  makePhaseExecutorSet,
   makePhaseNameSet,
   makePhaseContextSet,
   makePhaseRulesSet,
@@ -144,6 +146,9 @@ export interface TaskOps {
 
       status: {
         set(slug: string, phase_slug: string, status: PhaseStatus): Promise<TaskFile>;
+      };
+      executor: {
+        set(slug: string, phase_slug: string, executor: PhaseExecutor): Promise<TaskFile>;
       };
       name: {
         set(slug: string, phase_slug: string, name: string): Promise<TaskFile>;
@@ -240,6 +245,7 @@ export function createOps(config: AnchoredYml, root: string): TaskOps {
         move: makePhaseMove(deps),
 
         status: { set: makePhaseStatusSet(deps) },
+        executor: { set: makePhaseExecutorSet(deps) },
         name: { set: makePhaseNameSet(deps) },
         context: { set: makePhaseContextSet(deps) },
 

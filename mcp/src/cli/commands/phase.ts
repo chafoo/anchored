@@ -12,6 +12,7 @@
  *   phase remove <slug> <phase-slug> [--force]
  *   phase move <slug> <phase-slug> [--after | --before | --to]
  *   phase status set <slug> <phase-slug> <status>
+ *   phase executor set <slug> <phase-slug> <executor>
  *   phase name set <slug> <phase-slug> <name>
  *   phase context set <slug> <phase-slug> <content>
  *   phase rules set <slug> <phase-slug> <rules-json>
@@ -19,13 +20,9 @@
  */
 
 import type { Command } from 'commander';
-import {
-  loadOps,
-  parsePhasePosition,
-  printPhaseList,
-  printUpdated,
-} from '../helpers.js';
-import { PhaseStatus, PhaseRule } from '../../schema/task-file.js';
+import { loadOps, parsePhasePosition, printPhaseList, printUpdated } from '../helpers.js';
+import { PhaseStatus, PhaseExecutor, PhaseRule } from '../../schema/task-file.js';
+import { AnchoredError } from '../../core/errors.js';
 import { z } from 'zod';
 
 export function registerPhaseCommands(program: Command): void {
@@ -70,11 +67,7 @@ export function registerPhaseCommands(program: Command): void {
       ) => {
         const position = parsePhasePosition(opts);
         const ops = await loadOps(process.cwd());
-        const file = await ops.task.phase.add(
-          slug,
-          { name: opts.name, slug: opts.slug },
-          position,
-        );
+        const file = await ops.task.phase.add(slug, { name: opts.name, slug: opts.slug }, position);
         printUpdated(file);
       },
     );
@@ -83,15 +76,13 @@ export function registerPhaseCommands(program: Command): void {
     .command('remove <slug> <phase-slug>')
     .description('remove a phase (refuses done-status phases unless --force)')
     .option('--force', 'force removal of a done phase (discards proven work)')
-    .action(
-      async (slug: string, phaseSlug: string, opts: { force?: boolean }) => {
-        const ops = await loadOps(process.cwd());
-        const file = await ops.task.phase.remove(slug, phaseSlug, {
-          force: !!opts.force,
-        });
-        printUpdated(file);
-      },
-    );
+    .action(async (slug: string, phaseSlug: string, opts: { force?: boolean }) => {
+      const ops = await loadOps(process.cwd());
+      const file = await ops.task.phase.remove(slug, phaseSlug, {
+        force: !!opts.force,
+      });
+      printUpdated(file);
+    });
 
   phase
     .command('move <slug> <phase-slug>')
@@ -106,7 +97,11 @@ export function registerPhaseCommands(program: Command): void {
         opts: { after?: string; before?: string; to?: string },
       ) => {
         const position = parsePhasePosition(opts);
-        if (!position) throw new Error('must pass --after, --before, or --to');
+        if (!position) {
+          throw new AnchoredError('must pass one of --after, --before, or --to', [
+            'Pass exactly one position flag: --after <phase-slug>, --before <phase-slug>, or --to <start|end>.',
+          ]);
+        }
         const ops = await loadOps(process.cwd());
         const file = await ops.task.phase.move(slug, phaseSlug, position);
         printUpdated(file);
@@ -122,6 +117,20 @@ export function registerPhaseCommands(program: Command): void {
       const parsed = PhaseStatus.parse(statusArg);
       const ops = await loadOps(process.cwd());
       const file = await ops.task.phase.status.set(slug, phaseSlug, parsed);
+      printUpdated(file);
+    });
+
+  // phase executor set
+  const executor = phase.command('executor').description('Phase-executor ops');
+  executor
+    .command('set <slug> <phase-slug> <executor>')
+    .description(
+      'set which worker runs this phase during build (implement | workflow) — does not change phase status',
+    )
+    .action(async (slug: string, phaseSlug: string, executorArg: string) => {
+      const parsed = PhaseExecutor.parse(executorArg);
+      const ops = await loadOps(process.cwd());
+      const file = await ops.task.phase.executor.set(slug, phaseSlug, parsed);
       printUpdated(file);
     });
 
@@ -151,9 +160,7 @@ export function registerPhaseCommands(program: Command): void {
   const rules = phase.command('rules').description('Phase-rules ops');
   rules
     .command('set <slug> <phase-slug> <rules-json>')
-    .description(
-      'replace the phase rules array with a JSON array of { path, why } objects',
-    )
+    .description('replace the phase rules array with a JSON array of { path, why } objects')
     .action(async (slug: string, phaseSlug: string, rulesJson: string) => {
       const parsed = z.array(PhaseRule).parse(JSON.parse(rulesJson));
       const ops = await loadOps(process.cwd());

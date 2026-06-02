@@ -66,6 +66,16 @@ export type TaskStatus = z.infer<typeof TaskStatus>;
 export const PhaseStatus = z.enum(['pending', 'in-progress', 'done', 'blocked', 'deferred']);
 export type PhaseStatus = z.infer<typeof PhaseStatus>;
 
+/**
+ * Which worker agent runs a phase during build. `implement` is the
+ * default sequential implement worker; `workflow` orchestrates a nested
+ * sub-workflow. Absence resolves to `implement` at the build-skill layer
+ * — see the `Phase.executor` field doc for why the schema injects no
+ * default.
+ */
+export const PhaseExecutor = z.enum(['implement', 'workflow']);
+export type PhaseExecutor = z.infer<typeof PhaseExecutor>;
+
 // ─────────────────────────────────────────────────────────────────────
 // per-phase shape
 // ─────────────────────────────────────────────────────────────────────
@@ -139,6 +149,21 @@ export const Phase = z
      * retry loop and surface a manual-intervention prompt.
      */
     retry_count: z.number().int().nonnegative().optional(),
+    /**
+     * Which worker agent runs this phase during build. Names the
+     * executor, not a mode:
+     *   implement — the standard sequential implement worker (writes
+     *               source, drafts per-AC evidence). This is the
+     *               default behavior when the key is ABSENT.
+     *   workflow  — a phase that orchestrates a nested sub-workflow.
+     *
+     * Optional on the wire. Absence is valid and resolves to
+     * `implement` at the build-skill layer (Phase 4) — the schema
+     * deliberately does NOT inject a default value so that
+     * parse→serialize stays byte-identical for existing files that
+     * never carried the key.
+     */
+    executor: PhaseExecutor.optional(),
   })
   .passthrough();
 export type Phase = z.infer<typeof Phase>;

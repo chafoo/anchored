@@ -15,14 +15,17 @@ import type {
   TaskFile,
   Phase,
   PhaseStatus,
+  PhaseExecutor,
   PhaseRule,
   AcceptanceCriterion,
 } from '../../schema/task-file.js';
+import { PhaseExecutor as PhaseExecutorSchema } from '../../schema/task-file.js';
 import { assertPhaseTransition } from '../../ops/validate.js';
 import {
   DuplicateSlug,
   DonePhaseImmutable,
   IncompletePhase,
+  InvalidFieldValue,
   NotFound,
 } from '../errors.js';
 
@@ -30,10 +33,7 @@ import {
 // types
 // ─────────────────────────────────────────────────────────────────────
 
-export type PhasePosition =
-  | { after: string }
-  | { before: string }
-  | { to: 'start' | 'end' };
+export type PhasePosition = { after: string } | { before: string } | { to: 'start' | 'end' };
 
 /**
  * Caller-supplied shape for `phase.add`. Status defaults to 'pending';
@@ -58,15 +58,12 @@ function findPhaseOrThrow(file: TaskFile, phaseSlug: string): Phase {
   const phase = file.phases.find((p) => p.slug === phaseSlug);
   if (!phase) {
     const known = file.phases.map((p) => p.slug);
-    throw new NotFound(
-      `phase "${phaseSlug}" not found in task "${file.slug}"`,
-      [
-        known.length > 0
-          ? `Known phase slugs in this task: ${known.join(', ')}.`
-          : `This task has no phases yet — re-run \`/impl-plan\` to populate.`,
-        `Run \`anchored task read ${file.slug}\` to see the full task structure.`,
-      ],
-    );
+    throw new NotFound(`phase "${phaseSlug}" not found in task "${file.slug}"`, [
+      known.length > 0
+        ? `Known phase slugs in this task: ${known.join(', ')}.`
+        : `This task has no phases yet — re-run \`/impl-plan\` to populate.`,
+      `Run \`anchored task read ${file.slug}\` to see the full task structure.`,
+    ]);
   }
   return phase;
 }
@@ -95,9 +92,7 @@ function resolveInsertIndex(file: TaskFile, position: PhasePosition): number {
 // ─────────────────────────────────────────────────────────────────────
 
 export function makePhaseList({ root }: Deps) {
-  return async (
-    slug: string,
-  ): Promise<{ name: string; slug: string; status: PhaseStatus }[]> => {
+  return async (slug: string): Promise<{ name: string; slug: string; status: PhaseStatus }[]> => {
     const file = await readTask(root, slug);
     return file.phases.map((p) => ({
       name: p.name,
@@ -108,9 +103,7 @@ export function makePhaseList({ root }: Deps) {
 }
 
 export function makePhaseNext({ root }: Deps) {
-  return async (
-    slug: string,
-  ): Promise<{ name: string; slug: string } | null> => {
+  return async (slug: string): Promise<{ name: string; slug: string } | null> => {
     const file = await readTask(root, slug);
     // Resume-safety first: in-progress takes priority over pending.
     const inProgress = file.phases.find((p) => p.status === 'in-progress');
@@ -136,14 +129,11 @@ export function makePhaseAdd({ root }: Deps) {
     const file = await readTask(root, slug);
     if (file.phases.some((p) => p.slug === init.slug)) {
       const known = file.phases.map((p) => p.slug);
-      throw new DuplicateSlug(
-        `phase slug "${init.slug}" already exists in task "${file.slug}"`,
-        [
-          `Pick a different slug, or remove the existing phase first. Existing slugs: ${known.join(', ')}.`,
-          `Use \`anchored phase list ${file.slug}\` to see current phase slugs.`,
-          `If you want to rename, use \`phase.name.set\` — slugs are immutable identifiers.`,
-        ],
-      );
+      throw new DuplicateSlug(`phase slug "${init.slug}" already exists in task "${file.slug}"`, [
+        `Pick a different slug, or remove the existing phase first. Existing slugs: ${known.join(', ')}.`,
+        `Use \`anchored phase list ${file.slug}\` to see current phase slugs.`,
+        `If you want to rename, use \`phase.name.set\` — slugs are immutable identifiers.`,
+      ]);
     }
     const insertAt = resolveInsertIndex(file, position);
     const newPhase: Phase = {
@@ -168,8 +158,7 @@ export function makePhaseRemove({ root }: Deps) {
     opts: { force?: boolean } = {},
   ): Promise<TaskFile> => {
     const file = await readTask(root, slug);
-    const idx = findIndexOrThrow(file, phase_slug);
-    const phase = file.phases[idx]!;
+    const phase = findPhaseOrThrow(file, phase_slug);
     if (phase.status === 'done' && !opts.force) {
       throw new DonePhaseImmutable(
         `cannot remove phase "${phase.name}" (slug: ${phase.slug}): ` +
@@ -180,24 +169,20 @@ export function makePhaseRemove({ root }: Deps) {
         ],
       );
     }
-    file.phases.splice(idx, 1);
+    file.phases.splice(file.phases.indexOf(phase), 1);
     return writeTask(root, slug, file);
   };
 }
 
 export function makePhaseMove({ root }: Deps) {
-  return async (
-    slug: string,
-    phase_slug: string,
-    target: PhasePosition,
-  ): Promise<TaskFile> => {
+  return async (slug: string, phase_slug: string, target: PhasePosition): Promise<TaskFile> => {
     const file = await readTask(root, slug);
-    const currentIdx = findIndexOrThrow(file, phase_slug);
-    const [phase] = file.phases.splice(currentIdx, 1);
+    const phase = findPhaseOrThrow(file, phase_slug);
+    file.phases.splice(file.phases.indexOf(phase), 1);
     // Re-resolve the insert index AFTER the removal — `after: 'foo'`
     // means "after foo's current position" in the post-removal array.
     const insertAt = resolveInsertIndex(file, target);
-    file.phases.splice(insertAt, 0, phase!);
+    file.phases.splice(insertAt, 0, phase);
     return writeTask(root, slug, file);
   };
 }
@@ -207,11 +192,7 @@ export function makePhaseMove({ root }: Deps) {
 // ─────────────────────────────────────────────────────────────────────
 
 export function makePhaseStatusSet({ root }: Deps) {
-  return async (
-    slug: string,
-    phase_slug: string,
-    status: PhaseStatus,
-  ): Promise<TaskFile> => {
+  return async (slug: string, phase_slug: string, status: PhaseStatus): Promise<TaskFile> => {
     const file = await readTask(root, slug);
     const phase = findPhaseOrThrow(file, phase_slug);
     assertPhaseTransition(phase.status, status);
@@ -243,12 +224,41 @@ export function makePhaseStatusSet({ root }: Deps) {
   };
 }
 
+/**
+ * Sets a phase's `executor` (implement | workflow). Plan/refine-time
+ * write-path — execution-time /impl-build only READS this value, so
+ * setting it deliberately does NOT touch phase.status or trigger any
+ * state-machine transition (mirrors `phase.name.set`, not
+ * `phase.status.set`).
+ *
+ * The enum is validated at the op layer: any value other than
+ * 'implement' | 'workflow' is rejected with an InvalidFieldValue error
+ * carrying actionable suggestions — even when callers bypass the
+ * transport-layer Zod parse.
+ */
+export function makePhaseExecutorSet({ root }: Deps) {
+  return async (slug: string, phase_slug: string, executor: PhaseExecutor): Promise<TaskFile> => {
+    const parsed = PhaseExecutorSchema.safeParse(executor);
+    if (!parsed.success) {
+      throw new InvalidFieldValue(
+        `invalid executor "${String(executor)}" for phase "${phase_slug}": ` +
+          `must be one of 'implement' | 'workflow'.`,
+        [
+          `Pass 'implement' for the standard sequential implement worker, or 'workflow' for a nested sub-workflow phase.`,
+          `Run \`anchored phase executor set ${slug} ${phase_slug} implement\` (or \`workflow\`).`,
+        ],
+      );
+    }
+
+    const file = await readTask(root, slug);
+    const phase = findPhaseOrThrow(file, phase_slug);
+    phase.executor = parsed.data;
+    return writeTask(root, slug, file);
+  };
+}
+
 export function makePhaseNameSet({ root }: Deps) {
-  return async (
-    slug: string,
-    phase_slug: string,
-    name: string,
-  ): Promise<TaskFile> => {
+  return async (slug: string, phase_slug: string, name: string): Promise<TaskFile> => {
     const file = await readTask(root, slug);
     const phase = findPhaseOrThrow(file, phase_slug);
     phase.name = name;
@@ -257,11 +267,7 @@ export function makePhaseNameSet({ root }: Deps) {
 }
 
 export function makePhaseContextSet({ root }: Deps) {
-  return async (
-    slug: string,
-    phase_slug: string,
-    content: string,
-  ): Promise<TaskFile> => {
+  return async (slug: string, phase_slug: string, content: string): Promise<TaskFile> => {
     const file = await readTask(root, slug);
     const phase = findPhaseOrThrow(file, phase_slug);
     phase.context = content;
@@ -301,11 +307,7 @@ export function makePhaseRulesAdd({ root }: Deps) {
 }
 
 export function makePhaseRulesRemove({ root }: Deps) {
-  return async (
-    slug: string,
-    phase_slug: string,
-    idx: number,
-  ): Promise<TaskFile> => {
+  return async (slug: string, phase_slug: string, idx: number): Promise<TaskFile> => {
     const file = await readTask(root, slug);
     const phase = findPhaseOrThrow(file, phase_slug);
     const rules = phase.rules ?? [];

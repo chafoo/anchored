@@ -14,6 +14,7 @@ import {
   DuplicateSlug,
   DonePhaseImmutable,
   IncompletePhase,
+  InvalidFieldValue,
   InvalidTransition,
 } from '../../src/core/errors.js';
 import { createFixture, type Fixture } from './_fixture.js';
@@ -160,9 +161,9 @@ phases:
 `,
     });
     const ops = createOps(fixture.config, fixture.root);
-    await expect(
-      ops.task.phase.remove('sample', 'done-phase'),
-    ).rejects.toBeInstanceOf(DonePhaseImmutable);
+    await expect(ops.task.phase.remove('sample', 'done-phase')).rejects.toBeInstanceOf(
+      DonePhaseImmutable,
+    );
   });
 
   it('removes a done phase when force: true is passed', async () => {
@@ -215,23 +216,17 @@ describe('phase.status.set', () => {
   it('transitions pending → in-progress', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    const file = await ops.task.phase.status.set(
-      'sample',
-      'first',
-      'in-progress',
-    );
-    expect(file.phases.find((p) => p.slug === 'first')!.status).toBe(
-      'in-progress',
-    );
+    const file = await ops.task.phase.status.set('sample', 'first', 'in-progress');
+    expect(file.phases.find((p) => p.slug === 'first')!.status).toBe('in-progress');
   });
 
   it('rejects illegal transition pending → done directly', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
     // pending → done is not a legal direct transition (must go via in-progress).
-    await expect(
-      ops.task.phase.status.set('sample', 'first', 'done'),
-    ).rejects.toBeInstanceOf(InvalidTransition);
+    await expect(ops.task.phase.status.set('sample', 'first', 'done')).rejects.toBeInstanceOf(
+      InvalidTransition,
+    );
   });
 
   it('rejects done transition when any AC is still pending (IncompletePhase)', async () => {
@@ -256,9 +251,9 @@ phases:
 `,
     });
     const ops = createOps(fixture.config, fixture.root);
-    await expect(
-      ops.task.phase.status.set('sample', 'p', 'done'),
-    ).rejects.toBeInstanceOf(IncompletePhase);
+    await expect(ops.task.phase.status.set('sample', 'p', 'done')).rejects.toBeInstanceOf(
+      IncompletePhase,
+    );
   });
 
   it('allows done transition when every AC is status="done"', async () => {
@@ -289,6 +284,58 @@ phases:
   });
 });
 
+describe('phase.executor.set', () => {
+  it('persists executor through atomicWrite + full-file re-validation (re-read shows the value)', async () => {
+    fixture = await createFixture();
+    const ops = createOps(fixture.config, fixture.root);
+    await ops.task.phase.executor.set('sample', 'first', 'workflow');
+    const file = await fixture.readTaskRaw();
+    expect(file.phases.find((p) => p.slug === 'first')!.executor).toBe('workflow');
+  });
+
+  it('accepts the "implement" value too', async () => {
+    fixture = await createFixture();
+    const ops = createOps(fixture.config, fixture.root);
+    const file = await ops.task.phase.executor.set('sample', 'first', 'implement');
+    expect(file.phases.find((p) => p.slug === 'first')!.executor).toBe('implement');
+  });
+
+  it('rejects an invalid executor value with InvalidFieldValue', async () => {
+    fixture = await createFixture();
+    const ops = createOps(fixture.config, fixture.root);
+    await expect(
+      // @ts-expect-error — deliberately passing an invalid enum value
+      ops.task.phase.executor.set('sample', 'first', 'parallel'),
+    ).rejects.toBeInstanceOf(InvalidFieldValue);
+  });
+
+  it('does NOT alter phase status or trigger a state-machine transition', async () => {
+    fixture = await createFixture({
+      taskYml: `schema_version: 2
+slug: sample
+status: build
+created: 2026-05-26
+title: T
+context:
+  intro: x
+phases:
+  - name: P
+    slug: p
+    status: in-progress
+    acceptance_criteria:
+      - text: a
+        status: pending
+`,
+    });
+    const ops = createOps(fixture.config, fixture.root);
+    const file = await ops.task.phase.executor.set('sample', 'p', 'workflow');
+    // status untouched — still in-progress, no transition fired even though
+    // an AC is pending (which would block a status→done transition).
+    expect(file.phases.find((p) => p.slug === 'p')!.status).toBe('in-progress');
+    expect(file.phases.find((p) => p.slug === 'p')!.executor).toBe('workflow');
+  });
+});
+
 describe('phase.name.set / context.set', () => {
   it('name.set updates the phase name', async () => {
     fixture = await createFixture();
@@ -300,14 +347,8 @@ describe('phase.name.set / context.set', () => {
   it('context.set updates the phase context', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    const file = await ops.task.phase.context.set(
-      'sample',
-      'first',
-      'phase-specific notes',
-    );
-    expect(file.phases.find((p) => p.slug === 'first')!.context).toBe(
-      'phase-specific notes',
-    );
+    const file = await ops.task.phase.context.set('sample', 'first', 'phase-specific notes');
+    expect(file.phases.find((p) => p.slug === 'first')!.context).toBe('phase-specific notes');
   });
 });
 
@@ -348,9 +389,7 @@ describe('phase.rules', () => {
       { path: 'b', why: 'B' },
     ]);
     const file = await ops.task.phase.rules.remove('sample', 'first', 0);
-    expect(file.phases.find((p) => p.slug === 'first')!.rules).toEqual([
-      { path: 'b', why: 'B' },
-    ]);
+    expect(file.phases.find((p) => p.slug === 'first')!.rules).toEqual([{ path: 'b', why: 'B' }]);
   });
 });
 

@@ -144,6 +144,18 @@ compares to the original plan; were there pivots, scope adjustments,
 discoveries>.
 ```
 
+**Blocked phases are listed executor-agnostically.** The
+`**Blocked/Deferred**` line enumerates **every** phase in a
+`blocked` (or `deferred`) terminal state, regardless of how it ran. A
+blocked *workflow* phase (one whose `executor: workflow` exhausted its
+retry budget or hit a `build.stop` escalation) appears in the wrap
+TL;DR **exactly like** a blocked sequential (`implement`) phase — same
+one-line reason, same list. Wrap reads phase status + `failures[]` and
+does not branch on `phase.executor`; the executor only changed *how*
+the phase ran during build, never how its terminal state is reported
+here. (Likewise the per-AC `failures` arrays surfaced for blocked
+phases come from the same per-AC surface for both executors.)
+
 **Grouping the decisions.** Bucket the `source='ai'` questions by
 their `phase` field. Decisions with no `phase` (refine-stage Q&A the
 plan-agent surfaced) go under a "plan / refine" heading first; then

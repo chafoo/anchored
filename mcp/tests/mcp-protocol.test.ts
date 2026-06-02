@@ -88,7 +88,7 @@ describe('MCP server protocol', () => {
     expect(init?.result?.serverInfo?.name).toBe('task');
   }, 10_000);
 
-  it('lists all 37 expected tools', async () => {
+  it('lists all 38 expected tools', async () => {
     const responses = await spawnServerAndExchange([
       {
         jsonrpc: '2.0',
@@ -126,13 +126,14 @@ describe('MCP server protocol', () => {
       'task__set_wrap_intro',
       'task__append_wrap_section',
       'task__set_wrap_section',
-      // phase (10)
+      // phase (11)
       'task__list_phases',
       'task__next_phase',
       'task__add_phase',
       'task__remove_phase',
       'task__move_phase',
       'task__set_phase_status',
+      'task__set_phase_executor',
       'task__set_phase_name',
       'task__set_phase_context',
       'task__set_phase_rules',
@@ -152,7 +153,7 @@ describe('MCP server protocol', () => {
       'task__get_field',
     ];
     expect(toolNames.sort()).toEqual(expected.sort());
-    expect(toolNames.length).toBe(37);
+    expect(toolNames.length).toBe(38);
   }, 10_000);
 
   it('each tool has a description and inputSchema', async () => {

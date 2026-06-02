@@ -160,6 +160,13 @@
               "retry_count": {
                 "type": "integer",
                 "minimum": 0
+              },
+              "executor": {
+                "type": "string",
+                "enum": [
+                  "implement",
+                  "workflow"
+                ]
               }
             },
             "required": [

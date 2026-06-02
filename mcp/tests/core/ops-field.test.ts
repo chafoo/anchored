@@ -35,12 +35,7 @@ describe('phase.field.set', () => {
   it('sets a declared string field', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    const file = await ops.task.phase.field.set(
-      'sample',
-      'first',
-      'commit',
-      'abc1234',
-    );
+    const file = await ops.task.phase.field.set('sample', 'first', 'commit', 'abc1234');
     const phase = file.phases.find((p) => p.slug === 'first')!;
     expect((phase as { commit?: string }).commit).toBe('abc1234');
   });
@@ -48,12 +43,7 @@ describe('phase.field.set', () => {
   it('coerces a numeric-string for a declared number field', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    const file = await ops.task.phase.field.set(
-      'sample',
-      'first',
-      'coverage_pct',
-      '87.3',
-    );
+    const file = await ops.task.phase.field.set('sample', 'first', 'coverage_pct', '87.3');
     const phase = file.phases.find((p) => p.slug === 'first')!;
     expect((phase as { coverage_pct?: number }).coverage_pct).toBe(87.3);
   });
@@ -61,9 +51,9 @@ describe('phase.field.set', () => {
   it('rejects an out-of-enum value for an enum field', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    await expect(
-      ops.task.phase.field.set('sample', 'first', 'env', 'nope'),
-    ).rejects.toBeInstanceOf(InvalidFieldType);
+    await expect(ops.task.phase.field.set('sample', 'first', 'env', 'nope')).rejects.toBeInstanceOf(
+      InvalidFieldType,
+    );
   });
 
   it('rejects an undeclared field name (InvalidFieldValue)', async () => {
@@ -82,7 +72,7 @@ describe('phase.field.set', () => {
     ).rejects.toBeInstanceOf(InvalidFieldValue);
   });
 
-  it('rejects every other reserved name (name, context, rules, acceptance_criteria, retry_count, slug)', async () => {
+  it('rejects every other reserved name (name, context, rules, acceptance_criteria, retry_count, executor, slug)', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
     for (const name of [
@@ -91,11 +81,12 @@ describe('phase.field.set', () => {
       'rules',
       'acceptance_criteria',
       'retry_count',
+      'executor',
       'slug',
     ]) {
-      await expect(
-        ops.task.phase.field.set('sample', 'first', name, 'x'),
-      ).rejects.toBeInstanceOf(InvalidFieldValue);
+      await expect(ops.task.phase.field.set('sample', 'first', name, 'x')).rejects.toBeInstanceOf(
+        InvalidFieldValue,
+      );
     }
   });
 });
@@ -119,8 +110,8 @@ describe('phase.field.get', () => {
   it('throws InvalidFieldValue for an undeclared field name', async () => {
     fixture = await createFixture();
     const ops = createOps(fixture.config, fixture.root);
-    await expect(
-      ops.task.phase.field.get('sample', 'first', 'undeclared'),
-    ).rejects.toBeInstanceOf(InvalidFieldValue);
+    await expect(ops.task.phase.field.get('sample', 'first', 'undeclared')).rejects.toBeInstanceOf(
+      InvalidFieldValue,
+    );
   });
 });

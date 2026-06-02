@@ -188,6 +188,62 @@ build:
       phase if coverage drops below 80%.
 ```
 
+## Running phases as a Dynamic Workflow
+
+A phase can opt into **parallel fan-out** during `/impl-build` by
+setting its `executor` to `workflow`. Instead of one sequential
+`implement` agent, the phase's acceptance criteria are spread across
+parallel unit-workers ([`plugin/agents/workflow.md`](./plugin/agents/workflow.md))
+— useful for phases with many independent ACs.
+
+Set it at plan/refine time with the CLI:
+
+```bash
+anchored phase executor set <slug> <phase-slug> workflow
+# back to the default sequential worker:
+anchored phase executor set <slug> <phase-slug> implement
+```
+
+`executor` is **absent by default**, which means `implement` (the
+unchanged sequential path). Everything downstream is identical for
+both executors — the `task-validate` + `code-validate` gates still run
+**once over the merged phase result** (never per-unit, never
+bypassed), and the failures-driven retry loop and retry-limit are
+unchanged.
+
+If the Dynamic Workflow runtime is unavailable (older Claude Code,
+no Workflow runtime, or a dispatch error), an `executor: workflow`
+phase **falls back to the sequential `implement` path automatically**
+— it never hard-errors. Detection is empirical (the skill probes the
+runtime); there is no config flag to toggle.
+
+### Required: pre-approve the `anchored` CLI in the tool allowlist
+
+Workflow unit-workers write their own evidence/failures to the
+task-file via the `anchored` CLI (not MCP). A **background** workflow
+has no one to answer an interactive permission prompt, so these
+commands **must be pre-approved in your tool allowlist** before a
+workflow phase runs — otherwise the first unit-worker hangs forever
+on a permission prompt and stalls the whole fan-out. Add (e.g. in
+`.claude/settings.json` `permissions.allow`):
+
+```jsonc
+{
+  "permissions": {
+    "allow": [
+      "Bash(anchored ac evidence set:*)",
+      "Bash(anchored ac failures set:*)"
+      // or broaden to "Bash(anchored ac:*)" / "Bash(anchored:*)"
+    ]
+  }
+}
+```
+
+This requirement applies ONLY to phases using `executor: workflow`.
+The default sequential `implement` path needs no special allowlist —
+it routes all task-file writes through MCP from the skill, not the CLI
+from a subagent.
+
 ## Reference
 
 - Annotated default `anchored.yml`: [`plugin/references/default-config.yml`](./plugin/references/default-config.yml)

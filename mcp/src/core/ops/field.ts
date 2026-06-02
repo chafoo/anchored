@@ -36,6 +36,7 @@ const RESERVED_FIELD_NAMES = new Set([
   'rules',
   'acceptance_criteria',
   'retry_count',
+  'executor',
 ]);
 
 // ─────────────────────────────────────────────────────────────────────
@@ -82,12 +83,9 @@ function assertNotReserved(name: string): void {
 function findPhase(file: TaskFile, phase_slug: string) {
   const phase = file.phases.find((p) => p.slug === phase_slug);
   if (!phase) {
-    throw new NotFound(
-      `phase "${phase_slug}" not found in task "${file.slug}"`,
-      [
-        `Run \`anchored task read ${file.slug}\` to see the phase slugs in this task.`,
-      ],
-    );
+    throw new NotFound(`phase "${phase_slug}" not found in task "${file.slug}"`, [
+      `Run \`anchored task read ${file.slug}\` to see the phase slugs in this task.`,
+    ]);
   }
   return phase;
 }
@@ -124,11 +122,7 @@ export function makeFieldSet({ config, root }: FieldDeps) {
 }
 
 export function makeFieldGet({ config, root }: FieldDeps) {
-  return async (
-    slug: string,
-    phase_slug: string,
-    name: string,
-  ): Promise<unknown> => {
+  return async (slug: string, phase_slug: string, name: string): Promise<unknown> => {
     assertNotReserved(name);
     // Throws InvalidFieldValue if undeclared — same surface as set.
     findDecl(config, name);

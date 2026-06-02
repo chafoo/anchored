@@ -15,6 +15,8 @@ import {
   TaskStatus,
   AcceptanceCriterion,
 } from '../src/schema/task-file.js';
+import { renderTaskFileYAML } from '../src/parser/render.js';
+import { parseTaskFileYAML } from '../src/parser/parse.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Fixtures — V0.2 AC shape: {text, status, evidence?, failures?}
@@ -32,9 +34,7 @@ const minimal = {
       name: 'Phase One',
       slug: 'phase-one',
       status: 'pending' as const,
-      acceptance_criteria: [
-        { text: 'do the thing', status: 'pending' as const },
-      ],
+      acceptance_criteria: [{ text: 'do the thing', status: 'pending' as const }],
     },
   ],
 };
@@ -64,9 +64,7 @@ const maximal = {
       slug: 'phase-one',
       status: 'done' as const,
       context: 'phase-specific briefing',
-      rules: [
-        { path: '.claude/rules/foo.md', why: 'because' },
-      ],
+      rules: [{ path: '.claude/rules/foo.md', why: 'because' }],
       acceptance_criteria: [
         {
           text: 'first AC',
@@ -87,9 +85,7 @@ const maximal = {
       name: 'Phase Two',
       slug: 'phase-two',
       status: 'deferred' as const,
-      acceptance_criteria: [
-        { text: 'punt this', status: 'pending' as const },
-      ],
+      acceptance_criteria: [{ text: 'punt this', status: 'pending' as const }],
     },
   ],
   customSections: {
@@ -129,12 +125,9 @@ describe('TaskFile — valid inputs', () => {
 // ─────────────────────────────────────────────────────────────────────
 
 describe('TaskStatus — 6-state enum', () => {
-  it.each(['plan', 'drafted', 'refined', 'build', 'wrap', 'done'])(
-    'accepts %s',
-    (s) => {
-      expect(() => TaskStatus.parse(s)).not.toThrow();
-    },
-  );
+  it.each(['plan', 'drafted', 'refined', 'build', 'wrap', 'done'])('accepts %s', (s) => {
+    expect(() => TaskStatus.parse(s)).not.toThrow();
+  });
 
   it('rejects an arbitrary string', () => {
     expect(() => TaskStatus.parse('foo')).toThrow();
@@ -179,15 +172,13 @@ describe('AcceptanceCriterion — V0.2 shape', () => {
   });
 
   it("rejects status='done' with no evidence", () => {
-    expect(() =>
-      AcceptanceCriterion.parse({ text: 'do', status: 'done' }),
-    ).toThrow(/must have non-empty evidence/);
+    expect(() => AcceptanceCriterion.parse({ text: 'do', status: 'done' })).toThrow(
+      /must have non-empty evidence/,
+    );
   });
 
   it("rejects status='done' with empty evidence array", () => {
-    expect(() =>
-      AcceptanceCriterion.parse({ text: 'do', status: 'done', evidence: [] }),
-    ).toThrow();
+    expect(() => AcceptanceCriterion.parse({ text: 'do', status: 'done', evidence: [] })).toThrow();
   });
 
   it('rejects evidence array containing an empty string', () => {
@@ -230,16 +221,12 @@ describe('AcceptanceCriterion — V0.2 shape', () => {
     ).toThrow();
   });
 
-  it("rejects status with invalid enum value", () => {
-    expect(() =>
-      AcceptanceCriterion.parse({ text: 'do', status: 'in-progress' }),
-    ).toThrow();
+  it('rejects status with invalid enum value', () => {
+    expect(() => AcceptanceCriterion.parse({ text: 'do', status: 'in-progress' })).toThrow();
   });
 
-  it("rejects missing status (required field)", () => {
-    expect(() =>
-      AcceptanceCriterion.parse({ text: 'do' }),
-    ).toThrow();
+  it('rejects missing status (required field)', () => {
+    expect(() => AcceptanceCriterion.parse({ text: 'do' })).toThrow();
   });
 });
 
@@ -273,9 +260,7 @@ describe('TaskFile — schema_version gating', () => {
 
 describe('TaskFile — field validation', () => {
   it('rejects invalid status enum at task level', () => {
-    expect(() =>
-      parseTaskFile({ ...minimal, status: 'something-else' }),
-    ).toThrow();
+    expect(() => parseTaskFile({ ...minimal, status: 'something-else' })).toThrow();
   });
 
   it('rejects invalid phase status enum', () => {
@@ -287,9 +272,7 @@ describe('TaskFile — field validation', () => {
   });
 
   it('rejects non-kebab-case task slug', () => {
-    expect(() =>
-      parseTaskFile({ ...minimal, slug: 'NotKebab' }),
-    ).toThrow();
+    expect(() => parseTaskFile({ ...minimal, slug: 'NotKebab' })).toThrow();
   });
 
   it('rejects non-kebab-case phase slug', () => {
@@ -301,9 +284,7 @@ describe('TaskFile — field validation', () => {
   });
 
   it('rejects ISO-violating created date', () => {
-    expect(() =>
-      parseTaskFile({ ...minimal, created: '5/26/2026' }),
-    ).toThrow();
+    expect(() => parseTaskFile({ ...minimal, created: '5/26/2026' })).toThrow();
   });
 
   it('rejects phase with empty acceptance_criteria array', () => {
@@ -317,9 +298,7 @@ describe('TaskFile — field validation', () => {
   it('rejects phase with no acceptance_criteria field at all', () => {
     const { acceptance_criteria, ...phaseWithoutACs } = minimal.phases[0]!;
     void acceptance_criteria;
-    expect(() =>
-      parseTaskFile({ ...minimal, phases: [phaseWithoutACs] }),
-    ).toThrow();
+    expect(() => parseTaskFile({ ...minimal, phases: [phaseWithoutACs] })).toThrow();
   });
 
   it('rejects empty title', () => {
@@ -353,6 +332,41 @@ describe('TaskFile — field validation', () => {
       phases: [{ ...minimal.phases[0]!, retry_count: 0 }],
     };
     expect(() => parseTaskFile(ok)).not.toThrow();
+  });
+
+  it("accepts executor = 'implement'", () => {
+    const ok = {
+      ...minimal,
+      phases: [{ ...minimal.phases[0]!, executor: 'implement' }],
+    };
+    const parsed = parseTaskFile(ok);
+    expect(parsed.phases[0]?.executor).toBe('implement');
+  });
+
+  it("accepts executor = 'workflow'", () => {
+    const ok = {
+      ...minimal,
+      phases: [{ ...minimal.phases[0]!, executor: 'workflow' }],
+    };
+    const parsed = parseTaskFile(ok);
+    expect(parsed.phases[0]?.executor).toBe('workflow');
+  });
+
+  it('rejects an out-of-enum executor value', () => {
+    const bad = {
+      ...minimal,
+      phases: [{ ...minimal.phases[0]!, executor: 'sequential' }],
+    };
+    expect(() => parseTaskFile(bad)).toThrow();
+  });
+
+  it('treats a phase with no executor key as valid (default behavior unchanged)', () => {
+    // minimal.phases[0] has no executor key — the field is optional and
+    // the schema injects no default, so absence is valid and resolves to
+    // `implement` at the build-skill layer (not in the parsed object).
+    const parsed = parseTaskFile(minimal);
+    expect(parsed.phases[0]?.executor).toBeUndefined();
+    expect('executor' in (parsed.phases[0] as object)).toBe(false);
   });
 });
 
@@ -402,6 +416,31 @@ describe('TaskFile — extension preservation', () => {
     expect(parsed.phases[0]?.coverage_pct).toBe(87);
     expect(parsed.phases[0]?.pr_url).toBe('https://github.com/x/y/pull/42');
     expect(parsed.phases[0]?.reviewed).toBe(true);
+  });
+
+  it('round-trips a phase with no executor key byte-identically (non-destructive)', () => {
+    // AC4: an existing task-file fixture that never carried `executor`
+    // must serialize → parse → serialize stably, with no spurious
+    // `executor` key injected by the extended schema.
+    const firstRender = renderTaskFileYAML(parseTaskFile(minimal));
+    // The serialized YAML must not contain the new key at all.
+    expect(firstRender).not.toContain('executor');
+    // And a full round-trip through the real parse layer is a fixed point.
+    const reparsed = parseTaskFileYAML(firstRender);
+    const secondRender = renderTaskFileYAML(reparsed);
+    expect(secondRender).toBe(firstRender);
+    expect('executor' in (reparsed.phases[0] as object)).toBe(false);
+  });
+
+  it('preserves an explicit executor value through a full round-trip', () => {
+    const withExecutor = {
+      ...minimal,
+      phases: [{ ...minimal.phases[0]!, executor: 'workflow' as const }],
+    };
+    const firstRender = renderTaskFileYAML(parseTaskFile(withExecutor));
+    expect(firstRender).toContain('executor: workflow');
+    const secondRender = renderTaskFileYAML(parseTaskFileYAML(firstRender));
+    expect(secondRender).toBe(firstRender);
   });
 
   it('preserves customSections as a string-keyed map', () => {

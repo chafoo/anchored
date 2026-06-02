@@ -1,5 +1,5 @@
 /**
- * Tool registry — assembles the 37 MCP tools anchored exposes.
+ * Tool registry — assembles the 38 MCP tools anchored exposes.
  *
  * Each tool is { name, description, inputSchema (JSON Schema), handler }.
  * server.ts iterates ALL_TOOLS to register handlers with the MCP SDK.
@@ -32,13 +32,14 @@ import { setWrapIntroTool } from './set-wrap-intro.js';
 import { appendWrapSectionTool } from './append-wrap-section.js';
 import { setWrapSectionTool } from './set-wrap-section.js';
 
-// phase (10)
+// phase (11)
 import { listPhasesTool } from './list-phases.js';
 import { nextPhaseTool } from './next-phase.js';
 import { addPhaseTool } from './add-phase.js';
 import { removePhaseTool } from './remove-phase.js';
 import { movePhaseTool } from './move-phase.js';
 import { setPhaseStatusTool } from './set-phase-status.js';
+import { setPhaseExecutorTool } from './set-phase-executor.js';
 import { setPhaseNameTool } from './set-phase-name.js';
 import { setPhaseContextTool } from './set-phase-context.js';
 import { setPhaseRulesTool } from './set-phase-rules.js';
@@ -81,13 +82,14 @@ export const ALL_TOOLS: AnchoredTool[] = [
   setWrapIntroTool,
   appendWrapSectionTool,
   setWrapSectionTool,
-  // phase
+  // phase (11)
   listPhasesTool,
   nextPhaseTool,
   addPhaseTool,
   removePhaseTool,
   movePhaseTool,
   setPhaseStatusTool,
+  setPhaseExecutorTool,
   setPhaseNameTool,
   setPhaseContextTool,
   setPhaseRulesTool,
