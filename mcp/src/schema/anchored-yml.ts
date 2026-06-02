@@ -54,20 +54,48 @@ export type TaskExtensions = z.infer<typeof TaskExtensions>;
 // ─────────────────────────────────────────────────────────────────────
 
 /**
+ * How the orchestrator invokes a `use:` target. A `skill` runs in the
+ * orchestrator's own (main) session via the Skill tool; an `agent` is
+ * spawned as an isolated subagent via the Agent/Task tool. The two have
+ * fundamentally different execution models, so the step must declare which
+ * — when omitted on a `use` step, the orchestrator defaults to `agent`
+ * (the safer, isolated path, and back-compatible with pre-existing
+ * `use: anchored/implement` steps that predate this field).
+ */
+export const StepUseType = z.enum(['agent', 'skill']);
+export type StepUseType = z.infer<typeof StepUseType>;
+
+/**
  * A lifecycle step entry. Exactly one of `run` (inline prose
  * instructions executed by the orchestrator) or `use` (named tool
  * reference, e.g. `use: anchored/implement`) must be set — the
  * refine guarantees a step is either prose-driven or tool-driven,
  * never both.
+ *
+ * On a `use` step, two optional companions tune the invocation:
+ *   - `type`         — `agent` | `skill`; picks the invocation mechanism
+ *                      (subagent vs. main-session skill). Defaults to
+ *                      `agent` at the consumer when omitted.
+ *   - `instructions` — extra prose threaded into the invoked worker, the
+ *                      per-step analogue of the reserved slots'
+ *                      `instructions` (build.implement.instructions, …).
+ *
+ * Both are rejected on a `run` step: a `run` step's prose IS its
+ * instruction, and there is no worker to type.
  */
 export const Step = z
   .object({
     name: z.string().min(1),
     run: z.string().min(1).optional(),
     use: z.string().min(1).optional(),
+    type: StepUseType.optional(),
+    instructions: z.string().min(1).optional(),
   })
   .refine((s) => Number(s.run !== undefined) + Number(s.use !== undefined) === 1, {
     message: 'step needs exactly one of run|use',
+  })
+  .refine((s) => s.use !== undefined || (s.type === undefined && s.instructions === undefined), {
+    message: '`type` and `instructions` are only valid on a `use` step',
   });
 export type Step = z.infer<typeof Step>;
 

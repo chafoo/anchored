@@ -9,6 +9,26 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`use:` steps gain `type` + `instructions` — and the dispatch is now
+  real.** A lifecycle step (`plan`/`refine`/`build`/`wrap`.`steps`) that
+  delegates to a named worker via `use:` can now declare:
+  - `type: agent | skill` — picks the invocation mechanism. `agent`
+    (the default when omitted; back-compatible with existing
+    `use: anchored/implement` steps) spawns an **isolated subagent** via
+    the Agent tool; `skill` invokes the worker via the Skill tool **in
+    the orchestrator's own session**.
+  - `instructions:` — per-step prose threaded into the invoked worker,
+    the step-level analogue of the reserved slots' `instructions`
+    (`build.implement.instructions`, …). Rejected on a `run:` step,
+    where the prose already _is_ the instruction.
+  - A single canonical dispatch contract
+    (`plugin/references/step-dispatch.md`) replaces the previously
+    unspecified "invoke the named tool … depending on how the user has
+    wired it" hand-wave; all four lifecycle skills now point at it.
+  - See `plugin/EXTENDING.md` → "Add a custom step to any stage".
+
 ## [0.2.0] — 2026-06-02
 
 ### Added

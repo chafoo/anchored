@@ -78,6 +78,17 @@
                   "use": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "agent",
+                      "skill"
+                    ]
+                  },
+                  "instructions": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "required": [
@@ -110,6 +121,17 @@
                     "minLength": 1
                   },
                   "use": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "agent",
+                      "skill"
+                    ]
+                  },
+                  "instructions": {
                     "type": "string",
                     "minLength": 1
                   }
@@ -166,6 +188,17 @@
                     "minLength": 1
                   },
                   "use": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "agent",
+                      "skill"
+                    ]
+                  },
+                  "instructions": {
                     "type": "string",
                     "minLength": 1
                   }
@@ -263,6 +296,17 @@
                     "minLength": 1
                   },
                   "use": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "agent",
+                      "skill"
+                    ]
+                  },
+                  "instructions": {
                     "type": "string",
                     "minLength": 1
                   }

@@ -353,11 +353,13 @@ judgment.
 For each step in `anchored.yml.refine.steps[]` (in declaration
 order):
 
-- A step has either `{ name, run: '<shell command>' }` or
-  `{ name, use: '<named tool>' }`.
-- `run:` → execute via Bash. Capture stdout + stderr.
-- `use:` → invoke the named tool (spawn an agent by name, or call an
-  MCP tool, depending on how the user has wired it).
+- A step is `{ name, run: '<shell command>' }` or
+  `{ name, use: '<worker>', type?: agent|skill, instructions?: '…' }`.
+- Dispatch each step per the canonical contract in
+  **`plugin/references/step-dispatch.md`**: `run:` → Bash; `use:` →
+  spawn an isolated subagent (`type: agent`, the default) or invoke a
+  skill in this session (`type: skill`), threading the step's
+  `instructions` into the worker. Capture stdout / the worker's result.
 - Capture each step's output to `context.build → refine.<step-name>`
   via `mcp__task__append_build_section(project_root, slug,
   "refine.<step-name>", output)`.

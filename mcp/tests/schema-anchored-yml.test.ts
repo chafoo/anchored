@@ -82,6 +82,70 @@ describe('anchored.yml — step shape', () => {
       }),
     ).toThrow();
   });
+
+  it('accepts a `use` step with type: skill', () => {
+    const parsed = parseAnchoredYml({
+      wrap: { steps: [{ name: 'docu-scan', use: 'docu-scan', type: 'skill' }] },
+    });
+    expect(parsed.wrap.steps[0]!.type).toBe('skill');
+  });
+
+  it('accepts a `use` step with type: agent', () => {
+    const parsed = parseAnchoredYml({
+      wrap: { steps: [{ name: 'review', use: 'pr-reviewer', type: 'agent' }] },
+    });
+    expect(parsed.wrap.steps[0]!.type).toBe('agent');
+  });
+
+  it('leaves type undefined when omitted (consumer defaults to agent)', () => {
+    const parsed = parseAnchoredYml({
+      build: { steps: [{ name: 'implement', use: 'anchored/implement' }] },
+    });
+    expect(parsed.build.steps[0]!.type).toBeUndefined();
+  });
+
+  it('accepts a `use` step with instructions (per-step prose)', () => {
+    const parsed = parseAnchoredYml({
+      wrap: {
+        steps: [
+          { name: 'docu-scan', use: 'docu-scan', type: 'skill', instructions: 'extra context' },
+        ],
+      },
+    });
+    expect(parsed.wrap.steps[0]!.instructions).toBe('extra context');
+  });
+
+  it('rejects an invalid type value', () => {
+    expect(() =>
+      parseAnchoredYml({
+        wrap: { steps: [{ name: 'x', use: 'some-tool', type: 'mcp' }] },
+      }),
+    ).toThrow();
+  });
+
+  it('rejects type on a `run` step (no worker to type)', () => {
+    expect(() =>
+      parseAnchoredYml({
+        build: { steps: [{ name: 'lint', run: 'bun run check', type: 'agent' }] },
+      }),
+    ).toThrow();
+  });
+
+  it('rejects instructions on a `run` step (the prose IS the instruction)', () => {
+    expect(() =>
+      parseAnchoredYml({
+        build: { steps: [{ name: 'lint', run: 'bun run check', instructions: 'also be nice' }] },
+      }),
+    ).toThrow();
+  });
+
+  it('rejects empty-string instructions', () => {
+    expect(() =>
+      parseAnchoredYml({
+        wrap: { steps: [{ name: 'x', use: 'some-tool', instructions: '' }] },
+      }),
+    ).toThrow();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────

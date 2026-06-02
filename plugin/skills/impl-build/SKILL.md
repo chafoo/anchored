@@ -227,11 +227,21 @@ For each user step (declaration order in anchored.yml):
      for step 5 outcome evaluation; the SKILL handles
      `set_phase_status('blocked')` there.
 
-- **Custom user steps** (e.g. `coverage`, `commit`): execute as
-  prose-driven actions. The user wrote prose; you interpret it. If
-  the prose says "run X command", do that. If it says "spawn Y
-  agent", do that. Capture any phase-field outputs (e.g. commit
-  SHA) and apply via `mcp__task__set_field`.
+- **Custom user steps** (e.g. `coverage`, `commit`, or a `use:`
+  reviewer/scanner): dispatch each per the canonical contract in
+  **`plugin/references/step-dispatch.md`**:
+  - `run:` → execute via Bash (or interpret the prose action). The
+    `build.steps` env vars `${PHASE_SLUG}` / `${PHASE_NAME}` are in
+    scope here (only `build.steps` runs inside the per-phase loop).
+  - `use:` → spawn an isolated subagent (`type: agent`, the default)
+    or invoke a skill in this session (`type: skill`), passing the
+    step's `instructions` plus the phase context — including the
+    **pre-read task-file content** (plugin subagents can't reach MCP),
+    just as the `implement` worker is fed above.
+
+  Capture any phase-field outputs (e.g. commit SHA) and apply via
+  `mcp__task__set_field`; capture notable step output via
+  `mcp__task__append_build_section`.
 
 ### 2-WF. Workflow dispatch path (only when `executor: workflow`)
 
@@ -316,8 +326,9 @@ and surface it; do not attempt the fan-out.
 Spawn the Dynamic Workflow via the **`Workflow` tool**, with the
 fan-out body issuing one `agent()` call per unit at
 `agentType: 'anchored:workflow'` (this is **separate** from
-`anchored.yml` step dispatch — there is no generic `use:`-dispatcher;
-the workflow worker is reached only through this `agentType`):
+`anchored.yml` step dispatch in `plugin/references/step-dispatch.md` —
+the workflow worker is reached only through this `agentType`, never via
+a `use:` step):
 
 - **Primary form:** `agent({ agentType: 'anchored:workflow', ... })`
   per unit, parallel up to the ≤16 ceiling.

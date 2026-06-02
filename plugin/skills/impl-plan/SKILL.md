@@ -198,7 +198,11 @@ factory accepts `drafted → drafted` as a self-edge).
 ## Pipeline
 
 Run each step from `anchored.yml.plan.steps` in declaration order
-(top-to-bottom in the user's config file).
+(top-to-bottom in the user's config file), dispatching each per the
+canonical contract in **`plugin/references/step-dispatch.md`**: `run:`
+→ Bash; `use:` → an isolated subagent (`type: agent`, the default) or a
+skill invoked in this session (`type: skill`), threading the step's
+`instructions`.
 
 For the default pipeline (`explore` + `rules` in parallel → `refine`):
 

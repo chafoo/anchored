@@ -60,7 +60,20 @@ findings + TL;DR + status flip all happen via `mcp__task__*` calls
 
 ## Pipeline
 
-Run each step from `anchored.yml.wrap.steps` in declaration order.
+Run each step from `anchored.yml.wrap.steps` in declaration order,
+dispatching each per the canonical contract in
+**`plugin/references/step-dispatch.md`**: `run:` → Bash; `use:` →
+an isolated subagent (`type: agent`, the default) or a skill invoked in
+this session (`type: skill`), threading the step's `instructions`.
+Capture each step's output via `mcp__task__append_wrap_section`.
+
+The shipped default config carries two steps — `review` then
+`summarize` — detailed below. A user who keeps the defaults follows
+these handlers; a user who replaces `wrap.steps` with their own
+`use:`/`run:` steps (e.g. `use: docu-scan, type: skill` then
+`use: pr-reviewer, type: agent`) gets the generic dispatch above, and
+the `summarize` TL;DR is the only framework-default behavior that still
+runs unconditionally at termination.
 
 For the default pipeline (`review` → `summarize`):
 

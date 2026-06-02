@@ -47,6 +47,12 @@
 # ─── wrap — /impl-wrap pipeline ──────────────────────────────────────
 # wrap:
 #   steps: []   # custom shell/tool steps run during /impl-wrap (default: review → summarize)
+#   # A step is EITHER `run:` (shell/prose) OR `use:` (a named worker). A `use:`
+#   # step may add `type: agent|skill` (default agent = isolated subagent;
+#   # skill = run in the orchestrator's session) and `instructions:` (extra
+#   # prose for that worker). Example:
+#   #   - { name: docu-scan, use: docu-scan, type: skill, instructions: 're-scan touched modules only' }
+#   #   - { name: pr-review, use: pr-reviewer, type: agent }
 
 # ─── VCS integration ─────────────────────────────────────────────────
 # Anchored is VCS-agnostic — there is intentionally no `build.commit` slot.

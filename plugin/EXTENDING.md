@@ -40,8 +40,12 @@ you want to customize.
 
 ### 1. Add a custom step to any stage
 
-A step is `{ name, run: '<shell command>' }`. Steps run in declaration
-order after the framework's default work for that stage completes.
+A step does **exactly one** of two things — it's either prose/shell-driven
+(`run:`) or it hands the work to a named worker (`use:`). Steps run in
+declaration order after the framework's default work for that stage
+completes.
+
+**`run:` — a shell command (or prose the orchestrator interprets):**
 
 ```yaml
 build:
@@ -61,6 +65,49 @@ per-phase loop, so only it has phase context:
 | `wrap.steps`  | `${TASK_SLUG}`, `${TASK_TITLE}`                             |
 
 A non-zero exit code halts the pipeline.
+
+**`use:` — delegate the step to an agent or a skill:**
+
+Instead of inline prose, a step can hand off to a named worker. Two
+optional companions tune the hand-off:
+
+- **`type:`** — `agent` (default) or `skill`. This is not cosmetic: an
+  `agent` is spawned as an **isolated subagent** (via the Agent tool),
+  while a `skill` runs in the orchestrator's **own session** (via the
+  Skill tool). They have different execution models, so anchored needs to
+  know which. Omit it and anchored treats the step as an `agent` — the
+  safer, isolated default (and back-compatible with older configs).
+- **`instructions:`** — extra prose threaded into the worker, the
+  per-step analogue of the gates' `instructions:`. Use it to brief the
+  worker on what *this* step should focus on.
+
+```yaml
+wrap:
+  steps:
+    # an isolated subagent (type defaults to agent):
+    - name: pr-review
+      use: pr-reviewer
+      type: agent
+      instructions: |
+        Post findings as inline PR comments and open a fix-task for any
+        blocker.
+    # a skill, run in the orchestrator's session:
+    - name: docu-scan
+      use: docu-scan
+      type: skill
+      instructions: only re-scan the modules this task touched
+```
+
+The `use:` value is the worker's identifier as the respective tool
+expects it — a subagent type for `type: agent`, a skill name (e.g.
+`docu:docu-scan`) for `type: skill`. `type` and `instructions` are only
+valid on a `use:` step; on a `run:` step the prose already *is* the
+instruction, so anchored rejects them there.
+
+> Note: a `use: skill` step runs **in the orchestrator's main session**,
+> not in isolation. Reach for `type: agent` when the work should be
+> sandboxed; reserve `type: skill` for skills that are safe to drive
+> headlessly mid-pipeline.
 
 ### 2. Declare a custom phase field
 
