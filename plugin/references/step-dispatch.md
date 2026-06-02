@@ -22,6 +22,11 @@ exit code is a failure → halt. (If a `run:` value reads as prose rather
 than a literal command, interpret it as the action to take — the
 historical behavior; this is unchanged.)
 
+A `run:` step may also carry `instructions:` — there it is **documentation**:
+the rationale for what the shell does and why (audit trail + human/AI
+context). It does not change execution; the `run` value is what runs. Fold
+it into the step's captured output so the audit trail records the intent.
+
 ## `use:` — a named worker, branched on `type`
 
 A `use:` step hands the work to a named worker. The optional `type:`

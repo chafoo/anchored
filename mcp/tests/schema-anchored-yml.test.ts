@@ -131,12 +131,21 @@ describe('anchored.yml — step shape', () => {
     ).toThrow();
   });
 
-  it('rejects instructions on a `run` step (the prose IS the instruction)', () => {
-    expect(() =>
-      parseAnchoredYml({
-        build: { steps: [{ name: 'lint', run: 'bun run check', instructions: 'also be nice' }] },
-      }),
-    ).toThrow();
+  it('accepts instructions on a `run` step (universal self-documentation)', () => {
+    const parsed = parseAnchoredYml({
+      build: {
+        steps: [
+          {
+            name: 'commit',
+            run: 'git commit -am phase',
+            instructions: 'Phase = one commit; captures the SHA into the commit phase field.',
+          },
+        ],
+      },
+    });
+    expect(parsed.build.steps[0]!.run).toContain('git');
+    expect(parsed.build.steps[0]!.instructions).toContain('Phase = one commit');
+    expect(parsed.build.steps[0]!.type).toBeUndefined();
   });
 
   it('rejects empty-string instructions', () => {

@@ -66,6 +66,22 @@ per-phase loop, so only it has phase context:
 
 A non-zero exit code halts the pipeline.
 
+**Every custom step should carry `instructions:`.** It's free-prose
+documentation of what the step does and *why* — the recommended base for
+any custom step is `name` + `instructions`. On a `run:` step it
+self-documents the shell (rationale + audit trail, never changing what
+runs); on a `use:` step it is additionally threaded into the worker (below).
+
+```yaml
+build:
+  steps:
+    - name: commit
+      run: 'git add -A && git commit -m "phase: ${PHASE_SLUG}"'
+      instructions: |
+        Phase = one commit. Captures the SHA into the `commit` phase field
+        so wrap can derive the task's diff range.
+```
+
 **`use:` — delegate the step to an agent or a skill:**
 
 Instead of inline prose, a step can hand off to a named worker. Two
@@ -100,9 +116,9 @@ wrap:
 
 The `use:` value is the worker's identifier as the respective tool
 expects it — a subagent type for `type: agent`, a skill name (e.g.
-`docu:docu-scan`) for `type: skill`. `type` and `instructions` are only
-valid on a `use:` step; on a `run:` step the prose already *is* the
-instruction, so anchored rejects them there.
+`docu:docu-scan`) for `type: skill`. `instructions` works on **any** step
+(see above); `type` is only valid on a `use:` step — a `run:` step has no
+worker to type, so anchored rejects `type` there.
 
 > Note: a `use: skill` step runs **in the orchestrator's main session**,
 > not in isolation. Reach for `type: agent` when the work should be

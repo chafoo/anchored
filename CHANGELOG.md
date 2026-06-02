@@ -11,18 +11,22 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- **`use:` steps gain `type` + `instructions` — and the dispatch is now
-  real.** A lifecycle step (`plan`/`refine`/`build`/`wrap`.`steps`) that
-  delegates to a named worker via `use:` can now declare:
-  - `type: agent | skill` — picks the invocation mechanism. `agent`
-    (the default when omitted; back-compatible with existing
-    `use: anchored/implement` steps) spawns an **isolated subagent** via
-    the Agent tool; `skill` invokes the worker via the Skill tool **in
-    the orchestrator's own session**.
-  - `instructions:` — per-step prose threaded into the invoked worker,
-    the step-level analogue of the reserved slots' `instructions`
-    (`build.implement.instructions`, …). Rejected on a `run:` step,
-    where the prose already _is_ the instruction.
+- **Custom steps gain `instructions` (any step) + `type` (use steps), and
+  `use:` dispatch is now real.** A lifecycle step
+  (`plan`/`refine`/`build`/`wrap`.`steps`) can now declare:
+  - `instructions:` — free-prose documentation of what the step does and
+    why, allowed on **any** step. The recommended base for every custom
+    step is `name` + `instructions`. On a `run:` step it self-documents
+    the shell (rationale + audit trail); on a `use:` step it is
+    additionally threaded into the invoked worker, the step-level analogue
+    of the reserved slots' `instructions` (`build.implement.instructions`,
+    …).
+  - `type: agent | skill` — on a `use:` step, picks the invocation
+    mechanism. `agent` (the default when omitted; back-compatible with
+    existing `use: anchored/implement` steps) spawns an **isolated
+    subagent** via the Agent tool; `skill` invokes the worker via the
+    Skill tool **in the orchestrator's own session**. Rejected on a `run:`
+    step (no worker to type).
   - A single canonical dispatch contract
     (`plugin/references/step-dispatch.md`) replaces the previously
     unspecified "invoke the named tool … depending on how the user has

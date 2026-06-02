@@ -66,22 +66,25 @@ export const StepUseType = z.enum(['agent', 'skill']);
 export type StepUseType = z.infer<typeof StepUseType>;
 
 /**
- * A lifecycle step entry. Exactly one of `run` (inline prose
- * instructions executed by the orchestrator) or `use` (named tool
- * reference, e.g. `use: anchored/implement`) must be set — the
- * refine guarantees a step is either prose-driven or tool-driven,
- * never both.
+ * A lifecycle step entry. Exactly one of `run` (a shell command / inline
+ * prose the orchestrator executes) or `use` (named worker reference, e.g.
+ * `use: anchored/implement`) must be set — the refine guarantees a step is
+ * either shell-driven or worker-driven, never both.
  *
- * On a `use` step, two optional companions tune the invocation:
- *   - `type`         — `agent` | `skill`; picks the invocation mechanism
- *                      (subagent vs. main-session skill). Defaults to
- *                      `agent` at the consumer when omitted.
- *   - `instructions` — extra prose threaded into the invoked worker, the
- *                      per-step analogue of the reserved slots'
- *                      `instructions` (build.implement.instructions, …).
- *
- * Both are rejected on a `run` step: a `run` step's prose IS its
- * instruction, and there is no worker to type.
+ * Two optional companions:
+ *   - `instructions` — free-prose documentation of what the step does and
+ *                      WHY. Allowed on ANY step (run or use): on a `run`
+ *                      step it self-documents the shell (rationale + audit
+ *                      trail); on a `use` step it is additionally threaded
+ *                      into the invoked worker, the per-step analogue of the
+ *                      reserved slots' `instructions`
+ *                      (build.implement.instructions, …). The recommended
+ *                      base for every custom step is `name` + `instructions`.
+ *   - `type`         — `agent` | `skill`; picks the invocation mechanism for
+ *                      a `use` step (isolated subagent vs. main-session
+ *                      skill). Defaults to `agent` at the consumer when
+ *                      omitted. Only valid on a `use` step — a `run` step has
+ *                      no worker to type.
  */
 export const Step = z
   .object({
@@ -94,8 +97,8 @@ export const Step = z
   .refine((s) => Number(s.run !== undefined) + Number(s.use !== undefined) === 1, {
     message: 'step needs exactly one of run|use',
   })
-  .refine((s) => s.use !== undefined || (s.type === undefined && s.instructions === undefined), {
-    message: '`type` and `instructions` are only valid on a `use` step',
+  .refine((s) => s.use !== undefined || s.type === undefined, {
+    message: '`type` is only valid on a `use` step',
   });
 export type Step = z.infer<typeof Step>;
 
