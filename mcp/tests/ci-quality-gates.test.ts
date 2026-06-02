@@ -71,7 +71,7 @@ describe('CI workflow file', () => {
     }
   });
 
-  it('all jobs use Node 20 (matches package.json engines)', async () => {
+  it('all jobs use Node 22 (current LTS; satisfies engines >=20)', async () => {
     const ci = await readCi();
     for (const [name, job] of Object.entries(ci.jobs)) {
       const steps = job.steps as Record<string, unknown>[];
@@ -80,7 +80,7 @@ describe('CI workflow file', () => {
       );
       expect(setupNode, `${name} job missing actions/setup-node`).toBeDefined();
       const nodeVersion = (setupNode!['with'] as Record<string, string>)?.['node-version'];
-      expect(nodeVersion, `${name} job missing node-version`).toBe('20');
+      expect(nodeVersion, `${name} job missing node-version`).toBe('22');
     }
   });
 
