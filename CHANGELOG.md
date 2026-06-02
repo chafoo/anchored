@@ -9,6 +9,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-06-02
+
 ### Added
 
 - **`/setup` skill — a conversational `anchored.yml` configuration
@@ -42,6 +44,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
     unspecified "invoke the named tool … depending on how the user has
     wired it" hand-wave; all four lifecycle skills now point at it.
   - See `plugin/EXTENDING.md` → "Add a custom step to any stage".
+
+### Changed
+
+- **Decluttered the shipped `default-config.yml`** — dropped the decorative
+  `# ─── stage ───` divider headers and the redundant schema line; the
+  inline per-slot explanations stay. Cosmetic; no shape change.
 
 ## [0.2.0] — 2026-06-02
 
