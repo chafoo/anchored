@@ -45,7 +45,18 @@ normal, not an error.
    - `.claude/rules/**` (default, if the folder exists)
    - Each path in `RULES_CONFIG.paths` (if provided)
 
-   If neither yields any files, skip to step 5 with an empty result.
+   **Discovery robustness — underscore-prefixed dirs.** Rule files
+   commonly live in subdirectories like `.claude/rules/_concern/` and
+   `.claude/rules/_pattern/`. A bare recursive `Glob` (`**` or
+   `**/*.md`) can silently skip `_`-prefixed directories and return
+   ZERO files even when the folder is full. So never conclude "no
+   rules exist" from a single empty glob: if a `Glob` over
+   `.claude/rules/` comes back empty, confirm with `Grep`
+   (`output_mode: files_with_matches`, `glob: *.md`, `path:
+   .claude/rules`) or glob subdirectories explicitly
+   (`.claude/rules/*/*.md`) before deciding the folder is truly empty.
+
+   If neither source yields any files, skip to step 5 with an empty result.
 
 2. **Read each rule file.** Load contents. Skip files that aren't
    actual convention docs (`README.md`, `index.md`, table-of-contents

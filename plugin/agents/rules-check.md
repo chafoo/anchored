@@ -54,6 +54,17 @@ USER_EXTENSION: <optional prose from anchored.yml.refine.rules_check.instruction
    disk. Read each one to understand its scope (paths it applies to,
    patterns it constrains, imperatives in its body).
 
+   **Discovery robustness — underscore-prefixed dirs.** Rule files
+   often live under `.claude/rules/_concern/`, `.claude/rules/_pattern/`,
+   etc. A bare `Glob .claude/rules/**/*.md` can silently skip
+   `_`-prefixed directories and return ZERO files even when the folder
+   is full — so do NOT report "no rules on disk" from one empty glob.
+   If the glob comes back empty, confirm with `Grep`
+   (`output_mode: files_with_matches`, `glob: *.md`, `path:
+   .claude/rules`) or glob subdirectories explicitly
+   (`.claude/rules/*/*.md`) before concluding the folder is empty. A
+   false "no rules" reading silently drops all rule-coverage checks.
+
 3. **Concern 1 — missing rules (auto-fix candidates):**
    For each rule file on disk, decide which phases its scope intersects.
    If a phase touches a path the rule applies to, AND the rule isn't
