@@ -9,6 +9,37 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-06-02
+
+### Added
+
+- **Dynamic Workflow executor — optional per-phase fan-out for
+  `/impl-build`.** A phase can opt into `executor: workflow` (default,
+  field-absent, stays `implement` — byte-identical to before) to run as
+  a Claude Code Dynamic Workflow: its acceptance criteria fan out across
+  parallel unit-workers (≤16 concurrent / 1000 total) instead of one
+  sequential `implement` agent.
+  - New phase field `executor: implement | workflow` (schema +
+    `RESERVED_FIELD_NAMES`), a `phase.executor.set` op, the
+    `task__set_phase_executor` MCP tool, and the
+    `anchored phase executor set <slug> <phase-slug> <executor>` CLI.
+  - New `workflow` agent: a fan-out unit-worker with the inverse
+    write-contract — it writes its own evidence/failures to the
+    task-file via the `anchored` CLI (invoked as
+    `npx -y -p @chaafoo/anchored-mcp anchored …`, the same
+    package-resolution that loads the MCP server — no global install or
+    PATH entry needed).
+  - `/impl-build` feature-detects the Workflow runtime and **falls back
+    to the sequential `implement` path** when it is unavailable — never
+    a hard error. The `task-validate` + `code-validate` gates run **once
+    over the merged phase result**, and the failures-driven retry loop /
+    retry-limit are unchanged.
+  - See `plugin/EXTENDING.md` → "Running phases as a Dynamic Workflow"
+    (incl. the CLI allowlist note for background workflows).
+- **Behavioral eval suite (`evals/`).** An LLM-in-the-loop harness for
+  the lifecycle skills (plan / refine / build / wrap), with per-stage
+  task-file fixtures reusable as seeds.
+
 ### Changed
 
 - **Build autonomy reworked from persisted levels to ephemeral
@@ -30,10 +61,24 @@ Versioning follows [Semantic Versioning](https://semver.org/).
     autonomy branch in the failures loop is removed.
   - `/impl-wrap` now surfaces every `source='ai'` resolution with its
     reasoning, grouped by phase, as a decisions review.
-- The MCP tool surface dropped the `task.autonomy` op — **37 typed
-  tools** now (was 38). Old on-disk task-files carrying a top-level
-  `autonomy:` key still load: the parser silently drops the legacy
-  field.
+- **MCP tool surface: 38 typed tools.** Net of this release: the
+  `task.autonomy` op was removed (build-autonomy rework) and
+  `task__set_phase_executor` was added (workflow executor). Old on-disk
+  task-files carrying a top-level `autonomy:` key still load — the
+  parser silently drops the legacy field.
+
+### Fixed
+
+- **Rule-file discovery no longer silently skips underscore-prefixed
+  directories.** The `rules` + `rules-check` agents relied on a
+  recursive glob (`.claude/rules/**` / `**/*.md`) that can return zero
+  files when rules live under `_concern/` / `_pattern/`, making an agent
+  report "no rules exist" and drop all rule-coverage. Both now fall back
+  to `Grep` / explicit subdir globbing before concluding the folder is
+  empty.
+- **`/impl-build` flips `refined → build` at entry.** The forward-only
+  state machine made the terminal `build → wrap` transition illegal when
+  the task was left at `refined`; the flip now happens up front.
 
 ## [0.1.3] — 2026-05-28
 
