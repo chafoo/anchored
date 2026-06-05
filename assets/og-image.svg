@@ -1,0 +1,74 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B1220"/>
+      <stop offset="0.55" stop-color="#0E1A2B"/>
+      <stop offset="1" stop-color="#0A2540"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2DD4BF"/>
+      <stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#2DD4BF" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#2DD4BF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- background -->
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <circle cx="1060" cy="190" r="420" fill="url(#glow)"/>
+
+  <!-- subtle grid -->
+  <g stroke="#1E2D44" stroke-width="1" opacity="0.5">
+    <line x1="0" y1="160" x2="1280" y2="160"/>
+    <line x1="0" y1="320" x2="1280" y2="320"/>
+    <line x1="0" y1="480" x2="1280" y2="480"/>
+  </g>
+
+  <!-- anchor mark (solid stroke: librsvg drops bbox-gradients on axis-aligned lines) -->
+  <g transform="translate(96,90)" stroke="#2DD4BF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="48" cy="18" r="13"/>
+    <path d="M48 31 V124"/>
+    <path d="M22 56 H74"/>
+    <path d="M10 92 a38 38 0 0 0 76 0"/>
+    <path d="M10 92 l-9 -13 M10 92 l15 -5"/>
+    <path d="M86 92 l9 -13 M86 92 l-15 -5"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="206" y="158" font-family="'SF Mono','JetBrains Mono',Menlo,monospace" font-size="64" font-weight="700" fill="#F8FAFC" letter-spacing="1">anchored</text>
+
+  <!-- headline -->
+  <text x="96" y="318" font-family="-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="58" font-weight="800" fill="#F8FAFC">Long autonomous AI coding runs</text>
+  <text x="96" y="386" font-family="-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="58" font-weight="800" fill="url(#accent)">you can actually trust.</text>
+
+  <!-- subhead -->
+  <text x="96" y="452" font-family="-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="30" font-weight="500" fill="#94A3B8">Every claim has proof. Every decision on the record. Every step configurable.</text>
+
+  <!-- lifecycle pills -->
+  <g font-family="'SF Mono','JetBrains Mono',Menlo,monospace" font-size="24" font-weight="600">
+    <g transform="translate(96,520)">
+      <rect width="150" height="56" rx="28" fill="#13233A" stroke="#2DD4BF" stroke-opacity="0.4"/>
+      <text x="75" y="37" text-anchor="middle" fill="#7DD3FC">/plan</text>
+    </g>
+    <text x="262" y="557" fill="#475569" font-size="26">→</text>
+    <g transform="translate(298,520)">
+      <rect width="172" height="56" rx="28" fill="#13233A" stroke="#2DD4BF" stroke-opacity="0.4"/>
+      <text x="86" y="37" text-anchor="middle" fill="#7DD3FC">/refine</text>
+    </g>
+    <text x="486" y="557" fill="#475569" font-size="26">→</text>
+    <g transform="translate(522,520)">
+      <rect width="160" height="56" rx="28" fill="#13233A" stroke="#2DD4BF" stroke-opacity="0.4"/>
+      <text x="80" y="37" text-anchor="middle" fill="#7DD3FC">/build</text>
+    </g>
+    <text x="698" y="557" fill="#475569" font-size="26">→</text>
+    <g transform="translate(734,520)">
+      <rect width="156" height="56" rx="28" fill="#13233A" stroke="#2DD4BF" stroke-opacity="0.4"/>
+      <text x="78" y="37" text-anchor="middle" fill="#7DD3FC">/wrap</text>
+    </g>
+  </g>
+
+  <!-- corner tag -->
+  <text x="1184" y="600" text-anchor="end" font-family="'SF Mono',Menlo,monospace" font-size="22" fill="#475569">Claude Code plugin</text>
+</svg>
