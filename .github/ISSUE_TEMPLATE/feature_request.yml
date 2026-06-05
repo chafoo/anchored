@@ -1,0 +1,29 @@
+name: 💡 Feature request
+description: Suggest a new lifecycle step, gate, anchored.yml slot, or capability.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas that come from real runs are the best kind. Tell us what you were trying to do.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The workflow or pain point behind the request — not just the proposed solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would anchored do differently? A new step, gate, config slot, agent behavior, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives / workarounds
+      description: Anything you tried already, or other ways this could be solved.
+    validations:
+      required: false

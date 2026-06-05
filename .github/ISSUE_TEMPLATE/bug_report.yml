@@ -1,0 +1,57 @@
+name: 🐞 Bug report
+description: Something in anchored behaved incorrectly during a task lifecycle.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make anchored more reliable. The more concrete the repro, the faster the fix.
+  - type: input
+    id: version
+    attributes:
+      label: anchored version
+      description: From `plugin.json` / the marketplace, e.g. 0.3.0. Run `npx @chaafoo/anchored-mcp --version` if unsure.
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Which lifecycle stage?
+      options:
+        - /impl-plan
+        - /impl-refine
+        - /impl-build
+        - /impl-wrap
+        - /impl (autopilot)
+        - /setup
+        - MCP server / CLI
+        - Other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did anchored do, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Include the task description / command you ran, and the relevant part of your anchored.yml if it matters.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: OS, Claude Code version, Node version (`node -v`).
+      placeholder: |
+        OS: macOS 15.x
+        Claude Code: 2.x
+        Node: 20.x
+    validations:
+      required: false

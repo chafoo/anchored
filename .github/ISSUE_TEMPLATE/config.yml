@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & Show-and-tell (Discussions)
+    url: https://github.com/chafoo/anchored/discussions
+    about: Ask how to use anchored, share an anchored.yml setup, or show a run you're proud of. Not sure if it's a bug? Start here.
+  - name: 📦 Install from the marketplace
+    url: https://github.com/chafoo/anchored#quick-start
+    about: How to add the marketplace and install the plugin.
