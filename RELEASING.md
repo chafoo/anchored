@@ -26,10 +26,35 @@ Before the first release, do these once:
      repository secret
    - Name: `NPM_TOKEN`
    - Value: the token from step 2
-4. **Submit the plugin to the Claude marketplace** (one-time form):
-   https://clau.de/plugin-directory-submission
-   - After approval, updates auto-flow from `main` — no further
-     submission needed for new versions.
+4. **Submit the plugin to the `claude-community` marketplace**
+   (one-time). Anthropic runs two public marketplaces:
+   - `claude-plugins-official` — Anthropic-curated, present in every
+     install. **No application process** — Anthropic picks these at
+     its discretion; the form below does *not* add you here.
+   - `claude-community` — the public community marketplace where
+     third-party submissions land after review. This is the one we
+     target. Users add it with
+     `/plugin marketplace add anthropics/claude-plugins-community`
+     and install as `@claude-community`.
+
+   Before submitting, validate locally — the review pipeline runs the
+   same check plus automated safety screening:
+
+   ```bash
+   claude plugin validate ./plugin
+   ```
+
+   Then submit via one of the in-app forms (must be done by hand):
+   - Claude.ai: https://claude.ai/settings/plugins/submit
+   - Console:   https://platform.claude.com/plugins/submit
+
+   After approval, your plugin is pinned to a specific commit SHA in
+   the [`anthropics/claude-plugins-community`](https://github.com/anthropics/claude-plugins-community)
+   catalog. CI auto-bumps that pin as you push new commits to `main`,
+   so **no re-submission is needed for new versions**. The public
+   catalog syncs nightly — expect a delay between approval and the
+   plugin appearing. Check status by searching for `anchored` in the
+   [community catalog](https://github.com/anthropics/claude-plugins-community/blob/main/.claude-plugin/marketplace.json).
 
 ## Each release
 
@@ -103,7 +128,8 @@ Release both reject re-publishes of the same version.
 | Artifact | Where | When |
 |---|---|---|
 | `@chaafoo/anchored-mcp` | npm registry | `git push --follow-tags` triggers publish workflow |
-| `anchored` plugin | Claude marketplace | Pulls from `main` branch HEAD on each install — no separate publish step |
+| `anchored` plugin (own repo marketplace) | `chafoo/anchored` via `/plugin marketplace add` | Pulls from `main` HEAD on each install/update — no separate publish step |
+| `anchored` plugin (`claude-community`) | `anthropics/claude-plugins-community` catalog | Pinned to a commit SHA after one-time review; CI auto-bumps the pin on new `main` commits; catalog syncs nightly |
 | GitHub Release | github.com/chafoo/anchored/releases | Auto-created by publish workflow with CHANGELOG section |
 | `dist/` bundle | inside the npm package | Built by `npm run build` during the publish flow; tracked via `files:` in package.json |
 

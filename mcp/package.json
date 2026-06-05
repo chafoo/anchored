@@ -31,12 +31,25 @@
   },
   "keywords": [
     "claude-code",
+    "claude-code-plugin",
+    "claude",
+    "anthropic",
     "mcp",
+    "mcp-server",
     "model-context-protocol",
     "anchored",
     "task-management",
     "autonomous-agents",
-    "agent-workflow"
+    "autonomous-ai-coding",
+    "ai-agents",
+    "coding-agent",
+    "agentic",
+    "agent-orchestration",
+    "agent-workflow",
+    "subagents",
+    "spec-driven-development",
+    "tdd",
+    "llm"
   ],
   "scripts": {
     "build": "node build.mjs",

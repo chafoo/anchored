@@ -11,11 +11,27 @@
   "license": "MIT",
   "keywords": [
     "claude-code",
+    "claude-code-plugin",
+    "claude-plugin",
+    "claude",
+    "anthropic",
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
     "plugin",
     "autonomous",
+    "autonomous-ai-coding",
+    "ai-agents",
+    "coding-agent",
+    "agentic",
+    "agent-orchestration",
+    "subagents",
+    "spec-driven-development",
     "task-management",
     "tdd",
     "verification",
-    "orchestration"
+    "orchestration",
+    "llm",
+    "developer-tools"
   ]
 }
