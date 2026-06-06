@@ -70,9 +70,16 @@ orchestration, agent design).
 
 ## Status
 
-Alpha. Architecture landed and end-to-end dogfood passed (see tag
-[`v0.3-dogfood-pass`](https://github.com/chafoo/anchored/releases/tag/v0.3-dogfood-pass)).
-Awaiting npm publish + marketplace submission.
+Live. [`@chaafoo/anchored-mcp`](https://www.npmjs.com/package/@chaafoo/anchored-mcp)
+is on npm and the plugin installs from the marketplace today:
+
+```
+/plugin marketplace add chafoo/anchored
+/plugin install anchored@chafoo
+```
+
+Community-marketplace review (`claude-community`) is in progress.
+Pre-1.0 — APIs may still shift; feedback shapes the roadmap.
 
 ## License
 
