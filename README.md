@@ -1,6 +1,16 @@
-# anchored
+<div align="center">
 
-> Long autonomous AI coding runs you can actually trust.
+<img src="./assets/og-image.png" alt="anchored — long autonomous AI coding runs you can actually trust. Every claim has proof. Every step configurable." width="100%">
+
+<br>
+
+[![npm](https://img.shields.io/npm/v/@chaafoo/anchored-mcp?color=2dd4bf&label=%40chaafoo%2Fanchored-mcp&logo=npm)](https://www.npmjs.com/package/@chaafoo/anchored-mcp)
+[![license](https://img.shields.io/badge/license-MIT-2dd4bf)](./LICENSE)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-38bdf8)](https://github.com/chafoo/anchored)
+
+</div>
+
+> **Long autonomous AI coding runs you can actually trust.**
 > Every claim has proof. Every decision is on the record. Every step is configurable.
 
 Evidence-anchored task lifecycle for Claude Code — every acceptance
