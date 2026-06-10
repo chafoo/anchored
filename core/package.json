@@ -1,0 +1,10 @@
+{
+  "name": "@chaafoo/anchored",
+  "version": "0.0.0",
+  "description": "anchored v2 — fractal lifecycle framework (CLI-only). plan -> refine -> build -> wrap across project/epic/task/phase.",
+  "type": "module",
+  "bin": { "anchored": "./dist/cli/index.js" },
+  "files": ["dist", "default-template"],
+  "license": "MIT",
+  "comment": "Build-/Test-Tooling (scripts, deps) wird in der pure-engine-Phase festgelegt."
+}

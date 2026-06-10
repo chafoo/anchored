@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/epic.schema.json
+# _epic.yml — Beispiel eines Epic-Manifests · liegt unter .claude/tasks/<epic-slug>/_epic.yml
+# Die epic-Etage: PM-Tier, das Tasks orchestriert. KEINE Phasen — die leben in den
+# Task-Files. Felder = epic-Tier-Deskriptor (siehe config.md → Felder).
+
+schema_version: 2
+slug:   history-flow-backtest
+title:  "History-Flow im Backtest beweisen"
+status: building                      # planning → building → done
+
+goal: |                               # das große Ziel in Prosa (Input für `scaffold`)
+  Der volle Pipeline-Flow market → events → analysis → trader → executor → positions
+  läuft im History-Modus end-to-end durch — erst deterministisch ($0), dann ein
+  kurzer echter Bull-Run. Der billige, risikolose Beweis vor allem Live-Aufwand.
+
+acceptance:                           # Definition-of-Done (epic-Ebene, grob) — im wrap/roll-up geprüft
+  - { id: e1, text: "Exit-Sim feuert im Replay → Position hat open→exit Lebenszyklus", status: pending }
+  - { id: e2, text: "$0-Tests grün + ein manueller $3-Lauf ist verwertbar",            status: pending }
+
+questions:                            # high-level, via `walk` (refine) geklärt — BEVOR der loop startet
+  - { id: q1, text: "Event-Bucket 'continuation' in dieser Phase oder erst später?", priority: high, status: open }
+
+tasks:                                # coarse Stubs = Loop-Queue. KEINE ACs. Reihenfolge = Listen-Position.
+  - slug: 01-exit-sim                 #   das Task-File entsteht lazy, wenn der loop hier ankommt
+    goal: "settleExits-Seam im History-Runner, no-op live"
+    status: pending                   #   Rollup: pending | active | done | blocked (loop schreibt's)
+    depends_on: []                    #   flache, task-lokale Slugs (nested <epic>/<slug> erst beim Aufruf)
+  - slug: 02-bull-run-seed
+    goal: "Q4-2020 Breakout seed + 2-Wochen-Lauf, Cap $3"
+    status: pending
+    depends_on: [01-exit-sim]         #   next-child: erster pending dessen depends_on alle done sind
+
+log:                                  # append-only PM-Notizbuch — kind: decision | reorder | learning | blocker
+  - { at: 01-exit-sim, kind: decision, note: "settleExits als Seam, nicht in matchCandle — DAG bleibt rein." }
+  - { at: 01-exit-sim, kind: reorder,  note: "02 hinter 01 gezogen — braucht den Exit-Lebenszyklus." }
