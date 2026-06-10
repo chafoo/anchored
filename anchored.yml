@@ -1,0 +1,93 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/anchored-yml.schema.json
+# anchored.yml — anchored v2 (Dev-/Dogfood-Config)
+#
+# v2-Format (fraktal), nur Deltas — was hier nicht steht, kommt aus
+# plugin/references/default.yml. Übernommen aus dem trader-Setup:
+# docs-as-source-of-truth, per-Phase-Commit, doc-sync im wrap.
+#
+# Läuft, sobald v2 sich selbst hostet. Bis dahin folgen wir demselben Workflow
+# manuell: pro Phase committen (conventional) + nach dem Code docs/ nachziehen.
+#
+# Bewusst (noch) NICHT drin: Remote/PR (pr, pr-review), Branch-guard,
+# docu-check (refine) + docu-validate (build) — siehe Kommentare.
+
+# ── phase: die Leaf-Arbeit (implement → validate → commit) ──
+phase:
+  build:
+    stop:
+      - >
+        Eine Entscheidung kippt die ARCHITEKTUR (Etagen-/Layer-Grenze,
+        Factory-Vertrag, Mechanismus-vs-Policy-Linie, Substrat-Invariante) —
+        nicht nur die lokale Umsetzung einer Phase. Im Zweifel: proceed.
+      - 'Eine Änderung würde etwas außerhalb des Project-Root anfassen.'
+    retry_limit: 3
+    steps:
+      - name: implement
+        instructions: |
+          Methodik für anchored v2:
+          - Factory-Functions: createX(cfg, deps) → { run(input) → output };
+            Helfer in scope/. Keine Classes/new/this — Closures über deps.
+          - Engine = deterministischer Code; AI nur als Effekt hinter deps.spawn.
+          - TDD-Default: erst der Test, dann die Logik (red → green → refactor).
+          - Doku ist Source of Truth: nach docs/design/ + docs/ + Ticket-Scope
+            bauen. Lokale Umsetzungs-Entscheidungen (Datei-Splits, Benennung,
+            Helper) autonom treffen + im Build-Log dokumentieren — NICHT dafür
+            stoppen. Nur echte Architektur-Abweichungen flaggen (siehe stop).
+          - Code-Sprache Englisch; CLI-only (kein MCP); Node-Files ausschließlich
+            über die anchored-CLI mutieren, nie direktes Edit.
+      - name: task-validate
+        instructions: |
+          Evidence pro AC konkret: datei:zeile + echter Test-Run-Output.
+          Kein "sollte funktionieren".
+      - name: code-validate
+        instructions: |
+          Rule-Adherence (.claude/rules) + die CLAUDE.md-Prinzipien (fraktal,
+          CLI-only, Mechanismus vs Policy, Substrat-Invariante).
+      - name: commit
+        run: |
+          git add -A
+          git commit -m "feat(${TASK_SLUG}): ${PHASE_NAME}"
+          anchored phase set-field ${TASK_SLUG} ${PHASE_SLUG} commit "$(git rev-parse HEAD)"
+        instructions: |
+          Phase = ein Commit (Conventional Commits) + SHA ins commit-Phasenfeld.
+          Lokal, kein Remote/PR (kommt später). Läuft nach implement + Validatoren.
+  fields:
+    - { name: commit, type: string }   # ein SHA pro Phase
+
+# ── task ──
+task:
+  refine:
+    steps:
+      - name: plan-check
+        instructions: |
+          Architektur-Präferenzen für v2 (gegen docs/design/ + docs/ +
+          .claude/rules prüfen):
+          - Fraktal: eine Lifecycle-Form pro Etage; build.each intrinsisch;
+            phase = Leaf.
+          - Mechanismus (Engine/Substrat/Transitions/Invariante) im Code; Policy
+            (Steps/Felder) in Config/Template.
+          - CLI-only Transport (kein MCP); Integrität im Substrat
+            (kein done ohne evidence).
+          - YAGNI: nur bauen/dokumentieren, was schon entschieden ist.
+      # später: Doku als Spec VOR dem Build lesen
+      # - { name: docu-check, use: docu-check, type: agent, instructions: "Plan gegen docs/ als Source of Truth; Drift/Gap/Over-Scope als Findings." }
+  wrap:
+    steps:
+      - name: docu-scan
+        use: docu-scan
+        type: skill
+        instructions: |
+          Doku aus dem real gebauten Code nachziehen (macro→medio→micro). Scope:
+          NUR die in diesem Task geänderten Pfade — aus den Phasen-commit-SHAs
+          ableiten (git diff über die Task-Commits), NICHT das ganze Repo. So
+          wachsen die per-Modul-medios + per-Worker-Seiten mit dem Code. Was der
+          Code nicht hergibt → nach _questions/ promoten statt erfinden.
+      - name: docs-commit
+        run: |
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            git add -A && git commit -m "docs(${TASK_SLUG}): sync docs (wrap)"
+          fi
+        instructions: |
+          Committet die Doku-Änderungen aus docu-scan, falls es welche gibt
+          (sonst no-op).
+      # später (Remote nötig): pr (push + gh pr create) + pr-review

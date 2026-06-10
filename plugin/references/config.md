@@ -123,20 +123,22 @@ fix im Code. Beispiel-Belegung: [`task.example.yml`](task.example.yml) /
 
 ### Ein eigenes Feld hinzufügen
 
-Custom-Felder werden pro Tier unter `fields` deklariert — `{ name, type }`:
+Custom-Felder werden an der **Etage** deklariert, der sie gehören — unter deren
+`fields`, als `{ name, type }`:
 
 ```yaml
+phase:
+  fields:                                     # Custom-Felder der phase-Etage
+    - { name: commit, type: string }          # z.B. ein SHA pro Phase
+    - { name: coverage_pct, type: number }
+
 task:
   fields:
-    phase:                                    # Felder auf der Kind-Etage (phase)
-      - { name: commit, type: string }        # z.B. ein SHA pro Phase
-      - { name: coverage_pct, type: number }
-    task:  []                                 # Felder auf dem Task-File selbst
-  # … stages …
+    - { name: ticket_url, type: string }      # Custom-Feld auf dem Task-File
 ```
 
 - `type`: `string` | `number` | `boolean` | (Liste/Objekt nach Bedarf).
-- Default-Felder werden **nicht** hier wiederholt — `fields` ist additiv
+- Default-Felder werden **nicht** hier wiederholt — `fields` ist **additiv**
   (die Basis kommt aus `default.yml`).
 - Setzen/Lesen zur Laufzeit: `anchored <tier> set-field <slug> <name> <value>` /
   `get-field`.
