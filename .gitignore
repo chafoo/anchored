@@ -13,6 +13,8 @@ dist-schemas/
 
 # OS / editor
 .DS_Store
+.idea/
+.vscode/
 
 # local working notes (not shipped)
 .claude/temp/
