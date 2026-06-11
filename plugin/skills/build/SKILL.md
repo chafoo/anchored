@@ -45,7 +45,12 @@ edge you drive below. For a **leaf phase** it is the worker pipeline
 
 While `anchored node next-child <slug>` returns a child (else done):
 
-1. **Mark in-progress:** `anchored node set-child-status <slug> <child> in-progress`.
+1. **Mark the child in-flight** — the marker word is **tier-dependent** (the CLI
+   rejects the wrong one with `InvalidChildStatus`):
+   - **task → phase**: `anchored node set-child-status <slug> <phase> in-progress`
+   - **epic → task**: `anchored node set-child-status <slug> <task> active`
+     (a task-stub is a loop-queue marker: `pending|active|done|blocked`, NOT the
+     phase word `in-progress` — that mismatch bricked an epic in the dogfood).
 2. **Per-child body:**
    - **task → phase** (leaf): `anchored steps phase build` gives
      `[implement, task-validate, code-validate]`. Spawn **build-implement** via the

@@ -4,6 +4,7 @@
 import { z } from 'zod'
 import { KebabSlug } from './phase.js'
 import { QuestionSchema, LogEntrySchema } from './task.js'
+import { stubStatusValues } from './epic.js'
 
 export const projectStatusValues = ['planning', 'building', 'done'] as const
 export const ProjectStatus = z.enum(projectStatusValues)
@@ -17,7 +18,7 @@ const AcceptanceItem = z.strictObject({
 const EpicStub = z.strictObject({
   slug: KebabSlug,
   goal: z.string(),
-  status: z.enum(['pending', 'active', 'done', 'blocked']),
+  status: z.enum(stubStatusValues),
   depends_on: z.array(KebabSlug).optional(),
 })
 

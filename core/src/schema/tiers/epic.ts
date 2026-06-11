@@ -16,12 +16,18 @@ const AcceptanceItem = z.strictObject({
   status: z.enum(['pending', 'done']),
 })
 
+// Child-STUB status = the parent's loop-queue marker (NOT the child's own
+// lifecycle). One SSOT, reused by epic's TaskStub + project's EpicStub + the
+// setChildStatus enum-guard (G2). 'active' is the in-flight marker (never the
+// phase word 'in-progress' — that mismatch bricked an epic in the dogfood).
+export const stubStatusValues = ['pending', 'active', 'done', 'blocked'] as const
+
 const TaskStub = z.strictObject({
   slug: KebabSlug,
   // optional so a bare `add-child` stub is valid (rolling-wave: scaffold/set-field
   // fills the goal); a meaningful stub still carries one.
   goal: z.string().optional(),
-  status: z.enum(['pending', 'active', 'done', 'blocked']),
+  status: z.enum(stubStatusValues),
   depends_on: z.array(KebabSlug).optional(),
 })
 

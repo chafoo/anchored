@@ -157,7 +157,7 @@ tasks:
       Epic-Child → 'active', Task-Phase → 'in-progress'. Schließt das
       Korruptions-Loch, das im Dogfood das Epic unlesbar machte. Setzt die
       D1-Wörter voraus (siehe q3: Stub-Status bleibt Queue-Marker).
-    status: pending
+    status: done
     depends_on: [substrate-write-validation]
   - slug: cli-dx
     goal: |

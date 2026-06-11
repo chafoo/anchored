@@ -25,7 +25,18 @@ import {
   type Question,
 } from './scope/questions.js'
 import { appendLog as appendLogOf, type LogEntry } from './scope/log.js'
-import { phaseExecutorValues } from '../schema/tiers/phase.js'
+import { phaseExecutorValues, phaseStatusValues } from '../schema/tiers/phase.js'
+import { stubStatusValues } from '../schema/tiers/epic.js'
+
+// G2: valid status values for a CHILD, keyed by the child tier. A phase child uses
+// the phase status enum; a task/epic STUB uses the loop-queue marker enum (NOT the
+// child's own lifecycle). setChildStatus guards against this at the op for a clear,
+// located error (defence-in-depth alongside G1's full-node validation in persist).
+const CHILD_STATUS: Record<string, readonly string[]> = {
+  phase: phaseStatusValues,
+  task: stubStatusValues,
+  epic: stubStatusValues,
+}
 
 export interface TierDescriptor {
   tier: string
@@ -352,6 +363,17 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
 
     async setChildStatus(node: AnyNode, childSlug: string, status: string): Promise<AnyNode> {
       const field = requireChildField()
+      // G2 — guard the value against the child tier's status enum BEFORE the write,
+      // so an illegal word (e.g. the phase-only 'in-progress' on an epic task-stub,
+      // which bricked an epic in the dogfood) fails with a clear, located error.
+      const allowed = CHILD_STATUS[tierSchema.childTier ?? ''] ?? []
+      if (!allowed.includes(status)) {
+        throw anchoredError(
+          'InvalidChildStatus',
+          `'${status}' is not a valid ${tierSchema.childTier} status`,
+          [...allowed],
+        )
+      }
       const children = childrenOf(node).map((c) => (c.slug === childSlug ? { ...c, status } : c))
       return persist({ ...node, [field]: children })
     },

@@ -273,33 +273,33 @@ const validEpic = (over: Record<string, unknown> = {}) => ({
   ...over,
 })
 
-// G1-a1 — an invalid mutation is rejected AT the writing op; io.atomicWrite never runs.
-// This is the EXACT dogfood corruption: an epic child set to a phase word that is
-// NOT in the TaskStub enum (pending|active|done|blocked). Before G1 the write
-// returned ok and bricked the node on the next read.
+// G1-a1 — persist's generic full-node validation rejects an invalid mutation AT the
+// writing op (here: an unknown top-level key on the strictObject epic — a mutation
+// NO op-level guard catches, so it exercises the persist net directly). Before G1
+// the write returned ok and bricked the node on the next read.
 test('G1: an invalid mutation is rejected at the op and never writes', async () => {
   const { deps, writes } = makeDeps()
   const ops = createNodeOps(epicDescriptor, deps)
   await ops.create(validEpic())
   expect(writes.length).toBe(1) // the valid create wrote
-  await expect(ops.setChildStatus(validEpic(), 't1', 'in-progress')).rejects.toThrow()
+  await expect(ops.setField(validEpic(), 'totally-unknown-field', 'x')).rejects.toThrow()
   expect(writes.length).toBe(1) // the invalid mutation did NOT write
 })
 
-// G1-a2 — the rejection is a typed InvalidNode error, located (tier + slug + field path),
-// so the CLI emits the same JSON error envelope as any other op (q4).
+// G1-a2 — the rejection is a typed InvalidNode error, located (tier + slug), so the
+// CLI emits the same JSON error envelope as any other op (q4).
 test('G1: rejection is a typed, located InvalidNode error', async () => {
   const { deps } = makeDeps()
   const ops = createNodeOps(epicDescriptor, deps)
   let err: { kind?: string; message?: string } | undefined
   try {
-    await ops.setChildStatus(validEpic({ slug: 'my-epic' }), 't1', 'in-progress')
+    await ops.setField(validEpic({ slug: 'my-epic' }), 'totally-unknown-field', 'x')
   } catch (e) {
     err = e as { kind?: string; message?: string }
   }
   expect(err?.kind).toBe('InvalidNode')
   expect(err?.message).toContain('my-epic') // slug located
-  expect(err?.message).toContain('tasks') // offending field path located
+  expect(err?.message).toContain('totally-unknown-field') // the offending key surfaced
 })
 
 // G1-a3 — regression: after a rejected write the file is untouched, so read()
@@ -308,7 +308,29 @@ test('G1 regression: a rejected write leaves the prior valid node re-readable', 
   const { deps } = makeDeps()
   const ops = createNodeOps(epicDescriptor, deps)
   await ops.create(validEpic())
-  await expect(ops.setChildStatus(validEpic(), 't1', 'in-progress')).rejects.toThrow()
+  await expect(ops.setField(validEpic(), 'totally-unknown-field', 'x')).rejects.toThrow()
   const read = await ops.read('e')
   expect((read.tasks as { status: string }[])[0]?.status).toBe('pending') // untouched
+})
+
+// G2 — setChildStatus guards the value against the child tier's status enum at the
+// op (a clear, located error), the layer ABOVE G1's generic full-node validation.
+// This is the EXACT dogfood corruption: an epic stub set to the phase-only word
+// 'in-progress' instead of the queue marker 'active'.
+test('G2: setChildStatus rejects a phase-word on an epic stub with a clear error', async () => {
+  const { deps, writes } = makeDeps()
+  const ops = createNodeOps(epicDescriptor, deps)
+  await ops.create(validEpic())
+  let err: { kind?: string; suggestions?: string[] } | undefined
+  try {
+    await ops.setChildStatus(validEpic(), 't1', 'in-progress')
+  } catch (e) {
+    err = e as { kind?: string; suggestions?: string[] }
+  }
+  expect(err?.kind).toBe('InvalidChildStatus')
+  expect(err?.suggestions).toEqual(['pending', 'active', 'done', 'blocked']) // the stub enum
+  expect(writes.length).toBe(1) // only the create wrote; the bad value did NOT
+  // the correct queue-marker word IS accepted
+  const ok = await ops.setChildStatus(validEpic(), 't1', 'active')
+  expect((ok.tasks as { status: string }[])[0]?.status).toBe('active')
 })
