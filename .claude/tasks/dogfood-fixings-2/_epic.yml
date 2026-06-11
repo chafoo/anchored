@@ -62,7 +62,7 @@ acceptance:
     status: done
   - id: e11
     text: "Epic-build-Loop baut unabhängige Child-Tasks (gleiche depends_on-Ebene) PARALLEL über das Workflow-Tool — je Child der volle JIT-Lebenszyklus plan→refine→build→wrap, lock-sicher, Walk-Fragen gebuffert; der Fächer-Rerun läuft messbar schneller als seriell (q8)"
-    status: pending
+    status: done
   - id: e12
     text: "Onboarding: eine /a:-Skill ohne vorhandene anchored.yml richtet das Nötigste lazy ein (minimale anchored.yml + Bash-Allowlist) und bietet dem User an, den Prozess gemeinsam zu optimieren (setup-Skill, aus v1 portiert: config-editor-that-consults) — als Frage 'jetzt einrichten / erstmal nur das Nötigste'; Partner-Stimme, kein Funnel (G13)"
     status: pending
@@ -271,7 +271,7 @@ tasks:
       Orientierung: der bestehende build-SKILL-Workflow-Pfad + die DAG-ready-Logik
       (next-child liefert nur ready Children). depends_on: skill-tier-branching
       (das den Epic-each:task-Loop-Block ohnehin neu schreibt).
-    status: pending
+    status: done
     depends_on: [skill-tier-branching]
   - slug: onboarding-setup
     goal: |

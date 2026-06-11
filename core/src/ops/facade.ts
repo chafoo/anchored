@@ -35,6 +35,7 @@ export interface TierOps {
   addChild(node: AnyRec, child: { slug: string; status: string }): Promise<AnyRec>
   setChildStatus(node: AnyRec, childSlug: string, status: string): Promise<AnyRec>
   nextChild(node: AnyRec): unknown
+  readyChildren(node: AnyRec): unknown
   addQuestion(
     node: AnyRec,
     init: { text: string; priority: 'low' | 'medium' | 'high' },
@@ -117,6 +118,10 @@ export function createSlugFacade(deps: FacadeDeps): NodeOpsFacade {
     nextChild: async (slug) => {
       const o = opsFor(await tierFor(slug))
       return o.nextChild(await o.read(slug))
+    },
+    readyChildren: async (slug) => {
+      const o = opsFor(await tierFor(slug))
+      return o.readyChildren(await o.read(slug))
     },
     addQuestion: async (slug, q) => {
       const o = opsFor(await tierFor(slug))

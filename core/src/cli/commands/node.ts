@@ -25,6 +25,10 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
       return ops.addChild(need(0, 'slug'), { slug: need(1, 'child-slug'), goal: a[2] })
     case 'next-child':
       return ops.nextChild(need(0, 'slug'))
+    case 'ready-children':
+      // q8: ALL children runnable right now (pending + deps done) — the fan-out
+      // batch for the epic build loop (independent child-tasks built in parallel).
+      return ops.readyChildren(need(0, 'slug'))
     case 'list-phases': {
       // convenience: the phases[] array of a node (read + extract)
       const n = (await ops.read(need(0, 'slug'))) as { phases?: unknown }
@@ -92,6 +96,7 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
         'add-phase-evidence',
         'set-executor',
         'next-child',
+        'ready-children',
         'list-phases',
         'question-list',
         'add-question',

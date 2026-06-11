@@ -21,6 +21,17 @@ export function nextChild<T extends ChildLike>(children: T[]): T | null {
   return null
 }
 
+// All children runnable RIGHT NOW — pending with every dependency done. This is the
+// fan-out batch for the epic build loop (independent child-tasks built in parallel,
+// q8). Distinct from next-child, which returns a single child for the sequential
+// path. Already-active children are NOT included (they're in flight, not to launch).
+export function readyChildren<T extends ChildLike>(children: T[]): T[] {
+  const done = new Set(children.filter((c) => c.status === 'done').map((c) => c.slug))
+  return children.filter(
+    (c) => c.status === 'pending' && (c.depends_on ?? []).every((d) => done.has(d)),
+  )
+}
+
 export function addChild<T extends ChildLike>(children: T[], child: T): T[] {
   if (children.some((c) => c.slug === child.slug)) {
     throw anchoredError('DuplicateSlug', `child '${child.slug}' already exists`)

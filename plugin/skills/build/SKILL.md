@@ -101,6 +101,40 @@ While `anchored node next-child <slug>` returns a child (else done):
    never flips the phase status (G4: that flip must come AFTER the gates, never
    before, or the gates would inspect an already-`done` phase).
 
+## Epic task-level fan-out (parallel independent children, q8)
+
+The loop above is sequential (one `next-child` at a time). For an **epic**, the
+bigger speed lever is **task-level parallelism**: independent child-tasks at the
+same DAG level (e.g. three comfort-features that all depend only on `core-list`)
+have no reason to build one-after-another. When the runtime has the **Workflow
+tool**, fan them out:
+
+1. **Get the batch:** `anchored node ready-children <epic-slug>` returns ALL
+   currently-runnable children (pending + every dependency done) — the fan-out set,
+   not just the first. If it has ≤1 entry, just run the sequential loop.
+2. **Mark + dispatch:** set each batch child `active`, then dispatch them as a
+   **Dynamic Workflow**, one unit per child, each unit running that child's FULL
+   JIT lifecycle (plan→refine→build→wrap, the epic→task body above). Up to the
+   hard ≤16 parallel ceiling; larger batches run in waves.
+3. **Lock-safety:** each child writes its OWN task-file; the only shared surface is
+   the epic's `tasks[]` status updates (`set-child-status`). The CLI's cross-process
+   lock + validate-before-write (G1) serialize those safely — concurrent child
+   status writes never corrupt the epic.
+4. **Walk-questions are BUFFERED:** a child's refine walk can't prompt the user from
+   a background unit. In a fan-out run, the child AI-resolves non-high questions
+   with reasoning and **records any high/blocking question on its task-file**
+   (`add-question`) instead of prompting — exactly like the phase-workflow buffering.
+   At the **join**, the orchestrator reads each child's open questions and walks the
+   buffered high ones with the user, then continues.
+5. **Join + advance:** when a unit's child task reaches `done`, mark its epic-child
+   delivered (`set-child-status <epic-slug> <child> done`). Re-run `ready-children`
+   for the next wave until the queue drains, then terminate as below.
+
+Fall back to the sequential loop when the Workflow tool is unavailable (same
+feature-detection + fallback contract as the phase-level fan-out). Phase-level
+fan-out (executor, G12) and this task-level fan-out are independent levers that
+compose: a workflow phase inside a workflow child-task.
+
 ## Emergent decisions → document or stop (the decision-trail)
 
 build runs maximally autonomous, but **every emergent decision lands on the

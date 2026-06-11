@@ -185,6 +185,19 @@ test('a4: build skill documents the Bash(anchored *) allowlist precondition', ()
   expect(skill.toLowerCase()).toContain('allowlist')
 })
 
+// q8 — the build SKILL documents the epic task-level fan-out (ready-children batch
+// → parallel child-task lifecycles, lock-safe, buffered walk-questions).
+test('q8: build SKILL documents epic task-level fan-out via ready-children', () => {
+  const build = readFileSync(
+    new URL('../../../plugin/skills/build/SKILL.md', import.meta.url),
+    'utf8',
+  )
+  expect(build).toContain('ready-children')
+  expect(build.toLowerCase()).toContain('fan-out')
+  expect(build.toLowerCase()).toMatch(/buffer/i) // walk-questions buffered at the join
+  expect(build.toLowerCase()).toMatch(/lock-safety|cross-process lock/i)
+})
+
 // G12 — refine decides the per-phase executor (the missing decision on top of the
 // existing fan-out mechanism); the build SKILL still runs executor:workflow phases.
 test('G12: refine SKILL decides the per-phase executor via set-executor', () => {

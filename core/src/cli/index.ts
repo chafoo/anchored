@@ -22,6 +22,7 @@ export interface NodeOpsFacade {
   setStatus(slug: string, status: string): Promise<unknown>
   addChild(slug: string, child: { slug: string; goal?: string }): Promise<unknown>
   nextChild(slug: string): Promise<unknown>
+  readyChildren(slug: string): Promise<unknown>
   addQuestion(slug: string, q: { text: string; priority: string }): Promise<unknown>
   resolveQuestion(
     slug: string,

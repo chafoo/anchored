@@ -13,6 +13,7 @@ import {
 } from '../state/invariants.js'
 import {
   nextChild as nextChildOf,
+  readyChildren as readyChildrenOf,
   addChild as addChildOf,
   moveChild as moveChildOf,
   type ChildLike,
@@ -349,6 +350,10 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
 
     nextChild(node: AnyNode): ChildLike | null {
       return childField ? nextChildOf(childrenOf(node)) : null
+    },
+
+    readyChildren(node: AnyNode): ChildLike[] {
+      return childField ? readyChildrenOf(childrenOf(node)) : []
     },
 
     async addChild(node: AnyNode, child: ChildLike): Promise<AnyNode> {

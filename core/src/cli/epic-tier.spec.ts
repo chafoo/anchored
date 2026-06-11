@@ -102,6 +102,26 @@ test('epic node with a stub round-trips through render+parse', async () => {
   expect(parse(raw)).toEqual(parse(stringify(parse(raw)))) // stable
 })
 
+// q8 — `ready-children` returns the fan-out batch: ALL runnable (pending) children,
+// vs next-child which returns just one. (DAG-gating by depends_on is unit-tested in
+// children.spec — set-field can't author the array here.)
+test('q8: node ready-children returns all runnable children for parallel fan-out', async () => {
+  const { cli, last } = harness()
+  await cli.run(['plan', 'epic', 'fanout'])
+  await cli.run(['node', 'add-child', 'fanout', 'feat-a'])
+  await cli.run(['node', 'add-child', 'fanout', 'feat-b'])
+  // both pending + no deps → both in the fan-out batch
+  await cli.run(['node', 'ready-children', 'fanout'])
+  expect((last().result as unknown as { slug: string }[]).map((c) => c.slug)).toEqual([
+    'feat-a',
+    'feat-b',
+  ])
+  // marking one done leaves only the other runnable
+  await cli.run(['node', 'set-child-status', 'fanout', 'feat-a', 'done'])
+  await cli.run(['node', 'ready-children', 'fanout'])
+  expect((last().result as unknown as { slug: string }[]).map((c) => c.slug)).toEqual(['feat-b'])
+})
+
 // G6 — `question-list` convenience verb: all questions, or filtered by status,
 // so agents stop parsing the YAML by hand to find the open ones.
 test('G6: node question-list returns questions, optionally filtered by status', async () => {
