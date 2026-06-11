@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug:    dogfood-fixings/decision-trail
+title:   "Decision-Trail vollständig — reasoning + stop-check + build-notes (F7 + F10)"
+status:  drafted
+created: 2026-06-11
+
+context:
+  plan: |
+    F7 (mittel): `resolve-question <slug> <id> <answer> [source]` nimmt kein
+    reasoning-Argument → AI-geklärte Fragen haben reasoning:(keins), obwohl Schema
+    reasoning? kennt + die Invariante „source=ai ⇒ reasoning" gilt. Workaround:
+    reasoning in den answer-String gepackt.
+    F10 (mittel): Im build hat build-implement within-plan-Entscheidungen getroffen
+    (try/catch, save-Stub), aber NICHTS davon im Task-File dokumentiert (build-stage
+    log = 0); stop-check wurde NIE gespawnt. „Jede Entscheidung auf dem Record" gilt
+    für den build nicht.
+    REF: .claude/temp/dogfood-findings.md F7/F10.
+
+questions: []
+log: []
+phases:
+  - name: "resolve-question mit reasoning + Invariante"
+    slug: resolve-reasoning
+    status: pending
+    context: |
+      `resolve-question <slug> <id> <answer> <source> [reasoning]` — reasoning
+      durch facade/ops durchreichen; bei source=ai ist reasoning verpflichtend
+      (Invariante am Op, analog zu kein-done-ohne-evidence).
+    rules:
+      - { path: .claude/rules/fractal-substrate-integrity.md, why: "source=ai ⇒ reasoning ist eine Substrat-Invariante am schreibenden Op" }
+      - { path: .claude/rules/cli-only-transport.md, why: "über die CLI, JSON-Output" }
+    acceptance_criteria:
+      - id: a1
+        text: "resolve-question speichert ein separates reasoning-Feld (nicht im answer). Beweis: CLI-Smoke `resolve-question … ai \"<reasoning>\"` → Node-Read zeigt reasoning gesetzt (grün) + datei:zeile."
+        status: pending
+      - id: a2
+        text: "source=ai OHNE reasoning wird am Op abgewiesen (Invariante). Beweis: ops-Test (resolveQuestion source=ai, reasoning leer → wirft) (grün) + datei:zeile."
+        status: pending
+
+  - name: "Build-Decision-Trail — stop-check + Doku + build-notes"
+    slug: build-decisions
+    status: pending
+    context: |
+      build-SKILL: für jede self-reported emergente Decision stop-check spawnen;
+      proceed → dokumentieren (append-log decision ODER resolve-question source=ai +
+      reasoning); stop → walk. build-implement: build-notes via append-log mit
+      at=build (nicht Phasen-Slug).
+    rules:
+      - { path: .claude/rules/fractal-substrate-integrity.md, why: "stop-check = die Halt-vs-proceed-Mechanik; Engine deterministisch, AI hinter spawn" }
+      - { path: .claude/rules/cli-only-transport.md, why: "Decisions + Notes self-write via CLI" }
+    acceptance_criteria:
+      - id: a1
+        text: "build-SKILL verdrahtet das emergent-decision-Handling: stop-check-Spawn pro self-reported Decision, proceed→dokumentieren, stop→walk. Beweis: build/SKILL.md zeigt den Ablauf (datei:zeile)."
+        status: pending
+      - id: a2
+        text: "build-implement schreibt build-notes mit at=build. Beweis: plugin/agents/build-implement.md nennt `append-log <slug> build …` (datei:zeile)."
+        status: pending
+      - id: a3
+        text: "Ein build-Lauf erzeugt einen nicht-leeren build-Decision-Trail (≥1 build-stage Eintrag bzw. resolved-question source=ai mit reasoning). Beweis: dokumentierter Lauf/Test."
+        status: pending

@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug:    dogfood-fixings/phase-rules
+title:   "Phasen tragen rules via CLI — set-phase-rules-Verb (F1)"
+status:  drafted
+created: 2026-06-11
+
+context:
+  plan: |
+    F1 (mittel): Der Decompose-Agent kann pro Phase kein rules-Feld setzen — die CLI
+    hat kein set-phase-rules, add-phase nimmt kein rules-Arg. Ergebnis: alle Phasen
+    haben rules:0; die Rules landen nur im Plan-log. code-validate (build) prüft
+    aber gegen das phase.rules-Feld.
+    REF: .claude/temp/dogfood-findings.md F1.
+
+questions: []
+log: []
+phases:
+  - name: "Op + Facade + CLI-Verb"
+    slug: op-verb
+    status: pending
+    context: |
+      node-ops `setPhaseRules(node, phaseSlug, rule{path,why})` (append, dedup nach
+      path) + facade + CLI-Verb `node set-phase-rules <task> <phase> <path> <why>`.
+    rules:
+      - { path: .claude/rules/factory-functions.md, why: "Op über createNodeOps(deps); fakebar" }
+      - { path: .claude/rules/cli-only-transport.md, why: "rules-Mutation über die CLI, JSON-Output" }
+    acceptance_criteria:
+      - id: a1
+        text: "node-ops.setPhaseRules hängt eine {path, why}-Regel an die Ziel-Phase an (dedup nach path). Beweis: bun-Test (Phase rules:0 → nach setPhaseRules rules:[{path,why}]) grün + datei:zeile."
+        status: pending
+      - id: a2
+        text: "CLI-Verb `node set-phase-rules <task> <phase> <path> <why>` → genau ein facade-Aufruf + JSON-Envelope; CLI-Smoke gegen das Binary zeigt die Regel am Phasen-rules-Feld. Beweis: node.spec + Smoke (grün) + datei:zeile."
+        status: pending
+
+  - name: "Verdrahten — decompose + rules-check schreiben rules"
+    slug: wire
+    status: pending
+    context: |
+      plan-decompose + refine-rules-check nutzen set-phase-rules, sodass Phasen ein
+      echtes rules-Feld tragen (statt nur im log).
+    rules:
+      - { path: .claude/rules/cli-only-transport.md, why: "Agents self-writen rules via CLI" }
+    acceptance_criteria:
+      - id: a1
+        text: "plan-decompose.md + refine-rules-check.md nutzen set-phase-rules; ein Plan-Lauf erzeugt Phasen mit rules-Feld (nicht 0). Beweis: grep der Agent-Docs + ein dokumentierter Lauf, der Phasen mit rules zeigt."
+        status: pending

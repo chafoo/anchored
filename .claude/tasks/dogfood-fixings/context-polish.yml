@@ -1,0 +1,66 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug:    dogfood-fixings/context-polish
+title:   "Politur — context-Felder, created, list-phases, Trigger-Quirk (F2 + F3 + F4 + F6)"
+status:  drafted
+created: 2026-06-11
+
+context:
+  plan: |
+    Die niedrig-prioren Funde gebündelt:
+    F2: context.plan/refine/build bleiben leer (alles geht ins log). ENTSCHEIDUNG
+    (q3): context.* via set-field (dotted-path) befüllen wie v1; log[] bleibt das
+    PM-Notizbuch.
+    F3: created-Feld beim create nicht gesetzt. ENTSCHEIDUNG (q6): via injizierte
+    clock-Naht setzen (bin liefert Zeit; kein Date.now im Engine-Code).
+    F4: `node list-phases` existiert nicht — Skill fiel auf read zurück.
+    F6: `/a:refine` zeigte kurz „Unknown command" (Trigger-Quirk, nicht blockierend).
+    REF: .claude/temp/dogfood-findings.md F2/F3/F4/F6.
+
+questions: []
+log: []
+phases:
+  - name: "context-Trails befüllen (F2)"
+    slug: context-fill
+    status: pending
+    context: |
+      plan/refine/build-Agents + Skills schreiben ihre Prosa-Trails nach
+      context.plan/refine/build via set-field (dotted-path). wrap-review/summarize
+      lesen context als Trail. log[] bleibt das append-only Notizbuch.
+    rules:
+      - { path: .claude/rules/cli-only-transport.md, why: "context via set-field über die CLI" }
+    acceptance_criteria:
+      - id: a1
+        text: "Nach plan + refine sind context.plan + context.refine befüllt (set-field dotted-path), nicht leer. Beweis: ein Lauf/Test → Node-Read zeigt context.plan/refine als Prosa-Trail (datei:zeile in den Skills/Agents)."
+        status: pending
+
+  - name: "created-Feld via clock-Naht (F3)"
+    slug: created-field
+    status: pending
+    context: |
+      create setzt `created` (ISO-Datum) über eine injizierte now()-Naht; der bin
+      liefert die echte Zeit. Kein Date.now im Engine/Core-Code.
+    rules:
+      - { path: .claude/rules/factory-functions.md, why: "now() als injizierte Naht, fakebar; kein Top-Level-Effekt" }
+    acceptance_criteria:
+      - id: a1
+        text: "create setzt ein created-Feld via injizierte now()-Dep; der bin verdrahtet die echte Zeit, Tests faken sie. Beweis: facade/create-Test (created gesetzt) + datei:zeile bin (now-Wiring) (grün)."
+        status: pending
+
+  - name: "list-phases + Trigger-Quirk (F4 + F6)"
+    slug: polish-rest
+    status: pending
+    context: |
+      F4: entweder `node list-phases <slug>` als Convenience-Verb ergänzen, ODER die
+      Skill/Agent-Docs offiziell auf `node read` + phases[] festlegen.
+      F6: den `/a:refine`-„Unknown command"-Quirk beim nächsten Lauf beobachten;
+      ggf. Plugin-Name `a` (einzelner Buchstabe) als Ursache prüfen.
+    rules:
+      - { path: .claude/rules/cli-only-transport.md, why: "konsistente Verb-Oberfläche / klare Konvention" }
+    acceptance_criteria:
+      - id: a1
+        text: "F4 entschieden + umgesetzt: entweder `node list-phases` existiert (CLI-Smoke ok), ODER die Docs legen read+phases[] fest (datei:zeile). "
+        status: pending
+      - id: a2
+        text: "F6 geklärt: der refine-Trigger-Quirk ist eingeordnet (beobachtet/Root-Cause) + ggf. behoben (z. B. Plugin-Name). Beweis: Notiz/Beleg."
+        status: pending
