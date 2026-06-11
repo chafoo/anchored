@@ -111,6 +111,19 @@ test('node add-phase / add-ac / add-phase-evidence map to one ops call each', as
   ])
 })
 
+// redo-loop-verbs F9 — set-failures / set-ac-status each map to one facade call
+test('node set-failures / set-ac-status map to one facade call each', async () => {
+  const { f, calls } = spyFacade()
+  const { deps: d } = deps(f)
+  const cli = createCli(d)
+  await cli.run(['node', 'set-failures', 'my-task', 'p1', 'a1', 'gate: nicht erfüllt'])
+  await cli.run(['node', 'set-ac-status', 'my-task', 'p1', 'a1', 'pending'])
+  expect(calls).toEqual([
+    { verb: 'setChildFailures', args: ['my-task', 'p1', 'a1', 'gate: nicht erfüllt'] },
+    { verb: 'setChildAcStatus', args: ['my-task', 'p1', 'a1', 'pending'] },
+  ])
+})
+
 // workflow-mode set-executor-op a4 — an invalid enum surfaces as ok:false / exit 1
 test('node set-executor with an invalid enum → ok:false, exit 1', async () => {
   const err = Object.assign(new Error('executor must be one of implement | workflow'), {
