@@ -48,12 +48,19 @@ question; suggest at most a one-liner. No salesmanship, no funnel.
    - the per-tier **`build.retry_limit`** / **`build.stop`** conditions,
    - **custom phase fields** (`task.phase.fields`).
 3. **Make the edit** — write `name` + `instructions` on any custom step, `type` on
-   `use` steps. Preserve the user's existing config; mind the per-stage env vars
-   (`${TASK_SLUG}`, `${PHASE_SLUG}`, … — only `build.steps` has phase context).
-4. **Validate**, then **show the changed region** so the user sees what landed.
-   There is no separate validate command — run any `anchored steps <tier> <stage>`
-   (it parses + merges + validates the config) and surface any parse/schema error
-   plainly, then fix it. Never leave the file invalid.
+   `use` steps. Preserve the user's existing config. Two things bite if you wing
+   them — see `plugin/references/config.md` ("Ein Step"):
+   - **Position with `after:`/`before:`** a named step (else it appends to the end).
+     A bad anchor does NOT error — it silently appends, so verify the *order* in
+     step 4, not just that the step is present.
+   - **Env vars in `run:` steps** are exactly `${TASK_SLUG}`, `${PHASE_SLUG}`,
+     `${PHASE_NAME}` (phase.build only), `${EPIC_SLUG}` — passed as real env vars.
+     There is **no `$SLUG`**; `git commit -am "$SLUG"` commits an empty message.
+4. **Validate + check order**, then **show the changed region** so the user sees what
+   landed. There is no separate validate command — run any `anchored steps <tier>
+   <stage>` (it parses + merges + validates) and confirm the new step sits where the
+   request meant it to, then surface any parse/schema error plainly. Never leave the
+   file invalid.
 
 ## Onboarding (no anchored.yml yet)
 

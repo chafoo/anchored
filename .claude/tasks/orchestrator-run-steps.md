@@ -51,6 +51,23 @@ Orchestrator-Prosa (zwei SKILL.md-Dateien).
 - **a7** — Plugin-Version 0.1.3 → 0.1.4; alle 5 Gates grün (lint/format/
   typecheck/test/build). **done**
 
+## Workflow-Gegenprüfung (2026-06-11, 4 Agents)
+
+Verdikt: **funktioniert-mit-Lücken** — Mechanismus trägt (Branch + 2 Phasen-
+Commits + `--no-ff`-Merge live bewiesen, commit feuert nur auf grüner Phase,
+Merge bleibt pre-`done` bei Konflikt). Drei Doku-Funde gefixt:
+
+- **MAJOR-1** `config.md:93` lehrte `git commit -am "$SLUG"` — `$SLUG` undefiniert
+  → leere Commit-Message. Gefixt auf `${TASK_SLUG}` + autoritative Variablen-
+  Tabelle in `config.md` + Warnung im setup-Skill.
+- **MAJOR-2** `after:`/`before:`-Positionierung nirgends dokumentiert + stiller
+  Append bei falschem Anker. Gefixt: Positions-Subsection in `config.md` +
+  „Reihenfolge prüfen"-Hinweis im setup-Skill.
+- **MAJOR-3** git-Ref-D/F-Kollision bei Prefix-verwandten Epic-Kind-Slugs
+  (`task/x` vs `task/x/y`). Nicht im Framework gefixt (VCS-Branch-Ausdruck lebt
+  nur in `anchored-test/anchored.yml`) — Empfehlung an den User: im Branch-Namen
+  `tr '/' '-'` flachklopfen, falls Tasks Prefix-verwandte nested Slugs haben.
+
 ## Nicht-Ziele
 
 - Keine VCS-Meinung im Framework-Default — das Default-Template bleibt

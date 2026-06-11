@@ -61,6 +61,44 @@ sind **nicht entfernbar/umsortierbar** — nur per `instructions` erweiterbar (a
 - { name: pr-review, use: pr-reviewer, type: skill, instructions: 're-scan touched modules only' }
 ```
 
+### Variablen in `run:`-Steps
+
+Der Orchestrator übergibt jedem `run:`-Step diese Werte als **echte
+Umgebungsvariablen** (`${NAME}` im Shell-Command expandiert; nie selbst
+hineintexten). Welche verfügbar sind, hängt von der Stage ab:
+
+| Variable | Wert | Verfügbar in |
+|---|---|---|
+| `TASK_SLUG` | der Task (das Task-File); bei einem Epic-Kind der Kind-Slug | allen build/wrap-`run:`-Steps |
+| `PHASE_SLUG` | die gerade gebaute Phase | nur `phase.build` |
+| `PHASE_NAME` | der Klartext-Name der Phase | nur `phase.build` |
+| `EPIC_SLUG` | der Eltern-Epic-Slug, sonst leer | allen build/wrap-`run:`-Steps |
+
+Es gibt **kein** `$SLUG` — der korrekte Name ist immer `${TASK_SLUG}`. Eine
+Commit-Message wie `git commit -am "$SLUG"` committet still mit **leerer**
+Message.
+
+### Position: `after:` / `before:`
+
+Ein Custom-Step wird per `after: <step-name>` oder `before: <step-name>` relativ
+zu einem bestehenden (Built-in-)Step einsortiert; ohne Anker wird er **ans Ende
+angehängt**. Beim Merge mit dem Default-Template gilt: Steps mergen *keyed by
+name* + extend-only — ein neuer Name landet an der Anker-Position, ein bekannter
+Name erweitert den bestehenden Step in-place.
+
+```yaml
+phase:
+  build:
+    steps:
+      - { name: commit, after: code-validate, run: '…' }   # NACH den Gates, auf grüner Phase
+      - { name: lint,   before: task-validate, run: '…' }  # VOR dem Evidence-Gate
+```
+
+> **Achtung — stiller Append:** zeigt `after:`/`before:` auf einen Namen, den es
+> in der Stage nicht gibt, schlägt das **nicht** fehl — der Step landet kommentarlos
+> am Ende (`ok:true`). Nach dem Editieren mit `anchored steps <tier> <stage>` die
+> tatsächliche **Reihenfolge** prüfen, nicht nur die Präsenz.
+
 ## Built-in-Steps pro Stage
 
 Reservierte `name`-Werte, vom Framework erkannt (nicht entfernbar):
@@ -90,7 +128,7 @@ epic:
         each: task                            # Loop-Body = die task-Etage, pro Stub
         steps:
           - { name: run }                      # built-in: diese Einheit fahren
-          - { name: commit, run: 'git commit -am "$SLUG"' }   # direkt danach, pro Task
+          - { name: commit, run: 'git commit -am "${TASK_SLUG}"' }  # direkt danach, pro Task
       - { name: report, run: '…' }            # einmal, danach
 ```
 

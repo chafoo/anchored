@@ -445,3 +445,31 @@ test('orchestrator dispatches custom run/use steps with the variable contract', 
   // a failed run-step (merge conflict) stays pre-done, never flips status
   expect(wrap.toLowerCase()).toContain('pre-`done`')
 })
+
+// VCS-VERIFY follow-ups — the authoring docs setup draws from must (a) not teach
+// the undefined `$SLUG`, (b) carry the run-step variable contract, (c) document
+// after:/before: positioning + its silent-append caveat. (Workflow findings MAJOR-1/2.)
+test('config.md + setup teach the real run-step variable contract + positioning', () => {
+  const config = readFileSync(
+    new URL('../../../plugin/references/config.md', import.meta.url),
+    'utf8',
+  )
+  // the canonical commit example uses the real var; $SLUG survives ONLY as an
+  // explicit "there is no $SLUG" trap-warning, never as the taught pattern
+  expect(config).toContain('git commit -am "${TASK_SLUG}"')
+  expect(config).toMatch(/kein[\s*]+`?\$SLUG/i) // the trap is called out
+  for (const v of ['TASK_SLUG', 'PHASE_SLUG', 'PHASE_NAME', 'EPIC_SLUG']) {
+    expect(config).toContain(v)
+  }
+  // positioning + silent-append caveat documented
+  expect(config).toMatch(/after:/)
+  expect(config).toMatch(/before:/)
+  expect(config.toLowerCase()).toContain('append') // the silent-append warning
+
+  const setup = readFileSync(
+    new URL('../../../plugin/skills/setup/SKILL.md', import.meta.url),
+    'utf8',
+  )
+  expect(setup).toContain('after:') // positioning guidance reaches the author
+  expect(setup).toMatch(/no\s+`?\$SLUG/i) // warns off the empty-message trap
+})
