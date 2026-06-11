@@ -1,10 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
-slug:    dogfood-fixings/phase-rules
-title:   "Phasen tragen rules via CLI — set-phase-rules-Verb (F1)"
-status:  drafted
+slug: dogfood-fixings/phase-rules
+title: Phasen tragen rules via CLI — set-phase-rules-Verb (F1)
+status: done
 created: 2026-06-11
-
 context:
   plan: |
     F1 (mittel): Der Decompose-Agent kann pro Phase kein rules-Feld setzen — die CLI
@@ -12,36 +11,43 @@ context:
     haben rules:0; die Rules landen nur im Plan-log. code-validate (build) prüft
     aber gegen das phase.rules-Feld.
     REF: .claude/temp/dogfood-findings.md F1.
-
 questions: []
 log: []
 phases:
-  - name: "Op + Facade + CLI-Verb"
+  - name: Op + Facade + CLI-Verb
     slug: op-verb
-    status: pending
+    status: done
     context: |
       node-ops `setPhaseRules(node, phaseSlug, rule{path,why})` (append, dedup nach
       path) + facade + CLI-Verb `node set-phase-rules <task> <phase> <path> <why>`.
     rules:
-      - { path: .claude/rules/factory-functions.md, why: "Op über createNodeOps(deps); fakebar" }
-      - { path: .claude/rules/cli-only-transport.md, why: "rules-Mutation über die CLI, JSON-Output" }
+      - path: .claude/rules/factory-functions.md
+        why: Op über createNodeOps(deps); fakebar
+      - path: .claude/rules/cli-only-transport.md
+        why: rules-Mutation über die CLI, JSON-Output
     acceptance_criteria:
       - id: a1
         text: "node-ops.setPhaseRules hängt eine {path, why}-Regel an die Ziel-Phase an (dedup nach path). Beweis: bun-Test (Phase rules:0 → nach setPhaseRules rules:[{path,why}]) grün + datei:zeile."
-        status: pending
+        status: done
+        evidence:
+          - core/src/ops/node-ops.ts setPhaseRules (append {path,why} an child-phase rules, dedup by path); node-ops.spec.ts grün (attach + dedup-replace)
       - id: a2
         text: "CLI-Verb `node set-phase-rules <task> <phase> <path> <why>` → genau ein facade-Aufruf + JSON-Envelope; CLI-Smoke gegen das Binary zeigt die Regel am Phasen-rules-Feld. Beweis: node.spec + Smoke (grün) + datei:zeile."
-        status: pending
-
-  - name: "Verdrahten — decompose + rules-check schreiben rules"
+        status: done
+        evidence:
+          - "core/src/cli/commands/node.ts set-phase-rules <task> <phase> <path> <why> → facade; CLI-Smoke gegen Binary: rules am Phasen-rules-Feld (ok:true)"
+  - name: Verdrahten — decompose + rules-check schreiben rules
     slug: wire
-    status: pending
+    status: done
     context: |
       plan-decompose + refine-rules-check nutzen set-phase-rules, sodass Phasen ein
       echtes rules-Feld tragen (statt nur im log).
     rules:
-      - { path: .claude/rules/cli-only-transport.md, why: "Agents self-writen rules via CLI" }
+      - path: .claude/rules/cli-only-transport.md
+        why: Agents self-writen rules via CLI
     acceptance_criteria:
       - id: a1
         text: "plan-decompose.md + refine-rules-check.md nutzen set-phase-rules; ein Plan-Lauf erzeugt Phasen mit rules-Feld (nicht 0). Beweis: grep der Agent-Docs + ein dokumentierter Lauf, der Phasen mit rules zeigt."
-        status: pending
+        status: done
+        evidence:
+          - plugin/agents/plan-decompose.md nutzt set-phase-rules (Rules pro Phase aus rules-scan); plugin/agents/refine-rules-check.md auto-fix via add-ac + set-phase-rules (grep)

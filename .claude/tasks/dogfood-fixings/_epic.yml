@@ -106,7 +106,7 @@ tasks:
     depends_on: []
   - slug: phase-rules
     goal: "F1: node-ops + facade + CLI-Verb set-phase-rules <task> <phase> <path> <why> (append); plan-decompose + refine darauf verdrahten, sodass Phasen ein echtes rules-Feld tragen (statt nur im log)."
-    status: pending
+    status: done
     depends_on: []
   - slug: workflow-skill-path
     goal: "F11: Workflow-Fan-out in die build-Skill verdrahten (Workflow-Tool, not-yet-evidenced Units parallel, collect via Task-File-Evidence, Gates einmal über merged) + Live-Test (eine Phase executor=workflow); Engine-workflowLoop-Redundanz entscheiden (q4)."
@@ -139,3 +139,6 @@ log:
   - at: dogfood-fixings
     kind: learning
     note: "walk-style DONE (F12+F5): refine+build bieten Walk-Style-Wahl (high-together Default / all / AI), 0 Fragen→skip; refine-rules-check macht Coverage-Gaps zu auto-fix (add-ac+set-phase-rules) statt User-Frage. e5 erfüllt. 5/8 done."
+  - at: dogfood-fixings
+    kind: learning
+    note: "phase-rules DONE (F1): node-ops setPhaseRules + CLI set-phase-rules-Verb (dedup by path); plan-decompose + refine-rules-check verdrahtet → Phasen tragen jetzt echte rules (nicht nur im log). 170 Tests grün. 6/8 done."
