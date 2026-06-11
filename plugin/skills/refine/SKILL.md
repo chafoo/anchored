@@ -73,6 +73,17 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   required for `source=ai`).
   `anchored node resolve-question <slug> <id> "<answer>" <user|ai> ["<reasoning>"]`
 
+  **Every question you put to the user follows `plugin/references/question-style.md`:**
+  the question text already carries a worked-out **recommendation** + 1–3
+  **implication** bullets (the authoring agent baked them in). In the
+  `AskUserQuestion`, present the **recommended answer as the FIRST option** labelled
+  `(Empfohlen)`, put the implication bullets in the question text above the options,
+  and let each option note what it settles. If a question arrives WITHOUT that shape
+  (terse/older), **work the recommendation + implications out yourself at ask-time**
+  from the code/context before presenting — never ask the bare question. For an
+  **AI-resolved** question, the `reasoning` you record names the implications the
+  choice settled.
+
 ## Failure-handling
 
 If a gate agent errors, surface it and stay at `drafted` (do not flip). If the

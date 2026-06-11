@@ -33,9 +33,15 @@ Write the grounding rollup to the refine trail:
 anchored node set-field <slug> context.refine "<grounding rollup: seams confirmed, drift found, DAG notes>"
 ```
 Surface every genuine **architecture/scope ambiguity** as an open question (never
-a silent decision) — `/a:refine` walks them:
+a silent decision) — `/a:refine` walks them. **Every question carries a worked-out
+recommendation + 1–3 implication bullets** baked into its text (see
+`plugin/references/question-style.md`) — never a bare question:
 ```bash
-anchored node add-question <slug> "<the scope/architecture ambiguity>" high
+anchored node add-question <slug> "<the scope/architecture ambiguity>
+Empfehlung: <your recommended answer, formed from the code>.
+Implikationen:
+- <what option A breaks/enables/costs>
+- <what option B breaks/enables/costs>" high
 ```
 Only architecture/code ambiguities become questions — framework requirements are
 enforced, not negotiated (see refine-rules-check). You never write code and never

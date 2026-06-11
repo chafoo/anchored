@@ -29,8 +29,15 @@ Per resolved q7 this is **hard with a reconcile seam**:
 - **Gap** (a stub outcome-AC NOT covered by the built task) → do **NOT** pass it.
   Surface it as a question so the user reconciles — (a) it IS met, here's why →
   resolve; (b) re-open the task; (c) the AC was too strict → revise:
+  Carry a recommendation + implication bullets (see
+  `plugin/references/question-style.md`):
   ```bash
-  anchored node add-question <epic-slug> "<stub>/<ac>: outcome not covered by the delivered phases — reconcile?" high
+  anchored node add-question <epic-slug> "<stub>/<ac>: outcome not covered by the delivered phases — reconcile?
+  Empfehlung: <re-open the task | revise the AC | accept as met — formed from what was actually built>.
+  Implikationen:
+  - re-open: closes the gap, costs another build pass.
+  - revise the AC: ships now, relaxes the contract.
+  - accept: only if the outcome IS met by other evidence." high
   ```
 
 ## Write (self-write via CLI)

@@ -30,3 +30,14 @@ and ACs are children of the task-file, addressed by `<task-slug> <phase-slug>`.
 **Attach the applicable `.claude/rules/*.md` per phase** via `set-phase-rules` (from
 the rules-scan findings) — so each phase carries a real `rules` array the
 code-validate gate checks against, not just a log note.
+
+**Surface every ambiguity as a question — WITH a recommendation + implications.**
+A real design fork the plan can't settle becomes an open question for `/a:refine`
+to walk. Never a bare question: carry a worked-out recommendation + 1–3 implication
+bullets in the text (see `plugin/references/question-style.md`):
+```bash
+anchored node add-question <task-slug> "<the ambiguity>
+Empfehlung: <recommended answer, formed from the code/discovery>.
+Implikationen:
+- <what each direction breaks/enables/costs>" <priority>
+```

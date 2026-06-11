@@ -38,9 +38,12 @@ self-write their results via `anchored node …` (see
 3. **Pre-build walk:** if the node still has open `questions[]` (e.g. a skip-refine
    shortcut), clear them BEFORE the long run using the SAME walk-style choice as
    `/a:refine` (all-together / high-together (default) / AI-all) — `AskUserQuestion`
-   first, then resolve each (`resolve-question … user|ai ["<reasoning>"]`). **0 open
-   questions → skip this silently.** (Build's own autonomy is for EMERGENT build-time
-   decisions only; pre-existing plan questions go through the walk.)
+   first, then resolve each (`resolve-question … user|ai ["<reasoning>"]`). Each
+   `AskUserQuestion` follows `plugin/references/question-style.md` — recommended
+   option first (`(Empfohlen)`) + implication bullets in the text; work them out at
+   ask-time if the question is terse. **0 open questions → skip this silently.**
+   (Build's own autonomy is for EMERGENT build-time decisions only; pre-existing
+   plan questions go through the walk.)
 
 ## Get the orchestration plan
 

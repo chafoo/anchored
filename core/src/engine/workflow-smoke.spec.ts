@@ -185,6 +185,29 @@ test('a4: build skill documents the Bash(anchored *) allowlist precondition', ()
   expect(skill.toLowerCase()).toContain('allowlist')
 })
 
+// G14 — every user-question carries a recommendation + implications: the
+// question-style reference exists and the question-authors + walks point at it.
+test('G14: question-style reference exists; agents + walks follow it', () => {
+  const ref = readFileSync(
+    new URL('../../../plugin/references/question-style.md', import.meta.url),
+    'utf8',
+  )
+  expect(ref.toLowerCase()).toContain('recommendation')
+  expect(ref.toLowerCase()).toContain('implications')
+  // question-authoring agents reference the convention
+  for (const a of ['plan-decompose', 'refine-rules-check', 'epic-plan-check', 'epic-roll-up']) {
+    expect(
+      readFileSync(new URL(`../../../plugin/agents/${a}.md`, import.meta.url), 'utf8'),
+    ).toContain('question-style.md')
+  }
+  // the walks reference it too (refine walk + build pre-build walk + plan)
+  for (const s of ['plan', 'refine', 'build']) {
+    expect(
+      readFileSync(new URL(`../../../plugin/skills/${s}/SKILL.md`, import.meta.url), 'utf8'),
+    ).toContain('question-style.md')
+  }
+})
+
 // G13 — the setup skill exists (config-editor-that-consults, no funnel) and the
 // plan skill offers onboarding when there is no anchored.yml yet.
 test('G13: setup skill + onboarding offer on missing anchored.yml', () => {

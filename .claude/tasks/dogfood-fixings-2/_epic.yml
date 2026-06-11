@@ -66,6 +66,9 @@ acceptance:
   - id: e12
     text: "Onboarding: eine /a:-Skill ohne vorhandene anchored.yml richtet das Nötigste lazy ein (minimale anchored.yml + Bash-Allowlist) und bietet dem User an, den Prozess gemeinsam zu optimieren (setup-Skill, aus v1 portiert: config-editor-that-consults) — als Frage 'jetzt einrichten / erstmal nur das Nötigste'; Partner-Stimme, kein Funnel (G13)"
     status: done
+  - id: e13
+    text: "Jede User-Frage trägt eine ausgearbeitete EMPFEHLUNG (empfohlene Option zuerst, '(Empfohlen)') + knappe IMPLIKATIONS-Stichpunkte über den Optionen; Frage-autorende Agents + alle Walk-Stellen (refine/build-pre-build/plan-classify/stop-check/onboarding) folgen question-style.md; AI-Auflösungen nennen die gelösten Implikationen. Reine Skill-Prosa, kein Schema/Code (G14)"
+    status: done
 questions:
   - id: q1
     text: "D1 Form: bekommt der Epic die volle Lifecycle-Symmetrie mit denselben Wörtern wie task (plan→drafted→refined→build→wrap→done)?"
@@ -286,3 +289,27 @@ tasks:
       Nötigste'. Partner-Stimme (communication-style), kein Verkaufstrichter.
     status: done
     depends_on: [skill-tier-branching, user-language]
+  - slug: question-recommendations
+    goal: |
+      G14: jede User-Frage trägt Empfehlung + Implikationen — reine Skill-Prosa,
+      KEIN Schema/Code. Behebt den v1-Reboot-Mangel (Fragen ohne Implikationen — man
+      wusste nicht, was eine Antwort nach sich zieht). Drei Teile, pro Frage:
+        1. EMPFEHLUNG — der Orchestrator/Agent arbeitet VOR der Frage eine
+           Empfehlung aus (guckt Code/Kontext an); die empfohlene Option steht
+           zuerst + '(Empfohlen)'.
+        2. IMPLIKATIONEN — 1–3 knappe Stichpunkte ÜBER den Optionen: was hängt an
+           der Entscheidung (was bricht/ermöglicht/kostet welche Richtung). Knapp,
+           kein Aufsatz.
+        3. pro Option / in der Empfehlung benennen, WELCHE Implikation die Wahl löst;
+           AI-aufgelöste Fragen nennen die gelösten Implikationen im reasoning.
+      Phasen (Outcome-ACs): (a) NEU plugin/references/question-style.md als SSOT der
+      Konvention; (b) Frage-autorende Agents (plan-decompose, refine-plan-check,
+      rules-check, epic-plan-check, epic-decompose, epic-roll-up) packen Empfehlung +
+      Implikationen in den Fragen-Text + verweisen auf die Referenz; (c) alle
+      Walk-Stellen (refine-Walk, build-pre-build-Walk, plan-Klassifizierung,
+      stop-check-Escalation, onboarding) präsentieren empfohlene-Option-zuerst +
+      Implikationen in der AskUserQuestion + nennen gelöste Implikationen; (d) Grep-
+      Test (Referenz existiert + Agents/Walks verweisen). Vergleichbarer Aufwand zu
+      user-language (G10).
+    status: done
+    depends_on: [skill-tier-branching, user-language, epic-refine-pipeline]

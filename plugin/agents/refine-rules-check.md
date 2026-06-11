@@ -28,9 +28,14 @@ missing coverage + conflicts. Read-only inspection.
   (And attach the rule to the phase: `anchored node set-phase-rules <slug>
   <phase-slug> <rule-path> "<why>"`.)
 - **Only a genuine architecture/code ambiguity** (a real design fork, not a rule
-  gap) becomes an open question for the user to decide:
+  gap) becomes an open question for the user to decide. **Carry a worked-out
+  recommendation + 1–3 implication bullets** in the text (see
+  `plugin/references/question-style.md`), never a bare question:
   ```bash
-  anchored node add-question <slug> "<the architecture ambiguity>" high
+  anchored node add-question <slug> "<the architecture ambiguity>
+  Empfehlung: <recommended answer, formed from the rules + code>.
+  Implikationen:
+  - <what each direction breaks/enables/costs>" high
   ```
 - Always record the rollup:
   ```bash

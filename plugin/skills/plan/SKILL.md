@@ -70,7 +70,11 @@ instructions }`:
 
 Surface generously: any ambiguity the decompose agent hits becomes an open
 question (`anchored node add-question <slug> "<q>" high`), NOT a silent decision —
-`/a:refine` walks them.
+`/a:refine` walks them. Every question carries a worked-out recommendation + 1–3
+implication bullets in its text (`plugin/references/question-style.md`) — never a
+bare question. The same applies to **every `AskUserQuestion` this skill itself
+raises** (the tier-classification confirm, the onboarding offer): recommended
+option first (`(Empfohlen)`), implications named.
 
 ## Failure-handling
 
