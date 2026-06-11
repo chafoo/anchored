@@ -47,3 +47,14 @@ test('plans epic.build (loop tasks) + epic.wrap (roll-up)', () => {
     ['roll-up', 'epic-roll-up'],
   ])
 })
+
+// D2 — epic.refine is now a REAL pipeline: ground vs code, author per-stub
+// outcome-ACs, then walk (was just [walk]).
+test('plans epic.refine as epic-plan-check → epic-decompose → walk (D2)', () => {
+  const plan = createStepsPlanner(defaultCfg).plan('epic', 'refine')
+  expect(plan.steps.map((s) => [s.name, s.kind, s.agent])).toEqual([
+    ['epic-plan-check', 'worker', 'epic-plan-check'],
+    ['epic-decompose', 'worker', 'epic-decompose'],
+    ['walk', 'worker', 'walk'], // walk is skill-routed (ref 'walk'), spawned by the skill
+  ])
+})

@@ -28,10 +28,13 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
 1. `anchored refine <slug>` → `{ stage, tier, node, steps }` (tier derived from the
    node; does NOT spawn). State gate: refine expects `drafted`.
 2. `steps` is the resolved refine pipeline: for a task
-   `[plan-check, rules-check, walk]`, for an epic `[walk]`.
+   `[plan-check, rules-check, walk]`, for an **epic**
+   `[epic-plan-check, epic-decompose, walk]` (D2 — epic-refine is a REAL stage:
+   ground the stubs against code, then author per-stub outcome-ACs, then walk).
 
 ## Spawn each step's agent (Task tool, in order)
 
+**Task tier:**
 - **plan-check → refine-plan-check** — validates the plan against current code
   (stale paths, unacknowledged handlers, hidden defaults); self-writes the rollup:
   `anchored node append-log <slug> refine learning "<plan-check rollup>"`. Any
@@ -41,6 +44,17 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   rule-enforcement is an **auto-fix** (the agent adds an enforcing AC itself), NOT a
   user question — project rules are framework requirements that get enforced, not
   negotiated. Only a genuine architecture/code ambiguity becomes an open question.
+
+**Epic tier (D2):**
+- **epic-plan-check → epic-plan-check** — grounds the epic's task-stubs + DAG
+  against the real code (seams exist, no drift, DAG sound); writes the grounding
+  rollup to `context.refine`; genuine scope/architecture ambiguities → open
+  questions.
+- **epic-decompose → epic-decompose** — authors **outcome-level task-ACs per stub**
+  (`anchored node add-ac <epic> <stub> "<outcome AC>"`, the Epic→Task contract).
+  These seed the JIT `plan task`'s phase decomposition at build (so the contract is
+  never lost — the G8 fix) and are what the wrap roll-up validates the built task
+  against.
 - **walk** — the consolidated Q&A walk. **First, pick the walk-style** (this is the
   v1 Stage-0 choice, ephemeral — never persisted): read the open questions
   (`anchored node question-list <slug> open`), count them by priority, and ask

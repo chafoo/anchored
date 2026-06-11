@@ -41,7 +41,7 @@ acceptance:
     status: done
   - id: e4
     text: "Epic-refine ist echt: TaskStub.acceptance[] (Outcome-Task-ACs) + Schreib-Verb; epic.refine.steps grounded gegen Code (epic-plan-check/decompose); JIT plan-task seedet aus den Stub-ACs (löst G8); wrap-roll-up validiert Phasen-ACs gegen Task-ACs (D2)"
-    status: pending
+    status: done
   - id: e5
     text: "set-child-status validiert das Child-Enum; Skills fahren uniforme tier-korrekte Stage-Transitions; expliziter Epic-each:task-Loop in der build-Skill statt python-yaml-Krücke (G2/G3/G5)"
     status: pending
@@ -199,7 +199,7 @@ tasks:
       Stub-Task-ACs (löst G8 — verlorenes goal/context). Der wrap-roll-up
       (epic-roll-up-Agent) validiert gelieferte Phasen-ACs gegen die Stub-Task-ACs.
       Reine Template- + Plugin-Änderung, KEIN Engine-Rewrite.
-    status: pending
+    status: done
     depends_on: [taskstub-acceptance]
   - slug: skill-tier-branching
     goal: |

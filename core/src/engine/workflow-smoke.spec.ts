@@ -185,6 +185,18 @@ test('a4: build skill documents the Bash(anchored *) allowlist precondition', ()
   expect(skill.toLowerCase()).toContain('allowlist')
 })
 
+// D2 — the epic-refine pipeline's new agents exist as plugin files and document
+// their contract (epic-plan-check grounds vs code; epic-decompose authors per-stub
+// outcome-ACs; epic-roll-up validates them hard-with-reconcile).
+test('D2: epic-refine + roll-up agents exist and document their contract', () => {
+  const read = (n: string) =>
+    readFileSync(new URL(`../../../plugin/agents/${n}.md`, import.meta.url), 'utf8')
+  expect(read('epic-decompose')).toContain('add-ac <epic-slug> <task-stub-slug>')
+  expect(read('epic-decompose').toLowerCase()).toContain('outcome')
+  expect(read('epic-plan-check').toLowerCase()).toContain('ground')
+  expect(read('epic-roll-up').toLowerCase()).toContain('reconcile')
+})
+
 // G10 — partner-voice: the communication-style reference exists and every stage
 // SKILL links it (so machinery vocabulary stops leaking into the user's chat).
 test('G10: every stage SKILL references the communication-style guide', () => {

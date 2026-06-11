@@ -91,9 +91,11 @@ epic:
     steps:
       - { name: discover }            # Lage/Umfang sondieren (geteilt mit task.plan)
       - { name: scaffold }            # goal-Prosa → coarse task-stubs
-  refine:
+  refine:                             # D2: echter Epic-Refine — konkret werden
     steps:
-      - { name: walk, involve: high-only }   # Stubs/Reihenfolge mit dir klären
+      - { name: epic-plan-check }     # Stubs/Scope gegen den echten Code prüfen
+      - { name: epic-decompose }      # pro Stub OUTCOME-Task-ACs ausarbeiten (acceptance_criteria)
+      - { name: walk, involve: high-only }   # offene Fragen mit dir klären
   build:                              # Loop auf task
     each: task                        # intrinsisch — pro Tier fix (epic→task), nicht konfigurierbar (nur Doku)
     stop:
@@ -107,12 +109,14 @@ epic:
     schema_version: int
     slug:           kebab
     title:          string
-    status:         planning | building | done
+    status:         plan | drafted | refined | build | wrap | done   # D1: task-symmetric
     goal:           markdown          # das große Ziel in Prosa
+    context:        { plan?, refine?, build?, wrap? }   # D1: Prosa-Trails wie task
     acceptance:     list<{ id, text, status }>   # Definition-of-Done (epic-Ebene, grob)
     questions:      list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
-    tasks:          list<{ slug, goal, status, depends_on }>   # coarse Stubs = Loop-Queue
-                                      #   status: pending | active | done | blocked
+    tasks:          list<{ slug, goal, status, depends_on, acceptance_criteria? }>   # coarse Stubs = Loop-Queue
+                                      #   status: pending | active | done | blocked  (Queue-Marker, NICHT die Lifecycle)
+                                      #   acceptance_criteria: D2 OUTCOME-Task-ACs (epic-refine arbeitet sie aus)
                                       #   Reihenfolge = Listen-Position
     log:            list<{ at, kind, note }>   # kind: decision | reorder | learning | blocker
 

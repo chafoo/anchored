@@ -25,6 +25,8 @@ const DEFAULT_WORKERS: Record<string, WorkerRef> = {
   review: { type: 'agent', ref: 'wrap-review' },
   summarize: { type: 'agent', ref: 'wrap-summarize' },
   scaffold: { type: 'agent', ref: 'epic-scaffold' },
+  'epic-plan-check': { type: 'agent', ref: 'epic-plan-check' }, // D2: ground the epic vs code
+  'epic-decompose': { type: 'agent', ref: 'epic-decompose' }, // D2: author per-stub task-ACs
   'roll-up': { type: 'agent', ref: 'epic-roll-up' },
 }
 
