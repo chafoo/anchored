@@ -115,7 +115,7 @@ tasks:
       - redo-loop-verbs
   - slug: context-polish
     goal: "F2 + F3 + F4 + F6: context-Felder-Entscheidung umsetzen (q3); created-Feld (q6); node list-phases-Convenience-Verb (oder Doku auf read festlegen); refine-Trigger-Quirk (Unknown command) beobachten/klären."
-    status: pending
+    status: done
     depends_on: []
 log:
   - at: dogfood-fixings
@@ -145,3 +145,6 @@ log:
   - at: dogfood-fixings
     kind: learning
     note: "workflow-skill-path DONE (F11): build-SKILL macht den Workflow-Fan-out via Workflow-Tool (neuer build-workflow-Agent, per-AC unit-worker, self-write); Engine-loop-workflow.ts auf Referenz/headless reduziert (q4). 170 Tests grün. Live-Test einer executor=workflow-Phase = Handoff (Dogfood). 7/8 done."
+  - at: dogfood-fixings
+    kind: learning
+    note: "context-polish DONE (F2/F3/F4/F6): context.plan/refine via set-field, created via clock-Naht (epic-Schema +created), list-phases-Verb, F6-Quirk eingeordnet. 171 Tests grün. ALLE 8 TASKS DONE. Offen nur e6 (Dogfood-Reruns live in anchored-test) = Handoff."
