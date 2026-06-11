@@ -25,7 +25,7 @@ acceptance:
     status: pending
   - id: e2
     text: "Re-Do-Loop funktioniert end-to-end: ein Gate kann eine AC ablehnen (failures schreiben, done→pending), der Loop retried bis retry_limit, dann blocked (F9)"
-    status: pending
+    status: done
   - id: e3
     text: "Epic-Tier durch die CLI fahrbar: `anchored plan epic` seedet einen epic-förmigen Node, scaffold schreibt Task-Stubs (add-child) mit DAG, build loopt sie — der anchored-test-Epic-Lauf wird grün (F13/F14)"
     status: pending
@@ -90,7 +90,7 @@ tasks:
     depends_on: []
   - slug: redo-loop-verbs
     goal: "F9 (HOCH): node-ops setFailures(node,phase,ac,failures[]) (flippt AC pending+failures, Evidence als History) + setAcStatus exponieren; CLI-Verben set-failures + set-ac-status; agent-contract + build-Skill + Validatoren darauf verdrahten → Re-Do-Loop funktioniert."
-    status: pending
+    status: done
     depends_on: []
   - slug: epic-tier-cli
     goal: "F13 (HOCH) + F14: Epic-Tier durch die CLI fahrbar machen — create bekommt expliziten tier-Param (seedet epic-Shape tasks:[]/epic-Deskriptor/status planning), planCommand reicht tier durch; tierForSlug real ableiten (File-Shape, s. q1); read bestimmt Tier aus File-Inhalt; Slug-Trailing-Dash-Fix (slice→strip-Reihenfolge); Duplikat-Nodes in anchored-test aufräumen."
@@ -124,3 +124,6 @@ log:
   - at: dogfood-fixings
     kind: decision
     note: "Offene Fragen geklärt (2026-06-11): q1 Tier aus File-Shape+expliziter create-tier-Param · q2 Hook nur Build/Agent-Kontext · q3 context.* befüllen (v1-Stil) · q4 Workflow ganz in die Skill (Engine-loop weg) · q5 Walk-Style high-user-Default · q6 created via clock-Naht. q1-q4 User, q5/q6 AI-Empfehlung (überstimmbar)."
+  - at: dogfood-fixings
+    kind: learning
+    note: "redo-loop-verbs DONE (F9): node-ops setChildFailures/setChildAcStatus + CLI set-failures/set-ac-status + Validatoren/Skill verdrahtet. Gates können jetzt ACs ablehnen → Re-Do-Loop funktioniert. 162 Tests grün. e2 erfüllt."
