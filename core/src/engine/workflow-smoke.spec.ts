@@ -208,6 +208,22 @@ test('G14: question-style reference exists; agents + walks follow it', () => {
   }
 })
 
+// H1 — pipeline-narration is forbidden: communication-style names the rule, and the
+// stage skills carry a partner-voice replacement for the step-by-step play-by-play.
+test('H1: no pipeline narration — rule in communication-style + skill replacements', () => {
+  const ref = readFileSync(
+    new URL('../../../plugin/references/communication-style.md', import.meta.url),
+    'utf8',
+  )
+  expect(ref).toMatch(/play-by-play/i)
+  expect(ref.toLowerCase()).toContain('pair-programmer')
+  const skill = (n: string) =>
+    readFileSync(new URL(`../../../plugin/skills/${n}/SKILL.md`, import.meta.url), 'utf8')
+  expect(skill('plan')).toContain('skizzier die zwei Tasks')
+  expect(skill('refine')).toContain('arbeite ihre Akzeptanz-Kriterien aus')
+  expect(skill('build')).toContain('von der Planung bis fertig')
+})
+
 // G13 — the setup skill exists (config-editor-that-consults, no funnel) and the
 // plan skill offers onboarding when there is no anchored.yml yet.
 test('G13: setup skill + onboarding offer on missing anchored.yml', () => {

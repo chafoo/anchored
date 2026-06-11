@@ -30,7 +30,7 @@ goal: |
 acceptance:
   - id: e1
     text: "Beim Planen/Orchestrieren erzählt der Chat keine Framework-Mechanik mehr — auch die SKILL-Finish-/Fortschritts-Zeilen sind umgeschrieben (kein discover/scaffold/Stubs/Abhängigkeits-Reihenfolge, kein roher slug); Partner-Stimme, nur Outcome + Entscheidung (H1)"
-    status: pending
+    status: done
   - id: e2
     text: "Keine kryptischen Abkürzungen im User-Text — inkl. der SKILL-Templates selbst: build-Finish ohne Status-Wort, refine-Walk-Prompt ohne englische Enum-Tokens (X high/medium/low) + ohne interne Style-Codes (high-together), 'AC' ausgeschrieben; build.stop-String ohne 'DAG'; interne IDs nur im Audit-Trail (H2)"
     status: pending
@@ -107,7 +107,7 @@ tasks:
       gefundenen Template-Zeilen entschärfen (z.B. die Fortschritts-/Finish-Zeilen,
       die Mechanik nennen). Die Tool-Aufrufe sind sichtbar und begleiten sich selbst.
       + Grep-Test.
-    status: pending
+    status: done
     depends_on: []
   - slug: no-cryptic-abbreviations
     goal: |

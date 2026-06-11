@@ -16,6 +16,7 @@ Partner voice in chat, machinery only in the audit trail — see
 |---|---|
 | "anchored plan epic … → node erstellt (status plan)" | "Lege das epic für `<slug>` an." |
 | "Spawne discover + decompose…" | "Lass uns das durchsprechen — was genau soll rein?" |
+| "ich fahre die zwei Plan-Steps: discover dann scaffold (Stubs + Abhängigkeits-Reihenfolge)" | "Ich schau kurz den Code an und skizzier die zwei Tasks." |
 | "Status-flip plan → drafted" | "Plan steht — N phasen, M ACs, K offene fragen. Run `/a:refine`." |
 
 The skill is the **orchestrator**: it consults the `anchored` CLI for the

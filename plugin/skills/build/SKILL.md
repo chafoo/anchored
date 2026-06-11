@@ -16,6 +16,7 @@ each:task loop are plumbing; the user hears outcomes:
 | Avoid (machinery) | Prefer (partner) |
 |---|---|
 | "set-child-status … in-progress" | "Phase 2 (Persistence) angefangen." |
+| "core-list fährt seinen JIT-Lifecycle plan→refine→build→wrap" | "Ich baue core-list zuerst — von der Planung bis fertig." |
 | "task-validate verdict=fail, rejected_count=2" | "Zwei ACs hängen noch — ich versuch's nochmal mit den findings als fix-liste." |
 | "flip auf wrap / next-child → null" | "Build durch — alle phasen grün. Review steht." |
 

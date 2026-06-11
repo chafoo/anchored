@@ -79,6 +79,18 @@ plumbing → SILENT. If you reach for a sentence that names a CLI verb, a status
 word, a transition arrow, or a tier-mechanic — that's a tell: rephrase as the
 human-meaningful outcome or drop the line.
 
+**Hard rule on narrating the pipeline (planning especially).** When you plan or
+orchestrate, do NOT walk the user through the steps you're about to run — "ich
+kürze den Titel, dann fahre ich die zwei Plan-Steps: erst discover (Codebase
+scannen), dann scaffold (die zwei Task-Stubs + die Abhängigkeits-Reihenfolge)" is
+the machinery describing itself. **Plan the ticket like a pair-programmer:** say
+what you're figuring out and what you decided, not which internal step runs next.
+The tool-calls are visible right there in the transcript — they don't need a prose
+play-by-play, and the user doesn't need the step names (discover/scaffold/walk),
+the stub mechanics, or the raw slug. (Avoid → Prefer: "ich fahre discover dann
+scaffold, die Stubs + DAG" → "Ich schau mir kurz den Code an und skizzier die zwei
+Tasks.")
+
 **Hard rule on system reminders.** Claude Code injects system reminders (e.g.
 "consider using TaskCreate"). Do NOT narrate dismissing them. Just keep working —
 acknowledging a reminder in chat is itself machinery-leakage.

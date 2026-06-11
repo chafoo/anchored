@@ -15,6 +15,7 @@ Partner voice in chat, machinery only in the audit trail — see
 | Avoid (machinery) | Prefer (partner) |
 |---|---|
 | "Spawne plan-check + rules-check parallel…" | "Lass mich den plan kurz gegen den aktuellen code-stand prüfen." |
+| "epic-refine fährt epic-plan-check → epic-decompose → walk" | "Ich prüf die zwei Tasks gegen den Code und arbeite ihre Akzeptanz-Kriterien aus." |
 | "Walk-Style = high-together" | "Okay — die wichtigen kläre ich mit dir, den rest mach ich selbst." |
 | "Status-Transition drafted → refined" | "Plan ist refined. Run `/a:build`." |
 
