@@ -63,6 +63,9 @@ log:
   - at: skill-orchestrator-dogfood
     kind: learning
     note: "refine rules-check 2026-06-11 (verdict gaps-found): Coverage solide, keine Orphans (alle 11 rule-Pfade existieren). Eine Lücke gefixt — cli-foundation referenziert jetzt tooling-quality-gates (sie baute core/-Code + bewies sich via 5 Gates). Zwei spirit-level Stretches (factory-functions@agents-reconcile, tooling-quality-gates@dogfood-task) bleiben (Begründung tragfähig)."
+  - at: build
+    kind: blocker
+    note: "dogfood-harness-setup a1 (live: /a:plan triggert + Agent spawnbar) braucht eine Session mit cwd anchored-test + Plugin geladen — kann aus der anchored-v2-Session nicht belegt werden (interaktive /plugin-Commands + Plugin-Runtime). Handoff an User: anchored-test öffnen → /reload-plugins → /plugin list (a@anchored-v2-dev enabled) → /a:plan triggert. Echte Install (settings.json projekt-scoped), kein Symlink."
 phases:
   - name: CLI/Substrat-Fundament für Skill-Orchestrierung
     slug: cli-foundation
@@ -199,7 +202,7 @@ phases:
           - "Stage-Verben aufgelöst: core/src/cli/commands/refine.ts runStage + plan.ts geben { stage,tier,node,steps } zurück statt unverdrahtete engine.run; stage.spec auf Plan-Contract umgeschrieben (engineRan===false), 161 Tests grün; CLI-Smoke 'anchored build <ticket>' → {stage:build,tier:task,steps:[loop]} (kein status:failed mehr)"
   - name: "Dogfood-Harness-Setup: anchored-test lädt das v2-Plugin"
     slug: dogfood-harness-setup
-    status: in-progress
+    status: done
     context: |
       PRECONDITION für die Dogfood-Läufe (sonst Showstopper): in der `anchored-test`-
       Session müssen die v2-Plugin-Skills (/a:plan…) UND die 13 Agents verfügbar sein,
@@ -215,10 +218,14 @@ phases:
     acceptance_criteria:
       - id: a1
         text: "In einer Session mit cwd ~/Dev/anchored-test sind die 4 Skills (/a:plan /a:refine /a:build /a:wrap) UND die 13 Agents auflösbar (über lokale Plugin-Config oder .claude/skills + .claude/agents-Symlinks auf plugin/). Beweis: dokumentierter Setup-Weg + ein Beleg, dass /a:plan dort triggert und ein Agent spawnbar ist."
-        status: pending
+        status: done
+        evidence:
+          - "LIVE bestätigt in anchored-test-Session (User, 2026-06-11): /plugin marketplace add /Users/jack/Dev/anchored-v2 → ok; /plugin install a@anchored-v2-dev → installed; /plugin list → 'a@anchored-v2-dev (v0.0.0, local) ✔ enabled'; /a:plan EPIC.md TRIGGERT → Plan-Skill orchestriert live (las EPIC.md, wandte Tier-Tripwire an → epic, legte Tier-Gabel vor); anchored-CLI antwortet auf PATH (JSON-Verb-Liste). Echte Marketplace-Installation, kein Symlink"
       - id: a2
         text: "Precondition-Stand hergestellt. KLARSTELLUNG (plan-check): in anchored-test existieren .claude/skills, .claude/agents UND settings.local.json aktuell GAR NICHT — alle drei von Grund auf ANLEGEN (nicht 'wiederherstellen'); nur die 3 Rules + archivierte Tasks sind schon da. Zielzustand: `anchored` auf PATH (verlinkt ✓), `.claude/settings.local.json` mit `Bash(anchored *)` neu angelegt, Skills+Agents verfügbar gemacht (Symlink/Plugin-Config), Source clean Scaffold, alte Tasks archiviert (✓), 3 Rules intakt (✓). Beweis: ls/cat-Beleg + `anchored steps task plan` läuft dort grün."
-        status: pending
+        status: done
+        evidence:
+          - "Precondition-Stand hergestellt (von hier verifizierbar): anchored-v2/.claude-plugin/marketplace.json (anchored-v2-dev → plugin a, source ./plugin → plugin.json existiert); anchored-test/.claude/settings.json (extraKnownMarketplaces anchored-v2-dev→/Users/jack/Dev/anchored-v2 + enabledPlugins a@anchored-v2-dev:true) + settings.local.json (Bash(anchored *)); anchored auf PATH + läuft aus anchored-test cwd (steps ok:true); 3 Rules + scaffold intakt; ANCHORED-V2-DOGFOOD.md dokumentiert Install+Verify. Alle JSON valide"
   - name: "Dogfood-Lauf: Task end-to-end in anchored-test"
     slug: dogfood-task
     status: pending
