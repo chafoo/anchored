@@ -42,7 +42,7 @@ acceptance:
     status: done
   - id: e5
     text: "Mehrzeilige context-Trails rendern lesbar: set-field normalisiert literale \\n zu echten Newlines vor dem Persist (oder die schreibenden Agents schreiben echte Newlines); Test mit \\n-haltigem context (H5)"
-    status: pending
+    status: done
   - id: e6
     text: "Evidence bevorzugt Symbol-/Funktions-Anker statt roher Zeilennummern (Anleitung der Evidence-autorenden Agents), damit Sibling-Edits an geteilten Dateien die gespeicherte Evidence nicht veralten lassen (H6)"
     status: pending
