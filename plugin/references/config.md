@@ -78,6 +78,14 @@ Es gibt **kein** `$SLUG` — der korrekte Name ist immer `${TASK_SLUG}`. Eine
 Commit-Message wie `git commit -am "$SLUG"` committet still mit **leerer**
 Message.
 
+> **branch-per-task — Slug flachklopfen:** ein Epic-Kind-Slug ist *nested*
+> (`myepic/core-list`). Ein roher Branch `task/${TASK_SLUG}` kann mit einem
+> prefix-verwandten Geschwister kollidieren (git-Ref-D/F: `task/x` vs `task/x/y`).
+> Im Branch-Namen Slashes zu `-` machen, dann ist der Name kollisionssicher:
+> ```bash
+> BRANCH="task/$(printf '%s' "${TASK_SLUG}" | tr '/' '-')"   # myepic/core-list → task/myepic-core-list
+> ```
+
 ### Position: `after:` / `before:`
 
 Ein Custom-Step wird per `after: <step-name>` oder `before: <step-name>` relativ
