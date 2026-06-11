@@ -26,6 +26,18 @@ test('add-question then resolve-question', () => {
   })
 })
 
+// decision-trail F7 — an AI-resolved question REQUIRES reasoning (invariant)
+test('resolve-question source=ai without reasoning throws; with reasoning ok', () => {
+  const opened = addQuestion([], { text: 'lib?', priority: 'low' })
+  expect(() => resolveQuestion(opened, 'q1', { answer: 'X', source: 'ai' })).toThrow(/reasoning/i)
+  const ok = resolveQuestion(opened, 'q1', {
+    answer: 'X',
+    source: 'ai',
+    reasoning: 'X is spec-correct',
+  })
+  expect(ok[0]).toMatchObject({ status: 'resolved', source: 'ai', reasoning: 'X is spec-correct' })
+})
+
 // a2 — log append is immutable: order preserved, first entry untouched
 test('log append-only: order preserved, existing entry untouched', () => {
   const first = { at: 'p1', kind: 'decision', note: 'one' }

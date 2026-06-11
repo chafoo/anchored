@@ -23,7 +23,11 @@ export interface NodeOpsFacade {
   addChild(slug: string, child: { slug: string; goal?: string }): Promise<unknown>
   nextChild(slug: string): Promise<unknown>
   addQuestion(slug: string, q: { text: string; priority: string }): Promise<unknown>
-  resolveQuestion(slug: string, id: string, r: { answer: string; source: string }): Promise<unknown>
+  resolveQuestion(
+    slug: string,
+    id: string,
+    r: { answer: string; source: string; reasoning?: string },
+  ): Promise<unknown>
   appendLog(slug: string, e: { at: string; kind: string; note: string }): Promise<unknown>
   setField(slug: string, field: string, value: string): Promise<unknown>
   setExecutor(slug: string, phase: string, value: string): Promise<unknown>

@@ -36,7 +36,7 @@ export interface TierOps {
   resolveQuestion(
     node: AnyRec,
     id: string,
-    r: { answer: string; source: 'user' | 'ai' },
+    r: { answer: string; source: 'user' | 'ai'; reasoning?: string },
   ): Promise<AnyRec>
   appendLog(node: AnyRec, e: { at: string; kind: string; note: string }): Promise<AnyRec>
   setField(node: AnyRec, field: string, value: unknown): Promise<AnyRec>
@@ -115,6 +115,7 @@ export function createSlugFacade(deps: FacadeDeps): NodeOpsFacade {
       return o.resolveQuestion(await o.read(slug), id, {
         answer: r.answer,
         source: r.source as 'user' | 'ai',
+        ...(r.reasoning !== undefined ? { reasoning: r.reasoning } : {}),
       })
     },
     appendLog: async (slug, e) => {

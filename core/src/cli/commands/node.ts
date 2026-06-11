@@ -28,9 +28,11 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
     case 'add-question':
       return ops.addQuestion(need(0, 'slug'), { text: need(1, 'text'), priority: a[2] ?? 'medium' })
     case 'resolve-question':
+      // resolve-question <slug> <id> <answer> [source] [reasoning] — source=ai needs reasoning
       return ops.resolveQuestion(need(0, 'slug'), need(1, 'id'), {
         answer: need(2, 'answer'),
         source: a[3] ?? 'ai',
+        ...(a[4] !== undefined ? { reasoning: a[4] } : {}),
       })
     case 'append-log':
       return ops.appendLog(need(0, 'slug'), {

@@ -60,6 +60,31 @@ While `anchored node next-child <slug>` returns a child (else done):
 4. **Advance:** when all the child's ACs are `done` (with evidence) and both gates
    pass → `anchored node set-child-status <slug> <child> done`.
 
+## Emergent decisions → document or stop (the decision-trail)
+
+build runs maximally autonomous, but **every emergent decision lands on the
+record** — that is the USP ("every decision on the record"). The build-implement
+worker self-reports decisions the plan didn't fully nail down (which library, which
+error shape, extend-vs-replace) in its build-notes (`append-log <slug> build
+learning "…"`). For EACH such decision, run the **stop-check**:
+
+- **Does it match a `build.stop` rule?** (the `stop[]` array comes from `anchored
+  steps <tier> build`; the shipped default is *"a decision deviates from the
+  plan"*.) Judge the decision against those rules — a genuine plan/architecture
+  deviation matches; a within-plan local call does not.
+- **No match → proceed + document autonomously:** mint/resolve a question so the
+  decision + its WHY are on the record (read by `/a:wrap`):
+  ```bash
+  anchored node add-question <slug> "<the decision>" high          # → q<n>
+  anchored node resolve-question <slug> q<n> "<the decision>" ai "<why, the reasoning>"
+  ```
+  (`resolve-question` with `source=ai` REQUIRES the reasoning — the substrate
+  rejects an AI decision with no recorded why.) Then keep building.
+- **Match → STOP + escalate:** `anchored node add-question <slug> "Build halted by
+  stop-rule: <decision>" high`, surface it to the user, walk it
+  (`resolve-question … user "<answer>"`), then continue. Minimise stops — proceed-
+  and-document within-plan calls; stop only on a genuine deviation.
+
 ## Failure-handling (never silent — a5)
 
 - **Agent returns nothing / errors** → treat as a failed AC: record it as a

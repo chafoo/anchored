@@ -38,3 +38,14 @@ anchored node set-child-status <task-slug> <phase-slug> done
 > criteria — that is NOT what you want for a phase (a phase is a child). Always use
 > `add-phase-evidence <task-slug> <phase-slug> <ac-id>` and
 > `set-child-status <task-slug> <phase-slug>` for phase-level writes.
+
+## Self-report build-notes + decisions (the decision-trail)
+Record what you built + any decision the plan didn't fully nail down (which lib,
+which error shape, extend-vs-replace) so the orchestrator can stop-check it and it
+lands on the record:
+```bash
+anchored node append-log <task-slug> build learning "<what you did + any decision + why>"
+```
+Use `at=build` (the stage), not the phase-slug. If a decision genuinely deviates
+from the plan/architecture, flag it explicitly in the note — the orchestrator
+routes it through the stop-check (proceed-and-document vs halt-and-ask).

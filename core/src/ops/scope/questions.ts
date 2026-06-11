@@ -1,5 +1,7 @@
 // ops/scope/questions.ts — question helpers (pure). add assigns a sequential id +
-// status open; resolve sets answer/source/reasoning + status resolved.
+// status open; resolve sets answer/source/reasoning + status resolved. An
+// AI-resolved question MUST carry reasoning (the decision-trail invariant).
+import { anchoredError } from '../../state/invariants.js'
 
 export interface Question {
   id: string
@@ -40,6 +42,14 @@ export function resolveQuestion(
   id: string,
   resolution: QuestionResolution,
 ): Question[] {
+  // decision-trail invariant: an AI decision must record WHY (read by /a:wrap)
+  if (resolution.source === 'ai' && !(resolution.reasoning ?? '').trim()) {
+    throw anchoredError(
+      'MissingReasoning',
+      `an AI-resolved question requires reasoning (q '${id}')`,
+      ['pass reasoning: anchored node resolve-question <slug> <id> <answer> ai "<why>"'],
+    )
+  }
   return questions.map((q) =>
     q.id === id
       ? {
