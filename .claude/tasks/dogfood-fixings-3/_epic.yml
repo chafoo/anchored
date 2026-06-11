@@ -45,7 +45,7 @@ acceptance:
     status: done
   - id: e6
     text: "Evidence bevorzugt Symbol-/Funktions-Anker statt roher Zeilennummern (Anleitung der Evidence-autorenden Agents), damit Sibling-Edits an geteilten Dateien die gespeicherte Evidence nicht veralten lassen (H6)"
-    status: pending
+    status: done
   - id: e7
     text: "Epic-decompose autort ≥1 epic-eigene Integrations-Acceptance, wenn ein Epic >1 Task mit Abhängigkeits-Kante hat (Roll-up prüft das Ganze, nicht nur die Summe); Outcome-ACs bleiben mechanismus-frei (kein textContent/innerHTML im Stub-AC); Roll-up nutzt das Provenienz-Format <task>/<phase> — delivered (H7/H8)"
     status: done
@@ -186,7 +186,7 @@ tasks:
       (im Lauf rutschten core-lists Zeilennummern ~20 Zeilen). Anleitung in den
       Agent-Files + agent-contract; Zeilennummer als optionaler Zusatz erlaubt, aber
       der Funktions-/Symbol-Anker führt. + Grep-Test.
-    status: pending
+    status: done
     depends_on: []
   - slug: restore-anchored-test-scaffold
     goal: |

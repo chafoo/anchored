@@ -337,6 +337,21 @@ test('G3/G5: explicit epic each:task loop + no stale epic transition words', () 
   }
 })
 
+// H6 — evidence is anchored on the symbol/function, not raw line numbers, so a
+// sibling task editing the shared file later doesn't rot the stored evidence.
+test('H6: evidence-author guidance prefers symbol anchors over line numbers', () => {
+  const impl = readFileSync(
+    new URL('../../../plugin/agents/build-implement.md', import.meta.url),
+    'utf8',
+  )
+  expect(impl).toMatch(/SYMBOL, not raw line numbers/i)
+  const contract = readFileSync(
+    new URL('../../../plugin/references/agent-contract.md', import.meta.url),
+    'utf8',
+  )
+  expect(contract).toMatch(/Symbol-Anker/i)
+})
+
 // H7/H8 — epic-decompose authors an epic-level integration AC + keeps outcome-ACs
 // mechanism-free; epic-roll-up uses the provenance form + validates epic.acceptance.
 test('H7/H8: epic-decompose + epic-roll-up quality', () => {

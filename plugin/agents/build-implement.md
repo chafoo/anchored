@@ -24,11 +24,16 @@ quality gates the AC names (test/lint/typecheck) so you have a real result to ci
 
 ## Write (self-write via CLI) — evidence ONLY
 For each AC, write the concrete evidence; `add-phase-evidence` flips THAT AC to
-`done` atomically. NEVER mark an AC done without concrete evidence (file:line /
-test output) — the substrate rejects `ac→done` without evidence anyway, so do not
-even attempt it:
+`done` atomically. NEVER mark an AC done without concrete evidence — the substrate
+rejects `ac→done` without evidence anyway, so do not even attempt it.
+
+**Anchor evidence on the SYMBOL, not raw line numbers (H6).** Lead with the
+function / symbol / file the proof lives in (`saveTasks() in app.js`,
+`renderList()`, `index.html #clear-completed`) plus what proves it — a raw line
+number rots the moment a sibling task edits the same file later, so a line number
+is at most a trailing hint, never the anchor:
 ```bash
-anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "src/x.ts:42 — <what proves it> (test grün)"
+anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "saveTasks() in app.js writes tasks:items on every mutation — verified by test (line ~110)"
 ```
 **The phase status is NOT yours to flip.** Write evidence per AC and STOP — do
 **not** run `set-child-status … done`. A phase only reaches `done` when the

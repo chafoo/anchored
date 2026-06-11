@@ -30,6 +30,10 @@ adressiert ein phase-level-Agent seine Schreibvorgänge über **`<task-slug>
 <phase-slug>`**, nie als eigenständigen Node:
 
 - Evidence pro Phasen-AC → `anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "<beweis>"`
+  — **Evidence am Symbol verankern, nicht an rohen Zeilennummern (H6):** führe mit
+  der Funktion/dem Symbol/der Datei (`saveTasks() in app.js`), wo der Beweis lebt;
+  eine Zeilennummer veraltet, sobald ein Geschwister-Task dieselbe Datei editiert —
+  höchstens als nachgestellter Hinweis, nie als Anker.
 - Phasen-Status setzen → `anchored node set-child-status <task-slug> <phase-slug> <status>`
 
 Ein **node-level**-Agent (task/epic, z. B. wrap-summarize, epic-roll-up) adressiert
@@ -46,7 +50,7 @@ Ergebnis direkt via CLI. Pro Agent-Rolle:
 | plan-discover / plan-rules-scan / refine-* / wrap-review / validators | `anchored node append-log <task-slug> <stage> <kind> "<note>"` |
 | plan-decompose | `anchored node add-phase <task-slug> <phase-slug> "<name>"` · `anchored node add-ac <task-slug> <phase-slug> "<text>"` (id auto a1,a2,…) |
 | epic-scaffold | `anchored node add-child <epic-slug> <task-stub-slug>` |
-| build-implement | `anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "<beweis>"` · `anchored node set-child-status <task-slug> <phase-slug> done` |
+| build-implement | `anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "<beweis>"` (evidence-only — Symbol-Anker; flippt NIE den Phasen-Status selbst, G4) |
 | build-task-validate / build-code-validate | pure inspector (kein Code-Write); REJECT einer AC via `anchored node set-failures <task-slug> <phase-slug> <ac-id> "<why>"` (flippt sie pending → Re-Do-Loop) + Rollup via `append-log … build learning` |
 | wrap-summarize | `anchored node set-field <node-slug> context.wrap "<TL;DR>"` (dotted-path → nested) |
 | epic-roll-up | `anchored node append-log <epic-slug> wrap <kind> "<DoD/Retro>"` · `anchored node set-status <epic-slug> done` |
