@@ -111,6 +111,49 @@ While `anchored node next-child <slug>` returns a child (else done):
    place a phase reaches `done` — the build-implement agent is evidence-only and
    never flips the phase status (G4: that flip must come AFTER the gates, never
    before, or the gates would inspect an already-`done` phase).
+5. **Run the phase's trailing custom steps (commit, etc.)** — only now, on a green
+   phase. See "Custom run/use steps" below. A `kind: 'run'` step that fails is a
+   real failure: surface it and stop the loop (do not silently swallow a failed
+   commit), it does not re-open the already-`done` phase.
+
+## Custom run/use steps (the config's own steps — commit, push, coverage …)
+
+`anchored steps <tier> <stage>` returns the FULL config-driven plan, not just the
+known workers. Besides `kind: 'worker'` (spawn the plugin agent) and `kind: 'loop'`
+(the recursion edge), a step can be:
+
+- **`kind: 'run'`** — a shell command from the user's `anchored.yml` (e.g. a
+  per-phase `commit`, a `push`, a `coverage` gate). **YOU execute it via Bash**, in
+  declaration order, at the point it sits in the plan. For `phase.build` the
+  trailing run-steps fire in step 5 above (after the gates + advance, on a green
+  phase); a run-step positioned *before* a worker runs before that worker.
+- **`kind: 'use'`** — spawn the named subagent (or, with `type: skill`, invoke the
+  skill) with the step's `instructions` + the same phase/task context the workers get.
+
+**Variable contract (every `run` step gets these as environment variables).** The
+config author writes `${TASK_SLUG}` / `${PHASE_SLUG}` etc.; you make them real env
+vars so the shell expands them — never string-substitute by hand:
+
+| Variable | Value | Available in |
+|---|---|---|
+| `TASK_SLUG` | the task-file being built (an epic child → the child's slug) | all build run-steps |
+| `PHASE_SLUG` | the phase just built | `phase.build` run-steps |
+| `PHASE_NAME` | the phase's plain-text name | `phase.build` run-steps |
+| `EPIC_SLUG` | the parent epic slug, or empty when not in an epic | all build run-steps |
+
+Run it as, e.g.:
+```bash
+TASK_SLUG='core-list' PHASE_SLUG='persistence' PHASE_NAME='Local persistence' EPIC_SLUG='' bash -c "$STEP_RUN"
+```
+where `$STEP_RUN` is the step's `run` string verbatim. **Per-phase commits don't
+leak into chat** — narrate the phase outcome ("Phase 2 grün, committed."), not the
+git plumbing (see communication-style.md).
+
+> **Fan-out caveat:** the per-task git branch (`task/<slug>`) assumes a single
+> working tree. The sequential loop is safe; the **task-level parallel fan-out**
+> (epic, q8) would have N children `git switch`-ing one shared tree at once — only
+> fan out per-task-branch builds under git **worktree isolation**, else fall back to
+> the sequential loop for a repo using a branch-per-task VCS strategy.
 
 ## Epic task-level fan-out (parallel independent children, q8)
 

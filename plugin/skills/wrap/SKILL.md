@@ -40,6 +40,27 @@ step-plan + node ops and spawns the wrap agents itself via the **Task tool**
 - **roll-up → epic-roll-up** (epic) — Definition-of-Done against `epic.acceptance`
   + a retro; self-writes via `append-log`, then advances the epic.
 
+## Custom run/use steps (the config's own steps — merge, tag, push …)
+
+The wrap plan can carry custom steps beyond the workers — e.g. a task-tier `merge`
+that lands the finished `task/<slug>` branch on `develop` (a branch-per-task VCS
+strategy). A `kind: 'run'` step is **yours to execute via Bash**, in declaration
+order, at its position in the plan (a trailing `merge` runs after review +
+summarize, just before the `done` flip — so the branch only merges once the task
+actually finished). A `kind: 'use'` step spawns the named subagent/skill.
+
+**Variable contract** — every `run` step gets these as real environment variables
+(the config author writes `${TASK_SLUG}`; you export it, never string-substitute):
+
+| Variable | Value |
+|---|---|
+| `TASK_SLUG` | the node being wrapped (the task-file / an epic child's slug) |
+| `EPIC_SLUG` | the parent epic slug, or empty when not in an epic |
+
+A failed run-step (e.g. a merge conflict) is a real failure: surface it, stay
+pre-`done`, do **not** flip the status. Keep the git plumbing out of chat — report
+the human outcome ("core-list ist auf develop gemerged."), not the commands.
+
 ## Failure-handling
 
 If an agent errors, surface it and stay pre-`done` (do not flip). The node only

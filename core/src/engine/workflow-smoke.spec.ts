@@ -413,3 +413,35 @@ test('G4: build-implement agent is evidence-only — never flips the phase statu
   // it does NOT tell the agent to advance the phase to done via set-child-status
   expect(agent).not.toMatch(/set-child-status\s+<task-slug>\s+<phase-slug>\s+done/)
 })
+
+// ORCHESTRATOR RUN-STEPS — the build/wrap SKILLs must dispatch the config's own
+// custom run/use steps (e.g. a per-phase commit, a task-wrap merge), not just the
+// named workers; and pass the variable contract as real env vars. (Ticket:
+// orchestrator-run-steps — the VCS-strategy enabler.)
+test('orchestrator dispatches custom run/use steps with the variable contract', () => {
+  const build = readFileSync(
+    new URL('../../../plugin/skills/build/SKILL.md', import.meta.url),
+    'utf8',
+  )
+  // build documents generic run/use dispatch + the env-var contract
+  expect(build).toContain('Custom run/use steps')
+  expect(build).toMatch(/kind:\s*'run'/)
+  for (const v of ['TASK_SLUG', 'PHASE_SLUG', 'PHASE_NAME', 'EPIC_SLUG']) {
+    expect(build).toContain(v)
+  }
+  // explicit "real env vars, never hand-substitute" guidance
+  expect(build.toLowerCase()).toContain('environment variable')
+  expect(build).toMatch(/never string-substitute/i)
+  // the fan-out / branch-per-task worktree caveat is documented
+  expect(build.toLowerCase()).toContain('worktree')
+
+  const wrap = readFileSync(
+    new URL('../../../plugin/skills/wrap/SKILL.md', import.meta.url),
+    'utf8',
+  )
+  expect(wrap).toContain('Custom run/use steps')
+  expect(wrap).toMatch(/kind:\s*'run'/)
+  expect(wrap).toContain('TASK_SLUG')
+  // a failed run-step (merge conflict) stays pre-done, never flips status
+  expect(wrap.toLowerCase()).toContain('pre-`done`')
+})
