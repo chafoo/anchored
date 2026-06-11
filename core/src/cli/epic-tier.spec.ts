@@ -80,7 +80,7 @@ test('create stamps created via the clock seam; node list-phases returns phases'
   expect((last().result!.node as { created?: string }).created).toBe('2026-06-11')
   await cli.run(['node', 'add-phase', 'a-task', 'p1', 'P1'])
   await cli.run(['node', 'list-phases', 'a-task'])
-  expect((last().result as { slug: string }[]).map((p) => p.slug)).toEqual(['p1'])
+  expect((last().result as unknown as { slug: string }[]).map((p) => p.slug)).toEqual(['p1'])
 })
 
 // F14 — slug generation never leaves a trailing dash, even for a long title cut mid-word
