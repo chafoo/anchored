@@ -25,4 +25,4 @@ flowchart TB
 | [tier-runner](tier-runner.md) | Fährt die vier Stages eines Knotens. Eine Funktion für alle Tiers. |
 | [stage-runner](stage-runner.md) | Fährt die `steps` einer Stage in Deklarations-Reihenfolge; hält bei Fehler. |
 | [step-runner](step-runner.md) | Dispatch eines Steps: `run` → Bash, `use` → Worker, `each` → Loop. |
-| scope/ | Helfer: [run-step](scope/run-step.md), [worker-step](scope/worker-step.md), [loop-step](scope/loop-step.md), [resolve-steps](scope/resolve-steps.md). |
+| scope/ | Helfer: [run-step](scope/run-step.md), [worker-step](scope/worker-step.md), [loop-step](scope/loop-step.md), [loop-workflow](scope/loop-workflow.md), [worker-dispatch](scope/worker-dispatch.md), [resolve-steps](scope/resolve-steps.md). |

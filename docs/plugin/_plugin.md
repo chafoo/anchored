@@ -21,12 +21,16 @@ mindmap
       build-
       wrap-
       epic-
+    references
+      config.md
+      default.yml
 ```
 
 | Bereich | Verantwortung (Scope-Grenze) |
 |---|---|
 | [skills](skills/_skills.md) | Die vier Slash-Commands `/a:plan` `/a:refine` `/a:build` `/a:wrap`. Orchestrieren eine Stage, rufen `anchored …` via Bash. |
 | [agents](agents/_agents.md) | Die AI-Worker in Stage-Präfix-Buckets. Distinkte Worker; geteilte sind tier-parametrisiert. Schreiben via CLI, **nie** MCP. Nie `plan`/`explore` benennen (reservierte Agent-Typen). |
+| [references](references/_references.md) | Mitgelieferte Referenz-Artefakte: `anchored.yml`-Format, die Default-Config (Framework-Basis) + Beispiel-Nodes pro Tier. Nachschlage-Material, kein Code. |
 
 > **YAGNI**: Detail in [docs/design/](../design/). Skill-/Agent-Seiten entstehen
 > mit dem Code.

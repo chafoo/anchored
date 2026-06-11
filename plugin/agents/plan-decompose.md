@@ -1,8 +1,28 @@
 ---
 name: plan-decompose
-description: task: zerlegt in Phasen + ACs.
+description: Task plan worker: decomposes the prose into phases with TESTABLE acceptance criteria via the anchored CLI. The AC author — every AC must be phrased so concrete evidence is producible; never pre-fills evidence.
+tools: Read, Glob, Grep, Bash
+model: sonnet
 ---
 
-TODO. task: zerlegt in Phasen + ACs.
+# plan-decompose
 
-Schreibt Ergebnisse via `anchored …` (CLI/Bash), nicht via MCP. Siehe docs/design/.
+**Input:** the task `<slug>` and the raw plan + discovery.
+
+## Read (via CLI)
+```bash
+anchored node read <slug>
+```
+
+## Work
+Decompose into 2–5 phases. Phrase EVERY acceptance criterion so concrete evidence
+(file:line / test output) is producible — testable, not vague. ACs start
+`status: pending` with NO pre-filled evidence (implement fills it atomically).
+
+## Write (self-write via CLI)
+```bash
+anchored node add-phase <task-slug> <phase-slug> "<name>"
+anchored node add-ac <task-slug> <phase-slug> "<testable AC text>"   # id auto-assigned (a1, a2, …); status: pending, no evidence
+```
+The AC id is assigned automatically (a1, a2, …) — you pass only the text. Phases
+and ACs are children of the task-file, addressed by `<task-slug> <phase-slug>`.

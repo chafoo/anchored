@@ -1,4 +1,4 @@
-← [validate](_validate.md)
+← [state](_state.md)
 
 # invariants
 

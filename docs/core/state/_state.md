@@ -1,6 +1,6 @@
 ← [core](../_core.md)
 
-# validate
+# state
 
 Die **Substrat-Mechanik**, die Integrität erzwingt: die forward-only
 State-Machine + die harte Invariante. Beides greift in den mutierenden

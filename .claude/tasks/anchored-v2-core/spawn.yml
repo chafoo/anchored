@@ -1,0 +1,234 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: anchored-v2-core/spawn
+title: Ausführungs-Substrat (spawn — headless claude -p)
+status: done
+created: 2026-06-10
+context:
+  plan: |
+    SCOPE: Die injizierte AI-Naht, hinter der die Engine Worker triggert.
+
+    Liefert (BEIDE Modi vollumfänglich — q2, kein MVP):
+      spawn.ts — die injizierte Naht mit klarem input/output-Vertrag, fakebar.
+        Modus A: headless `claude -p`, Granularität PRO Task-File (frische Instanz),
+                 Phasen IN-PROCESS → Verschachtelung ~2 gedeckelt. CI/headless, Isolation.
+        Modus B: in-process Subagent-Modus — Live-Progress, session-gebunden, beobachtbar.
+        Per Config/Flag wählbar; die Runner sehen nur die Naht (factory-functions).
+        WORKFLOW-tauglich: die Naht muss eine Unit auch als Claude-Code-Workflow-
+        agent() starten können (Unit schreibt selbst via CLI) → Orchestrierung Task workflow-mode.
+
+    DESIGN: engine-architecture.md ("deterministische Engine vs. AI-Effekte"; spawn
+    als pluggable Dep) · fractal-redesign-notes.md (Item 2: headless claude -p pro
+    Task-File, Phasen in-process; in-process Subagent-Modus später als zweite Impl
+    nachrüstbar ohne Runner-Anfassen) · file-structure.md (spawn.ts).
+    V1-REF (Logik-Vorlage, neu im Factory-Pattern — kein 1:1-Port): kein direktes Äquivalent (v1 = MCP-getrieben). Neu, aber schmal.
+
+    ENTSCHIEDEN (q2): beide Modi. Die Naht muss headless UND in-process tragen.
+
+    GROBE PHASEN: (1) spawn-Vertrag (input/output) + Fake · (2) Modus A headless
+    `claude -p` Impl · (3) Modus B in-process Subagent Impl · (4) Modus-Wahl per
+    Config/Flag · (5) Tests mit Fake-spawn + je ein Smoke pro echtem Modus.
+  refine: |
+    Detail-Entscheidungen (source: ai): (1) ConfigSchema brauchte einen globalen `spawn`-Block (mode: headless|subagent, model) — additiv ergänzt in schema/config.ts; Default-Config + alle config/merge-Tests bleiben grün. (2) Modus-Auflösung Env (ANCHORED_SPAWN_MODE) > cfg.spawn.mode > default(headless). (3) Beide Modi hinter EINER Naht: headless via deps.exec (child_process-Wrapper beim wiring), subagent via deps.agent (CC agent()); spawn.ts importiert KEIN child_process. (4) Real-Smokes (headless a4, subagent a5) als test.skip mit dokumentiertem Grund (rekursives claude -p / kein Session-agent in bun test) — Seed-Phase-5 erlaubt explizit skipped.
+  build: |
+    1 Modul: spawn.ts (createSpawn + createFakeSpawn). Beide Modi (headless deps.exec / subagent deps.agent) hinter identischem input/output-Vertrag; Modus aus Env>cfg>default; Workflow-executor-Hook durchgereicht. Zusätzlich config.ts globaler spawn-Block. 11 aktive + 2 skip Tests. Alle 5 Gates grün, spawn.ts ohne child_process/Bun.*.
+  wrap: |
+    AI-Naht steht vollumfänglich (beide Modi, fakebar, modus-blind für die Runner, Workflow-Start-Hook). createFakeSpawn ist der Test-Double für die engine-Tests. Bereit als deps.spawn für engine. Real-Modus-Verifikation ist opt-in/in-Session (dokumentiert).
+questions: []
+log:
+  - at: contract-fake
+    kind: decision
+    note: "spawn-Naht: createSpawn(cfg,deps)→{run}; diskriminiertes SpawnResult; createFakeSpawn als Test-Double (calls[]). Kein child_process-Import — Effekte injiziert (exec/agent/env)."
+  - at: subagent-inprocess
+    kind: decision
+    note: ConfigSchema globaler spawn-Block ergänzt (mode/model) — cross-task additive Korrektur, Default-Config bleibt valide. Workflow-executor-Hook durchgereicht für Task workflow-mode.
+  - at: mode-select-gates
+    kind: learning
+    note: Real-Smokes opt-in/skipped (kein claude-Auth-Rekursion in CI, kein Session-agent in bun test) — Seed erlaubt explizit skipped mit Grund.
+phases:
+  - name: spawn-Vertrag + Fake (createSpawn-Naht)
+    slug: contract-fake
+    status: done
+    context: |
+      Die injizierte AI-Naht als Factory-Function `createSpawn(cfg, deps)` in
+      core/src/spawn.ts, die ein `{ run(input) → output }` zurückgibt — exakt der
+      Vertrag, den worker-step + loop-step (Task engine) später aufrufen. KEINE echte
+      AI hier: nur Shape + Dispatch-Gerüst + ein in-Memory-Fake.
+
+      input-Vertrag (mindestens): { tier, slug, stage, instructions, cwd?,
+      context? } — genug, dass die Engine sagen kann "fahre DIESEN Knoten/Worker".
+      output-Vertrag: ein diskriminiertes Result { ok: boolean, kind, evidence?,
+      stdout?, error? } — strukturiert, maschinen-parsebar (CLI-only-Transport:
+      die Naht produziert Daten, kein freier Text).
+
+      Modus-Wahl wird als reines `cfg`-Feld (z.B. cfg.spawn.mode: headless|subagent)
+      angelegt + im Dispatch gelesen; die konkreten Impls kommen in Phase 2/3.
+      `createFakeSpawn(scripted)` als injizierbarer Test-Double: nimmt vorgescriptete
+      Antworten, zeichnet die empfangenen inputs auf (calls[]) — damit die Engine in
+      Task engine OHNE echtes CC testbar ist (factory-functions: Deps fakebar).
+
+      Reine Factory, keine Klassen, keine Top-Level-Seiteneffekte, kein direkter
+      child_process-Import auf Modul-Ebene (Effekt-Deps injiziert).
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: createSpawn(cfg,deps)→{run}; Deps injiziert; Fake-Double; keine Klassen/Singletons
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: spawn = AI-Effekt hinter der Naht, nie direkt im Kontrollfluss
+      - path: .claude/rules/cli-only-transport.md
+        why: output strukturiert/JSON-artig, nicht freier Text
+    acceptance_criteria:
+      - id: a1
+        text: "core/src/spawn.ts exportiert `createSpawn(cfg, deps)`, das ein Objekt mit async `run(input)` zurückgibt; input-Typ trägt mind. tier/slug/stage/instructions, output ist ein diskriminiertes { ok, kind, evidence?, error? }-Result. Typen sind exportiert. Beweis: spawn.ts:Zeile der Signatur + Typ-Definitionen; `tsc --noEmit` grün."
+        status: done
+        evidence:
+          - "core/src/spawn.ts: createSpawn(cfg,deps)→{run(input)}; SpawnInput (tier/slug/stage/instructions/cwd?/context?/executor?) + diskriminiertes SpawnResult {ok,kind,evidence?,stdout?,error?} exportiert; tsc --noEmit grün"
+      - id: a2
+        text: "`createFakeSpawn(scripted)` existiert, ist injizierbar als deps.spawn, gibt die vorgescripteten Results zurück und zeichnet alle empfangenen inputs in `calls[]` auf. Beweis: spawn.ts:Zeile + ein bun-Test der `run()` über den Fake fährt, scripted-Output asserted UND `calls[0].instructions` asserted (grünes Test-Output)."
+        status: done
+        evidence:
+          - src/spawn.spec.ts 'createFakeSpawn returns scripted results and records calls' — fake.spawn.run → scripted evidence; calls[0].instructions asserted (grün)
+      - id: a3
+        text: "Der Modus wird allein aus `cfg` (cfg.spawn.mode) gelesen; ein unbekannter/fehlender Modus führt zu einem klaren Fehler statt stillem Default. Beweis: spawn.ts:Zeile des Dispatch + Test, der bei unbekanntem mode einen Fehler/`ok:false` asserted (grün)."
+        status: done
+        evidence:
+          - src/spawn.spec.ts 'unknown spawn mode yields ok:false config-error' — mode 'bogus' → {ok:false, kind:'config-error'}, kein stiller Default (grün)
+      - id: a4
+        text: "Kein Top-Level-Seiteneffekt + kein Modul-Level child_process-Import: spawn.ts importiert node:child_process NICHT auf Modul-Ebene als sofort genutzten Effekt (nur injiziert/lazy). Beweis: grep-Ausgabe über spawn.ts (keine top-level Effekt-Imports) + lint grün."
+        status: done
+        evidence:
+          - grep -nE 'child_process|Bun\.' src/spawn.ts → nur Kommentare (kein Modul-Import, kein Top-Level-Effekt); lint grün
+  - name: Modus A — headless `claude -p` (pro Task-File, Phasen in-process)
+    slug: headless-claude-p
+    status: done
+    context: |
+      Die headless-Implementierung hinter der Naht: ruft `claude -p` als frische
+      Instanz PRO Task-File auf (Granularität = Task-File, nicht Phase), Phasen
+      laufen IN-PROCESS innerhalb dieser Instanz → Verschachtelung ~2 gedeckelt
+      (Item 2, fractal-redesign-notes).
+
+      Der eigentliche Prozess-Spawn geht über eine injizierte `exec`/`runner`-Dep
+      (z.B. deps.exec → node:child_process.spawn-Wrapper), NICHT direkt importiert
+      → fakebar. Liest die nötigen Flags/Args aus cfg (Modell/print-Format), baut
+      das Argv deterministisch, reicht `instructions` + cwd rein, parst das
+      strukturierte Ergebnis zu einem output-Result (Phase-1-Vertrag).
+
+      Robustheit (deterministischer-Code-Teil): non-zero exit / Timeout / leeres
+      Ergebnis → sauberes { ok:false, error } statt Throw-Leak. Headless-Auth ist
+      Laufzeit-Vorbedingung (kein interaktiver Login) — wird als Precondition
+      dokumentiert/geprüft, nicht zur Laufzeit gelöst.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: exec/runner als injizierte Dep, Modus-Impl fakebar getestet
+      - path: .claude/rules/tooling-quality-gates.md
+        why: node:child_process, keine Bun.*-APIs im Produktiv-Code (Node-kompatibel)
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Fehlerbehandlung = deterministischer Code-Teil, sauberes Result
+    acceptance_criteria:
+      - id: a1
+        text: "Modus headless baut das `claude -p`-Argv deterministisch aus input.instructions + cfg und ruft die injizierte exec-Dep damit auf (kein direkter child_process-Aufruf). Beweis: spawn.ts:Zeile des Argv-Baus + Test mit Fake-exec, der das gebaute Argv (enthält `-p`, instructions, cwd) asserted (grün)."
+        status: done
+        evidence:
+          - src/spawn.spec.ts 'headless builds claude -p argv and passes cwd' — argv enthält -p, instructions 'do X', --model; opts.cwd='/proj' an injizierte exec-Dep (kein direkter child_process) (grün)
+      - id: a2
+        text: "Granularität ist pro Task-File: ein headless-run entspricht EINER claude-p-Instanz pro Task, Phasen werden in-process geführt (kein zweiter Prozess-Spawn pro Phase). Beweis: Test, der für eine Task mit ≥2 Phasen genau EINEN exec-Call über den Fake asserted (grün)."
+        status: done
+        evidence:
+          - src/spawn.spec.ts 'one exec per task' — eine Task mit 3-Phasen-instructions → genau EIN exec-Call (Phasen in-process) (grün)
+      - id: a3
+        text: "non-zero exit / Timeout / leere stdout des Subprozesses werden zu `{ ok:false, error }` statt unhandled throw. Beweis: Test mit Fake-exec, der exit≠0 simuliert und `ok:false` + gesetzte `error` asserted (grün)."
+        status: done
+        evidence:
+          - src/spawn.spec.ts 'non-zero exit / empty stdout yields ok:false' — exit 1 → {ok:false,kind:'exec-failed'}; leere stdout → kind:'empty-output' (kein throw-leak) (grün)
+      - id: a4
+        text: "Ein echter Smoke (opt-in, hinter Env-Gate/skippbar wenn claude-Auth fehlt) ruft echtes `claude -p` mit einer trivialen instruction und asserted ein wohlgeformtes output-Result. Beweis: Smoke-Test-Datei:Zeile + Test-Output (grün ODER explizit als skipped markiert mit Grund)."
+        status: done
+        evidence:
+          - src/spawn.spec.ts test.skip 'headless real smoke' — opt-in, EXPLIZIT SKIPPED mit Grund (vermeidet rekursives claude -p / Kosten in CI; manuell via ANCHORED_SPAWN_SMOKE=1 + echtem exec-Wrapper)
+  - name: Modus B — in-process Subagent (Live-Progress, session-gebunden)
+    slug: subagent-inprocess
+    status: done
+    context: |
+      Die zweite Implementierung hinter DERSELBEN Naht: in-process Subagent-Modus —
+      session-gebunden, beobachtbar (Live-Progress), kein frischer Prozess. Wird über
+      eine injizierte `agent`-Dep getriggert (die in der Main-Session das CC-Task/
+      agent()-Tool repräsentiert) → fakebar; die Runner sehen weiterhin nur die Naht
+      (worker-step/loop-step rufen `spawn.run`, nicht den Modus).
+
+      Beweis-Ziel der Naht-Stabilität: das Umschalten headless↔subagent passiert NUR
+      über cfg.spawn.mode; weder worker-step noch der input/output-Vertrag ändern sich
+      (Item 2: zweite Impl nachrüstbar ohne Runner-Anfassen).
+
+      WORKFLOW-Tauglichkeit (Vorbereitung Task engine/13): die Naht muss eine Unit auch als
+      Claude-Code-Workflow-`agent()` starten können, wobei die Unit SELBST via CLI ihr
+      Task-File schreibt (self-write). Hier wird der Hook/die Argument-Form dafür gelegt
+      (z.B. executor-/mode-Durchreichung), die eigentliche Fan-out-Orchestrierung bleibt
+      Task workflow-mode.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: agent als injizierte Dep, subagent-Impl fakebar; Naht-Vertrag identisch zu headless
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: spawn-Naht austauschbar ohne Runner-Anfassen; AI = Effekt hinter der Naht
+      - path: .claude/rules/cli-only-transport.md
+        why: Workflow-Unit schreibt self via anchored-CLI; output strukturiert
+    acceptance_criteria:
+      - id: a1
+        text: "Modus subagent triggert die injizierte agent-Dep mit input.instructions/context und mappt deren Ergebnis auf das gemeinsame output-Result (Phase-1-Vertrag, identische Shape wie headless). Beweis: spawn.ts:Zeile + Test mit Fake-agent, der den weitergereichten input UND das gemappte output-Result asserted (grün)."
+        status: done
+        evidence:
+          - src/spawn.spec.ts 'subagent triggers agent dep and maps to shared shape' — agent mit {instructions,context} getriggert, Ergebnis → {ok,kind:'subagent',evidence} (grün)
+      - id: a2
+        text: "Identischer input/output-Vertrag für beide Modi: ein Test fährt DASSELBE input einmal mit mode=headless (Fake-exec) und einmal mode=subagent (Fake-agent) und asserted, dass beide Output-Results dieselbe Shape (Keys/Typen) erfüllen. Beweis: Test-Datei:Zeile + grünes Output."
+        status: done
+        evidence:
+          - src/spawn.spec.ts 'both modes share result shape' — headless + subagent liefern dieselbe SpawnResult-Shape (ok:boolean, kind:string) (grün)
+      - id: a3
+        text: "worker-step-Aufrufer-Sicht ist modus-blind: das Umschalten geschieht ausschließlich über cfg.spawn.mode, die `run(input)`-Aufrufstelle ändert sich nicht. Beweis: Test, der mit unverändertem `run(input)`-Aufruf nur via cfg den Modus wechselt und in beiden Fällen das passende Fake (exec vs. agent) getroffen wird (grün)."
+        status: done
+        evidence:
+          - src/spawn.spec.ts 'mode resolution; run(input) unchanged' — unveränderter run(input)-Aufruf, nur cfg wechselt → headless trifft exec, subagent trifft agent (modus-blind) (grün)
+      - id: a4
+        text: "Workflow-Start-Hook vorhanden: die Naht akzeptiert/reicht eine executor/workflow-Kennung durch, sodass eine Unit als Workflow-agent() mit self-write-via-CLI startbar ist (Orchestrierung bleibt Task workflow-mode). Beweis: spawn.ts:Zeile des durchgereichten Felds + Test, der die Weitergabe an die agent-Dep asserted (grün)."
+        status: done
+        evidence:
+          - src/spawn.spec.ts 'subagent passes executor through (workflow hook)' — input.executor='workflow' wird an die agent-Dep durchgereicht (Workflow-Start-Hook; Fan-out-Orchestrierung bleibt Task workflow-mode) (grün)
+      - id: a5
+        text: "Real-Modus-Abdeckung für subagent (Seed-Phase 5: je ein Smoke pro echtem Modus): da das CC-agent()/Task-Tool nur in einer laufenden Claude-Code-Session existiert (nicht in standalone `bun test`), gibt es einen opt-in/in-Session-Smoke ODER — wenn nicht ausführbar — eine ausführbare Assertion, die den subagent-Pfad gegen die ECHTE agent-Dep-Signatur (nicht nur Fake) verifiziert; in headless/CI explizit skippbar mit dokumentiertem Grund. Beweis: Smoke-/Verify-Datei:Zeile + Test-Output (grün ODER explizit skipped mit Grund, dass kein Session-agent verfügbar ist)."
+        status: done
+        evidence:
+          - "src/spawn.spec.ts test.skip 'subagent real smoke' — EXPLIZIT SKIPPED mit Grund: CC agent() existiert nur in laufender Session, nicht in standalone bun test"
+  - name: Modus-Wahl + Quality-Gates grün
+    slug: mode-select-gates
+    status: done
+    context: |
+      Die Modus-Auswahl final verdrahten: cfg.spawn.mode (aus der gemergten
+      effectiveConfig, Task config-bootstrap) wählt headless|subagent; eine optionale Flag-/Env-
+      Override-Schicht (z.B. ANCHORED_SPAWN_MODE) erlaubt das Umstellen ohne Config-
+      Edit (CI/headless vs. interaktiv). Default = headless `claude -p` (Item 2).
+
+      Abschluss-Gate für die ganze Naht: alle fünf Paket-Gates für core/ grün
+      (lint, format, typecheck, test, build) — Evidence-Honesty auf Paket-Ebene.
+      Die Naht ist damit vollumfänglich (beide Modi, fakebar, modus-blind für die
+      Runner), bereit als deps.spawn für Task engine.
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: alle 5 Gates grün vor done; Node-kompatibel; bun als dev-Runner
+      - path: .claude/rules/factory-functions.md
+        why: Modus-Wahl liest cfg/Override, bleibt fakebar
+      - path: .claude/rules/cli-only-transport.md
+        why: Env/Flag-Override CI-/headless-tauglich
+    acceptance_criteria:
+      - id: a1
+        text: "cfg.spawn.mode wählt die Impl, mit Override-Präzedenz Flag/Env > cfg > Default(headless). Beweis: spawn.ts:Zeile der Auflösung + Tests, die je Quelle (Default ohne cfg, cfg gesetzt, Env-Override schlägt cfg) den erwarteten Modus asserten (grün)."
+        status: done
+        evidence:
+          - "src/spawn.spec.ts 'mode resolution: env > cfg > default(headless)' — kein cfg → headless; cfg.spawn.mode=subagent → agent; Env ANCHORED_SPAWN_MODE schlägt cfg (grün)"
+      - id: a2
+        text: "Produktiv-Code ist Node-kompatibel: keine `Bun.*`-API im spawn-Pfad, nur node:*-Module (injiziert). Beweis: grep über core/src/spawn.ts ohne `Bun.`-Treffer + typecheck grün."
+        status: done
+        evidence:
+          - grep -E 'Bun\.' src/spawn.ts → nur Kommentar; nur node:*/injizierte Deps; typecheck grün (Node-kompatibel)
+      - id: a3
+        text: "Alle fünf core/-Quality-Gates grün: lint, format-check, `tsc --noEmit`, `bun test`, build. Beweis: jeweils das Befehls-Output je Gate (5 grüne Läufe), aufgenommen als evidence."
+        status: done
+        evidence:
+          - "5 Gates exit 0: eslint, prettier --check, tsc --noEmit, bun test (67 pass/2 skip/0 fail), bun build"

@@ -17,6 +17,8 @@ flowchart LR
 | Unit | Verantwortung |
 |---|---|
 | [node-ops](node-ops.md) | Die Op-Fläche: create/read/status/children/questions/log/evidence — generisch über `tierSchema`. |
+| [facade](facade.md) | Die slug-basierte `NodeOpsFacade` der **CLI**: `slug→verb`, read→apply→persist. Hält die await-Glue. |
+| [engine-ops](engine-ops.md) | Die `OpsLike` der **Engine**: re-read-vor-write, damit Worker-Evidence nie überschrieben wird. |
 | [children](scope/children.md) | add/move/**next-child** (DAG-Auswahl des nächsten Kindes). |
 | [questions](scope/questions.md) | add/resolve question (geteilte AC/Question-Form). |
 | [log](scope/log.md) | append-only Log. |

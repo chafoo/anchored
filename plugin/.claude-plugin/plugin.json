@@ -1,7 +1,8 @@
 {
   "name": "a",
-  "description": "anchored — fractal lifecycle framework: plan -> refine -> build -> wrap across project/epic/task/phase. CLI-only, no MCP.",
+  "description": "Fractal task lifecycle — plan→refine→build→wrap on every tier (phase/task/epic). CLI-only transport via the `anchored` binary over Bash, no MCP. Slash commands: /a:plan /a:refine /a:build /a:wrap.",
   "version": "0.0.0",
-  "author": { "name": "chafoo" },
-  "comment": "Namespace = name 'a' -> commands /a:plan /a:refine /a:build /a:wrap. Fallback 'anc' falls einbuchstabige Plugin-Namen abgelehnt werden."
+  "author": {
+    "name": "chafoo"
+  }
 }

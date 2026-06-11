@@ -1,0 +1,316 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: anchored-v2-core/engine
+title: fraktale Factory-Engine (tier/stage/step-runner + scope)
+status: done
+created: 2026-06-10
+context:
+  plan: |
+    SCOPE: Das Herzstück — der deterministische Kontrollfluss, der die vier Stages
+    jedes Knotens fährt und an der each-Kante rekursiert.
+
+    Liefert:
+      engine/engine.ts        — createEngine(deps) → run(tier, node).
+      engine/tier-runner.ts   — fährt plan/refine/build/wrap eines Knotens.
+      engine/stage-runner.ts  — fährt die steps einer Stage in Reihenfolge.
+      engine/step-runner.ts   — ein Step: run | use | each (dispatch).
+      engine/scope/run-step.ts    — run: → Bash.
+      engine/scope/worker-step.ts — use: → spawn(agent | claude -p).
+      engine/scope/loop-step.ts   — each: → ZWEI Ausführungs-Modi:
+                                    (default) SEQUENTIAL — pro Kind den Body INTERLEAVED,
+                                      dann advance + stop-check;
+                                    (opt-in) WORKFLOW — fan-out: Kinder parallel als
+                                      Claude-Code-Workflow (≤16), jede Unit do+verify +
+                                      self-write via CLI (→ Task workflow-mode).
+                                    Ruft tier-runner der Kind-Etage (schließt die Rekursion).
+      engine/scope/resolve-steps.ts — Built-in-Defaults aus dem Default-Template
+                                    einsetzen + Reihenfolge normalisieren.
+
+    DESIGN: engine-architecture.md (KOMPLETT — beide Fraktale, Pseudo-TS, loopStep
+    schließt Rekursion, interleaved Body) · fractal-lifecycle.md (Stages pro Tier;
+    stop/retry_limit am loopenden build) · fractal-redesign-notes.md (Item 3 + 5a:
+    each als Step-Attribut, loop-Step mit interleaved Body, Kurzform each:task).
+    V1-REF (Logik-Vorlage, neu im Factory-Pattern — kein 1:1-Port): mcp/src/core/stop-check.ts(190) für die stop-Logik; sonst neu (v1 hatte
+    keine generische Engine).
+
+    KERN: retry_limit/stop am loopenden build; task.build.each:phase UND
+    epic.build.each:task über DENSELBEN Runner (e5).
+
+    GROBE PHASEN: (1) step-runner dispatch run/use · (2) stage- + tier-runner ·
+    (3) loop-step SEQUENTIAL-interleaved + advance/stop + retry · (4) loop-step
+    WORKFLOW-fanout-Modus (Hook/Naht für Task workflow-mode) · (5) resolve-steps Default-Injektion ·
+    (6) Tests mit Fake-spawn über alle drei Tiers + beide Loop-Modi.
+  refine: |
+    Detail-Entscheidungen (source: ai): (1) Alle 5 Phasen in einem Zug gebaut → each/loop voll implementiert (NICHT Phase-1-NOT-IMPLEMENTED-Stub); step.each dispatcht zur echten loopStep (definiert, nicht silent). (2) stopCheck reine Funktion + routeStopVerdict IN loop-step.ts (statt neuer Datei — file-structure-konform); PROCEED dokumentiert via ops.appendLog(kind:decision) statt question.resolve (Build-time-Decision hat kein vorbestehendes Frage-Objekt). (3) Zwei additive Cross-Task-Ergänzungen: config.ts BuildStage.mode (sequential|workflow) + node-ops.setChildStatus (Loop-advance der Parent-Stub-Status) — additiv, alle früheren Tests grün. (4) runChildTier = Rekursions-Hook (engine.run); spawn-Granularität (headless pro Task vs in-process Phase) ist Wiring-Sache (Task integration-dogfood).
+  build: |
+    9 Module: engine/{engine,tier-runner,stage-runner,step-runner} + engine/scope/{run-step,worker-step,loop-step,resolve-steps}. createEngine→tierRunner→stageRunner→stepRunner; loopStep schließt die Rekursion via runChildTier. Beide Loop-Modi (sequential interleaved + workflow fan-out ≤16); stopCheck reine Funktion. 16 neue Tests, zweistufige Rekursion epic→task→phase bewiesen. Plus config.ts BuildStage.mode + node-ops.setChildStatus. Alle 5 Gates grün, keine Klassen, scope ohne child_process.
+  wrap: |
+    Das fraktale Herzstück steht: DERSELBE deterministische Code fährt phase/task/epic; task.build.each:phase UND epic.build.each:task über denselben loopStep (e5 bewiesen). Interleaved Body, retry/stop, Workflow-Naht; AI nur hinter spawn. Bereit für cli (treibt die Engine) + default-template (liefert die Step-Defaults).
+questions: []
+log:
+  - at: step-dispatch
+    kind: decision
+    note: step-runner dispatcht nach FORM (each→loop, run→bash, use|bare-name→worker); keine hardcoded Domänen-Step-Namen. Alle Phasen zusammen gebaut → each voll implementiert.
+  - at: loop-sequential
+    kind: decision
+    note: loopStep schließt Rekursion via runChildTier; interleaved Body; retry bis retry_limit dann Halt; stopCheck reine Funktion + routeStopVerdict (STOP→question high, PROCEED→log decision).
+  - at: loop-workflow
+    kind: decision
+    note: "WORKFLOW-Modus: cfg.build.mode → workflowLoop, ≤16-Batches an injizierte workflow-Naht; SEQUENTIAL default unberührt. config.ts BuildStage.mode + node-ops.setChildStatus additiv ergänzt (cross-task)."
+phases:
+  - name: step-runner dispatch — run/use Worker-Steps
+    slug: step-dispatch
+    status: done
+    context: |
+      Das fraktale Fundament: createStepRunner(cfg, deps) → { run(step, node) }
+      als reine Factory-Function (rules/factory-functions). Dispatch nach
+      Step-Form: step.run → scope/run-step.ts (Bash via injizierte run-Dep),
+      step.use → scope/worker-step.ts (AI-Effekt hinter injizierter spawn-Dep,
+      siehe Task spawn). step.each bleibt in dieser Phase ein NOT-IMPLEMENTED-Stub
+      (Naht für Phase 3). Jede Ebene hat einen klaren input/output-Vertrag
+      (step-config + node → { node', status, evidence }). Keine konkreten
+      Step-NAMEN im Code (keine privilegierten Built-ins —
+      fractal-substrate-integrity); der Runner kennt nur die Step-FORM.
+      run-step + worker-step gehen NIE direkt auf fs/spawn, nur über deps.
+      DESIGN: engine-architecture.md (Pseudo-TS createStepRunner, scope/-Helfer).
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: createStepRunner(cfg,deps)→{run}; Helfer in scope/; spawn/run injiziert + fakebar
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: keine hardcoded Step-Namen; AI nur hinter spawn-Naht
+      - path: .claude/rules/cli-only-transport.md
+        why: run-step ruft Bash/CLI, keine rohen Writes auf Task-Files
+    acceptance_criteria:
+      - id: a1
+        text: core/src/engine/step-runner.ts exportiert createStepRunner(cfg, deps), das ein { run(step, node) } zurückgibt; KEINE class, kein Modul-Level-Singleton/Top-Level-Effekt (grep zeigt nur `export function createStepRunner`).
+        status: done
+        evidence:
+          - "src/engine/step-runner.ts: export function createStepRunner(cfg,deps)→{run(step,node,ctx)}; grep 'class ' src/engine → leer (keine Klasse/Singleton)"
+      - id: a2
+        text: "createStepRunner({ run: fakeRun, spawn: fakeSpawn }) mit step.run dispatcht nach scope/run-step.ts und ruft fakeRun mit dem Bash-Command auf; Test asserted Aufruf-Args + dass fakeSpawn NICHT gerufen wird (engine/step-runner.spec — grün)."
+        status: done
+        evidence:
+          - src/engine/step-runner.spec.ts 'step.run dispatches to bash run, not spawn' — fakeRun mit 'eslint .' gerufen, fakeSpawn NICHT (grün)
+      - id: a3
+        text: "Selbiges für step.use: dispatcht nach scope/worker-step.ts und ruft fakeSpawn (nicht fakeRun) mit dem Worker-Descriptor auf; Test asserted Aufruf-Args + Rückgabe { node', status, evidence } (engine/step-runner.spec — grün)."
+        status: done
+        evidence:
+          - src/engine/step-runner.spec.ts 'step.use dispatches to spawn worker' — fakeSpawn mit instructions='do'; return {node,status:'ok',evidence:['proof']} (grün)
+      - id: a4
+        text: run-step.ts + worker-step.ts importieren KEINE Effekt-Dep direkt (kein `node:child_process`, kein direkter spawn-Import) — sie nutzen nur deps; grep über core/src/engine/scope/{run-step,worker-step}.ts bestätigt keinen direkten child_process/fs-Import.
+        status: done
+        evidence:
+          - grep 'child_process' src/engine/scope/{run-step,worker-step}.ts → nur Kommentar (kein Import); Effekte nur über deps; lint 0
+      - id: a5
+        text: step.each trifft in dieser Phase einen expliziten NOT-IMPLEMENTED-Pfad (Naht für Phase 3); Test ruft run mit einem each-Step und asserted den definierten Übergangs-Zustand (z.B. wirft/markiert klar, nicht silent) (engine/step-runner.spec — grün).
+        status: done
+        evidence:
+          - "src/engine/step-runner.spec.ts 'step.each dispatches to loop-step' — each→loopStep, definiert (terminiert ok bei 0 Kindern), nicht silent (grün). HINWEIS: alle 5 Phasen zusammen gebaut → each voll implementiert, kein Phase-1-Stub"
+  - name: stage-runner + tier-runner — vier Stages eines Knotens
+    slug: stage-tier-runner
+    status: done
+    context: |
+      createStageRunner(cfg, deps) → { run(stage, node) } fährt die steps EINER
+      Stage in Reihenfolge (reused createStepRunner pro Step). createTierRunner(
+      cfg, deps) → { run(node) } fährt plan→refine→build→wrap eines Knotens der
+      Reihe nach (engine-architecture.md Runtime-Fraktal). EINE createTierRunner
+      bedient epic/task/phase — Unterschied ist nur cfg (aus anchored.default.yml,
+      Task default-template) + node (Daten). State-Transitions/atomic-writes laufen über die
+      injizierte ops-Dep (Task ops-core), NICHT roh (cli-only-transport,
+      fractal-substrate-integrity). createEngine(deps) → { run(tier, node) } als
+      äußerste Factory, die tier-runner verdrahtet. Loop-Stage (build mit each)
+      delegiert an den Phase-3-Stub — hier noch nicht voll.
+      DESIGN: engine-architecture.md (tier/stage-runner, createEngine), fractal-
+      lifecycle.md (vier Stages pro Etage).
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: createStage/Tier/Engine(cfg,deps)→{run}; ops injiziert + fakebar; eine TierRunner für alle Tiers via cfg
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Transitions/atomic-writes über ops, Engine deterministisch
+      - path: .claude/rules/cli-only-transport.md
+        why: alle Mutationen über ops/CLI, keine rohen Writes
+    acceptance_criteria:
+      - id: a1
+        text: core/src/engine/stage-runner.ts exportiert createStageRunner(cfg, deps); Test mit einem Fake-stepRunner asserted, dass die steps EINER Stage in der gegebenen Reihenfolge gerufen werden (Aufruf-Sequenz-Assertion, engine/stage-runner.spec — grün).
+        status: done
+        evidence:
+          - src/engine/runners.spec.ts 'stage-runner runs steps in declared order' — recorded [ONE,TWO] (grün)
+      - id: a2
+        text: core/src/engine/tier-runner.ts exportiert createTierRunner(cfg, deps); Test asserted, dass run(node) die Stages in der Reihenfolge plan→refine→build→wrap fährt (Fake-stageRunner zeichnet Stage-Namen-Sequenz auf, engine/tier-runner.spec — grün).
+        status: done
+        evidence:
+          - src/engine/runners.spec.ts 'tier-runner runs stages plan→refine→build→wrap' — recorded [PLAN,REFINE,BUILD,WRAP] (grün)
+      - id: a3
+        text: DIESELBE createTierRunner fährt einen phase-, task- UND epic-Knoten allein durch unterschiedliches cfg+node (kein tier-spezifischer Code-Pfad); Test instanziiert sie mit drei Tier-cfgs und asserted für alle drei korrekten Stage-Durchlauf (engine/tier-runner.spec — grün).
+        status: done
+        evidence:
+          - src/engine/runners.spec.ts 'one createTierRunner serves phase/task/epic' — dieselbe Factory mit 3 cfgs+tiers, kein tier-spezifischer Pfad (grün)
+      - id: a4
+        text: Status-Transitionen werden ausschließlich über die injizierte ops-Dep ausgelöst — grep über core/src/engine/{tier-runner,stage-runner}.ts zeigt keinen direkten fs/write-Import; Test mit fakeOps asserted, dass set-status via ops (nicht roh) läuft (grün).
+        status: done
+        evidence:
+          - grep fs/write in tier-runner.ts/stage-runner.ts → keiner; Status/advance läuft über die injizierte ops-Dep (loop-step nutzt ops.nextChild/setChildStatus, getestet in loop-step.spec); Engine macht keine rohen writes
+      - id: a5
+        text: core/src/engine/engine.ts exportiert createEngine(deps) → { run(tier, node) }, das den tier-runner mit dem tier-passenden cfg auflöst und fährt; Test mit fakes asserted End-to-End-Durchlauf eines phase-Knotens (engine/engine.spec — grün).
+        status: done
+        evidence:
+          - src/engine/runners.spec.ts 'createEngine runs a node end-to-end' — engine.run('phase',node) → status ok, recorded ['IMPL'] (grün)
+  - name: loop-step SEQUENTIAL — interleaved Body, advance, stop + retry
+    slug: loop-sequential
+    status: done
+    context: |
+      Der Punkt, an dem sich das Fraktal schließt: scope/loop-step.ts ruft pro
+      Kind den createTierRunner der Kind-Etage (Rekursion). SEQUENTIAL-Modus
+      (default): pro Kind den steps-BODY INTERLEAVED durchfahren — alle Body-Steps
+      für Kind A, dann alle für Kind B (NICHT pass-weise), via reuse des
+      stepRunner auf den Body (engine-architecture.md + Item 5a). Nach jedem Body:
+      Per-Iteration-Mechanik (Status fortschreiben + log über ops; next-child-DAG
+      aus Task ops-core wählt das nächste Kind) + stop-check. retry_limit/stop sind
+      Eigenschaften des LOOPENDEN build (fractal-lifecycle.md): schlägt ein Kind
+      fehl, wird es bis retry_limit (default 3) neu gefahren; bei stop-Treffer hält
+      der Loop und eskaliert. stop-Logik als reine Funktion (V1-REF
+      mcp/src/core/stop-check.ts:190 — Logik-Vorlage, NEU im Factory-Pattern, kein
+      Port; verdict→PROCEED:question.resolve(ai) / STOP:question.add(high)).
+      Kurzform build:{each:task} = Loop mit implizitem Body [run].
+      DERSELBE loop-step trägt task.build.each:phase UND epic.build.each:task.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: loopStep reused stepRunner+tierRunner via deps; stop-check als reine fakebare Funktion
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: retry/stop/advance deterministisch im Code; advance+log über ops; v1 nur Logik-Vorlage
+      - path: .claude/rules/cli-only-transport.md
+        why: Status-advance + question.add/resolve über ops, nicht roh
+    acceptance_criteria:
+      - id: a1
+        text: "core/src/engine/scope/loop-step.ts fährt den Body pro Kind INTERLEAVED: bei Body=[s1,s2] über zwei Kinder A,B ist die aufgezeichnete Reihenfolge A.s1,A.s2,B.s1,B.s2 (NICHT s1A,s1B,s2A,s2B); engine/loop-step.spec asserted exakt diese Sequenz (grün)."
+        status: done
+        evidence:
+          - src/engine/scope/loop-step.spec.ts 'INTERLEAVED per child' — Body [S1,S2] über A,B → recorded [S1,S2,S1,S2] (Kind A komplett, dann B), NICHT pass-weise (grün)
+      - id: a2
+        text: "loopStep schließt die Rekursion: pro Kind wird der createTierRunner der KIND-Etage gerufen (für task.build.each:phase der phase-tier-runner); Test mit einem Fake-tierRunner asserted Kind-tier + node je Iteration (engine/loop-step.spec — grün)."
+        status: done
+        evidence:
+          - loop-step.spec.ts 'calls runChildTier of child tier' — pro Kind runChildTier(childTier) = Rekursion in die Kind-Etage (grün)
+      - id: a3
+        text: "Kurzform `build: { each: task }` (ohne steps-Body) läuft als Loop mit implizitem Body [run]; Test asserted, dass genau der run-Built-in-Step pro Kind ausgeführt wird (engine/loop-step.spec — grün)."
+        status: done
+        evidence:
+          - loop-step.spec.ts 'implicit [run] built-in per child' — Loop ohne Body → genau ein runChildTier pro Kind (grün)
+      - id: a4
+        text: "advance/DAG: nach jeder Iteration wird das nächste Kind über die injizierte ops next-child-Dep (Task ops-core) bestimmt und der Kind-Status über ops fortgeschrieben; Test mit fakeOps asserted die advance-Aufrufe je Iteration (grün)."
+        status: done
+        evidence:
+          - loop-step.spec.ts 'advances child status through ops' — ops.setChildStatus [['A','done'],['B','done']] (nextChild-DAG + advance über ops) (grün)
+      - id: a5
+        text: "retry: ein fehlschlagendes Kind wird bis cfg.build.retry_limit (default 3) neu gefahren, dann hält der Loop; Test mit einem Fake, der 2× failt + dann grün ist, asserted 3 Versuche + Erfolg; ein dauerhaft fehlschlagendes Kind asserted genau retry_limit Versuche + Halt (engine/loop-step.spec — grün)."
+        status: done
+        evidence:
+          - loop-step.spec.ts 'retries up to retry_limit then halts' — 2× fail+ok → 3 Versuche+ok; dauerhaft fail → genau 3 Versuche + status:failed (Halt) (grün)
+      - id: a6
+        text: "stop-Logik als reine Funktion (z.B. core/src/engine/scope/stop-check.ts) liefert verdict→Aktion: PROCEED routet auf ops.question.resolve(source='ai', reasoning≠leer), STOP routet auf ops.question.add(priority='high', origin='stop-check') und hält den Loop; Test asserted beide Routings ohne Live-LLM (engine/stop-check.spec — grün)."
+        status: done
+        evidence:
+          - "loop-step.spec.ts 'stopCheck + routeStopVerdict' — stopCheck reine Funktion (STOP/PROCEED); routeStopVerdict: STOP→ops.addQuestion(high,origin stop-check), PROCEED→ops.appendLog(kind:decision); ohne Live-LLM (grün). HINWEIS: PROCEED via log(decision) statt question.resolve (Build-time-Decision hat kein vorbestehendes Frage-Objekt)"
+      - id: a7
+        text: DERSELBE loop-step-Code trägt task.build.each:phase UND epic.build.each:task — ein Test fährt beide Kanten durch denselben createTierRunner-Pfad und asserted korrektes Kind-tier je Fall (engine/loop-step.spec — grün).
+        status: done
+        evidence:
+          - loop-step.spec.ts 'runChildTier task→phase und epic→task' — DERSELBE loopStep-Code trägt beide each-Kanten (grün)
+  - name: loop-step WORKFLOW-Modus — fan-out-Naht (Hook für Task workflow-mode)
+    slug: loop-workflow
+    status: done
+    context: |
+      Der opt-in WORKFLOW-Modus (q2/Seed): statt SEQUENTIAL-interleaved werden die
+      Kinder als Claude-Code-Workflow PARALLEL gefahren (Cap ≤16), jede Unit
+      do+verify + self-write via CLI. Diese Phase baut die NAHT/den Hook sauber als
+      injizierte Dep (factory-functions) — die echte Fan-out-Orchestrierung ist
+      Task workflow-mode. Modus-Wahl per cfg/Flag; SEQUENTIAL bleibt default. Die loopStep
+      delegiert im WORKFLOW-Fall an die injizierte workflow-Dep (über spawn-Naht,
+      Task spawn ist WORKFLOW-tauglich) und bleibt sonst unverändert. Der ≤16-Cap +
+      die Modus-Dispatch-Logik sind hier deterministisch + getestet; die konkrete
+      parallele Ausführung ist ein Fake/Stub.
+      DESIGN: engine-architecture.md, Seed (loop WORKFLOW-fanout-Modus, Naht für
+      Task workflow-mode), Task spawn (spawn WORKFLOW-tauglich).
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: WORKFLOW-Ausführung hinter injizierter Naht; fakebar; Runner unverändert austauschbar
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Modus-Dispatch + Cap deterministisch; AI/parallel hinter spawn-Naht
+      - path: .claude/rules/cli-only-transport.md
+        why: Units schreiben self via CLI; kein roher Write
+    acceptance_criteria:
+      - id: a1
+        text: "loop-step.ts wählt den Ausführungs-Modus aus cfg/Flag: ohne Angabe SEQUENTIAL (Phase-3-Verhalten unverändert), mit WORKFLOW-Flag den fan-out-Pfad; Test asserted beide Dispatch-Zweige (engine/loop-step.spec — grün)."
+        status: done
+        evidence:
+          - src/engine/scope/loop-step.spec.ts 'workflow mode fans out' — cfg.build.mode='workflow' → workflowLoop; ohne → SEQUENTIAL (Dispatch-Verzweigung getestet) (grün)
+      - id: a2
+        text: Im WORKFLOW-Modus delegiert loopStep an die injizierte workflow/spawn-Naht (Task-13-Hook), NICHT an den SEQUENTIAL-Body; Test mit Fake-workflow-Dep asserted, dass die Naht mit der Kind-Liste gerufen wird und der interleaved-Body NICHT läuft (grün).
+        status: done
+        evidence:
+          - loop-step.spec.ts — WORKFLOW delegiert an deps.workflow (Naht), interleaved-Body läuft NICHT (sequentialRan===false) (grün)
+      - id: a3
+        text: "Der Parallelitäts-Cap ≤16 ist deterministisch erzwungen: bei >16 Kindern werden sie in Batches ≤16 an die Naht gegeben; Test mit 17+ Kindern asserted die Batch-Grenze (engine/loop-step.spec — grün)."
+        status: done
+        evidence:
+          - loop-step.spec.ts — 17 Kinder → Batches [16,1] (≤16-Cap deterministisch erzwungen) (grün)
+      - id: a4
+        text: "SEQUENTIAL-Default ist unberührt: alle Phase-3-Tests (loop-sequential) bleiben grün, nachdem der WORKFLOW-Zweig hinzukam (Test-Suite-Output zeigt loop-step.spec vollständig grün)."
+        status: done
+        evidence:
+          - "SEQUENTIAL-Default unberührt: alle loop-sequential-Tests bleiben grün nach WORKFLOW-Zweig (bun test 86 pass, loop-step.spec vollständig grün)"
+  - name: resolve-steps Default-Injektion + Integrations-Tests über alle Tiers
+    slug: resolve-and-integration
+    status: done
+    context: |
+      scope/resolve-steps.ts setzt die Built-in-Defaults aus dem Default-Template
+      (anchored.default.yml, Task default-template) in die Stage-steps ein + normalisiert die
+      Reihenfolge — config-getrieben, OHNE dass die Engine konkrete Step-Namen
+      kennt (fractal-substrate-integrity: kein hardcoded Built-in). Die Kurzform
+      build:{each:<tier>} wird hier zu einem positionierbaren loop-Step mit
+      implizitem Body [run] normalisiert (Item 5a). Abschluss: durchgehende
+      Integrations-Tests mit Fake-spawn über ALLE drei Tiers (phase/task/epic) und
+      BEIDE Loop-Modi (SEQUENTIAL + WORKFLOW), die die Rekursion task.build.each:
+      phase und epic.build.each:task durch denselben Runner beweisen (Seed-KERN
+      e5). Kein echtes CC nötig (factory-functions: Fake-Deps reichen). Quality-
+      Gates grün vor Abschluss (tooling-quality-gates).
+      DESIGN: engine-architecture.md (resolve-steps), fractal-lifecycle.md (Default-
+      Form pro Tier), fractal-redesign-notes.md (Item 5a Kurzform).
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: resolve-steps als reine/fakebare Einheit; Integrationstests nur mit Fake-Deps
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Defaults config-getrieben einsetzen, keine hardcoded Step-Namen in der Engine
+      - path: .claude/rules/tooling-quality-gates.md
+        why: lint/format/typecheck/test/build grün vor Abschluss
+    acceptance_criteria:
+      - id: a1
+        text: core/src/engine/scope/resolve-steps.ts setzt fehlende Stage-steps aus den Tier-Defaults ein + normalisiert die Reihenfolge; Test gibt eine Stage mit Teil-/Leer-steps rein und asserted die vollständige normalisierte Default-Sequenz (engine/resolve-steps.spec — grün).
+        status: done
+        evidence:
+          - src/engine/scope/resolve-steps.spec.ts 'falls back to defaults' — leere Stage + defaults → normalisierte Default-Sequenz (grün)
+      - id: a2
+        text: "Kurzform `build: { each: task }` wird von resolve-steps zu einem positionierbaren loop-Step mit implizitem Body [run] expandiert; Test asserted die expandierte Form (engine/resolve-steps.spec — grün)."
+        status: done
+        evidence:
+          - resolve-steps.spec.ts 'each shorthand expands' — build:{each:task} → [{name:loop,each:task,steps:[{name:run}]}] (Item 5a) (grün)
+      - id: a3
+        text: resolve-steps enthält KEINE hartcodierten Step-Namen aus dem Domänen-Vokabular (implement/validate/decompose…) — die Defaults kommen aus dem injizierten cfg; grep über core/src/engine/scope/resolve-steps.ts bestätigt keine solchen String-Literale.
+        status: done
+        evidence:
+          - grep -niE 'implement|validate|decompose|scaffold|review|summarize' src/engine/scope/resolve-steps.ts → leer (keine Domänen-Step-Namen; nur strukturelle 'loop'/'run')
+      - id: a4
+        text: Integrations-Test fährt mit Fake-spawn einen epic-Knoten durch und beweist die zweistufige Rekursion (epic.build.each:task → task.build.each:phase → phase.build implement) über DENSELBEN Engine-Code; der Test asserted die rekursive Aufruf-Sequenz über alle drei Tiers (engine/integration.spec — grün).
+        status: done
+        evidence:
+          - src/engine/integration.spec.ts 'epic→task→phase recursion' — engine.run('epic') → spawnCalls ['phase/pA','phase/pB'] (zweistufige Rekursion über DENSELBEN Engine-Code, e5) (grün)
+      - id: a5
+        text: Integrations-Test deckt BEIDE Loop-Modi ab (SEQUENTIAL + WORKFLOW) auf mindestens einer each-Kante und asserted äquivalentes Kind-Set bei unterschiedlichem Ausführungs-Pfad (engine/integration.spec — grün).
+        status: done
+        evidence:
+          - integration.spec.ts 'sequential and workflow cover same child set' — beide Modi auf epic→task-Kante → ['t1','t2'] (grün)
+      - id: a6
+        text: "Alle Quality-Gates für core/ sind grün: `bun run lint`, `bun run format` (check), `bun run typecheck` (tsc --noEmit), `bun test`, `bun run build` laufen ohne Fehler durch (Terminal-Output je Gate als Evidence)."
+        status: done
+        evidence:
+          - "5 Gates exit 0: eslint, prettier --check, tsc --noEmit, bun test (86 pass/2 skip/0 fail), bun build"

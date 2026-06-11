@@ -1,25 +1,5 @@
 # anchored.default.yml — Draft / Design-Spec
-#
-# VOLLSTÄNDIGE Default-Ansicht: jede Etage (phase ▸ task ▸ epic ▸ project) mit
-# ihren Stage-Steps UND ihren `fields` (Daten-Modell). Vom Framework
-# bereitgestellt. Eine echte User-anchored.yml ist fast leer — sie enthält nur
-# Deltas; was hier steht, läuft automatisch, wenn man nichts schreibt.
-#
-# Zwei Schichten:
-#   • Mechanismus (Substrat, fix): die Etagen-Form, das State-Machine-Datenmodell
-#     (`fields`), atomic-writes, der Audit-Trail. Erzwingt Integrität.
-#   • Policy (Steps, austauschbar): WAS in jeder Stage passiert. Hier als
-#     Default-Template gezeigt — voll überschreib-/ersetzbar.
-#
-# HARTE INVARIANTE (Substrat, nicht abschaltbar):
-#   Ein `ac` geht nur auf `status: done`, wenn `evidence` vorliegt. WIE die
-#   Evidence entsteht, konfigurierst du frei — aber das Substrat lässt dich
-#   nicht über „fertig" lügen. Das ist anchoreds Versprechen, im Datenmodell
-#   verankert statt in einem privilegierten Step.
 
-# ─────────────────────────────────────────────────────────────────────────────
-# phase ▸ Leaf — build hat kein `each`, läuft einmal; hier entsteht echter Code
-# ─────────────────────────────────────────────────────────────────────────────
 phase:
   plan:
     steps: []                         # leer — die ACs sind die "Plan"-Daten der Phase
@@ -43,9 +23,6 @@ phase:
     evidence:            list<string>   # konkrete Beweise: datei:zeile + test-output
     failures:            list<string>   # aus der Validierung; treibt den retry-loop
 
-# ─────────────────────────────────────────────────────────────────────────────
-# task ▸ build loopt phases
-# ─────────────────────────────────────────────────────────────────────────────
 task:
   plan:                               # Struktur schreiben
     steps:
@@ -83,9 +60,6 @@ task:
     log:             list<{ at, kind, note }>   # append-only PM-Notizbuch
     phases:          list<phase>      # die Kinder (siehe phase oben)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# epic ▸ build loopt tasks
-# ─────────────────────────────────────────────────────────────────────────────
 epic:
   plan:
     steps:
@@ -116,12 +90,3 @@ epic:
                                       #   Reihenfolge = Listen-Position
     log:            list<{ at, kind, note }>   # kind: decision | reorder | learning | blocker
 
-# ─────────────────────────────────────────────────────────────────────────────
-# project ▸ später — exakt dieselbe Form, build loopt epics
-# ─────────────────────────────────────────────────────────────────────────────
-# project:
-#   plan:   { steps: [{ name: scope }] }      # → epics
-#   refine: { steps: [{ name: walk }] }
-#   build:  { each: epic, stop: [...], retry_limit: 3 }
-#   wrap:   { steps: [{ name: roll-up }] }
-#   fields: { slug, title, status, goal, acceptance, questions, epics, log }

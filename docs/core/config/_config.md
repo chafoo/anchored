@@ -16,3 +16,4 @@ flowchart LR
 |---|---|
 | [bootstrap](bootstrap.md) | `effectiveConfig = merge(default, user)`, validiert; baut `deps`. |
 | merge | Deep-merge (User gewinnt) — in `bootstrap.md` mitbeschrieben. |
+| [init](init.md) | Lazy First-Run-Scaffolding: schreibt eine minimale `anchored.yml` + den `Bash(anchored *)`-Allowlist-Eintrag. Idempotent, über die io-Naht. |

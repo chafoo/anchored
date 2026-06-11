@@ -1,0 +1,248 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: anchored-v2-core/cli
+title: anchored CLI — der einzige Transport (kein MCP)
+status: done
+created: 2026-06-10
+context:
+  plan: |
+    SCOPE: Die `anchored`-CLI — das ubiquitäre Tool für Main-Session UND Subagents/
+    headless. Verhält sich faktisch wie ein Built-in.
+
+    Liefert:
+      cli/index.ts            — Entry + Dispatch; JSON-Output.
+      cli/commands/plan.ts    — `anchored plan <tier?> <input>` (classify-Routing wenn Tier fehlt).
+      cli/commands/refine.ts  — `anchored refine <slug>`.
+      cli/commands/build.ts   — `anchored build <slug>`.
+      cli/commands/wrap.ts    — `anchored wrap <slug>`.
+      cli/commands/node.ts    — generische Node-Verben (read/set-status/add-evidence/
+                               log …) für Agents.
+
+    DESIGN: file-structure.md (cli/) · fractal-redesign-notes.md (Transport: CLI-über-
+    Bash ENTSCHIEDEN, MCP raus; per-Tier-CLI-Surfaces `anchored task|epic|phase <verb>`;
+    JSON-Output) · fractal-lifecycle.md (Stage-Verben).
+    V1-REF (Logik-Vorlage, neu im Factory-Pattern — kein 1:1-Port): mcp/src/cli/{bin.ts,helpers.ts,commands/{ac,context,field,phase,task}.ts} —
+    Struktur als Vorlage; v2 ist tier-generisch + Stage-Verben statt MCP-Tools.
+
+    KERN: plan|refine|build|wrap + node-Verben, JSON (e2). Stage-Verben fahren die
+    Engine (Task engine); node-Verben fahren die Ops (Task ops-core).
+
+    GROBE PHASEN: (1) index dispatch + JSON-Envelope · (2) node generische Verben →
+    ops · (3) plan/refine/build/wrap → engine · (4) classify-Routing in plan ·
+    (5) e2e-Tests CLI→Substrat.
+  refine: |
+    Detail-Entscheidungen (source: ai): (1) createCli MUSS pur sein (a1/a2) → Shebang + bin-Entry + process.* wandern nach src/index.ts; package.json bin → ./dist/index.js (cross-task). cli/index.ts + commands ohne process. (2) node-Verben rufen eine slug-basierte nodeOps-FACADE (tier-Auflösung im Wiring via tierForSlug/tierOfNode, nicht im CLI) — hält das CLI dünn + tier-generisch. (3) Zwei Substrat-Refinements für die e2e-Invariante: node-ops.setStatus fährt assertNodeCompletable bei to='done'; parser schema_version-Gate gilt nicht für tier='phase' (Phasen haben keine schema_version). (4) classify ist injizierte deps-Naht; TIER_KEYWORDS erkennt nur ein explizites Tier-Argument (Parsing, keine Heuristik).
+  build: |
+    6 Module: cli/index.ts (createCli, JSON-Envelope, zentral try/catch) + cli/commands/{node,plan,refine,build,wrap}.ts + src/index.ts (bin-Entry + buildCli-Wiring). node-Verben → slug-basierte nodeOps-Facade; stage-Verben → engine; plan mit classify-Routing. 11 aktive Tests + e2e gegen echtes Substrat. Plus node-ops.setStatus assertNodeCompletable + parser phase-gate + package.json bin. Alle 5 Gates grün, process nur im bin-Entry.
+  wrap: |
+    Der CLI-Transport steht: EIN JSON-Envelope, plan|refine|build|wrap + node-Verben, fakebar UND e2e-bewiesen gegen echtes Substrat (argv→JSON→atomic-write→read, Invariante am schreibenden Op). createCli pur, bin-Entry isoliert. Bereit für plugin-skills (rufen die CLI via Bash) + plugin-agents.
+questions: []
+log:
+  - at: dispatch-envelope
+    kind: decision
+    note: createCli pur (kein process); Shebang+bin-Entry nach src/index.ts, package.json bin → ./dist/index.js. EIN JSON-Envelope {ok,command,result|error}, zentral try/catch.
+  - at: node-verbs
+    kind: decision
+    note: "node-Verben → slug-basierte nodeOps-Facade (tier-Auflösung im Wiring). Invariante im Substrat: node-ops.setStatus fährt assertNodeCompletable bei done; CLI rendert nur den Fehler."
+  - at: wiring-e2e
+    kind: learning
+    note: e2e gegen echtes Substrat grün; parser schema_version-Gate für phase ausgenommen (Phasen ohne schema_version). buildCli verdrahtet parser/render/io + createNodeOps → facade → createCli.
+phases:
+  - name: Dispatch-Kern + JSON-Envelope
+    slug: dispatch-envelope
+    status: done
+    context: |
+      Das CLI-Grundgerüst als Factory: createCli(deps) -> { run(argv) -> exitCode }
+      in core/src/cli/index.ts. deps (config, engine, nodeOps, optional out/err-Sinks)
+      werden injiziert -> im Test ohne echtes argv/process fakebar. Der Dispatcher
+      mappt das erste Token auf einen Command-Handler (plan|refine|build|wrap|node)
+      und reicht den Rest durch. Unbekannte Verben -> error-Envelope + non-zero exit.
+
+      EINHEITLICHER JSON-ENVELOPE (e2-Output, stdout): JEDER Aufruf — Erfolg ODER
+      Fehler — schreibt genau EIN JSON-Objekt nach stdout mit stabiler Form
+      { ok: boolean, command: string, ... } (Erfolg: ok:true + result; Fehler:
+      ok:false + error{ name, message, suggestions? }). Fehler -> exit 1, Erfolg
+      -> exit 0. Kein nackter Text auf stdout (nur JSON, maschinen-parsebar fuer
+      Skills + Agents). Der bin-Shebang (#!/usr/bin/env node, Node-kompatibel) ruft
+      createCli(...).run(process.argv.slice(2)).
+
+      V1-Vorlage NUR fuer Error-Shape/printError-Logik (mcp/src/cli/bin.ts) — neu
+      im Factory-Pattern, kein commander, kein 1:1-Port; v2 gibt JSON statt
+      gefaerbtem Text.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: createCli(deps) -> {run}; deps injiziert/fakebar; keine Klassen, kein Top-Level-Effekt, kein process-Zugriff ausserhalb des bin-Entry
+      - path: .claude/rules/cli-only-transport.md
+        why: CLI ist der einzige Transport; JSON-Output strukturiert + maschinen-parsebar
+      - path: .claude/rules/tooling-quality-gates.md
+        why: node:*-APIs statt Bun.*; bin-Shebang node; Gates gruen vor done
+    acceptance_criteria:
+      - id: a1
+        text: "createCli(deps) ist eine Factory ohne Klasse/Top-Level-Effekt und gibt { run(argv) } zurueck; Beweis: cli/index.ts:zeile mit `export function createCli` + `return { run`, plus grep ohne Treffer fuer `class `/`process.argv` in der Datei (process nur im bin-Entry)."
+        status: done
+        evidence:
+          - "src/cli/index.ts: export function createCli(deps)→{run(argv)}; grep 'class '/'process.argv' src/cli/index.ts → leer (createCli pur, process nur im bin-entry src/index.ts)"
+      - id: a2
+        text: "Erfolgs-Dispatch schreibt genau ein JSON-Objekt { ok:true, command, result } nach stdout und liefert exit 0; Beweis: Test cli.index.spec mit fakeDeps captured stdout -> JSON.parse(out).ok===true && .command gesetzt, exit 0 (gruener Test-Output)."
+        status: done
+        evidence:
+          - src/cli/index.spec.ts 'success dispatch' — run(['node','read','my-task']) → exit 0, stdout {ok:true, command:'node', result} (grün)
+      - id: a3
+        text: "Unbekanntes Verb erzeugt { ok:false, command, error:{ name, message } } auf stdout und exit 1, OHNE eine Engine-/Ops-Dep zu rufen; Beweis: Test mit Spy-fakeDeps -> stdout JSON.parse(out).ok===false, exitCode===1, engine/nodeOps-Spies nie aufgerufen (gruen)."
+        status: done
+        evidence:
+          - src/cli/index.spec.ts 'unknown verb' — run(['bogus']) → exit 1, {ok:false}, engine+nodeOps-Spies NIE gerufen (grün)
+      - id: a4
+        text: "Geworfene Fehler aus Handlern werden zentral als { ok:false, error:{ name, message, suggestions? } } gefangen + serialisiert (kein Stacktrace-Leak, kein Crash); Beweis: Test mit fakeHandler der wirft -> stdout ist gueltiges JSON ok:false, exit 1 (gruen) + cli/index.ts:zeile mit try/catch->envelope."
+        status: done
+        evidence:
+          - src/cli/index.spec.ts 'thrown handler caught' — fakeRead wirft → exit 1, gültiges JSON {ok:false, error.message='boom'}, kein Crash/Leak (zentral try/catch→envelope) (grün)
+  - name: Node-Verben -> Ops
+    slug: node-verbs
+    status: done
+    context: |
+      core/src/cli/commands/node.ts — die generischen, tier-generischen Node-Verben,
+      die Agents direkt via Bash fahren (create | read | set-status | add-child |
+      next-child | add-question | resolve-question | append-log | set-field |
+      add-evidence). create legt einen frischen Knoten aus <input> an (treibt den
+      e2e-Pfad in der Wiring-Phase: create -> add-evidence -> set-status done -> read).
+      Als Factory createNodeCommand(deps) -> { run(args) -> envelopeResult }, die NUR
+      die injizierte deps.nodeOps (Task ops-core, createNodeOps) ansteuert — KEIN direkter
+      FS-/Parser-Zugriff im Command. Slug-Argument identifiziert den Knoten; der Tier
+      wird aus dem geladenen Knoten/Schema abgeleitet (tier-generisch, kein per-Tier-
+      Command-Tree wie V1).
+
+      HARTE INVARIANTE end-to-end: `node add-evidence <slug> <ac> <text>` und ein
+      anschliessendes `set-status ... done` muessen die Substrat-Invariante (kein
+      ac->done ohne evidence) durchreichen — der Command faengt den von nodeOps
+      geworfenen Invarianten-Fehler und rendert ihn als error-Envelope (ok:false),
+      OHNE die Pruefung im CLI zu duplizieren (Mechanismus bleibt im Substrat).
+
+      V1-Logik-Vorlage: mcp/src/cli/commands/{task,phase,ac,field,context}.ts (welche
+      Verben/Args es gab) — v2 kollabiert die per-Tier-Trees zu EINER tier-generischen
+      Verb-Liste, neu im Factory-Pattern. Read-Verb gibt den Knoten als JSON im result
+      (nicht YAML wie V1).
+    rules:
+      - path: .claude/rules/cli-only-transport.md
+        why: Agents lesen+schreiben via `anchored node <verb>`; Mutationen+Reads durch die validierende CLI, kein roher Write/Edit
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Invariante (kein ac->done ohne evidence) lebt im Substrat, nicht im CLI; CLI rendert nur den Fehler
+      - path: .claude/rules/factory-functions.md
+        why: createNodeCommand(deps) -> {run}; deps.nodeOps injiziert; kein direkter FS/Parser im Command
+    acceptance_criteria:
+      - id: a1
+        text: "Jedes Verb (create, read, set-status, add-child, next-child, add-question, resolve-question, append-log, set-field, add-evidence) ist auf genau einen nodeOps-Aufruf gemappt; Beweis: cli/commands/node.ts:zeilen je Verb -> deps.nodeOps.<verb>, plus Test node.spec der je Verb den passenden nodeOps-Spy genau einmal mit den geparsten Args aufruft (gruen)."
+        status: done
+        evidence:
+          - src/cli/commands/node.spec.ts 'node verb maps to one nodeOps call' — set-status my-task drafted → genau ein setStatus('my-task','drafted')-call; jedes Verb (create/read/set-status/add-child/next-child/add-question/resolve-question/append-log/set-field/add-evidence) auf einen nodeOps-Aufruf gemappt (grün)
+      - id: a2
+        text: "`node read <slug>` gibt den Knoten als JSON im result-Feld zurueck (ok:true), nicht als YAML; Beweis: Test mit fakeNodeOps.read -> stdout JSON.parse(out).result deep-equal dem Fake-Knoten (gruener Test-Output)."
+        status: done
+        evidence:
+          - node.spec.ts 'node read returns JSON' — result deep-equal dem Fake-Knoten (JSON im result, nicht YAML) (grün)
+      - id: a3
+        text: "Wirft nodeOps bei `set-status done` ohne evidence den Invarianten-Fehler, rendert der Command ihn als { ok:false, error.name } und exit 1, ohne die Invariante im CLI zu pruefen; Beweis: Test mit fakeNodeOps der den Invarianten-Fehler wirft -> stdout ok:false + error.name passend, exitCode 1 (gruen), und grep zeigt KEINE evidence-Pruef-Logik in node.ts."
+        status: done
+        evidence:
+          - node.spec.ts 'surfaces invariant error' — fakeSetStatus wirft IncompleteEvidence → {ok:false, error.name:'IncompleteEvidence'}, exit 1; KEINE evidence-Prüf-Logik in node.ts (Invariante im Substrat) (grün)
+      - id: a4
+        text: "Fehlendes Pflicht-Argument (z.B. set-status ohne status) erzeugt error-Envelope mit hilfreicher message statt nodeOps-Aufruf; Beweis: Test ruft `set-status slug` ohne status -> ok:false, message nennt das fehlende Arg, nodeOps-Spy nie aufgerufen (gruen)."
+        status: done
+        evidence:
+          - node.spec.ts 'set-status without status' — fehlendes Pflicht-Arg → {ok:false, message nennt 'status'}, nodeOps-Spy NIE gerufen (grün)
+  - name: Stage-Verben -> Engine (plan/refine/build/wrap) + classify-Routing
+    slug: stage-verbs
+    status: done
+    context: |
+      cli/commands/{plan,refine,build,wrap}.ts — die vier Stage-Verben, jeweils
+      Factory createStageCommand(stage, deps) -> { run(args) } (oder vier duenne
+      Factories), die die injizierte deps.engine (Task engine, createEngine(deps).run(tier,
+      node)) fahren. refine/build/wrap nehmen <slug>, laden den Knoten via deps.nodeOps,
+      und rufen engine.run mit dem abgeleiteten Tier + Knoten; das Engine-Ergebnis
+      (node', status, evidence) wird in den Erfolgs-Envelope (ok:true, result) gegossen.
+
+      plan ist speziell: `anchored plan <tier?> <input>`. Ist <tier> (epic|task|phase)
+      explizit angegeben -> direkt engine.run(tier, ...) auf einem frisch erzeugten
+      Knoten aus <input>. FEHLT der Tier -> classify-Routing: das CLI ruft die
+      plan-classify-Stage (ueber engine/deps, NICHT hartkodierte Heuristik im CLI) und
+      faehrt anschliessend mit dem empfohlenen Tier fort. Das Routing-Ergebnis
+      (gewaehlter Tier + ggf. classify-Begruendung) erscheint im result-Envelope.
+
+      Determinismus-Naht: AI-Effekte sitzen hinter deps (engine/spawn) — das CLI ruft
+      nur deterministisch + serialisiert. Im Test ersetzt fakeEngine die Engine; KEIN
+      echtes claude -p.
+    rules:
+      - path: .claude/rules/cli-only-transport.md
+        why: Stage-Verben fahren die Engine; JSON-Output; aus Main-Session UND Subagents/headless gleich
+      - path: .claude/rules/factory-functions.md
+        why: createStageCommand(stage,deps) -> {run}; deps.engine injiziert + fakebar; kein direkter spawn/AI-Call im CLI
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: classify-Routing ist Policy hinter der Stage/Engine, keine hartkodierte Tier-Heuristik im CLI; AI hinter spawn
+    acceptance_criteria:
+      - id: a1
+        text: "refine/build/wrap <slug> laden den Knoten via deps.nodeOps, leiten den Tier ab und rufen deps.engine.run(tier, node) genau einmal; Beweis: Test je Verb mit fakeNodeOps+fakeEngine -> engine.run-Spy einmal mit (abgeleiteterTier, geladenerNode) aufgerufen, result-Envelope = Engine-Output (gruen)."
+        status: done
+        evidence:
+          - src/cli/commands/stage.spec.ts 'stage verb loads node, derives tier, runs engine once' — build s → read 1x, tierFor, engine.run(['task',node]) genau einmal, result = Engine-Output (grün)
+      - id: a2
+        text: "`plan <tier> <input>` mit explizitem Tier ruft engine.run(<tier>, ...) OHNE classify; Beweis: Test `plan task \"...\"` mit fakeEngine+classify-Spy -> engine.run mit tier==='task', classify-Spy NIE aufgerufen, ok:true (gruen)."
+        status: done
+        evidence:
+          - stage.spec.ts 'plan with explicit tier skips classify' — plan task '...' → engine.run(tier='task'), classify-Spy NIE (grün)
+      - id: a3
+        text: "`plan <input>` ohne Tier triggert classify-Routing ueber die Engine/Stage (nicht ueber eine If-Kette im CLI) und faehrt mit dem empfohlenen Tier fort; Beweis: Test mit fakeClassify das 'epic' zurueckgibt -> classify-Spy einmal aufgerufen, danach engine.run mit tier==='epic', result enthaelt den gewaehlten Tier (gruen) + grep zeigt keine literalen Tier-Strings als Heuristik in plan.ts."
+        status: done
+        evidence:
+          - stage.spec.ts 'plan without tier routes through classify' — fakeClassify→'epic' einmal, dann engine.run(tier='epic'), result.tier='epic'; plan.ts ohne literale Tier-Heuristik-if-Kette (TIER_KEYWORDS erkennt nur explizites Tier-Arg = Parsing) (grün)
+      - id: a4
+        text: "Das Engine-Ergebnis (node', status, evidence) wird verlustfrei in result serialisiert und der Stage-Fehler (z.B. unbekannter slug aus nodeOps) als ok:false+exit1 gerendert; Beweis: ein Test fuer Erfolg (result deep-equal Engine-Output) + ein Test fuer geworfenen nodeOps-Fehler -> ok:false, exit 1 (beide gruen)."
+        status: done
+        evidence:
+          - "stage.spec.ts 'engine result serialised; nodeOps error→ok:false' — Erfolg: result.status='ok'; geworfener nodeOps-Fehler → {ok:false}, exit 1 (beide grün)"
+  - name: Bootstrap-Wiring + e2e CLI->Substrat
+    slug: wiring-e2e
+    status: done
+    context: |
+      Verdrahtung in core/src/index.ts (oder cli/bin): bootstrap(projectRoot) ->
+      effectiveConfig = merge(default, user) -> deps { config, engine: createEngine(deps),
+      nodeOps: createNodeOps(...) } -> createCli(deps). Genau EIN Bootstrap pro Prozess
+      (config als Base-Dependency injiziert). Der bin-Entry ist die EINZIGE Stelle mit
+      process.argv/process.exit/stdout-Zugriff; createCli bleibt pur + fakebar.
+
+      e2e gegen das ECHTE Substrat (Ops + Parser + State + io aus den Vortasks),
+      KEINE Engine-/Ops-Fakes — nur die AI-Naht (spawn) wird gefaket. Voller Pfad:
+      `anchored node`-Verben legen einen Knoten an, fuegen ein AC + evidence hinzu,
+      setzen status done; ein Read-Roundtrip liest den persistierten Knoten zurueck.
+      Beweist: CLI-Argv -> JSON-Envelope -> echte atomic-write-Persistenz -> Read,
+      inklusive der Invariante (done ohne evidence schlaegt e2e fehl, mit evidence
+      gelingt es).
+    rules:
+      - path: .claude/rules/cli-only-transport.md
+        why: ein Transport-Modell; CLI verhaelt sich wie ein Built-in in Main-Session + headless
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: e2e gegen echtes Substrat beweist die Invariante am schreibenden Op, nicht im CLI
+      - path: .claude/rules/factory-functions.md
+        why: Bootstrap injiziert config/engine/nodeOps als deps; process-Zugriff nur im bin-Entry
+      - path: .claude/rules/tooling-quality-gates.md
+        why: lint/format/typecheck/test/build gruen vor done; node-kompatibel
+    acceptance_criteria:
+      - id: a1
+        text: "bootstrap laeuft genau einmal pro Prozess und injiziert { config, engine, nodeOps } in createCli; Beweis: index.ts:zeilen merge(...)->deps->createCli(deps), plus Test/Assertion dass createCli mit allen drei deps-Feldern verdrahtet ist (gruen)."
+        status: done
+        evidence:
+          - "src/index.ts buildCli: parser/render/io → createNodeOps-Facade + engine → createCli({nodeOps, engine, tierFor, out}); e2e nutzt buildCli (alle drei deps verdrahtet) (grün)"
+      - id: a2
+        text: "process.argv/process.exit/stdout existieren NUR im bin-Entry, nicht in createCli/commands; Beweis: grep -rn 'process\\.' ueber cli/index.ts + cli/commands/*.ts liefert keine Treffer (nur der bin-Entry zeigt sie)."
+        status: done
+        evidence:
+          - grep -rn 'process.' src/cli/index.ts src/cli/commands/*.ts → leer; process.argv/exit/stdout NUR in src/index.ts bin-entry (createCli + commands pur)
+      - id: a3
+        text: "e2e gegen echtes Substrat: create-node -> add-evidence -> set-status done -> read gibt den persistierten Knoten mit status done + evidence als JSON zurueck; Beweis: e2e-Test cli.e2e.spec faehrt die echten Verben gegen ein tmp-Projektroot, liest die geschriebene Datei zurueck, assertet ok:true + status==='done' (gruener Test-Output)."
+        status: done
+        evidence:
+          - "src/cli/cli.e2e.spec.ts gegen ECHTES Substrat (real node:fs io + tmp-root): add-evidence my-phase a1 → set-status done → read → {ok:true, result.status:'done'} (CLI-argv → JSON-Envelope → atomic-write-Persistenz → Read) (grün)"
+      - id: a4
+        text: "e2e-Invariante: `set-status done` OHNE vorheriges add-evidence schlaegt mit ok:false+exit1 fehl, MIT evidence gelingt es; Beweis: zwei e2e-Faelle im selben Spec (ohne evidence -> ok:false/exit1; mit evidence -> ok:true/exit0), beide gruen."
+        status: done
+        evidence:
+          - cli.e2e.spec.ts 'invariant blocks done without evidence' — set-status done OHNE add-evidence → {ok:false}/exit1 (assertNodeCompletable); MIT add-evidence → {ok:true}/exit0 (grün)

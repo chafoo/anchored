@@ -1,10 +1,47 @@
 {
   "name": "@chaafoo/anchored",
   "version": "0.0.0",
-  "description": "anchored v2 — fractal lifecycle framework (CLI-only). plan -> refine -> build -> wrap across project/epic/task/phase.",
+  "description": "Fractal lifecycle framework — plan/refine/build/wrap on every tier (phase/task/epic). CLI-only transport, no MCP.",
   "type": "module",
-  "bin": { "anchored": "./dist/cli/index.js" },
-  "files": ["dist", "default-template"],
   "license": "MIT",
-  "comment": "Build-/Test-Tooling (scripts, deps) wird in der pure-engine-Phase festgelegt."
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "anchored": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "default-template"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "commander": "^15.0.0",
+    "proper-lockfile": "^4.1.2",
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/bun": "^1.3.14",
+    "@types/proper-lockfile": "^4.1.4",
+    "eslint": "^10.4.1",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.0"
+  }
 }

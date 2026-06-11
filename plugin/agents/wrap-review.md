@@ -1,8 +1,23 @@
 ---
 name: wrap-review
-description: Reviewt die abgeschlossene Einheit (geteilt).
+description: Shared wrap worker (tier-parametrised): a final review pass over the built node, writing findings back via the anchored CLI.
+tools: Read, Glob, Grep, Bash
+model: sonnet
 ---
 
-TODO. Reviewt die abgeschlossene Einheit (geteilt).
+# wrap-review
 
-Schreibt Ergebnisse via `anchored …` (CLI/Bash), nicht via MCP. Siehe docs/design/.
+**Input:** the node `<slug>`.
+
+## Read (via CLI)
+```bash
+anchored node read <slug>
+```
+
+## Work
+Review the built node for correctness + cleanup. Read-only.
+
+## Write (self-write via CLI)
+```bash
+anchored node append-log <slug> wrap learning "<review findings>"
+```

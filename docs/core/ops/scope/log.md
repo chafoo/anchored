@@ -10,7 +10,7 @@ nur angehängt, nie mutiert oder entfernt.
 - `append-log` (`{ at, kind, note }`); `kind ∈ decision | reorder | learning |
   blocker` (geschlossenes Enum).
 - Append-only ist eine **Op-Invariante** (in dieser Op erzwungen), nicht in
-  [validate](../../validate/_validate.md) — analog zu append-only Context-Ops.
+  [state](../../state/_state.md) — analog zu append-only Context-Ops.
 
 ## Wie
 

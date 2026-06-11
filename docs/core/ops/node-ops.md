@@ -13,7 +13,7 @@ und phase; sie unterscheiden sich nur im `tierSchema` (Felder + Mechanik).
   `append-log` · `set-field` · `add-evidence`.
 - Jede mutierende Op: `read → validate → mutate → re-validate → atomicWrite`
   (über [parser](../parser/_parser.md) + [io](../io.md)).
-- `set-status`/`add-evidence` ziehen [validate](../validate/_validate.md) —
+- `set-status`/`add-evidence` ziehen [state](../state/_state.md) —
   Transitions + die harte Invariante (kein `done` ohne `evidence`).
 - `tierSchema` liefert: Feld-Shape (config-getrieben), Status-Enum, Transitions,
   Kind-Typ. Die Helfer in `scope/` kapseln children/questions/log.

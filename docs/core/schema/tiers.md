@@ -12,7 +12,7 @@ werden damit parametrisiert.
 - **Feld-Shape** (Policy, aus `anchored.yml` + Default-Template gemerged): welche
   Felder der Node trägt. Die vollständigen Default-Felder pro Tier stehen in
   [docs/design/anchored.default.yml](../../design/anchored.default.yml).
-- **Mechanik** (fix, Code): Status-Enum, [Transitions](../validate/_validate.md),
+- **Mechanik** (fix, Code): Status-Enum, [Transitions](../state/_state.md),
   Kind-Typ (task→phase, epic→task, project→epic; phase = Leaf, kein Kind).
 - Kurzüberblick:
 

@@ -1,0 +1,257 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: anchored-v2-core/workflow-mode
+title: Workflow-Modus — Claude-Code-Dynamic-Workflow als Fan-out-Executor
+status: done
+created: 2026-06-11
+context:
+  plan: |
+    SCOPE: anchored v2 von Anfang an workflow-tauglich machen — der Build-Loop kann
+    statt sequenziell-interleaved als Claude-Code-Dynamic-Workflow fan-out laufen
+    (≤16 parallel, 1000 total), jede Unit do+verify, self-write via CLI. User:
+    "ganz wichtig — wir wollen Workflow nutzen können."
+
+    Diese Task TRÄGT die Orchestrierung; die Naht/Hooks dafür entstehen schon in
+    01 (reserved `executor`-Feld), 05 (spawn workflow-tauglich), 06 (loop-step
+    WORKFLOW-Modus), 10 (agents als self-write-Worker / Workflow-agentType).
+
+    Liefert:
+      - `executor`-Op: `anchored phase set-executor <implement|workflow>` (reserved
+        field, kann nicht von custom fields geshadowed werden).
+      - Workflow-Orchestrierung im loop-step: dispatcht Kinder (phases bzw. tasks) als
+        Background-Workflow, sammelt resume-safe ein, fährt dann die wrap-Gates
+        (task-/code-validate) einmal über das merged result.
+      - Resume-Safety = Task-File-EVIDENCE-driven (skip Units, deren ACs schon `done`
+        sind) — NICHT workflow-resume-abhängig (Resume überlebt nur in-Session).
+      - Modell "ein anchored-Knoten = ein Workflow" (Docs-Empfehlung: pro Stage ein
+        Workflow für Sign-off zwischen Stages).
+      - Allowlist-Precondition: `Bash(anchored *)` muss vor-genehmigt sein, sonst
+        hängt der Background-Workflow am Permission-Prompt (lazy-init, Task integration-dogfood).
+
+    DESIGN/REF: v1-Vorläufer ~/Dev/anchored/.claude/tasks/dynamic-workflow-executor.yml
+    (per-phase executor, fan-out, evidence-via-CLI, Background-only, resume-safe via
+    Task-File) — als KONZEPT-Referenz, neu im Factory-Pattern. Workflow-Tool-Spec:
+    Background-only (kein sync await), ≤16 parallel / 1000 total (fix), CLI-allowlist
+    nötig. engine-architecture.md (spawn-Naht), [[full-build-no-mvp]].
+
+    KERN (e9): Build-Loop läuft wahlweise sequential ODER workflow-fanout; ein echter
+    Workflow-Smoke (eine Task mit ≥2 Phasen via executor=workflow) ist grün.
+
+    GROBE PHASEN: (1) reserved executor-Feld + set-executor-Op · (2) loop-step
+    Background-Workflow-Dispatch + resume-safe Evidence-Collect · (3) Gates über
+    merged result + stop/retry im Workflow-Pfad · (4) e2e-Workflow-Smoke (fan-out
+    Phasen) grün, Vergleich gegen sequential.
+  build: |-
+    Workflow-Modus gebaut (4 Phasen, 17 ACs):
+    - Phase 1 set-executor-op: setExecutor (enum-validiert, atomic) + RESERVED_FIELDS-Guard in node-ops; CLI-Verb node set-executor; executor nicht via set-field shadowbar.
+    - Phase 2 dispatch-collect: neue Datei engine/scope/loop-workflow.ts — selectWorker/isUnitComplete/partition + workflowLoop (background-dispatch ≤16, evidence-driven skip, collect aus Task-File-State, merged result). WorkflowSeam-Typ in step-runner.ts (dispatch/collect/gates).
+    - Phase 3 gates-stop-retry: gates EINMAL über merged, stopFlagged nach collect → halt, retry bis retry_limit (evidence-driven, grüne Kinder geskippt), gate-fail → failures am Kind (Invariante im Substrat unberührt).
+    - Phase 4 e2e-smoke: workflow-smoke.spec — echter Engine-Pfad mit Fake-Naht; 2-Phasen-Task executor=workflow grün end-to-end (alle ACs done+evidence, build→wrap); Äquivalenz sequential↔workflow; Allowlist-Precondition Bash(anchored *) in build/SKILL.md dokumentiert.
+    Seam-Migration: deps.workflow von (childTier,children)=>AnyNode[] auf WorkflowSeam-Objekt umgestellt; engine.ts/integration.spec a5 + loop-step.spec angepasst. SEQUENTIAL-Pfad unverändert.
+    Gates: format+lint+typecheck grün, bun test 139 pass/2 skip/0 fail, build (tsc -p tsconfig.build.json) grün.
+  wrap: "KERN e9 erfüllt: Build-Loop läuft wahlweise SEQUENTIAL oder WORKFLOW-fanout; echter Workflow-Smoke (2-Phasen-Task, executor=workflow) grün end-to-end. Orchestrierung fakebar hinter injizierter WorkflowSeam — kein echtes CC im Test nötig. Naht zu integration-dogfood: Bash(anchored *)-Allowlist als harte Precondition dokumentiert."
+questions: []
+log:
+  - at: workflow-mode
+    kind: learning
+    note: WorkflowSeam als dispatch/collect/gates-Objekt statt einzelner Funktion — trennt Background-Dispatch sauber von evidence-driven Collect; ganze Fan-out-Mechanik fakebar ohne echtes Claude-Code-Workflow.
+phases:
+  - name: set-executor Op + CLI-Verb (reserved, nicht shadowbar)
+    slug: set-executor-op
+    status: done
+    context: |
+      Erste, orthogonale Naht: der Schreib-Pfad für das reserved `executor`-Feld.
+      Task tier-schemas deklariert das Feld auf dem phase-Deskriptor (Enum {implement,workflow},
+      optional, KEIN injizierter Default). Task ops-core liefert createNodeOps + die
+      set-field/reserved-Mechanik. Diese Phase ergänzt:
+        - einen typisierten Op `setExecutor(node, phaseRef, 'implement'|'workflow')`
+          in node-ops (über die scope/-Helfer), der den Wert auf der Ziel-Phase setzt,
+          das Enum validiert und atomic schreibt (kein Default einfügen, wenn nie
+          gesetzt — round-trip-Identität wahren).
+        - die Garantie, dass `executor` als RESERVED gilt: ein generischer
+          `set-field executor …` (custom field) wird abgewiesen, damit ein User-Feld
+          das Scheduling-Feld nicht shadowen kann.
+        - das CLI-Verb `anchored node set-executor <slug> <phase> <implement|workflow>`
+          in cli/commands/node.ts, gemappt auf genau diesen einen nodeOps-Aufruf,
+          mit JSON-Envelope (ok:true/false) wie die übrigen node-Verben.
+      factory-functions: Op über createNodeOps(tierSchema, deps), CLI-Command mit
+      injizierten deps.nodeOps — beides fakebar. KEIN MCP, einziger Transport = CLI.
+    rules:
+      - path: .claude/rules/cli-only-transport.md
+        why: executor-Mutation läuft über das anchored-CLI node-Verb, JSON-Output; aus Main-Session + Subagents gleich
+      - path: .claude/rules/factory-functions.md
+        why: setExecutor als nodeOps-Verb + set-executor-Command über injizierte deps; fakebar, keine Singletons
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: executor = reserved (Mechanismus/Policy-Grenze); nicht von custom fields shadowbar
+    acceptance_criteria:
+      - id: a1
+        text: "createNodeOps trägt `setExecutor(node, phaseRef, value)`: setzt das executor-Feld der Ziel-Phase und schreibt via io.atomicWrite; ein nicht-Enum-Wert wird abgewiesen (wirft) und schreibt NICHT. Beweis: node-ops.ts:Zeile der Signatur + ein bun-Test, der für 'workflow' den Write asserted und für 'bogus' den nicht-erfolgten Write (atomicWrite-Spy nie gerufen) asserted (grünes Test-Output)."
+        status: done
+        evidence:
+          - core/src/ops/node-ops.ts:131 setExecutor — enum-validate vor persist; core/src/ops/node-ops.spec.ts:70 grün (workflow geschrieben, bogus wirft + atomicWrite-Spy nie gerufen)
+      - id: a2
+        text: "Eine Phase, deren executor nie gesetzt wurde, parst + serialisiert byte-identisch (kein Default 'implement' eingefügt). Beweis: bun-Test parse→render→Vergleich eines phase-Nodes ohne executor zeigt Identität (grün) + datei:zeile, die belegt, dass setExecutor nur bei explizitem Aufruf schreibt."
+        status: done
+        evidence:
+          - core/src/ops/node-ops.spec.ts:83 parse→render→Identität eines phase-Nodes ohne executor + assert 'executor' nicht im Node (kein Default injiziert); schema/tiers/phase.ts:43 executor optional, kein default
+      - id: a3
+        text: "`set-field executor <wert>` (generischer custom-field-Pfad) wird mit Reserved-Fehler abgewiesen und schreibt NICHT; nur setExecutor darf das Feld setzen. Beweis: bun-Test, der set-field auf 'executor' den Reserved-Fehler asserted (atomicWrite-Spy nie gerufen) — plus datei:zeile der Reserved-Liste/Prüfung (grün)."
+        status: done
+        evidence:
+          - core/src/ops/node-ops.ts:118 RESERVED_FIELDS + setField-Guard (wirft ReservedField VOR persist); core/src/ops/node-ops.spec.ts:103 grün (set-field executor abgewiesen, atomicWrite nie gerufen; title schreibt)
+      - id: a4
+        text: "CLI-Verb `node set-executor <slug> <phase> <implement|workflow>` ist auf genau einen deps.nodeOps.setExecutor-Aufruf gemappt und liefert { ok:true, command, result } / bei Fehler { ok:false, error:{name,message} } + exit 1. Beweis: node.spec mit fakeNodeOps-Spy asserted genau-ein-Aufruf mit geparsten Args + JSON-Envelope; ein ungültiger Enum-Wert ergibt ok:false/exit 1 (grünes Test-Output) + cli/commands/node.ts:Zeile des Mappings."
+        status: done
+        evidence:
+          - core/src/cli/commands/node.ts:45 set-executor → genau ein ops.setExecutor; core/src/cli/commands/node.spec.ts:84 grün (ein Aufruf parsed args) + node.spec.ts:97 (invalid enum → ok:false/exit 1)
+  - name: loop-step WORKFLOW-Orchestrierung — Background-Dispatch + resume-safe Evidence-Collect
+    slug: workflow-dispatch-collect
+    status: done
+    context: |
+      Der Kern: die Fan-out-Orchestrierung im loop-step. Task engine lieferte die Naht
+      (SEQUENTIAL-vs-WORKFLOW-Dispatch, die injizierte workflow-Dep, den ≤16-Batch-Cap
+      als Hook). Diese Phase verdrahtet die echte Workflow-Mechanik dahinter:
+        - DISPATCH: im WORKFLOW-Modus startet loopStep die Kinder (phases bzw. tasks)
+          als Background-Workflow über die injizierte spawn/workflow-Naht — Background-
+          only (kein synchrones await), jede Unit do+verify, self-write via CLI. Die
+          Selektion des Workers folgt dem executor-Feld der Unit (implement vs workflow).
+        - RESUME-SAFE COLLECT: das Einsammeln ist TASK-FILE-EVIDENCE-getrieben, NICHT
+          workflow-resume-abhängig (Resume überlebt nur in-Session). Beim (Re-)Eintritt
+          liest loopStep den aktuellen Task-File-State und überspringt jede Unit, deren
+          ACs bereits `done` (mit evidence) sind — bereits erledigte Kinder werden NICHT
+          erneut dispatcht. Persistente Fehler / offene Units werden als „noch offen"
+          erkannt und neu gefahren.
+        - MERGE: nach dem Einsammeln liegt ein merged result über alle Kinder vor
+          (welche done, welche failed/offen), das die nächste Phase an die Gates gibt.
+      factory-functions: die Workflow-Orchestrierung lebt in engine/scope/loop-step.ts
+      bzw. einem scope/-Helfer hinter der injizierten workflow/spawn-Naht — im Test
+      durch ein Fake ersetzbar (kein echtes CC nötig). SEQUENTIAL-Pfad bleibt unberührt.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: WORKFLOW-Dispatch hinter injizierter workflow/spawn-Naht; fakebar; Runner austauschbar
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Engine deterministisch, Workflow = Effekt hinter spawn; Kontrollfluss/Skip-Logik = Code
+      - path: .claude/rules/cli-only-transport.md
+        why: Units schreiben Evidence self via anchored-CLI; Collect liest Task-File-State, nicht Workflow-Resume
+    acceptance_criteria:
+      - id: a1
+        text: "Im WORKFLOW-Modus dispatcht loopStep die Kinder als Background-Workflow über die injizierte workflow/spawn-Naht (kein synchrones await); ein Fake-workflow-Dep asserted, dass die Naht mit der Kind-Liste im Background-Modus gerufen wird und der SEQUENTIAL-interleaved-Body NICHT läuft. Beweis: engine/loop-workflow.spec — grünes Test-Output + loop-step.ts:Zeile des Dispatch-Zweigs."
+        status: done
+        evidence:
+          - core/src/engine/scope/loop-workflow.ts:95 background-dispatch (≤16, kein await der Completion); core/src/engine/loop-workflow.spec.ts a1 grün (dispatch im Background, sequential body läuft NICHT)
+      - id: a2
+        text: "Resume-safe Skip ist EVIDENCE-driven: bei (Re-)Eintritt überspringt loopStep jede Unit, deren ACs schon `done` (mit evidence) sind, und dispatcht NUR die offenen. Beweis: bun-Test mit einem Task-File-Fake, in dem Kind A=done/Kind B=pending → die workflow-Naht wird genau für B gerufen, NICHT für A (engine/loop-workflow.spec — grün)."
+        status: done
+        evidence:
+          - core/src/engine/scope/loop-workflow.ts:86 evidence-driven open-filter (isUnitComplete:36); loop-workflow.spec.ts a2 grün (A done/B pending → nur B dispatcht)
+      - id: a3
+        text: "Worker-Selektion folgt dem executor-Feld der Unit: eine Unit mit executor=workflow geht an den workflow-Worker, eine mit executor=implement (oder ohne) an den implement-Worker. Beweis: Test mit gemischten executor-Feldern asserted die je-Unit gewählte Worker-Kennung an der Naht (engine/loop-workflow.spec — grün) + loop-step.ts:Zeile der Selektion."
+        status: done
+        evidence:
+          - core/src/engine/scope/loop-workflow.ts:89 selectWorker per Unit (:29); loop-workflow.spec.ts a3 grün (workflow/implement/unset → korrekte Worker-Kennung)
+      - id: a4
+        text: "Collect erzeugt ein merged result über alle Kinder (done vs failed/offen), gelesen aus dem Task-File-State — NICHT aus einem Workflow-Resume-Handle. Beweis: Test, der nach Fake-Dispatch + simuliertem Self-Write (ein Kind schreibt evidence/done, eins failures) das merged result asserted (korrekte done/failed-Partition) (engine/loop-workflow.spec — grün)."
+        status: done
+        evidence:
+          - core/src/engine/scope/loop-workflow.ts:100 collect re-read + partition(:48) aus Task-File-State; loop-workflow.spec.ts a4 grün (merged done=[A]/failed=[B] aus collect, nicht Resume-Handle)
+      - id: a5
+        text: "SEQUENTIAL-Default bleibt unberührt: alle bestehenden loop-sequential-Tests (Task engine) bleiben grün, nachdem die WORKFLOW-Orchestrierung verdrahtet wurde. Beweis: Test-Suite-Output zeigt loop-step.spec + loop-sequential vollständig grün."
+        status: done
+        evidence:
+          - "SEQUENTIAL unberührt: bun test src/engine — loop-step.spec + integration.spec + runners.spec vollständig grün (139 pass/0 fail); loop-workflow.spec.ts a5 (mode!=workflow dispatcht nie)"
+  - name: wrap-Gates über merged result + stop/retry im Workflow-Pfad
+    slug: workflow-gates-stop-retry
+    status: done
+    context: |
+      Nach dem Fan-out + Collect muss der Workflow-Pfad dieselben Garantien liefern
+      wie der sequenzielle: die wrap-Gates und das stop/retry-Verhalten.
+        - GATES EINMAL ÜBER MERGED: die wrap-Stage-Gates (task-validate, code-validate)
+          laufen EINMAL über das merged result aller Kinder — nicht pro Unit erneut.
+          Das spiegelt das Modell „ein anchored-Knoten = ein Workflow, Gates beim
+          Stage-Sign-off". Gate-Failures landen als failures am betroffenen Kind.
+        - STOP: die `stop`-Conditions des loopenden build greifen auch im WORKFLOW-Pfad
+          — flaggt eine Unit eine stop-Bedingung (z.B. „decision deviates from the plan"),
+          hält der Loop nach dem Collect an, statt weiterzulaufen.
+        - RETRY: ein fehlschlagendes (failures-tragendes) Kind wird bis cfg.build.retry_limit
+          (default 3) neu dispatcht — über denselben evidence-driven-Skip, sodass schon
+          grüne Kinder NICHT erneut laufen. Erschöpftes retry_limit hält den Loop an.
+      factory-functions: dieselbe stop/retry-Mechanik wie der SEQUENTIAL-Loop, nur über
+      den merged-result-Pfad; Gates über die injizierte spawn-Naht (fakebar). Die harte
+      Invariante (kein ac→done ohne evidence) bleibt im Substrat — die Gates umgehen sie
+      nicht.
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: stop/retry = Mechanismus (Code); harte Invariante bleibt im Substrat, Gates umgehen sie nicht
+      - path: .claude/rules/factory-functions.md
+        why: Gates + retry-Schleife über injizierte Naht; fakebar; keine versteckten Effekte
+      - path: .claude/rules/tooling-quality-gates.md
+        why: task-/code-validate = Quality-Gate vor Abschluss; rotes Gate blockiert done
+    acceptance_criteria:
+      - id: a1
+        text: "Die wrap-Gates (task-validate, code-validate) laufen im WORKFLOW-Pfad EINMAL über das merged result aller Kinder (nicht pro Unit). Beweis: Test mit Fake-Gate-Naht über N Kinder asserted genau EINEN Gate-Durchlauf über das merged result + loop-step.ts/scope:Zeile (engine/loop-workflow.spec — grün)."
+        status: done
+        evidence:
+          - core/src/engine/scope/loop-workflow.ts:105 gates EINMAL über merged result; loop-workflow.spec.ts p3a1 grün (3 Kinder, gateCalls===1)
+      - id: a2
+        text: "Eine von einer Unit geflaggte stop-Bedingung hält den WORKFLOW-Loop nach dem Collect an (kein Weiterlaufen). Beweis: Test, in dem ein Fake-Kind eine cfg.build.stop-Bedingung flaggt, asserted, dass der Loop nach dem Collect hält und kein weiterer Dispatch erfolgt (engine/loop-workflow.spec — grün)."
+        status: done
+        evidence:
+          - core/src/engine/scope/loop-workflow.ts:114 stopFlagged nach collect → halt; loop-workflow.spec.ts p3a2 grün (Loop hält nach collect, dispatches===1, kein re-dispatch)
+      - id: a3
+        text: "Retry ist evidence-driven: ein failures-tragendes Kind wird bis cfg.build.retry_limit (default 3) neu dispatcht, schon grüne Kinder NICHT erneut; ein dauerhaft fehlschlagendes Kind asserted genau retry_limit Dispatch-Versuche + Halt. Beweis: Test mit einem Fake-Kind, das 2× failt + dann grün ist (3 Versuche, übrige Kinder genau 1×) und einem dauerhaft fehlschlagenden (genau retry_limit) (engine/loop-workflow.spec — grün)."
+        status: done
+        evidence:
+          - core/src/engine/scope/loop-workflow.ts:84 retry-Schleife bis retry_limit, evidence-driven skip; loop-workflow.spec.ts p3a3 grün (flaky 3 Versuche / grüne 1×; permanent-fail genau retry_limit)
+      - id: a4
+        text: "Ein Gate-Failure schreibt failures an das betroffene Kind (nicht ac→done); die harte Invariante bleibt unverletzt. Beweis: Test, in dem ein code-validate-Gate failt, asserted failures am Kind + dass kein ac auf done ohne evidence geht (Invarianten-Pfad ungebrochen) (engine/loop-workflow.spec — grün)."
+        status: done
+        evidence:
+          - core/src/engine/scope/loop-workflow.ts:107 gate-fail → re-collect (Worker self-write failures); loop-workflow.spec.ts p3a4 grün (failures am Kind, ac bleibt pending — Invariante ungebrochen)
+  - name: e2e Workflow-Smoke — Fan-out-Phasen grün, Äquivalenz gegen sequential
+    slug: workflow-smoke-e2e
+    status: done
+    context: |
+      Der KERN-Beweis (e9 im Seed): der Build-Loop läuft wahlweise SEQUENTIAL ODER
+      WORKFLOW-fanout, und ein echter Workflow-Smoke ist grün. Eine Task mit ≥2 Phasen,
+      executor=workflow gesetzt (via set-executor-Op aus Phase 1), wird end-to-end über
+      die Fan-out-Orchestrierung gefahren — mit der injizierten/fakebaren Naht, sodass
+      kein echtes CC nötig ist, der Pfad aber vollständig (Dispatch→Collect→Gates→
+      Transition) durchläuft.
+        - SMOKE: eine ≥2-Phasen-Task via executor=workflow läuft grün durch: alle ACs
+          erreichen mit evidence `done`, der Task-Status transitioniert build→wrap.
+        - ÄQUIVALENZ: dieselbe Task-Definition ergibt über den SEQUENTIAL- und den
+          WORKFLOW-Pfad ein äquivalentes Ergebnis (gleiches done-Kind-Set, gleicher
+          End-Status) bei unterschiedlichem Ausführungs-Pfad.
+        - ALLOWLIST-PRECONDITION: dokumentiert/getestet, dass `Bash(anchored *)`
+          vor-genehmigt sein muss, sonst hängt der Background-Workflow am Permission-
+          Prompt (Naht zu Task integration-dogfood lazy-init).
+      factory-functions: der e2e-Test fährt den echten Engine-Pfad (createEngine/
+      tier-runner → loop-step) mit der injizierten Workflow-Naht als Fake — kein 1:1-Port.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: e2e über echten Engine-Pfad mit injizierter Workflow-Naht (Fake); kein echtes CC nötig
+      - path: .claude/rules/cli-only-transport.md
+        why: Units self-write via CLI; Allowlist Bash(anchored *) Precondition für Background-Workflow
+      - path: .claude/rules/tooling-quality-gates.md
+        why: Smoke ist erst grün, wenn ACs mit evidence done + Status build→wrap (Gates grün)
+    acceptance_criteria:
+      - id: a1
+        text: "Eine Task mit ≥2 Phasen + executor=workflow läuft end-to-end über die Fan-out-Orchestrierung grün: nach dem Lauf sind alle Phasen-ACs mit evidence `done` und der Task-Status ist build→wrap transitioniert. Beweis: engine/workflow-smoke.spec, der den echten Engine-Pfad mit Fake-workflow-Naht fährt + Endzustand (alle ACs done, Status wrap) asserted (grünes Test-Output)."
+        status: done
+        evidence:
+          - "core/src/engine/workflow-smoke.spec.ts:95 grün — echter Engine-Pfad (createEngine→tier→loop→workflowLoop) mit Fake-Naht: 2 Phasen alle ACs done+evidence, danach build→wrap via ops.setStatus"
+      - id: a2
+        text: "Äquivalenz: dieselbe Task-Definition über SEQUENTIAL vs. WORKFLOW ergibt dasselbe done-Kind-Set + denselben End-Status bei unterschiedlichem Ausführungs-Pfad. Beweis: Test fährt beide Pfade über dieselbe Definition + asserted Gleichheit des End-Result (engine/workflow-smoke.spec — grün)."
+        status: done
+        evidence:
+          - core/src/engine/workflow-smoke.spec.ts:143 grün — SEQUENTIAL vs WORKFLOW über dieselbe Definition → identisches done-Set [p1,p2] + beide status ok
+      - id: a3
+        text: "executor=workflow wird im Smoke über die set-executor-Op (Phase 1) gesetzt — nicht roh ins File geschrieben — und vom loop-step korrekt als WORKFLOW-Dispatch interpretiert. Beweis: Test, der set-executor fährt + danach den WORKFLOW-Pfad nimmt (asserted Dispatch-Zweig), grün."
+        status: done
+        evidence:
+          - core/src/engine/workflow-smoke.spec.ts:99 executor via set-executor-Op gesetzt (nicht roh); :123 assert dispatch=[workflow:p1,workflow:p2] (WORKFLOW-Zweig genommen)
+      - id: a4
+        text: "Die Allowlist-Precondition `Bash(anchored *)` ist als harte Voraussetzung des Background-Workflows dokumentiert/getestet (sonst Permission-Prompt-Hang). Beweis: datei:zeile in der Workflow-Mode-Doku/Skill, die die Precondition nennt, + ein Test/Check, der das Fehlen als bekannte Fehlerbedingung behandelt (grün)."
+        status: done
+        evidence:
+          - plugin/skills/build/SKILL.md:39 'Bash(anchored *)'-Allowlist-Precondition dokumentiert; core/src/engine/workflow-smoke.spec.ts:179 grün (Check liest SKILL.md, assert Precondition genannt)

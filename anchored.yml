@@ -52,7 +52,7 @@ phase:
           Phase = ein Commit (Conventional Commits) + SHA ins commit-Phasenfeld.
           Lokal, kein Remote/PR (kommt später). Läuft nach implement + Validatoren.
   fields:
-    - { name: commit, type: string }   # ein SHA pro Phase
+    commit: string   # ein SHA pro Phase (v2: fields = Map key→type, nicht Liste)
 
 # ── task ──
 task:

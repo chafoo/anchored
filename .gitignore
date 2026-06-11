@@ -18,3 +18,4 @@ dist-schemas/
 
 # local working notes (not shipped)
 .claude/temp/
+anchored.yml

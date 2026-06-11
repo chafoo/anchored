@@ -1,0 +1,235 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: anchored-v2-core/parser-io
+title: YAML-Parser/Renderer + atomic-write io
+status: done
+created: 2026-06-10
+context:
+  plan: |
+    SCOPE: YAML ↔ Node + sichere Persistenz.
+
+    Liefert:
+      parser/parse.ts  — parseNodeYAML, ZWEI Profile: task-file (no-alias) und
+                         anchored.yml (alias-ok für _lib). Gegen die Tier-Schemas (Task tier-schemas).
+      parser/render.ts — renderNodeYAML: Schema-Directive auf Zeile 1 auto-injizieren;
+                         Prosa als block-scalar (|), kein Mix.
+      io.ts            — atomic-write: lock + mkdir -p + POSIX-rename. Einzel-File →
+                         kein Ordner. Nested-Pfade (<epic>/<slug>) anlegen.
+
+    DESIGN: file-structure.md (parser/ + io.ts) · anchored.default.yml (block-scalar
+    für context-Trails) · task.example.yml + epic.example.yml (Ziel-Output-Format,
+    inkl. Directive-Zeile) · fractal-redesign-notes.md (Markdown = block-scalar).
+    V1-REF (Logik-Vorlage, neu im Factory-Pattern — kein 1:1-Port): mcp/src/parser/{parse.ts(94),render.ts(46)} + mcp/src/core/io.ts(122) —
+    als Logik-Vorlage; neu schreiben, an die zwei Profile + nested slugs.
+
+    GROBE PHASEN: (1) parse zwei Profile · (2) render Directive + block-scalar ·
+    (3) atomic io + nested-Pfad · (4) round-trip-Tests (parse→render→parse stabil).
+  refine: |
+    Detail-Entscheidungen (source: ai): (1) no-alias-Profil = yaml maxAliasCount:0 (lehnt Alias-Expansion ab, den Billion-Laughs-Vektor); ein Anchor ohne zugehörigen Alias ist harmlos/kein Angriffsvektor. (2) Der Parser bedient Node-Files UND die Config: schemas-Map enthält auch 'config', der schema_version-Gate läuft NUR im task-file-Profil (Config hat keine schema_version). (3) QuestionSchema.origin → optional (epic.example.yml lässt origin weg). (4) io.ts rein deps-basiert (fs/lock/rand/pid injiziert), KEIN node:fs-Import — echte node:fs/proper-lockfile-Naht beim wiring; node:path/dirname ist pure und erlaubt.
+  build: |
+    3 Module: parser/{parse,render}.ts + io.ts. createParser (zwei Profile, Tier+Config-Schemas, ParseError mit Pfad), createRenderer (Directive Zeile 1 + block-scalar via yaml stringify lineWidth:0), createIo (mkdir→lock→write-temp→rename→release, WriteContention via anchoredError). 13 neue Tests mit fake-Naht (fakeYaml/fakeSchemas/fakeFs/fakeLock). Alle 5 Gates grün.
+  wrap: |
+    YAML↔Node + atomic Persistenz stehen; round-trip idempotent über die echten Fixtures (task/epic) bewiesen. Naht-Prinzip durchgehalten. Bereit für ops-core (nutzt parser/render/io + die Invariante).
+questions: []
+log:
+  - at: parse-two-profiles
+    kind: decision
+    note: "Parser bedient Node-Files (task-file: no-alias + schema_version-Gate) UND Config (anchored.yml: alias-ok, kein Gate); schemas-Map enthält 'config'. no-alias = maxAliasCount:0 (lehnt Alias-Expansion ab)."
+  - at: atomic-io-nested
+    kind: decision
+    note: io.ts rein deps-basiert (kein node:fs-Import); echte fs/lock-Naht beim wiring injiziert. node:path/dirname ist pure → erlaubt.
+  - at: round-trip-stability
+    kind: learning
+    note: QuestionSchema.origin optional gemacht (epic.example.yml-Realität). Round-trip über task+epic-Fixtures + Schreib-Pfad idempotent.
+phases:
+  - name: parseNodeYAML — zwei Profile (no-alias / alias-ok) gegen Tier-Schemas
+    slug: parse-two-profiles
+    status: done
+    context: |
+      createParser(cfg, deps) → { parseNodeYAML(raw, { profile, tier }) }. Deps
+      injiziert/fakebar: { yaml } (yaml-parse-Naht), { schemas } (die Tier-Zod-
+      Schemas aus Task tier-schemas: phase/task/epic/project). Closure-State nur falls nötig
+      — keine Modul-Level-Singletons, keine Top-Level-Seiteneffekte
+      ([[factory-functions]]).
+
+      ZWEI Profile (V1 mcp/src/parser/parse.ts + core/parser.ts als Logik-Vorlage,
+      NICHT 1:1 portieren):
+        - profile "task-file": no-alias (YAML-Aliasse/Anchors HART abgelehnt),
+          no-custom-tags, size-cap. Schützt persistierte Node-Files vor
+          Alias-Bomben + Verweis-Trickserei.
+        - profile "anchored.yml": alias-ok NUR für _lib-Reuse (Anchors/Aliasse
+          erlaubt), sonst gleiche Härtung (custom-tags raus, size-cap).
+      Ablauf je Profil: (1) yamlSafe(raw) → unknown (Härtung), (2) schema_version-
+      Gate mit klarer Fehlermeldung VOR generischer Validierung, (3) das passende
+      Tier-Schema (`tier`) .parse(...) → typisierte Node. Fehler als ParseError
+      mit Zeile/Spalte (wenn verfügbar) bzw. Schema-Pfad. Reiner Code — keine AI,
+      kein FS, kein spawn.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: createParser(cfg,deps); yaml+schemas als injizierte/fakebare Deps; keine Klassen/Singletons
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Parser = Mechanismus/Substrat; v1 ist Logik-Vorlage, kein Port
+      - path: docs/design/file-structure.md
+        why: "parser/parse.ts: parseNodeYAML zwei Profile (task-file no-alias, anchored.yml alias-ok)"
+    acceptance_criteria:
+      - id: a1
+        text: "createParser ist eine Factory (createX(cfg,deps)→{verbs}): yaml + schemas kommen ausschließlich aus deps, sind im Test durch Fakes ersetzbar; keine Klasse, kein Modul-Level-Singleton, kein Top-Level-Seiteneffekt — Beweis als parse.ts:zeile (Signatur + return-Objekt) + Test, der createParser({}, { yaml: fakeYaml, schemas: fakeSchemas }) ohne echtes yaml/FS fährt (grün)"
+        status: done
+        evidence:
+          - src/parser/parse.spec.ts 'createParser runs with fake yaml + fake schemas' — yaml+schemas nur aus deps, fakeYaml/fakeSchemas ohne echtes yaml/fs; createParser ist Factory (parse.ts:27) (grün)
+      - id: a2
+        text: profile 'task-file' lehnt YAML mit Alias/Anchor (z.B. `*ref` / `&anc`) mit ParseError ab, während profile 'anchored.yml' denselben _lib-Alias-Input erfolgreich parst — Beweis als parse.ts:zeile (Profil-Verzweigung) + zwei Tests (no-alias wirft, alias-ok parst), Test-Output grün
+        status: done
+        evidence:
+          - src/parser/parse.spec.ts 'task-file rejects alias; anchored.yml accepts _lib' — task-file (maxAliasCount:0) wirft auf *base; anchored.yml parst → steps[0].name='implement' (parse.ts:42 Profil-Verzweigung) (grün)
+      - id: a3
+        text: schema_version != erwartete Version UND fehlendes schema_version werfen je einen ParseError mit eigener, klarer Meldung VOR der generischen Schema-Validierung; ein valides task-File parst gegen das task-Tier-Schema in eine typisierte Node — Beweis als parse.ts:zeile (Version-Gate) + Tests (falsche Version wirft, fehlende wirft, valide parst), Test-Output grün
+        status: done
+        evidence:
+          - src/parser/parse.spec.ts 'schema_version gate' — valide task parst; fehlendes & schema_version:1 werfen ParseError VOR Schema-Validierung (parse.ts schema_version-Gate, task-file-only) (grün)
+      - id: a4
+        text: "Quality-Gates grün für core/: lint (eslint), format (prettier-check), typecheck (tsc --noEmit), test (bun test) — Beweis als kopierter Befehls-Output je Gate (exit 0)"
+        status: done
+        evidence:
+          - "4 Gates exit 0: eslint, prettier --check, tsc --noEmit, bun test (35 pass/0 fail)"
+  - name: renderNodeYAML — Schema-Directive Zeile 1 + Prosa als block-scalar
+    slug: render-directive-blockscalar
+    status: done
+    context: |
+      createRenderer(cfg, deps) → { renderNodeYAML(node, { tier }) }. Deps
+      injiziert/fakebar: { yaml } (stringify-Naht), { schemaUrl } (Directive-URL je
+      Tier). V1 mcp/src/parser/render.ts als Logik-Vorlage (config-only Wrapper),
+      neu im Factory-Pattern.
+
+      Anforderungen:
+        - Schema-Directive (`# yaml-language-server: $schema=<tier-url>`) wird auf
+          Zeile 1 AUTO-injiziert — YAML-Kommentare round-trippen nicht durch den
+          Parser, der Renderer ist die einzige kanonische Injektions-Stelle (jeder
+          Write emittiert die Directive, egal wie das File vorher aussah).
+        - Prosa/Markdown wird als block-scalar (`|`) emittiert, KEIN Mix
+          (anchored.default.yml context-Trails + fractal-redesign-notes „Markdown =
+          block-scalar"). Key-Insertion-Order erhalten (kein alphabetisches
+          Sortieren), 2-space-Indent, EOF-Newline.
+        - Directive je Tier korrekt (task→task.schema, epic→epic.schema, …).
+      Reiner Code — kein FS-Write hier (das macht io.ts); Renderer liefert nur den
+      String.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: createRenderer(cfg,deps); yaml+schemaUrl als injizierte Deps; pure, kein versteckter State
+      - path: docs/design/file-structure.md
+        why: "parser/render.ts: Schema-Directive + block-scalar für Prosa"
+      - path: docs/design/fractal-redesign-notes.md
+        why: Markdown-Content = YAML block-scalar (|), kein Mix
+    acceptance_criteria:
+      - id: a1
+        text: "renderNodeYAML emittiert die Schema-Directive `# yaml-language-server: $schema=...` exakt auf Zeile 1 — unabhängig davon ob der Eingabe-Node schon eine trug; die URL entspricht dem `tier`-Argument (task vs. epic liefern unterschiedliche $schema-URLs) — Beweis als render.ts:zeile (Directive-Prepend) + Test, der die erste Zeile zweier Tier-Renders asserted (grün)"
+        status: done
+        evidence:
+          - "src/parser/render.spec.ts 'directive on line 1 per tier' — Zeile 1 = '# yaml-language-server: $schema=…/task.schema.json'; tier epic → epic.schema.json (render.ts:27) (grün)"
+      - id: a2
+        text: Ein Node mit mehrzeiligem Prosa-Feld (z.B. context.plan / goal) wird als block-scalar (`|`) emittiert — KEIN gequoteter String mit \n-Escapes; round-trip via parseNodeYAML ergibt denselben Prosa-Wert — Beweis als render.ts:zeile (stringify-Optionen) + Test, der `|` im Output prüft UND parse(render(node)) den Prosa-Wert erhält (grün)
+        status: done
+        evidence:
+          - "src/parser/render.spec.ts 'multiline prose block-scalar + round-trip' — context.plan mehrzeilig → 'plan: |', kein \\n-Escape; parse(render) erhält den Prosa-Wert (grün)"
+      - id: a3
+        text: Key-Insertion-Order bleibt erhalten (kein alpha-Sort), Output endet mit genau einem Trailing-Newline, Indent = 2 Spaces — Beweis als render.ts:zeile (yaml-Optionen) + Test, der Reihenfolge + EOF-Newline asserted (grün)
+        status: done
+        evidence:
+          - src/parser/render.spec.ts 'key order, EOF newline, 2-space' — z vor a (kein alpha-Sort), genau ein Trailing-Newline, 2-space-Indent (yaml stringify lineWidth:0) (grün)
+      - id: a4
+        text: "Quality-Gates grün für core/: lint, format, typecheck, test — Beweis als kopierter Befehls-Output je Gate (exit 0)"
+        status: done
+        evidence:
+          - "4 Gates exit 0: eslint, prettier --check, tsc --noEmit, bun test (35 pass/0 fail)"
+  - name: "io.ts — atomic-write: lock + mkdir -p + POSIX-rename, nested Pfade"
+    slug: atomic-io-nested
+    status: done
+    context: |
+      createIo(cfg, deps) → { atomicWrite(path, content), readFile(path) }. Deps
+      injiziert/fakebar: { fs } (writeFile/rename/mkdir/readFile — node:fs/promises-
+      Naht), { lock } (lock-acquire/release-Naht), { rand }+{ pid } (Temp-Suffix).
+      V1 mcp/src/core/io.ts als Logik-Vorlage, neu im Factory-Pattern — KEIN
+      direkter node:fs-Import in der Logik, alles über die injizierte Naht
+      ([[factory-functions]]). Node-kompatibel (node:fs/path/crypto, keine Bun.*).
+
+      atomicWrite-Ablauf (POSIX-Garantie):
+        1. mkdir -p auf dirname(path) — nested-Pfade <epic>/<slug> entstehen lazy;
+           Einzel-File (flacher Slug) → KEIN Ordner angelegt, nur das File.
+        2. cross-process lock auf path acquiren (retry-Budget; WriteContention bei
+           Timeout); stale-reclaim nach Threshold.
+        3. write nach Temp-Sibling `<path>.tmp.<pid>.<rand>`, dann rename(tmp, path)
+           — atomar auf POSIX; Crash mid-write lässt Original intakt.
+        4. lock IMMER freigeben (finally, auch bei Write-Fehler).
+      Klare Fehlertypen (WriteContention) mit handlungsleitender Meldung.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: createIo(cfg,deps); fs+lock als injizierte/fakebare Naht; kein direkter fs-Import in der Logik
+      - path: .claude/rules/tooling-quality-gates.md
+        why: node:fs/path/crypto, keine Bun.*-APIs im Produktiv-Code (npm-Publish-Kompat)
+      - path: docs/design/file-structure.md
+        why: "io.ts: lock + mkdir -p + POSIX-rename; Einzel-File → kein Ordner; nested <epic>/<slug>"
+    acceptance_criteria:
+      - id: a1
+        text: "createIo ist eine Factory: fs + lock + rand/pid kommen ausschließlich aus deps; ein Test fährt atomicWrite vollständig mit fakeFs (in-memory) OHNE echtes node:fs zu treffen — Beweis als io.ts:zeile (Signatur + deps-Destructure) + Test (grün), plus grep/Beleg dass io.ts keinen direkten node:fs/promises-Import in der Schreib-Logik nutzt (nur über deps)"
+        status: done
+        evidence:
+          - "src/io.spec.ts 'createIo writes fully through fakeFs' — fs/lock/rand/pid aus deps; atomicWrite end-to-end mit fakeFs; grep 'node:fs' src/io.ts → nur Kommentar (einziger Effekt-Import: node:path/dirname, pure) (grün)"
+      - id: a2
+        text: atomicWrite schreibt zuerst in einen Temp-Sibling `<path>.tmp.*` und ruft DANN rename(tmp,path) — die Reihenfolge writeFile→rename ist beweisbar; vor dem Lock-Acquire wird mkdir(dirname,{recursive:true}) gerufen — Beweis als io.ts:zeile (write-then-rename + mkdir) + Test mit fakeFs, der die Call-Sequenz (mkdir, lock, write, rename, release) asserted (grün)
+        status: done
+        evidence:
+          - src/io.spec.ts 'atomicWrite sequence' — calls === [mkdir:base, acquire, write:…tmp.999.RND, rename, release] (write-then-rename, mkdir vor lock) (grün)
+      - id: a3
+        text: Nested-Slug (z.B. `epicA/01-task`) legt das Eltern-Verzeichnis via mkdir -p an; flacher Einzel-Slug legt KEIN zusätzliches Unterverzeichnis an (nur das File im bestehenden tasks-Dir) — Beweis als io.ts:zeile + zwei Tests (nested erzeugt mkdir-Call für den Sub-Pfad; flach nicht), Test-Output grün
+        status: done
+        evidence:
+          - src/io.spec.ts 'nested slug mkdir -p; flat does not' — nested 'base/epicA/task.yml' → mkdir:base/epicA; flach 'base/task.yml' → mkdir:base, kein mkdir:base/* (grün)
+      - id: a4
+        text: Bei nicht-erreichbarem Lock wirft atomicWrite WriteContention mit handlungsleitender Meldung; das Lock wird in JEDEM Pfad (auch bei Write-Fehler) via finally freigegeben — Beweis als io.ts:zeile (try/finally + WriteContention) + zwei Tests (Lock-Timeout wirft WriteContention; Write-Fehler ruft trotzdem release), Test-Output grün
+        status: done
+        evidence:
+          - src/io.spec.ts 'lock timeout → WriteContention; write error releases' — lockFails → WriteContention; writeFails wirft, calls enthält 'release' (finally) (grün)
+      - id: a5
+        text: "Quality-Gates grün für core/: lint, format, typecheck, test — Beweis als kopierter Befehls-Output je Gate (exit 0)"
+        status: done
+        evidence:
+          - "4 Gates exit 0: eslint, prettier --check, tsc --noEmit, bun test (35 pass/0 fail)"
+  - name: Round-trip-Stabilität — parse→render→parse idempotent über alle Tiers
+    slug: round-trip-stability
+    status: done
+    context: |
+      Integrations-Beweis, dass parser + io zusammen stabil sind: das verbindliche
+      Versprechen ist parse(render(parse(raw))) == parse(raw) (idempotent) über
+      die echten Tier-Fixtures (task.example.yml, epic.example.yml) und Prosa-
+      lastige Nodes. Verifiziert, dass die block-scalar-Emission + Directive-
+      Injektion KEINE Daten verändern und der no-alias-Schutz round-trips überlebt.
+      Plus: atomicWrite(render(node)) → readFile → parseNodeYAML ergibt
+      denselben Node (Schreib-Pfad end-to-end, mit fakeFs deterministisch).
+      Alle Bausteine sind Factories; der Round-trip-Test verdrahtet sie mit Fakes
+      (fakeFs, echte yaml-Naht) — kein echtes CC/spawn.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: Round-trip verdrahtet parser/renderer/io-Factories mit injizierten Fakes
+      - path: docs/design/fractal-redesign-notes.md
+        why: Markdown=block-scalar, Directive round-trippt nicht durch Parser → Renderer ist single injection point
+    acceptance_criteria:
+      - id: a1
+        text: Für die Fixtures task.example.yml UND epic.example.yml gilt parse(render(parse(raw))) deep-equal parse(raw) (idempotent, inkl. Prosa-Felder + Reihenfolge) — Beweis als Test-Datei:zeile + Test-Output grün für beide Tiers
+        status: done
+        evidence:
+          - src/parser/roundtrip.spec.ts 'idempotent for task+epic fixtures' — parse(render(parse(raw))) toEqual parse(raw) für task.example.yml UND epic.example.yml (grün)
+      - id: a2
+        text: "Schreib-Pfad end-to-end: atomicWrite(path, renderNodeYAML(node)) mit fakeFs, dann readFile(path) → parseNodeYAML(..., task-file) ergibt einen deep-equal Node zum Ausgangs-Node — Beweis als Test-Datei:zeile + Test-Output grün"
+        status: done
+        evidence:
+          - src/parser/roundtrip.spec.ts 'atomicWrite(render)→readFile→parse deep-equal' — Schreib-Pfad end-to-end mit fakeFs, back toEqual node (grün)
+      - id: a3
+        text: Ein Prosa-Feld mit YAML-gefährlichen Zeichen (Doppelpunkt, fuehrender `-`, Anführungszeichen, mehrere Zeilen) überlebt render→parse unverändert (block-scalar schützt) — Beweis als Test-Datei:zeile + Test-Output grün
+        status: done
+        evidence:
+          - src/parser/roundtrip.spec.ts 'prose with dangerous chars survives' — Doppelpunkt/führender Dash/Quotes/Mehrzeilig via block-scalar unverändert (grün)
+      - id: a4
+        text: "Quality-Gates grün für core/: lint, format, typecheck, test, build (bun build kompiliert) — Beweis als kopierter Befehls-Output je Gate (exit 0)"
+        status: done
+        evidence:
+          - "5 Gates exit 0: eslint, prettier, tsc --noEmit, bun test (35 pass), bun build (dist+.d.ts)"

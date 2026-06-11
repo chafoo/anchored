@@ -1,0 +1,239 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: anchored-v2-core/integration-dogfood
+title: Integration + Dogfood-Smoke (end-to-end)
+status: done
+created: 2026-06-10
+context:
+  plan: |
+    SCOPE: Alles zusammenführen + beweisen, dass es als Ganzes läuft. Der Capstone.
+
+    Liefert:
+      core/src/index.ts — öffentlicher Einstieg: wiring createEngine + createOps (mit
+        injizierten deps: ops, parser/render, validate/state, spawn, config).
+      lazy-init — minimale anchored.yml (Schema-Directive + Pointer auf die Referenz)
+        ins User-Projekt schreiben, wenn keine da ist.
+      Bash(anchored *)-Allowlist via .claude/settings.local.json (lazy bei init).
+      e2e-Smoke: eine triviale Task end-to-end plan→(refine)→build durchspielen
+        (mit Fake- ODER echtem spawn), Invariante + Status-Übergänge geprüft.
+
+    DESIGN: file-structure.md (index.ts = wiring) · engine-architecture.md (deps-Graph) ·
+    fractal-redesign-notes.md (lazy-init minimale yml; Bash-Allowlist; Friktion) ·
+    CLAUDE.md (Quality-Gates pro Paket grün).
+
+    KERN: e1 (core baut grün) + e2/e3/e4/e5/e7 zusammen verifiziert. Schließt den
+    Epic-roll-up vor.
+
+    GROBE PHASEN: (1) index.ts wiring · (2) lazy-init yml + allowlist · (3) e2e-Smoke-
+    Test (triviale Task) · (4) volle Quality-Gate-Runde core/ grün.
+  build: |-
+    Capstone gebaut (4 Phasen, 15 ACs):
+    - Phase 1 public-wiring: index.ts ist jetzt PURE Factory createAnchored(deps)→{cli,engine,ops,config}; bin-Entry nach src/bin.ts ausgelagert (einziger process.*/top-level-await-Ort), engineOps nach src/ops/engine-ops.ts, slug-Facade nach src/ops/facade.ts. Bootstrap merged config genau einmal (injizierbare merge-Naht). Deps-Graph-Reihenfolge ops→engine→cli.
+    - Phase 2 lazy-init: src/config/init.ts createInit(deps)→{ensure} — minimale anchored.yml (Directive+Pointer, kein Default-Copy) + Bash(anchored *)-Allowlist in .claude/settings.local.json (idempotent merge, kein Clobbern), alles über io-Naht.
+    - Phase 3 e2e-smoke: e2e.dogfood.spec gegen tmp-root mit echtem Substrat (nur fakeSpawn): plan→build→wrap, forward-only Transitions, harte Invariante e2e, evidence pro Phase. engineOps re-liest vor Mutationen (cli-only-transport: Worker self-write, Engine re-read — kein Clobber).
+    - Phase 4 quality-gates: alle 5 Gates grün (lint/format/typecheck/test 153 pass/build mit dist/bin.js+Shebang).
+    q6 AUFGELÖST: node-Verben add-phase, add-ac, add-phase-evidence (→ node-ops addPhase/addAc/addChildEvidence) ergänzt; set-field-Bug behoben (Facade routet read→setField mit reserved-Guard statt create-Rekonstruktion). plan-decompose/build-implement haben jetzt ihre realen Verben.
+  wrap: "KERN erfüllt: e1 (core baut grün) + e2/e3/e4/e5/e7 zusammen verifiziert. Der ganze Stack läuft als ein Objektgraph (createAnchored) end-to-end gegen echtes Substrat. Einziger offener Punkt im Epic: skill-creator-Eval (e8) als finaler Schritt — entblockt plugin-skills, dann epic-roll-up."
+questions: []
+log:
+  - at: integration-dogfood
+    kind: learning
+    note: "index.ts await-frei zu halten (a1-grep) erzwang die saubere Trennung: pure Wiring-Factory (index) vs. await-tragende Glue (ops/facade.ts, ops/engine-ops.ts) vs. process/bin (bin.ts). engineOps re-liest vor jeder Mutation — genau das cli-only-transport-Reconciliation-Modell (Worker self-write ↔ Engine re-read)."
+phases:
+  - name: index.ts — oeffentliches Wiring (createEngine + createOps + bootstrap)
+    slug: public-wiring
+    status: done
+    context: |
+      core/src/index.ts ist der EINZIGE oeffentliche Einstieg des core-Pakets. Er
+      verdrahtet das gesamte Substrat zu einem lauffaehigen Ganzen — als Factory,
+      KEIN Top-Level-Effekt: createAnchored(projectRoot, overrides?) ->
+      { cli, engine, ops, config } (oder eine duenne bootstrap()-Factory). Genau
+      EIN Bootstrap pro Prozess: effectiveConfig = merge(default-template, user)
+      (Task config-bootstrap), daraus deps zusammenbauen und durchreichen:
+        deps = { config, parser/render (Task parser-io), io (Task parser-io),
+                 validate/state (Task tier-schemas/Invariante), spawn (Task spawn),
+                 ops: createNodeOps(...) (Task ops-core),
+                 engine: createEngine(deps) (Task engine),
+                 cli: createCli(deps) (Task cli) }.
+      Die Reihenfolge der Injektion folgt dem deps-Graph aus
+      engine-architecture.md (Substrat -> ops -> engine -> cli). Kein Modul baut
+      beim Import State auf; process.argv/exit/stdout bleiben AUSSCHLIESSLICH im
+      bin-Entry (Task cli), index.ts bleibt pur + fakebar.
+
+      DESIGN: file-structure.md (index.ts = wiring; "core = das CLI-/Engine-Paket")
+      · engine-architecture.md (deps-Graph: deps -> createEngine -> tier/stage/step).
+      Dies ist der Punkt, an dem e1..e7 als EIN Objektgraph zusammenkommen.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: createAnchored/bootstrap als Factory; alle deps injiziert + durchgereicht; keine Klassen, kein Modul-Level-Effekt, kein process-Zugriff in index.ts
+      - path: .claude/rules/cli-only-transport.md
+        why: der verdrahtete cli ist der einzige Transport; index.ts exportiert kein MCP, keine Alternativ-Naht
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: config als Base-Dependency genau einmal gemergt + injiziert; Invariante bleibt im Substrat (ops/state), nicht im Wiring dupliziert
+    acceptance_criteria:
+      - id: a1
+        text: "core/src/index.ts exportiert eine Factory (z.B. `export function createAnchored` / `bootstrap`) die { cli, engine, ops, config } zurueckgibt und KEINEN Top-Level-Seiteneffekt/`class`/`process.` enthaelt; Beweis: index.ts:zeile der Export-Signatur + des `return {`-Objekts, plus `grep -nE 'class |process\\.|^[^/]*await ' core/src/index.ts` ohne Treffer (Ausgabe leer)."
+        status: done
+        evidence:
+          - core/src/index.ts:createAnchored gibt { cli, engine, ops, config } zurück (Anchored-Interface); index.spec.ts a1 grün + grep -nE 'class |process\.|^[^/]*await ' src/index.ts LEER (await/process im bin-Entry src/bin.ts + engineOps in src/ops/engine-ops.ts ausgelagert)
+      - id: a2
+        text: "Bootstrap laeuft genau einmal und injiziert die gemergte effectiveConfig + alle Substrat-deps in createEngine UND createCli (config als Base-Dependency); Beweis: Test index.spec mit fakeMerge/fake-Sub-Factories -> merge-Spy genau 1x aufgerufen, createEngine + createCli je mit demselben deps-Objekt inkl. config-Feld aufgerufen (gruener bun-test-Output, datei:zeile der Assertion)."
+        status: done
+        evidence:
+          - core/src/index.ts:183 bootstrap.load() merged genau einmal (createBootstrap mit injizierter merge-Naht); index.spec.ts a2 grün — mergeCalls===1, createEngine+createCli bekommen config-tragende deps (engineConfig.task definiert)
+      - id: a3
+        text: "Der deps-Graph wird in der Substrat->ops->engine->cli-Reihenfolge verdrahtet (jede Ebene bekommt die zuvor erstellten deps); Beweis: index.spec asserted, dass createNodeOps VOR createEngine und createEngine VOR createCli aufgerufen wird (Call-Order-Spy) und createCli das engine+ops aus den Vorstufen erhaelt (gruener Test, datei:zeile)."
+        status: done
+        evidence:
+          - "core/src/index.ts:186-205 Reihenfolge buildSubstrate(ops) → createEngineFn → createCliFn; index.spec.ts a3 grün (Call-Order-Spy: ops-Index < engine-Index < cli-Index)"
+  - name: lazy-init — minimale anchored.yml + Bash(anchored *)-Allowlist
+    slug: lazy-init
+    status: done
+    context: |
+      Wenn ein User-Projekt noch KEINE anchored.yml hat, schreibt anchored beim
+      ersten Lauf lazy eine MINIMALE Datei (Schema-Directive + kommentierter
+      Pointer auf die Referenz plugin/references/anchored.default.yml) — NICHT die
+      ganze Default-Config kopieren (Defaults sind unveraenderlich; Kopie = Drift,
+      fractal-redesign-notes "Ablage/Rollen"). Ein bestehendes anchored.yml wird
+      NIE ueberschrieben (idempotent).
+
+      Zusaetzlich ergaenzt lazy-init die `Bash(anchored *)`-Allowlist in
+      `.claude/settings.local.json`, damit die CLI-Calls ohne Permission-Prompt
+      durchlaufen (fractal-redesign-notes "Friktion"; cli-only-transport-Rule
+      "lazy-init ergaenzt Bash(anchored *)"). Bestehende settings.local.json wird
+      gemerged (vorhandene permissions.allow bleiben, Eintrag wird nur ergaenzt
+      wenn nicht schon da) — KEIN Clobbern, JSON bleibt valide.
+
+      Als Factory createInit(deps) -> { ensure(projectRoot) -> { wroteYml,
+      wroteAllowlist } }, deps = { io/fs-Naht (atomic-write aus Task parser-io), maybe
+      parser } injiziert -> im Test mit fakeFs ohne echtes FS fakebar. Lazy-init
+      wird im Bootstrap (Phase 1) bzw. beim ersten Stage-Verb getriggert.
+
+      V1-REF nur als Logik-Vorlage (es gab kein lazy-minimal-yml in v1) — neu im
+      Factory-Pattern.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: createInit(deps) -> {ensure}; fs/io als injizierte Naht, fakebar; keine Klasse, kein Top-Level-FS-Zugriff
+      - path: .claude/rules/cli-only-transport.md
+        why: lazy-init ergaenzt Bash(anchored *) in settings.local.json, damit CLI-Calls ohne Prompt laufen
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: minimale yml = Schema-Directive + Pointer, NICHT die Default-Config kopieren (Defaults unveraenderlich); atomic-write ueber die io-Naht
+    acceptance_criteria:
+      - id: a1
+        text: "Bei fehlender anchored.yml schreibt ensure() eine MINIMALE Datei mit Schema-Directive-Kommentar + Pointer auf plugin/references/anchored.default.yml und KEINEN kopierten Default-Step/-Feld-Block; Beweis: Test mit fakeFs (anchored.yml fehlt) -> geschriebener Inhalt enthaelt 'yaml-language-server: $schema' und den references/anchored.default.yml-Pointer, aber `grep` findet KEINE Tier-Stage-Bloecke (z.B. kein 'steps:'); wroteYml===true (gruener Test, datei:zeile)."
+        status: done
+        evidence:
+          - core/src/config/init.ts:MINIMAL_YML (Schema-Directive + Pointer plugin/references/anchored.default.yml, KEINE kopierten Tier-Blöcke); init.spec.ts a1 grün — Inhalt enthält $schema + Pointer, kein 'steps:', wroteYml===true
+      - id: a2
+        text: "ensure() ist idempotent: ein bestehendes anchored.yml wird NICHT ueberschrieben; Beweis: Test mit fakeFs das eine vorhandene anchored.yml mit Marker-Inhalt meldet -> kein write-Aufruf auf anchored.yml (write-Spy fuer diesen Pfad 0x), wroteYml===false (gruener Test, datei:zeile)."
+        status: done
+        evidence:
+          - core/src/config/init.ts:ensure() exists()-Guard auf anchored.yml; init.spec.ts a2 grün — bestehende yml NICHT überschrieben (writes ohne YML-Pfad), wroteYml===false
+      - id: a3
+        text: "ensure() ergaenzt `Bash(anchored *)` in .claude/settings.local.json -> permissions.allow OHNE bestehende Eintraege zu verlieren, und idempotent (kein Duplikat bei erneutem Lauf); Beweis: Test mit fakeFs (settings.local.json mit einem vorbestehenden allow-Eintrag) -> resultierendes JSON ist valide, enthaelt den Vorbestand UND genau ein 'Bash(anchored *)'; zweiter ensure()-Lauf fuegt es NICHT erneut hinzu (gruener Test, datei:zeile)."
+        status: done
+        evidence:
+          - core/src/config/init.ts:ensureAllowlist merged permissions.allow idempotent; init.spec.ts a3 grün — Bash(git status) erhalten + genau ein Bash(anchored *); zweiter ensure() fügt NICHT erneut hinzu (wroteAllowlist===false)
+      - id: a4
+        text: "Fehlt settings.local.json komplett, legt ensure() sie mit gueltigem { permissions: { allow: ['Bash(anchored *)'] } }-JSON an (atomic-write ueber die io-Naht, kein direkter fs-Import in der Logik); Beweis: Test mit fakeFs (Datei fehlt) -> JSON.parse(geschriebener Inhalt) hat den allow-Eintrag, und `grep -n \"from 'node:fs'\" core/src/<init>.ts` zeigt keinen direkten fs-Aufruf in der Kern-Logik (nur ueber deps) (gruener Test, datei:zeile)."
+        status: done
+        evidence:
+          - core/src/config/init.ts:ensureAllowlist legt { permissions:{ allow:[Bash(anchored *)] } } an (atomic-write über io-Naht); init.spec.ts a4 grün — JSON.parse valide + init.ts ohne "from 'node:fs'"
+  - name: e2e-Dogfood-Smoke — triviale Task plan->refine->build durch das echte Substrat
+    slug: e2e-smoke
+    status: done
+    context: |
+      Der Capstone-Beweis: eine TRIVIALE Task wird end-to-end durch den ECHTEN
+      Objektgraphen (createAnchored aus Phase 1: echte ops/parser/state/io/config)
+      gefahren — plan -> (refine) -> build -> Status terminal. Nur die AI-Naht
+      `spawn` wird gefaket (fakeSpawn, deterministisch; KEIN echtes claude -p), wie
+      in engine-architecture.md "Worker-Steps = AI-Effekte hinter spawn, im Test
+      durch ein Fake ersetzbar" vorgesehen. Der Test laeuft gegen ein tmp-Projekt-
+      root (echte atomic-writes der Task-Datei), nicht gegen Fakes des Substrats.
+
+      Geprueft wird der GANZE Pfad als Integration der Vortasks e2..e7:
+      - Status-Uebergaenge forward-only: plan -> drafted/refined -> build -> wrap/
+        done (Task tier-schemas transitions), KEIN Rueckwaerts-Sprung.
+      - Die HARTE INVARIANTE greift end-to-end: setzt ein build-Step (via
+        fakeSpawn) ein phase-ac auf done MIT evidence -> gelingt + persistiert;
+        ein Lauf, der done OHNE evidence versucht, schlaegt am schreibenden Op fehl
+        (Invariante im Substrat, nicht im Test dupliziert).
+      - build loopt die Phasen (each: phase) interleaved und schreibt evidence ins
+        Task-File; ein Read-Roundtrip liest den persistierten Endzustand zurueck.
+
+      DESIGN: file-structure.md (Einzel-Task-File) · fractal-lifecycle.md (Stages +
+      each: phase) · CLAUDE.md (KERN: e2/e3/e4/e5/e7 zusammen verifiziert).
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: e2e gegen ECHTES Substrat beweist die Invariante (kein ac->done ohne evidence) am schreibenden Op; Engine deterministisch, AI nur ueber gefaktes spawn
+      - path: .claude/rules/factory-functions.md
+        why: nur spawn wird gefaket (injizierte Naht); ops/parser/state/io/engine sind die echten Factories aus createAnchored
+      - path: .claude/rules/cli-only-transport.md
+        why: der Pfad laeuft ueber die verdrahtete Engine/CLI wie in Main-Session/headless; ein Transport-Modell
+    acceptance_criteria:
+      - id: a1
+        text: "e2e-Smoke faehrt eine triviale Task durch plan->refine->build gegen ein tmp-Projektroot mit echtem Substrat (nur fakeSpawn) und endet mit Task-Status terminal (build->wrap bzw. done); Beweis: Test e2e.dogfood.spec -> nach dem Lauf liest ein Read-Roundtrip das Task-File aus tmp zurueck, Task.status ist 'wrap' oder 'done' und alle Phasen sind terminal (gruener bun-test-Output, datei:zeile)."
+        status: done
+        evidence:
+          - "core/src/e2e.dogfood.spec.ts:90 — triviale 2-Phasen-Task gegen tmp-root mit ECHTEM Substrat (createAnchored, nur fakeSpawn): plan→drafted→refined→build→engine→wrap; Read-Roundtrip: status===wrap, alle Phasen done. Grün"
+      - id: a2
+        text: "Status-Uebergaenge sind forward-only: ein Versuch eines Rueckwaerts-Sprungs (z.B. build->plan) wirft am Substrat (Task tier-schemas transitions); Beweis: ein Fall im e2e-Spec, der einen unzulaessigen Uebergang anstoesst -> assertThrows mit dem Transition-Fehler, plus ein positiver Fall mit gueltiger Vorwaerts-Sequenz (beide gruen, datei:zeile)."
+        status: done
+        evidence:
+          - "core/src/e2e.dogfood.spec.ts:143 — forward-only: plan→drafted→refined→build OK; build→plan wirft InvalidTransition am Substrat (assertTransition). Grün"
+      - id: a3
+        text: "HARTE INVARIANTE end-to-end: fakeSpawn setzt ein phase-ac MIT evidence -> persistiert als status:done; ein paralleler Lauf, der done OHNE evidence anstrebt, schlaegt am schreibenden Op fehl (nicht im Test geprueft); Beweis: zwei e2e-Faelle im selben Spec — (mit evidence: gelesener ac.status==='done' + evidence non-empty; ohne evidence: assertThrows Invarianten-Fehler), beide gruen (datei:zeile)."
+        status: done
+        evidence:
+          - "core/src/e2e.dogfood.spec.ts:156 — Invariante e2e: addChildEvidence flippt ac done MIT evidence (persistiert); node-ops.setAcStatus done OHNE evidence wirft IncompleteEvidence am schreibenden Op. Grün"
+      - id: a4
+        text: "build loopt die Phasen (each: phase) und das gefakte spawn wird pro Phase/Build-Step genau wie konfiguriert getriggert (deterministisch, kein echtes claude -p); Beweis: Test asserted fakeSpawn-Call-Count == Anzahl Phasen-Worker-Steps und die geschriebene Task-Datei enthaelt evidence fuer JEDE Phase nach dem Read-Roundtrip (gruener Test, datei:zeile)."
+        status: done
+        evidence:
+          - "core/src/e2e.dogfood.spec.ts:135 — build loopt each:phase, fakeSpawn pro Phase getriggert (Set der phase-build-slugs === [p1,p2]); Read-Roundtrip: evidence pro Phase persistiert. Grün"
+  - name: Volle Quality-Gate-Runde core/ gruen
+    slug: quality-gates
+    status: done
+    context: |
+      Der Abschluss-Beweis auf Paket-Ebene (CLAUDE.md "Quality-Gates pro Paket
+      gruen"; tooling-quality-gates-Rule). Nach dem Wiring + e2e muss das gesamte
+      core/-Paket alle fuenf Gates sauber durchlaufen — das ist Evidence-Honesty
+      auf Paket-Ebene und schliesst e1 ("core baut gruen") ab. Die Gates sind als
+      npm-Scripts verdrahtet (Bun-Toolchain als dev-Runner; Produktivcode bleibt
+      node-kompatibel, keine Bun.*-APIs).
+
+      Fuenf Gates, alle gruen vor done:
+        1. lint     — eslint sauber
+        2. format   — prettier --check sauber
+        3. typecheck — tsc --noEmit ohne Fehler
+        4. test     — bun test gruen (inkl. der e2e-Smoke aus Phase 3)
+        5. build    — bun build / Kompilat ohne Fehler (target node)
+
+      Dies verifiziert den GANZEN Stack (e1..e7 + Phasen 1-3 dieser Task) als
+      gruenes Ganzes. Ein roter Gate blockiert done.
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: alle fuenf Gates (lint/format/typecheck/test/build) gruen vor done; als npm-Scripts; node-kompatibel, keine Bun.*-APIs im Produktivcode
+      - path: .claude/rules/factory-functions.md
+        why: der gruene typecheck/lint deckt das durchgaengige Factory-Pattern (createX(cfg,deps)) ueber das ganze Paket ab
+    acceptance_criteria:
+      - id: a1
+        text: "lint + format-check sind ueber das gesamte core/ gruen; Beweis: Terminal-Output von `bun run lint` (eslint exit 0, keine Errors) UND `bun run format` (prettier --check exit 0, 'All matched files use Prettier code style' o.ae.), beide ohne Fehler-Zeilen."
+        status: done
+        evidence:
+          - bun run lint → eslint . exit 0 (keine Errors); bun run format → "All matched files use Prettier code style!" über das gesamte core/
+      - id: a2
+        text: "typecheck ist gruen: `tsc --noEmit` ueber core/ ohne einen einzigen Fehler; Beweis: Terminal-Output von `bun run typecheck` mit exit 0 und KEINER 'error TS'-Zeile."
+        status: done
+        evidence:
+          - bun run typecheck → tsc --noEmit exit 0, keine error-TS-Zeile
+      - id: a3
+        text: "Die volle Testsuite ist gruen, inklusive der e2e-Dogfood-Smoke aus Phase 3; Beweis: Output von `bun test` mit 0 fail / 0 error, und die e2e.dogfood.spec erscheint namentlich als bestanden in der Test-Zusammenfassung."
+        status: done
+        evidence:
+          - bun test → 153 pass / 2 skip / 0 fail (155 Tests, 36 Files); e2e.dogfood.spec + index.spec + init.spec + loop-workflow.spec + workflow-smoke.spec namentlich bestanden
+      - id: a4
+        text: "build ist gruen: `bun build` (target node) kompiliert core/ ohne Fehler zum publish-Artefakt; Beweis: Terminal-Output von `bun run build` mit exit 0 und erzeugtem Output (datei:pfad des Kompilats z.B. dist/index.js + #!/usr/bin/env node-Shebang im bin-Artefakt)."
+        status: done
+        evidence:
+          - "bun run build → tsc -p tsconfig.build.json exit 0; Artefakt dist/bin.js (mit #!/usr/bin/env node Shebang) + dist/index.js; package.json bin → ./dist/bin.js"

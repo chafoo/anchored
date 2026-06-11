@@ -1,0 +1,192 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: anchored-v2-core/config-bootstrap
+title: Config-Bootstrap — merge(default, user) als Base-Dependency
+status: done
+created: 2026-06-10
+context:
+  plan: |
+    SCOPE: anchored.yml als DIE Base-Dependency aufbauen.
+
+    Liefert:
+      config/merge.ts     — merge(anchored.default.yml [Framework-Basis], user-Deltas).
+                            Default-Steps/Felder sind fix (extend-only, nie entfernbar);
+                            User ergänzt punktuell.
+      config/bootstrap.ts  — effectiveConfig einmal beim Start laden + gegen config-Schema
+                            validieren, dann als deps.config in alle Factories injizieren.
+
+    DESIGN: fractal-redesign-notes.md (Item 5b: "anchored.yml ist DIE Base-Dependency",
+    merge default+user beim Bootstrap) · file-structure.md (config/) · anchored.default.yml
+    (die zu mergende Basis) · fractal-redesign-notes.md ("Ablage/Rollen": default NICHT
+    ins Projekt kopiert; lazy-init = minimale anchored.yml).
+    V1-REF (Logik-Vorlage, neu im Factory-Pattern — kein 1:1-Port): mcp/src/core/config.ts(32) — schmal, neu denken (v1 hatte kein Default-Merge).
+
+    KERN: zero-config — nicht-Überschriebenes kommt aus der Default-Basis (e3).
+
+    GROBE PHASEN: (1) merge-Semantik (extend-only Built-ins, Deltas) · (2) bootstrap
+    laden+validieren+injizieren · (3) Tests: leere user-yml ⇒ voller Default.
+  refine: |
+    Detail-Entscheidungen (source: ai): (1) Listen-Merge nach Shape — 'steps' = keyed-insert (before/after, extend-only, instructions append), keyless Listen (stop/rules) = union-append+dedupe, 'each' = intrinsic (immer aus Default). (2) bootstrap-deps getrennt: readDefault (Referenz) + readUser(projectRoot) + parseYaml — FS-Naht injiziert, kein node:fs-Import. (3) merge ist pure Funktion (factory-functions erlaubt zustandslose Helfer).
+  build: |
+    2 Module: config/merge.ts (deep-merge mit shape-spezifischer Listen-Semantik) + config/bootstrap.ts (createBootstrap: load default+user → merge → validate gegen ConfigSchema). 11 neue Tests; merge gegen die ECHTE default-template/anchored.default.yml. Alle 5 Gates grün, kein Bun.* im Produktiv-Code.
+  wrap: |
+    Config-as-Base-Dependency steht: zero-config (leere user-yml ⇒ voller Default), extend-only-Garantie (Built-ins inkl. Integritäts-Validatoren nie entfernbar), before/after-steps-Merge + stop-union-append wie bestätigt. Bereit für engine (nutzt effectiveConfig) + ops-core.
+questions: []
+log:
+  - at: merge-semantics
+    kind: decision
+    note: "Listen-Merge shape-spezifisch: steps=keyed before/after-insert (extend-only, instructions append), stop/rules=union-append+dedupe, each=intrinsic. Schützt Built-in-Validatoren (nie entfernbar)."
+  - at: bootstrap-inject
+    kind: decision
+    note: "bootstrap-deps getrennt: readDefault (Referenz) + readUser(projectRoot) + parseYaml; kein node:fs in der Logik. ConfigError via anchoredError bei Schema-Verstoß."
+phases:
+  - name: merge(default, user) — extend-only Merge-Semantik
+    slug: merge-semantics
+    status: done
+    context: |
+      config/merge.ts: die reine Zusammenführung der Framework-Default-Basis
+      (anchored.default.yml) mit den User-Deltas (<project>/anchored.yml).
+      Reiner, zustandsloser Helper (kein FS, kein Effekt) — als
+      `createMerge(deps?) -> { merge(defaultCfg, userCfg) -> effectiveConfig }`
+      ODER reine `merge(defaultCfg, userCfg)`-Funktion (factory-functions-Rule
+      erlaubt zustandslose Pure-Helper; Effekte erst im Bootstrap).
+
+      KERN-SEMANTIK (aus fractal-redesign-notes Item 5b + anchored.default.yml):
+      - Deep-Merge über die Tier-Struktur (phase/task/epic/project), Stages
+        (plan/refine/build/wrap), fields.
+      - extend-only: Default-Steps + Default-Felder sind FIX — der User kann sie
+        ergänzen/überschreiben, aber NICHT entfernen (ein im User-yml fehlender
+        Default bleibt aus der Basis bestehen). Das ist die zero-config-Garantie.
+      - Skalare: User gewinnt (override). Felder-Maps: Default-Felder bleiben,
+        User-Custom-Felder kommen dazu.
+      - steps-Listen: KEYED nach `name`, NICHT replace/blind-append. Built-in-Steps
+        bleiben immer erhalten (extend-only, nie entfernbar — schützt u.a. die
+        Integritäts-Validatoren task-validate/code-validate). User-Step mit bekanntem
+        name → mergt in den Built-in (z.B. instructions anhängen), Position bleibt;
+        User-Step mit neuem name → einsortiert per `before:`/`after: <name>`, sonst
+        ans Stage-Ende. Kein remove-Op in der Config. (Setzt voraus, dass step.ts
+        before/after trägt — Task tier-schemas.)
+      - keyless Wert-Listen (`stop`, phase-`rules`): UNION-APPEND mit Dedupe —
+        Default-Einträge bleiben, User-Einträge kommen hinzu (mehr stop = konservativer).
+      - `build.each` ist intrinsisch — kommt immer aus der Default-Basis, ist
+        durch den User nicht setz-/entfernbar (nur Doku-Wert).
+      V1 (mcp/src/core/config.ts) hatte KEIN Default-Merge — hier neu denken.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: Pure-Helper ok; falls Deps, dann injiziert/fakebar; keine Klassen, kein Modul-State
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Mechanismus(extend-only-Merge-Logik) vs. Policy(die gemergten Werte); each intrinsisch
+    acceptance_criteria:
+      - id: a1
+        text: "config/merge.ts existiert und exportiert die Merge-Einheit (reine `merge(defaultCfg, userCfg)` ODER `createMerge(...).merge(...)`); Modul hat keinen Top-Level-Seiteneffekt/State — Beweis: datei:zeile der Export-Signatur + `grep` zeigt keinen Modul-Level-Effekt"
+        status: done
+        evidence:
+          - src/config/merge.spec.ts 'merge is a pure function' — typeof merge==='function', merge({},{})==={}; merge.ts exportiert pure merge, kein Modul-Level-Effekt (grün)
+      - id: a2
+        text: "Deep-Merge-Test: leeres User-yml ({}) gegen die Default-Basis ⇒ Ergebnis ist tief-gleich der Default-Basis (alle Tiers/Stages/Steps/fields aus dem Default vorhanden). Beweis: test-Datei:zeile + grünes `bun test`-Output"
+        status: done
+        evidence:
+          - src/config/merge.spec.ts 'empty user yields full default' — merge(defaultCfg, {}) toEqual defaultCfg (gegen die ECHTE default-template/anchored.default.yml) (grün)
+      - id: a3
+        text: "extend-only-Test: ein User-Delta, das (a) einen neuen Step zu task.wrap hinzufügt und (b) ein neues Custom-Feld unter phase.fields setzt ⇒ Ergebnis enthält ALLE Default-Steps/-Felder PLUS die User-Ergänzungen; ein im User-yml weggelassener Default-Step bleibt erhalten. Beweis: test-Assertions datei:zeile + grünes test-Output"
+        status: done
+        evidence:
+          - src/config/merge.spec.ts 'extend-only' — user task.wrap+doc-sync → [review,summarize,doc-sync]; phase.fields.customField + Default-field status erhalten (grün)
+      - id: a4
+        text: "override- + intrinsisch-Test: ein User-Override eines skalaren Werts (z.B. task.build.retry_limit) gewinnt; `build.each` aus dem Default bleibt unverändert auch wenn der User es nicht/anders nennt. Beweis: test-Assertions datei:zeile + grünes test-Output"
+        status: done
+        evidence:
+          - src/config/merge.spec.ts 'scalar override; each intrinsic' — retry_limit 5 (user gewinnt); each bleibt 'phase' aus Default (grün)
+      - id: a5
+        text: "steps-Insert-Merge (keyed, extend-only, before/after): ein User-Delta `{ name: lint, run: ..., after: implement }` in phase.build ergibt die Reihenfolge [implement, lint, task-validate, code-validate]; ein User-Step mit name=task-validate hängt nur instructions an (Position + Step-Anzahl unverändert); es gibt keinen Config-Weg, einen Built-in-Step zu entfernen. Beweis: test-Assertions datei:zeile (gemergte Reihenfolge + unveränderte Built-in-Anzahl) + grünes test-Output"
+        status: done
+        evidence:
+          - src/config/merge.spec.ts 'before/after insert; known name extends' — {name:lint,after:implement} → [implement,lint,task-validate,code-validate]; {name:task-validate,instructions} → 3 Steps (kein neuer Eintrag), instructions angehängt; kein remove-Op (grün)
+      - id: a6
+        text: "stop union-append (keyless Liste): ein User-`stop`-Eintrag in task.build wird an die Default-stop-Liste ANGEHÄNGT (Default-Bedingung bleibt erhalten), exakte Duplikate werden dedupliziert — NIE Replace. Beweis: test-Assertion datei:zeile (gemergte stop-Liste = Default + User, keine Dublette) + grünes test-Output"
+        status: done
+        evidence:
+          - src/config/merge.spec.ts 'stop union-append + dedupe' — Default ['a decision deviates'] + user ['custom stop','a decision deviates'] → ['a decision deviates','custom stop'] (dedupliziert, NIE replace) (grün)
+  - name: bootstrap — laden, validieren, als deps.config injizieren
+    slug: bootstrap-inject
+    status: done
+    context: |
+      config/bootstrap.ts: effectiveConfig einmal beim Start bauen und als
+      deps.config bereitstellen. Factory mit INJIZIERTEN Effekt-Deps (FS-Read,
+      Parser, Merge, Schema-Validierung) — `createBootstrap(deps) -> { load(projectRoot) -> effectiveConfig }`
+      bzw. -> { config }. Alle Effekte (Datei lesen) hinter der Naht, im Test
+      fakebar (kein echtes FS nötig).
+
+      ABLAUF (file-structure.md core/config/bootstrap.ts + Item 5b):
+      1. Default-Basis laden: anchored.default.yml aus der mitgelieferten
+         Referenz (default-template/, NICHT ins User-Projekt kopiert).
+      2. User-Deltas laden: <projectRoot>/anchored.yml — FEHLT-OK (zero-config):
+         keine Datei ⇒ leeres Delta ({}) ⇒ voller Default (lazy-init = minimale
+         anchored.yml, nicht-Überschriebenes kommt aus der Basis).
+      3. merge(default, user) (Phase 1).
+      4. Gegen das config-Schema validieren (schema/config.ts).
+      5. effectiveConfig zurückgeben — bestimmt zur Injektion als deps.config in
+         alle Factories (createEngine/createOps/…).
+      CLI-only-Transport: keine MCP-Annahmen; reiner Code, JSON-tauglich.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: createBootstrap(deps) mit injizierten FS/parser/merge/validate-Deps; im Test durch Fakes ersetzbar; kein direkter fs-Import in der Logik-Naht
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Bootstrap = Mechanismus; Default-Referenz nicht ins Projekt kopiert
+      - path: .claude/rules/cli-only-transport.md
+        why: transport-agnostisch, kein MCP; config wird als Base-Dep durchgereicht
+    acceptance_criteria:
+      - id: a1
+        text: "config/bootstrap.ts exportiert `createBootstrap(deps)` das ein Objekt mit einer load-/config-Verb-Methode zurückgibt; alle Effekte (Datei-Read, Parser) kommen über `deps` rein (kein direkter `node:fs`-Import in der Logik-Naht). Beweis: datei:zeile der Factory-Signatur + datei:zeile die zeigt dass FS via deps statt Direkt-Import läuft"
+        status: done
+        evidence:
+          - src/config/bootstrap.spec.ts 'factory over injected deps' — createBootstrap(deps).load ist Funktion; readDefault/readUser/parseYaml injiziert; grep 'node:fs' src/config/bootstrap.ts → nur Kommentar (kein Import) (grün)
+      - id: a2
+        text: "zero-config-Test: Bootstrap mit gefaktem FS, bei dem <projectRoot>/anchored.yml NICHT existiert (ENOENT) ⇒ effectiveConfig ist tief-gleich der gemergten Default-Basis (kein Fehler geworfen). Beweis: test datei:zeile mit Fake-deps + grünes `bun test`-Output"
+        status: done
+        evidence:
+          - src/config/bootstrap.spec.ts 'zero-config' — readUser→undefined ⇒ effectiveConfig = Default (each 'phase', retry_limit 3), kein Fehler geworfen (grün)
+      - id: a3
+        text: "Delta-Test: Bootstrap mit gefaktem FS, das ein User-anchored.yml mit einem Delta liefert ⇒ effectiveConfig enthält Default-Basis + User-Delta (ruft die Merge-Einheit aus Phase 1, Default wird aus der Referenz und NICHT aus dem projectRoot geladen). Beweis: test-Assertions datei:zeile + grünes test-Output"
+        status: done
+        evidence:
+          - src/config/bootstrap.spec.ts 'user delta merges' — readUser('/proj') (Default aus Referenz, NICHT projectRoot); user retry_limit 9 gewinnt, each 'phase' aus Default (grün)
+      - id: a4
+        text: "Validierungs-Test: ein User-anchored.yml, das gegen das config-Schema verstößt ⇒ Bootstrap wirft/liefert einen klaren Validierungs-Fehler (effectiveConfig wird NICHT als gültig durchgereicht). Beweis: test datei:zeile das den Fehler asserted + grünes test-Output"
+        status: done
+        evidence:
+          - src/config/bootstrap.spec.ts 'invalid throws ConfigError' — bogusTopLevel ⇒ wirft /invalid anchored.yml/ (ConfigError via anchoredError) (grün)
+      - id: a5
+        text: "Injektions-Beweis: das von Bootstrap gelieferte Objekt ist als deps.config konsumierbar (Shape entspricht dem, was Factories erwarten) — ein Test/Smoke konstruiert eine Consumer-Factory mit `{ config }` aus dem Bootstrap ohne Typ-/Laufzeitfehler. Beweis: test datei:zeile + grünes test-Output"
+        status: done
+        evidence:
+          - src/config/bootstrap.spec.ts 'consumable as {config}' — Consumer-Factory mit {config} aus dem Bootstrap ohne Typ-/Laufzeitfehler (grün)
+  - name: Quality-Gates grün — lint/format/typecheck/test/build für config/
+    slug: quality-gates
+    status: done
+    context: |
+      tooling-quality-gates-Rule: vor `done` müssen für core/ alle fünf Gates
+      grün sein. Diese Phase stellt sicher, dass der neue config/-Code (merge +
+      bootstrap + Tests) sauber durch die Paket-Gates läuft.
+      Gates: 1) eslint sauber · 2) prettier-check sauber · 3) tsc --noEmit ohne
+      Fehler · 4) bun test grün · 5) bun build/kompiliert ohne Fehler.
+      Node-Kompatibilität: nur node:*-APIs, keine Bun.*-APIs im Produktiv-Code.
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: alle fünf Gates grün vor done; node-kompatibel, keine Bun.*-APIs im Produktiv-Code
+    acceptance_criteria:
+      - id: a1
+        text: "lint + format grün: `bun run lint` (eslint) und der prettier-check laufen über config/ ohne Fehler. Beweis: Befehl + grünes Terminal-Output (0 Fehler)"
+        status: done
+        evidence:
+          - bun run lint (eslint) exit 0 + prettier --check exit 0 über config/
+      - id: a2
+        text: "typecheck grün: `tsc --noEmit` über das core/-Paket meldet keine Fehler in config/merge.ts und config/bootstrap.ts. Beweis: Befehl + grünes Output"
+        status: done
+        evidence:
+          - tsc --noEmit exit 0 für config/merge.ts + config/bootstrap.ts
+      - id: a3
+        text: "test + build grün: `bun test` (alle config/-Tests grün) und `bun build` kompilieren ohne Fehler; kein `Bun.*`-API im Produktiv-Code von config/. Beweis: test-/build-Output + `grep` der bestätigt: keine Bun.*-Nutzung in merge.ts/bootstrap.ts"
+        status: done
+        evidence:
+          - bun test (46 pass) + bun build exit 0; grep 'Bun\.' src (ohne *.spec.ts) → leer (kein Bun.*-API im Produktiv-Code)

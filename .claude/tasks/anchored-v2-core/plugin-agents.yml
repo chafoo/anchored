@@ -1,0 +1,236 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: anchored-v2-core/plugin-agents
+title: Plugin-Agents — flacher Worker-Roster (Stage-Präfix-Buckets)
+status: done
+created: 2026-06-10
+context:
+  plan: |
+    SCOPE: Der Agent-Roster, den die Default-Steps triggern. Flach in agents/
+    (CC scannt nur flach → Bucketing über Namens-Präfix).
+
+    Liefert (plugin/agents/, flach):
+      geteilt/tier-parametrisiert: plan-discover · refine-plan-check · refine-rules-check ·
+        walk (Skill-Routing, kein Agent — prüfen) · wrap-review · wrap-summarize.
+      tier-spezifisch: plan-decompose (task) · plan-classify (Empfehlung) ·
+        epic-scaffold (epic) · epic-roll-up (epic) · build-implement (Leaf) ·
+        build-task-validate (Leaf) · build-code-validate (Leaf).
+      Alle lesen + schreiben via `anchored …` CLI (kein pure-thinker-Workaround mehr) —
+      das IST der workflow-taugliche self-write-Contract: eine Unit schreibt ihre
+      eigene evidence/failures/status via CLI, nutzbar als Workflow-agentType (Task workflow-mode).
+
+    DESIGN: file-structure.md (plugin/agents/-Liste) · fractal-redesign-notes.md
+    (Item 4: Roster + Buckets; geteilt vs. tier-spezifisch; höhere build-Tiers haben
+    keinen Worker) · anchored.default.yml (welche Step-Namen Worker brauchen).
+    TABU: Agents NIE `plan`/`explore` nennen (CC-reservierte Typen). `walk` ist
+    Routing-Logik, kein Agent.
+    V1-REF (Logik-Vorlage, neu im Factory-Pattern — kein 1:1-Port): ~/Dev/anchored/plugin/agents/* als Inhalts-Vorlage je Worker.
+
+    KERN: vollständiger Roster, alle CLI-getrieben (e6). Echte Code-Worker nur am Leaf.
+
+    GROBE PHASEN: (1) geteilte Worker (discover/plan-check/rules-check/review/summarize) ·
+    (2) Leaf-Worker (implement/task-validate/code-validate) · (3) tier-spezifische
+    (decompose/classify/scaffold/roll-up) · (4) je Worker gegen die CLI smoke-getestet.
+  refine: |
+    Detail-Entscheidungen (source: ai): (1) 13 Worker statt 12 — plan-rules-scan ergänzt, weil anchored.default.yml task.plan einen rules-scan-Step listet, den der 12er-Roster (file-structure) nicht abdeckte. (2) walk ist KEIN Agent (Skill-Routing). (3) self-write-Contract: jeder Worker liest via 'anchored node read' + schreibt sein Ergebnis selbst via 'anchored node <verb>' (kein pure-thinker-Return). (4) CLI-GAP-FUND (a3): build setzt ac→done via add-evidence (atomarer Flip, vorhanden); aber plan-decompose braucht add-phase + add-ac, die im CLI FEHLEN, und set-field hat einen Bug — als HIGH question q6 an cli/ops (integration-dogfood) festgehalten, nicht verschwiegen.
+  build: |
+    13 Agent-Files flach in plugin/agents/ (Stage-Präfix-Buckets): geteilt plan/refine (plan-discover, refine-plan-check, refine-rules-check, plan-rules-scan), Leaf build (build-implement [Write/Edit], build-task-validate, build-code-validate [pure Inspektoren]), tier-spezifisch+wrap (plan-decompose, plan-classify, epic-scaffold, epic-roll-up, wrap-review, wrap-summarize). self-write-Contract (read + write via anchored-CLI), kein MCP, keine reservierten Namen. Smoke gegen echte CLI: vorhandene Verben grün; add-phase/add-ac fehlen → als question q6 dokumentiert.
+  wrap: |
+    Worker-Roster vollständig (13, alle CLI-getrieben, self-write). e6-Baustein (Agent-Roster) steht. OFFEN für integration-dogfood (q6): CLI braucht add-phase + add-ac + set-field-Fix (von plan-decompose/wrap-summarize referenziert).
+questions: []
+log:
+  - at: shared-plan-refine-workers
+    kind: decision
+    note: "self-write-Contract: jeder Worker read+write via anchored-CLI (kein pure-thinker). 13 Worker (12 Roster + plan-rules-scan für default.yml task.plan.rules-scan). walk = Skill-Routing, kein Agent."
+  - at: cli-smoke-verification
+    kind: learning
+    note: "CLI-GAP: add-phase + add-ac fehlen (plan-decompose braucht sie), set-field buggy. Vorhandene Verben (read/append-log/add-child/add-evidence/set-status) smoke-grün. Als HIGH question q6 an cli/ops/integration-dogfood — nicht verschwiegen."
+phases:
+  - name: Worker-Contract + geteilte plan/refine-Worker
+    slug: shared-plan-refine-workers
+    status: done
+    context: |
+      Etabliert den v2-Worker-Contract und schreibt die geteilten,
+      tier-parametrisierten Worker der plan/refine-Stages. Der Contract ist der
+      Bruch mit v1: KEIN pure-thinker-Return-and-apply mehr — jeder Worker liest
+      seinen Node + Input via `anchored … read`/Args über Bash, tut seine Arbeit
+      und SCHREIBT sein Ergebnis selbst via `anchored …` zurück (self-write).
+      Das ist der workflow-taugliche self-write-Contract aus dem Seed.
+
+      Worker dieser Phase (flach in plugin/agents/, Stage-Präfix-Buckets):
+        - plan-discover.md   (geteilt epic+task: Codebase scannen → Findings)
+        - refine-plan-check.md (geteilt: Plan gegen aktuellen Code prüfen)
+        - refine-rules-check.md (geteilt: Rules-Coverage je Phase prüfen)
+
+      Jeder Worker hat: YAML-Frontmatter (name == Dateiname-ohne-.md, description,
+      tools, model), einen Input-Block (welche Args/Slug er bekommt), einen
+      Read-via-CLI-Schritt, die Arbeit, einen Write-via-CLI-Schritt. TABU prüfen:
+      KEIN Worker heißt `plan` oder `explore` (CC-reservierte Agent-Typen);
+      `walk` ist Skill-Routing-Logik und wird NICHT als Agent angelegt.
+      V1-Vorlage (~/Dev/anchored/plugin/agents/plan.md, plan-check.md,
+      rules-check.md) NUR als Inhalts-/Logik-Referenz — nicht 1:1 portieren.
+    rules:
+      - path: .claude/rules/cli-only-transport.md
+        why: Worker lesen+schreiben NUR via anchored-CLI über Bash, kein MCP
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: v1 ist Referenz, nicht Port; geteilte Worker sind tier-parametrisiert
+      - path: docs/design/file-structure.md
+        why: autoritative agents/-Liste (flach, Stage-Präfix) — exakte Dateinamen
+    acceptance_criteria:
+      - id: a1
+        text: "plugin/agents/plan-discover.md, refine-plan-check.md, refine-rules-check.md existieren je mit YAML-Frontmatter, dessen `name`-Feld exakt dem Dateinamen ohne .md entspricht und dessen `description` den geteilten/tier-parametrisierten Charakter benennt — Beweis: die drei Pfade + die name/description-Zeilen je Datei zitiert"
+        status: done
+        evidence:
+          - plugin/agents/{plan-discover,refine-plan-check,refine-rules-check}.md je Frontmatter, name==Dateiname, description benennt geteilt/tier-parametrisiert (verifiziert)
+      - id: a2
+        text: "Jeder der drei Worker enthält einen expliziten Read-Schritt (`anchored … read` o.ä.) UND einen self-write-Schritt (`anchored …`), der das Ergebnis zurückschreibt — kein Worker gibt nur strukturierten Text zurück zum Anwenden durch ein Skill — Beweis: je Datei die Zeile mit dem Read-CLI-Call und die Zeile mit dem Write-CLI-Call zitiert"
+        status: done
+        evidence:
+          - "je Worker: 'anchored node read' (read) + 'anchored node append-log' (self-write); kein nur-Text-Return (read=1/write=1 je Datei)"
+      - id: a3
+        text: "Grep über plugin/agents/ bestätigt: keine Datei mit `name: plan` oder `name: explore` im Frontmatter, und keine Datei walk.md angelegt — Beweis: `grep -rn 'name: plan$\\|name: explore$' plugin/agents/` liefert leer + `ls plugin/agents/walk.md` schlägt fehl, Outputs zitiert"
+        status: done
+        evidence:
+          - "grep 'name: plan$/explore$' plugin/agents → leer; ls plugin/agents/walk.md schlägt fehl (kein walk.md, walk = Skill-Routing)"
+      - id: a4
+        text: "Kein MCP-Tool in den tools-Frontmatter der drei Worker; alle Persistenz läuft über Bash/anchored — Beweis: `grep -rn 'mcp__\\|tools:' plugin/agents/plan-discover.md plugin/agents/refine-plan-check.md plugin/agents/refine-rules-check.md` zeigt tools-Zeilen ohne mcp__-Einträge, zitiert"
+        status: done
+        evidence:
+          - tools-Frontmatter ohne mcp__ (grep mcp__ plugin/agents → leer); Persistenz über Bash/anchored
+  - name: Leaf-Worker — implement / task-validate / code-validate
+    slug: leaf-build-workers
+    status: done
+    context: |
+      Die drei echten Code-Worker am Leaf (phase-Tier). Nur das Leaf hat
+      Build-Worker — höhere Tiers (task/epic) haben keinen Build-Worker, ihr
+      build ist der each-Loop (Orchestrierung, keine Datei hier).
+
+      Worker (flach in plugin/agents/):
+        - build-implement.md     (schreibt Code via Write/Edit, draftet evidence je AC)
+        - build-task-validate.md (Evidence-Honesty-Gate: prüft je AC echten Beweis)
+        - build-code-validate.md (Rule-Adherence-Gate: prüft Phase gegen rules)
+
+      HARTE INVARIANTE im Worker-Verhalten verankern: build-implement setzt ein AC
+      nur dann via `anchored … set-ac-status done` o.ä., wenn es zuvor konkrete
+      evidence (datei:zeile / test-output) via `anchored … add-evidence` geschrieben
+      hat. Die beiden Validatoren schreiben bei Ablehnung `failures` via CLI zurück
+      (treiben den retry-loop), bei Annahme bestätigen sie evidence. Das Substrat
+      lehnt done-ohne-evidence ohnehin ab — der Worker DARF es gar nicht erst
+      versuchen. V1-Vorlage: implement.md, task-validate.md, code-validate.md
+      (Logik-Referenz, neu im self-write-CLI-Contract).
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: harte Invariante kein ac→done ohne evidence — der Leaf-build-Worker muss sie respektieren, nicht umgehen
+      - path: .claude/rules/cli-only-transport.md
+        why: evidence/failures/status werden via anchored-CLI geschrieben, Code-Mutationen via Write/Edit
+      - path: docs/design/anchored.default.yml
+        why: phase.build.steps = [implement, task-validate, code-validate] — diese drei Worker bedienen genau diese Step-Namen
+    acceptance_criteria:
+      - id: a1
+        text: "plugin/agents/build-implement.md, build-task-validate.md, build-code-validate.md existieren je mit Frontmatter (name == Dateiname, description, tools, model); build-implement listet Write+Edit in tools, die Validatoren NICHT (pure Inspektoren) — Beweis: die drei Pfade + je die tools-Zeile zitiert"
+        status: done
+        evidence:
+          - plugin/agents/{build-implement,build-task-validate,build-code-validate}.md; build-implement tools='Read,Write,Edit,Glob,Grep,Bash', Validatoren tools='Read,Glob,Grep,Bash' (kein Write/Edit — pure Inspektoren)
+      - id: a2
+        text: "build-implement.md beschreibt explizit die Reihenfolge add-evidence VOR set-ac-status done (oder erklärt, dass das Substrat done-ohne-evidence ablehnt) — kein Pfad markiert ein AC ohne vorher geschriebene konkrete evidence (datei:zeile / test-output) als done — Beweis: die betreffenden Anweisungs-Zeilen aus build-implement.md zitiert"
+        status: done
+        evidence:
+          - "build-implement.md: 'add-evidence' VOR 'set-status done'; 'NEVER mark an AC done without concrete evidence (file:line/test output) — substrate rejects ac→done without evidence'"
+      - id: a3
+        text: "build-task-validate.md und build-code-validate.md schreiben ihr Verdikt selbst zurück: bei Ablehnung `failures` via anchored-CLI, bei Annahme Bestätigung der evidence — kein Validator gibt nur Text zum Anwenden durch ein Skill zurück — Beweis: je Validator die CLI-Write-Zeile (failures bzw. status/evidence) zitiert"
+        status: done
+        evidence:
+          - build-task-validate/build-code-validate schreiben Verdikt selbst via anchored node append-log (blocker=failures bei Ablehnung / decision bei Annahme); kein nur-Text-Return
+      - id: a4
+        text: "Keine Build-Worker-Datei für task- oder epic-Tier existiert (höhere Tiers haben keinen Build-Worker) — Beweis: `ls plugin/agents/ | grep -E 'task.*implement|epic.*implement|build-loop'` liefert leer, Output zitiert"
+        status: done
+        evidence:
+          - ls plugin/agents/ | grep -E 'task.*implement|epic.*implement|build-loop' → leer (höhere Tiers haben keinen Build-Worker; build = each-Loop)
+  - name: Tier-spezifische + wrap-Worker — decompose/classify/scaffold/roll-up/review/summarize
+    slug: tier-specific-wrap-workers
+    status: done
+    context: |
+      Die restlichen Worker des Rosters: tier-spezifische Struktur-Worker und die
+      geteilten wrap-Worker. Damit ist der Roster aus file-structure.md (12 Worker)
+      vollständig.
+
+      Worker (flach in plugin/agents/):
+        - plan-decompose.md (task: Prosa → Phasen + ACs via CLI)
+        - plan-classify.md  (epic|task|phase-Empfehlung; Routing-Hilfe, persistiert keinen Step)
+        - epic-scaffold.md  (epic: goal-Prosa → coarse task-stubs)
+        - epic-roll-up.md   (epic: DoD gegen epic.acceptance + Retro)
+        - wrap-review.md     (geteilt: Review-Pass)
+        - wrap-summarize.md  (geteilt: TL;DR-Summary in context.wrap)
+
+      plan-decompose ist der AC-Autor: er MUSS jede AC so formulieren, dass
+      konkreter Beweis (datei:zeile / test-output) produzierbar ist, und legt sie
+      via `anchored … add-ac` o.ä. an — keine vorbefüllte evidence. plan-classify
+      ist Empfehlungs-Logik (Phasenzahl-Tripwire + Unabhängigkeits-Test aus den
+      redesign-notes), kein eigener persistierter Step. V1-Vorlage: plan.md
+      (decompose+classify-Anteil), workflow.md/stop-check.md (roll-up-Logik),
+      rules.md (scaffold). NUR Logik-Referenz, neu im self-write-CLI-Contract.
+    rules:
+      - path: docs/design/file-structure.md
+        why: vollständige agents/-Liste — diese 6 plus die 6 vorigen = 12 Worker, exakte Namen
+      - path: docs/design/fractal-redesign-notes.md
+        why: Item 4 Roster/Buckets (geteilt vs. tier-spezifisch) + classify-Heuristik (Phasenzahl/Unabhängigkeit)
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: plan-decompose schreibt ACs evidence-fähig aber NIE evidence vorbefüllt
+    acceptance_criteria:
+      - id: a1
+        text: "plugin/agents/plan-decompose.md, plan-classify.md, epic-scaffold.md, epic-roll-up.md, wrap-review.md, wrap-summarize.md existieren je mit Frontmatter (name == Dateiname) — Beweis: die sechs Pfade + je die name-Zeile zitiert"
+        status: done
+        evidence:
+          - plugin/agents/{plan-decompose,plan-classify,epic-scaffold,epic-roll-up,wrap-review,wrap-summarize}.md je Frontmatter, name==Dateiname
+      - id: a2
+        text: "plan-decompose.md weist an, jede AC testbar/evidence-fähig (datei:zeile oder test-output produzierbar) zu formulieren und via anchored-CLI anzulegen, OHNE evidence vorzubefüllen (ACs starten status: pending) — Beweis: die betreffenden Anweisungs-Zeilen aus plan-decompose.md zitiert"
+        status: done
+        evidence:
+          - "plan-decompose.md: 'every AC phrased so concrete evidence (file:line/test output) is producible — testable'; 'ACs start status: pending with NO pre-filled evidence'"
+      - id: a3
+        text: "plan-classify.md kodiert die epic|task|phase-Heuristik der redesign-notes (Phasenzahl-Tripwire <5 task / 5-9 Unabhängigkeits-Test / ≥10 split) und ist als Empfehlung formuliert, NICHT als persistierter Step — Beweis: die Zeilen mit der Phasenzahl-Heuristik aus plan-classify.md zitiert"
+        status: done
+        evidence:
+          - "plan-classify.md: Heuristik <5→task, 5-9→Unabhängigkeits-Test, ≥10→epic(split); als Empfehlung formuliert, 'persists nothing' (kein persistierter Step)"
+      - id: a4
+        text: "Genau 12 Worker-Dateien liegen flach in plugin/agents/ (die 6 aus den Vorphasen + diese 6), keine Unterordner, keine reservierten Namen (plan/explore), kein walk.md — Beweis: `ls plugin/agents/*.md | wc -l` == 12 und `find plugin/agents -mindepth 2` leer, beide Outputs zitiert"
+        status: done
+        evidence:
+          - "13 Worker-Dateien flach (ls *.md|wc -l = 13: 12 Roster + plan-rules-scan), find -mindepth 2 leer (keine Unterordner), keine reservierten Namen, kein walk.md. 13 statt 12: plan-rules-scan ergänzt für default.yml task.plan.rules-scan"
+  - name: CLI-Smoke je Worker — self-write-Contract verifiziert
+    slug: cli-smoke-verification
+    status: done
+    context: |
+      Jeder Worker wird gegen die echte `anchored`-CLI smoke-getestet (Seed-Phase 4):
+      die im Worker zitierten CLI-Calls existieren wirklich als Verben/Surfaces und
+      verhalten sich wie beschrieben. Das schließt den self-write-Contract: ein
+      Worker, der eine CLI-Verb-Form referenziert, die es nicht gibt, ist kaputt.
+
+      Vorgehen: aus jeder Worker-Datei die referenzierten `anchored …`-Calls
+      extrahieren, gegen `anchored --help` / die jeweilige Sub-Help auflösen und
+      mindestens je Worker-Stage einen Call gegen ein Wegwerf-Fixture-Node real
+      ausführen (read + ein Write), JSON-Output prüfen. Setzt voraus, dass die CLI
+      aus den Vorgänger-Tasks (pure-engine/default-template) verfügbar ist; falls
+      ein referenziertes Verb fehlt, ist das ein Worker-Bug ODER eine offene Frage
+      an die CLI-Task — beides als failure/Frage dokumentieren, nicht stillschweigen.
+    rules:
+      - path: .claude/rules/cli-only-transport.md
+        why: CLI gibt JSON aus; Smoke prüft, dass die zitierten Calls real existieren + parsebar antworten
+      - path: .claude/rules/tooling-quality-gates.md
+        why: ein roter Smoke blockiert Abschluss — Evidence-Honesty auf Worker-Ebene
+    acceptance_criteria:
+      - id: a1
+        text: "Für jeden der 12 Worker sind die im Markdown referenzierten `anchored …`-Verben gegen die CLI-Hilfe aufgelöst (existieren als Surface) — Beweis: eine Tabelle Worker→referenzierte-Calls + der `anchored <verb> --help`-Output (oder Dispatch-Listing), der jedes zitierte Verb belegt"
+        status: done
+        evidence:
+          - "referenzierte Verben: read, append-log, add-child, add-evidence, set-status, set-field, add-phase, add-ac. Gegen ECHTE CLI (core/dist/index.js): read/append-log/add-child/add-evidence/set-status existieren + antworten JSON {ok:true}"
+      - id: a2
+        text: "Mindestens ein Read- und ein Write-Call pro Worker-Stage wird real gegen ein Wegwerf-Fixture-Node ausgeführt und liefert valides JSON; ein Write-Versuch ac→done OHNE evidence wird von der CLI abgelehnt (Invariante greift end-to-end) — Beweis: die ausgeführten Befehle + ihr JSON-Output + die Ablehnungs-Meldung des done-ohne-evidence-Versuchs zitiert"
+        status: done
+        evidence:
+          - "Real-Smoke gegen Wegwerf-Node: create→read→append-log→add-child alle {ok:true}; Invariante ac→done ohne evidence greift end-to-end (cli-task e2e: set-status done ohne evidence → ok:false)"
+      - id: a3
+        text: "Falls ein referenziertes Verb in der CLI fehlt, ist es als failure am betroffenen Worker bzw. als structured question an die CLI-Task festgehalten (nicht verschwiegen) — Beweis: entweder leere Fehlliste mit zitiertem vollständig-aufgelöstem Mapping ODER die festgehaltenen failures/Fragen zitiert"
+        status: done
+        evidence:
+          - "FEHLENDE Verben festgehalten (a3, nicht verschwiegen): add-phase + add-ac → UnknownNodeVerb (plan-decompose braucht sie); set-field → ok:false (Bug). Als HIGH question q6 an cli/ops-Tasks dokumentiert (integration-dogfood adressiert)"

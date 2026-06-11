@@ -1,0 +1,197 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: anchored-v2-core/default-template
+title: Default-Template — anchored.default.yml als gemergte Basis
+status: done
+created: 2026-06-10
+context:
+  plan: |
+    SCOPE: Das opinionierte Verhalten als Default-Template verdrahten — aktiv by
+    default, voll überschreibbar. "Keine Built-ins" heißt: jeder Default ist ein Step.
+
+    Liefert:
+      core/default-template/anchored.default.yml — die mitgelieferte Referenz
+        (Quelle: docs/design/anchored.default.yml; NICHT ins User-Projekt kopiert).
+      resolve-steps-Integration — Default-Steps + kanonische Reihenfolge einsetzen,
+        wenn der User nichts schreibt; extend-only (nie entfernbar).
+      step-name → worker Dispatch — jeder Built-in-Step-Name (implement, task-validate,
+        code-validate, discover, rules-scan, decompose, plan-check, rules-check, walk,
+        review, summarize, scaffold, roll-up) auf seinen Worker gemappt.
+
+    DESIGN: anchored.default.yml (DER Vertrag — jeder Step/Feld/Stage ist eine
+    Anforderung) · fractal-redesign-notes.md ("anchored.default.yml = die Grundlage";
+    "Ablage/Rollen") · fractal-lifecycle.md (Default-Steps pro Stage/Tier).
+    ABHÄNGIG: resolve-steps (Task engine) muss die Injektion können; die Worker selbst
+    sind Plugin-Agents (Task plugin-agents) — hier nur das Dispatch-Mapping (Name→Worker-Ref).
+
+    KERN: minimale user-yml ⇒ voller Default läuft (e3); Validatoren in phase.build
+    bzw. phase.wrap laut Default.
+
+    GROBE PHASEN: (1) anchored.default.yml finalisieren (offene Semantik q3 klären) ·
+    (2) resolve-steps Default-Injektion + extend-only · (3) step-name→worker Dispatch ·
+    (4) Test: jeder Default-Step/Feld auflösbar.
+  refine: |
+    Detail-Entscheidungen (source: ai): (1) anchored.default.yml existiert bereits (in package-scaffold von docs/design kopiert) — phase.build=[implement,task-validate,code-validate] (q3: kanonische Sequenz, NICHT die build/wrap-Aufteilung). (2) Loader = createBootstrap.defaultConfig() additiv ergänzt (config-bootstrap). (3) createResolveSteps additiv in resolve-steps.ts (cfg-lookup, KEINE Domänen-Namen → engine-a3 grep bleibt grün). (4) createWorkerDispatch + 13er DEFAULT_WORKERS in NEUEM Modul engine/scope/worker-dispatch.ts (NICHT resolve-steps.ts, sonst bräche engine-a3). (5) REFINE-FUND: default.yml hat task.plan.rules-scan, der Agent-Roster (file-structure) hat aber keinen plan-rules-scan (nur refine-rules-check) — ich mappe rules-scan→plan-rules-scan; Task plugin-agents muss diesen Agent ergänzen. walk→skill-routing (kein Agent).
+  build: |
+    3 Bausteine: (1) anchored.default.yml (existiert) als Vertrag verifiziert. (2) createBootstrap.defaultConfig()-Loader + createResolveSteps (resolve-steps.ts) für Default-Injektion/extend-only. (3) NEUES Modul engine/scope/worker-dispatch.ts (createWorkerDispatch + 13er Map). 12 neue Tests; e3 end-to-end belegt (Default-File → resolve → Worker-Dispatch, kein Step ungemappt). Alle 5 Gates grün.
+  wrap: |
+    Das opinionierte Default-Verhalten ist verdrahtet: minimale user-yml ⇒ voller Default läuft (e3), extend-only erzwungen, jeder der 13 Built-in-Step-Namen auf einen Worker auflösbar. Bereit für plugin-agents (baut die 13 Agents inkl. plan-rules-scan) + epic-tier.
+questions: []
+log:
+  - at: default-file
+    kind: decision
+    note: anchored.default.yml (von docs/design kopiert) als Vertrag verifiziert; phase.build=[implement,task-validate,code-validate] (q3 kanonisch). Loader = createBootstrap.defaultConfig() additiv.
+  - at: resolve-injection
+    kind: decision
+    note: createResolveSteps additiv in resolve-steps.ts (keine Domänen-Namen → engine-a3 bleibt grün); Default-Injektion via merged cfg, extend-only über config-merge.
+  - at: worker-dispatch
+    kind: learning
+    note: "createWorkerDispatch + 13er Map in NEUEM worker-dispatch.ts. REFINE-FUND: rules-scan→plan-rules-scan — plugin-agents braucht diesen Agent (Roster hat nur refine-rules-check). walk→skill (kein Agent)."
+phases:
+  - name: anchored.default.yml finalisieren + als gemergte Basis ladbar
+    slug: default-file
+    status: done
+    context: |
+      Das mitgelieferte Default-Template als autoritative Datei unter
+      core/default-template/anchored.default.yml ablegen — 1:1 der Vertrag aus
+      docs/design/anchored.default.yml: alle drei Tiers (phase/task/epic) mit
+      ihren plan/refine/build/wrap-steps UND ihren `fields`-Blöcken.
+
+      Offene Semantik (q3) klären + im File festschreiben: phase.build hält die
+      kanonische Sequenz [implement, task-validate, code-validate] genau wie der
+      Design-Vertrag (docs/design/anchored.default.yml:28-34) — NICHT die in
+      fractal-lifecycle.md skizzierte Aufteilung build/wrap. Eine Variante wird
+      gewählt und der Default ist eindeutig.
+
+      Das File muss vom Config-Bootstrap (Task config-bootstrap) als Framework-Basis geladen +
+      gegen das config-Schema (Task package-scaffold/01) validiert werden können:
+      merge(anchored.default.yml, user) ⇒ effectiveConfig. Hier liefern wir die
+      Basis-Seite des Merges (der Merge-Mechanismus selbst lebt in config/merge.ts
+      aus Task config-bootstrap). Loader injiziert via Factory (createX(cfg,deps)); Pfad zur
+      Datei kommt als Dep rein (fakebar), kein Top-Level-Read beim Import.
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Keine Built-ins — jeder Default ist ein Step; Policy lebt im Template, nicht im Code.
+      - path: .claude/rules/factory-functions.md
+        why: Default-Loader als createX(cfg,deps); File-Pfad injiziert/fakebar, kein Import-Side-Effect.
+      - path: docs/design/anchored.default.yml
+        why: DER Vertrag — jeder Step/Feld/Stage ist 1:1 abzubilden.
+    acceptance_criteria:
+      - id: a1
+        text: core/default-template/anchored.default.yml existiert und enthält für phase/task/epic je den vollständigen plan/refine/build/wrap-Block + fields-Block, deckungsgleich mit docs/design/anchored.default.yml (jeder Step-Name, jedes Feld vorhanden).
+        status: done
+        evidence:
+          - src/config/default-file.spec.ts 'default.yml has phase/task/epic stages + fields' — core/default-template/anchored.default.yml (von docs/design kopiert); phase/task/epic je build+fields (grün)
+      - id: a2
+        text: "phase.build listet exakt die Sequenz [implement, task-validate, code-validate] in dieser Reihenfolge; task.build und epic.build tragen `each: phase` bzw. `each: task` plus stop + retry_limit: 3 — testbar durch Parse + Assert auf die Step-/each-Werte."
+        status: done
+        evidence:
+          - default-file.spec.ts 'phase.build sequence + task/epic each/stop/retry' — phase.build=[implement,task-validate,code-validate]; task.build each:phase, epic.build each:task, retry_limit:3, stop nicht-leer (grün)
+      - id: a3
+        text: Ein Bootstrap-/Loader-Factory liest die Datei über einen injizierten Pfad, parst sie gegen das config-Schema ohne Fehler und gibt die typisierte Default-Config zurück; ein Test mit Fake-Pfad/Fake-Reader beweist das ohne echtes FS am Modul-Top-Level.
+        status: done
+        evidence:
+          - default-file.spec.ts 'bootstrap.defaultConfig loads + validates' — createBootstrap(deps).defaultConfig() liest über injizierten readDefault, parst gegen ConfigSchema, typisierte Config (kein Top-Level-FS) (grün)
+      - id: a4
+        text: "Eine minimale User-anchored.yml (nur Schema-Directive, keine Tier-Blöcke) gemerged gegen den Default ergibt eine effectiveConfig, in der alle Default-Steps aller drei Tiers präsent sind — Test asserted die vollständige Default-Auflösung (e3: minimale user-yml ⇒ voller Default)."
+        status: done
+        evidence:
+          - default-file.spec.ts 'minimal/missing user yields full default' — fehlende anchored.yml → effectiveConfig mit allen Default-Steps (phase.build + task.plan=[discover,rules-scan,decompose]); merge(default,{}) → epic.plan present (e3) (grün)
+  - name: "resolve-steps: Default-Injektion + extend-only Reihenfolge"
+    slug: resolve-injection
+    status: done
+    context: |
+      resolve-steps (Mechanismus aus Task engine) so verdrahten, dass es die Default-
+      Steps + ihre kanonische Reihenfolge aus dem Default-Template einsetzt, wenn
+      der User für eine Stage nichts schreibt — und dass User-Deltas EXTEND-ONLY
+      sind: eigene Steps lassen sich davor/dazwischen/danach einfügen oder per
+      `instructions` an einem Default-Step anreichern, aber ein Default-Step ist
+      NIE entfernbar (fractal-lifecycle.md: "nur per instructions erweiterbar, nie
+      entfernbar").
+
+      Konkret gegen den gemergten cfg aus Phase 1: für jeden Tier/jede Stage
+      liefert resolve-steps die effektive geordnete Step-Liste. Leere/fehlende
+      User-Stage ⇒ kanonische Default-Sequenz. User-Stage mit Zusatz-Steps ⇒
+      Defaults bleiben in kanonischer Position, Custom-Steps an ihrer deklarierten
+      Stelle. Loop-Step: task.build/epic.build resolven zur each-Form (Kurzform
+      `each: <tier>` = loop mit implizitem Body [run]).
+
+      Factory-Pattern: createResolveSteps(cfg, deps) → { resolve(tier, stage) →
+      Step[] }; cfg = effectiveConfig, deterministisch + fakebar, kein AI/FS.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: resolve-steps als createX(cfg,deps) → { resolve(...) }; rein deterministisch, Fake-cfg testbar.
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Engine dispatcht config-getrieben; extend-only ist Policy-Garantie — Default-Step nie entfernbar.
+      - path: docs/design/fractal-lifecycle.md
+        why: Kanonische Reihenfolge + 'nur per instructions erweiterbar, nie entfernbar' + Loop-als-Step-Semantik (each-Kurzform).
+    acceptance_criteria:
+      - id: a1
+        text: resolve(tier, stage) für eine Stage, die der User NICHT überschreibt, gibt die kanonische Default-Sequenz in exakter Reihenfolge zurück (z.B. task.plan ⇒ [discover, rules-scan, decompose]) — Test asserted Reihenfolge + Namen.
+        status: done
+        evidence:
+          - src/engine/scope/resolve-injection.spec.ts 'resolve(task,plan) canonical' — createResolveSteps(default).resolve('task','plan')=[discover,rules-scan,decompose] in Reihenfolge (grün)
+      - id: a2
+        text: Fügt der User in einer Stage eigene Steps hinzu, erscheinen alle Default-Steps weiterhin in ihrer kanonischen Relativ-Position und die Custom-Steps an ihrer deklarierten Stelle; ein Test mit Default+Custom-Mix beweist die zusammengeführte geordnete Liste.
+        status: done
+        evidence:
+          - resolve-injection.spec.ts 'custom merge keeping order' — User-Step {lint, after:implement} → [implement,lint,task-validate,code-validate] (Defaults in kanonischer Position) (grün)
+      - id: a3
+        text: "Extend-only ist erzwungen: ein User-Delta, das einen Default-Step zu entfernen/leeren versucht, lässt den Default-Step dennoch in der aufgelösten Liste (oder wird abgelehnt) — Test zeigt, dass z.B. implement/task-validate/code-validate nach Resolve trotz Lösch-Versuch present sind."
+        status: done
+        evidence:
+          - "resolve-injection.spec.ts 'extend-only: empty override' — User phase.build.steps=[] → implement/task-validate/code-validate bleiben present (nie entfernbar) (grün)"
+      - id: a4
+        text: "resolve(task, build) und resolve(epic, build) liefern einen Loop-Step mit `each: phase` bzw. `each: task` und implizitem Body [run] für die Kurzform; Test asserted die each-Kante + Default-Body."
+        status: done
+        evidence:
+          - resolve-injection.spec.ts 'loop steps with implicit body' — resolve(task,build)[0]={each:'phase',steps:[{name:run}]}; resolve(epic,build)[0].each='task' (grün)
+  - name: step-name → worker Dispatch-Mapping + volle Resolvierbarkeit
+    slug: worker-dispatch
+    status: done
+    context: |
+      Jeder Built-in-Step-Name aus dem Default-Template auf seine Worker-Referenz
+      mappen (Name→Worker-Ref). Die Worker selbst sind Plugin-Agents (Task plugin-agents) —
+      hier NUR das Dispatch-Mapping, das ein resolveter Step auf den richtigen
+      Agent/Worker-Identifier zeigt. Engine kennt keine Step-Namen hartkodiert
+      (Substrat-Regel): das Mapping ist Daten/Policy, in einer Factory gekapselt
+      und injizierbar.
+
+      Vollständiges Roster (fractal-redesign-notes "Agent-Roster", file-structure
+      plugin/agents): implement, task-validate, code-validate (Leaf/phase),
+      discover, rules-scan, decompose (task.plan), plan-check, rules-check, walk
+      (task.refine), review, summarize (task.wrap), scaffold, roll-up (epic).
+      Worker-Ref-Form passt zum spawn-Substrat (Task spawn): use-Step → spawn(agent).
+
+      ABSCHLUSS-TEST (KERN, e3): jeder Step-Name, der aus den drei Default-Tiers
+      aufgelöst wird, ist auf einen Worker auflösbar — kein Default-Step bleibt
+      ungemappt. Damit ist „minimale user-yml ⇒ voller Default läuft" end-to-end
+      belegt: Default-File (P1) ⇒ resolve-steps (P2) ⇒ Worker-Dispatch (P3).
+    rules:
+      - path: .claude/rules/cli-only-transport.md
+        why: Worker laufen als spawn(agent) hinter der Naht; Dispatch liefert Agent-Ref, keine MCP-Tools.
+      - path: .claude/rules/factory-functions.md
+        why: Dispatch als createWorkerDispatch(cfg,deps) → { resolveWorker(stepName) }; Mapping injiziert/fakebar.
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Keine hartkodierten Step-Namen in der Engine — Mapping ist Policy/Daten.
+    acceptance_criteria:
+      - id: a1
+        text: resolveWorker(name) für jeden der 13 Default-Step-Namen (implement, task-validate, code-validate, discover, rules-scan, decompose, plan-check, rules-check, walk, review, summarize, scaffold, roll-up) gibt eine nicht-leere Worker/Agent-Referenz zurück — Test iteriert die Liste und asserted für jeden einen Treffer.
+        status: done
+        evidence:
+          - src/engine/scope/worker-dispatch.spec.ts 'non-empty ref for all 13' — resolveWorker für implement/task-validate/code-validate/discover/rules-scan/decompose/plan-check/rules-check/walk/review/summarize/scaffold/roll-up → je nicht-leerer ref (grün)
+      - id: a2
+        text: Die Worker-Refs entsprechen den in docs/design/file-structure.md gelisteten Agent-Dateinamen (z.B. implement→build-implement, decompose→plan-decompose, scaffold→epic-scaffold, walk→Skill-Routing/NICHT-Agent korrekt behandelt) — Test asserted die konkrete Ziel-Ref pro Name.
+        status: done
+        evidence:
+          - worker-dispatch.spec.ts 'refs match roster; walk skill' — implement→build-implement, decompose→plan-decompose, scaffold→epic-scaffold, roll-up→epic-roll-up; walk→{type:skill} (NICHT-Agent korrekt behandelt) (grün)
+      - id: a3
+        text: "End-to-End-Resolvierbarkeit: für phase, task und epic werden alle Stages über resolve-steps (P2) aufgelöst und jeder resultierende Built-in-Step-Name über das Dispatch (P3) auf einen Worker gemappt; ein Test fährt alle drei Tiers durch und stellt sicher, dass KEIN Default-Step ungemappt bleibt (e3 vollständig belegt)."
+        status: done
+        evidence:
+          - "worker-dispatch.spec.ts 'no unmapped worker-step across all tiers' — alle Default-Steps aus resolve über phase/task/epic × 4 Stages auf einen Worker gemappt, unmapped===[] (e3 end-to-end: Default-File → resolve-steps → Worker-Dispatch) (grün)"
+      - id: a4
+        text: "Quality-Gates für core/ grün vor Abschluss: lint, format-check, tsc --noEmit, bun test, bun build laufen ohne Fehler — Test-/Tool-Output als Evidence."
+        status: done
+        evidence:
+          - "5 Gates exit 0: eslint, prettier --check, tsc --noEmit, bun test (109 pass/2 skip/0 fail), bun build"

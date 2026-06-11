@@ -11,7 +11,7 @@ Kern.
 
 - `createTierRunner(cfg, deps) → { run(node) → result }`.
 - Fährt die Stages in fester Reihenfolge und schreibt den Tier-Status über
-  `deps.ops` fort (forward-only, siehe [validate](../validate/_validate.md)).
+  `deps.ops` fort (forward-only, siehe [state](../state/_state.md)).
 - `phase` ist der Leaf: dessen `build` hat kein `each`, läuft also einmal
   (echte Arbeit). Bei `task`/`epic` rekursiert `build` über `each` in die
   Kind-Etage.

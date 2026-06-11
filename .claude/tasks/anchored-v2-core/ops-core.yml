@@ -1,0 +1,206 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: anchored-v2-core/ops-core
+title: tier-generischer Op-Kern (createNodeOps)
+status: done
+created: 2026-06-10
+context:
+  plan: |
+    SCOPE: Der Op-Kern, über den ALLE Mutationen laufen (validierend) — nach außen
+    per-Tier-CLI-Surfaces, innen EIN generischer Kern.
+
+    Liefert:
+      ops/node-ops.ts        — createNodeOps(tierSchema, deps): create/read/set-status/
+                               add-child/next-child/add-evidence/set-ac-status/log …
+                               Invariante (Task tier-schemas) greift am schreibenden Op.
+      ops/scope/children.ts  — add/move/next-child. DAG: erster pending, dessen
+                               depends_on alle done.
+      ops/scope/questions.ts — add/resolve question (mit source/reasoning).
+      ops/scope/log.ts       — append-only log.
+
+    DESIGN: file-structure.md (ops/) · fractal-redesign-notes.md (Item 5b:
+    tier-generischer Op-Kern, ein createNodeOps parametrisiert über Tier-Deskriptor) ·
+    anchored.default.yml (Felder pro Tier = was die Ops schreiben).
+    V1-REF (Logik-Vorlage, neu im Factory-Pattern — kein 1:1-Port): mcp/src/core/{factory.ts(285),ops/{ac,context,field,phase,question,task}.ts}
+    + mcp/src/ops/validate.ts — die Op-Logik tier-generisch zusammenziehen statt
+    pro-Tier dupliziert.
+
+    KERN: next-child-DAG treibt den Loop (e5); Invariante am Op erzwungen (e4).
+
+    GROBE PHASEN: (1) createNodeOps Grundverben + Invariante · (2) children/DAG ·
+    (3) questions + log · (4) Tests gegen alle drei Tier-Deskriptoren.
+  refine: |
+    Detail-Entscheidungen (source: ai): (1) Ops = read-modify-write über die injizierte io-Naht (atomar pro Op); pure Substrat-Asserts (assertTransition/Invariante) direkt importiert, NUR io injiziert. (2) Kind-Feld pro Tier via CHILD_FIELD-Map abgeleitet (task→phases, epic→tasks, project→epics) statt Deskriptor-Umbau. (3) next-child: active/in-progress vor pending (Resume), dann erster pending mit depends_on-alle-done; null bei Deadlock/all-done. (4) scope-Helfer rein (neue Arrays); persist macht node-ops.
+  build: |
+    4 Module: ops/node-ops.ts (createNodeOps, EIN tier-generischer Kern) + ops/scope/{children,questions,log}.ts (pure). 13 neue Tests; dieselbe Factory gegen phase/task/epic-Deskriptor bewiesen. Invariante am Op (setAcStatus done ohne evidence wirft, kein Write), addEvidence flippt atomar, setStatus forward-only. Alle 5 Gates grün, ops/scope/ ohne node:fs.
+  wrap: |
+    Op-Kern steht: ALLE Mutationen validierend über io.atomicWrite; Invariante + forward-only-Transitions am schreibenden Op erzwungen; next-child-DAG treibt den Loop (e5-Baustein). EIN createNodeOps für alle Tiers. Bereit für engine (ops+config) + cli (node-Verben → ops).
+questions: []
+log:
+  - at: node-ops-core
+    kind: decision
+    note: Ops = read-modify-write über injizierte io-Naht; nur io injiziert, pure asserts (Transition/Invariante) direkt importiert. addEvidence flippt AC atomar auf done; setAcStatus done ohne evidence wirft VOR jedem Write.
+  - at: children-dag
+    kind: decision
+    note: "next-child: active/in-progress vor pending, dann erster pending mit depends_on-alle-done; null bei all-done/Deadlock. Kind-Feld via CHILD_FIELD-Map (kein Deskriptor-Umbau)."
+  - at: tier-generic-proof
+    kind: learning
+    note: EIN createNodeOps über phase/task/epic bewiesen (grep -c createNodeOps == 3) — kein pro-Tier-Code, Generizität substantiiert.
+phases:
+  - name: createNodeOps Grundverben + harte Invariante am schreibenden Op
+    slug: node-ops-core
+    status: done
+    context: |
+      ops/node-ops.ts: createNodeOps(tierSchema, deps) → { create, read,
+      setStatus, addEvidence, setAcStatus, … }. EIN generischer Kern, parametrisiert
+      über den Tier-Schema-Deskriptor (Task tier-schemas) — keine pro-Tier-Duplikation.
+
+      Deps injiziert/fakebar (factory-functions-Regel): parse/render, io
+      (atomic-write, Task parser-io), state (transitions + invariants, Task tier-schemas). KEINE
+      Effekt-Dep direkt importiert; im Test durch Fakes ersetzbar.
+
+      HARTE INVARIANTE (e4, Substrat nicht Step): setAcStatus('done') ohne evidence
+      MUSS werfen; addEvidence flippt das AC atomar auf done (V1-Pattern
+      mcp/src/core/ops/ac.ts/phase.ts — Logik-Vorlage, neu im Factory-Pattern).
+      setStatus fährt assertTransition (forward-only). Jede Mutation geht durch
+      io.atomicWrite → kein partieller State.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: createNodeOps(cfg/tierSchema, deps) → Verben; Deps injiziert, keine Klassen/Singletons
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Invariante im Op erzwungen, nicht in einem Step; Mechanismus vs. Policy
+      - path: docs/design/anchored.default.yml
+        why: Felder pro Tier = was die Ops schreiben (acceptance_criteria/evidence/status)
+    acceptance_criteria:
+      - id: a1
+        text: "createNodeOps(tierSchema, deps) ist eine Factory: gibt ein Objekt mit Verben (create/read/setStatus/addEvidence/setAcStatus/…) zurück, hält keinen Modul-Level-State, importiert keine Effekt-Dep direkt — belegbar per datei:zeile (Signatur + return-Shape) und einem Test, der die Factory mit Fake-deps (parse/render/io/state) instanziiert und einen Read durchführt (test-output grün)"
+        status: done
+        evidence:
+          - src/ops/node-ops.spec.ts 'createNodeOps is a factory over fake deps; read round-trips' — Factory mit fake io/render/parse/pathFor, create+read; nur io injiziert (assert* pure imports) (grün)
+      - id: a2
+        text: setAcStatus(node, acRef, 'done') ohne vorhandene evidence wirft einen Invarianten-Fehler und schreibt NICHT (io.atomicWrite nicht aufgerufen) — belegbar per Test mit Fake-io, der den nicht-erfolgten Write asserted, plus datei:zeile des Invarianten-Checks in node-ops.ts
+        status: done
+        evidence:
+          - src/ops/node-ops.spec.ts 'setAcStatus done without evidence throws and never writes' — wirft + writes.length===0 (assertAcDoneHasEvidence VOR persist) (grün)
+      - id: a3
+        text: "addEvidence(node, acRef, ev) hängt evidence an und flippt das AC atomar auf status:done (V1-Evidence-Flip-Semantik) — belegbar per Test (test-output grün) der zeigt: vorher pending+keine evidence, nachher done+evidence, ein einziger atomicWrite"
+        status: done
+        evidence:
+          - src/ops/node-ops.spec.ts 'addEvidence flips ac to done atomically' — evidence angehängt + status:done, genau ein atomicWrite (writes.length===1) (grün)
+      - id: a4
+        text: setStatus fährt assertTransition aus dem Tier-Deskriptor (forward-only) — ein verbotener Übergang wirft, ein erlaubter schreibt — belegbar per Test über mindestens einen legalen und einen illegalen Übergang (test-output grün) plus datei:zeile der Transition-Delegation
+        status: done
+        evidence:
+          - src/ops/node-ops.spec.ts 'setStatus enforces forward-only' — pending→in-progress schreibt, pending→done wirft (assertTransition aus tierSchema-Deskriptor) (grün)
+  - name: children/DAG — add/move/next-child (erster pending mit depends_on alle done)
+    slug: children-dag
+    status: done
+    context: |
+      ops/scope/children.ts: add/move/next-child gegen die Kind-Liste des Tiers
+      (task→phases, epic→tasks). next-child treibt den build-Loop (e5):
+
+        next-child = erster Knoten mit status pending, dessen depends_on ALLE done.
+        Resume-Safety: in-progress hat Vorrang vor pending (V1 makePhaseNext —
+        Logik-Vorlage). Kein erfüllbares Kind → null (Loop terminiert / blockiert).
+
+      add: Kind anhängen/einfügen, Duplikat-slug wirft. move: Reihenfolge ändern
+      (done-Kind nicht verlieren). Tier-generisch über den Kind-Deskriptor.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: scope/-Helfer mit klarem input/output, von node-ops genutzt; Deps injiziert
+      - path: docs/design/file-structure.md
+        why: "ops/scope/children.ts: DAG erster pending dessen depends_on alle done"
+      - path: docs/design/engine-architecture.md
+        why: next-child treibt den loop-step; Loop terminiert bei null
+    acceptance_criteria:
+      - id: a1
+        text: next-child gibt den ERSTEN pending-Knoten zurück, dessen depends_on-Slugs alle Status done haben; bei unerfüllten Dependencies wird er übersprungen — belegbar per Test mit einer Kind-Liste, in der ein früher pending-Knoten auf ein noch-nicht-done Kind wartet und daher ein späterer Knoten geliefert wird (test-output grün)
+        status: done
+        evidence:
+          - src/ops/scope/children.spec.ts 'first pending with satisfied depends_on' — b wartet auf c, c (deps auf done a) geliefert (grün)
+      - id: a2
+        text: "Resume-Safety: existiert ein in-progress-Kind, liefert next-child dieses VOR jedem pending — belegbar per Test (test-output grün) plus datei:zeile der Vorrang-Logik in children.ts"
+        status: done
+        evidence:
+          - src/ops/scope/children.spec.ts 'prefers active/in-progress' — in-progress UND active vor pending (Resume-Safety) (grün)
+      - id: a3
+        text: next-child liefert null, wenn kein pending-Knoten erfüllbar ist (alle done ODER alle restlichen pending mit unerfüllten depends_on) — belegbar per Test über beide Fälle (alle-done und deadlock-pending), test-output grün
+        status: done
+        evidence:
+          - src/ops/scope/children.spec.ts 'null when nothing runnable' — alle done → null; pending mit unerfüllter dep → null (grün)
+      - id: a4
+        text: add-child hängt einen Knoten an/ein und wirft bei Duplikat-slug; move-child ändert die Reihenfolge ohne ein done-Kind zu verlieren — belegbar per Test (test-output grün) der add-Duplikat-throw und eine move-Umordnung mit erhaltenem done-Kind asserted
+        status: done
+        evidence:
+          - src/ops/scope/children.spec.ts 'add rejects duplicate; move reorders' — add duplicate-slug wirft; move 'b'→0 → [b,a], done-Kind a erhalten (grün)
+  - name: questions + append-only log
+    slug: questions-log
+    status: done
+    context: |
+      ops/scope/questions.ts: add/resolve question. add erzeugt id + setzt
+      status:open mit origin. resolve setzt answer + source (ai|user) + reasoning
+      + status:resolved (V1 question.ts — Logik-Vorlage). Felder gemäß
+      anchored.default.yml (questions: { id, text, priority, origin, status,
+      answer?, source?, reasoning? }).
+
+      ops/scope/log.ts: append-only. Jeder Eintrag { at, kind, note } wird nur
+      angehängt, nie überschrieben/gelöscht — Audit-Trail-Garantie. Beide schreiben
+      via injiziertes io.atomicWrite.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: scope/-Helfer mit input/output, Deps injiziert; kein versteckter State
+      - path: docs/design/anchored.default.yml
+        why: questions/log Feld-Shapes (id/origin/source/reasoning · at/kind/note)
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: "Audit-Trail = Mechanismus: log append-only"
+    acceptance_criteria:
+      - id: a1
+        text: add-question vergibt eine eindeutige id, setzt status:open und übernimmt origin/priority; resolve-question setzt answer + source + reasoning und Status auf resolved — belegbar per Test (test-output grün) der einen vollständigen add→resolve-Zyklus über die Feld-Shape aus anchored.default.yml prüft
+        status: done
+        evidence:
+          - src/ops/scope/questions-log.spec.ts 'add-question then resolve' — add → {id:q1,status:open,origin,priority}; resolve → {status:resolved,answer,source,reasoning} (grün)
+      - id: a2
+        text: log-append hängt einen { at, kind, note }-Eintrag ans Ende und mutiert/entfernt KEINEN bestehenden Eintrag — belegbar per Test, der nach zwei Appends die Reihenfolge und Unverändertheit des ersten Eintrags asserted (test-output grün) plus datei:zeile, die zeigt dass nur gepusht wird
+        status: done
+        evidence:
+          - src/ops/scope/questions-log.spec.ts 'log append-only' — zwei Appends, Reihenfolge erhalten, erster Eintrag unverändert (nur push) (grün)
+      - id: a3
+        text: questions und log schreiben jede Mutation über das injizierte io.atomicWrite (kein roher fs-Zugriff in scope/) — belegbar per Test mit Fake-io, der den Aufruf zählt, plus grep/datei:zeile-Beleg, dass weder questions.ts noch log.ts node:fs direkt importiert
+        status: done
+        evidence:
+          - src/ops/scope/questions-log.spec.ts 'question+log via io.atomicWrite' — node-ops addQuestion+appendLog → 2 atomicWrite-Calls; grep 'node:fs' src/ops/scope/ → leer (grün)
+  - name: Tier-generischer Beweis gegen alle drei Deskriptoren + Quality-Gates
+    slug: tier-generic-proof
+    status: done
+    context: |
+      Beweis, dass EIN createNodeOps phase/task/epic gleichermaßen bedient — der
+      Unterschied ist nur der Tier-Deskriptor (Task tier-schemas), nicht duplizierter Code.
+      Tests instanziieren dieselbe Factory mit jedem der drei Deskriptoren und
+      fahren die Kern-Verben (create/read/setStatus/addEvidence/next-child/
+      add-question/log) gegen die jeweiligen Kind-/Feld-Shapes.
+
+      Abschluss-Gate (tooling-quality-gates): lint, format-check, typecheck
+      (tsc --noEmit), bun test, build — alle grün vor done.
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: lint/format/typecheck/test/build grün vor ac→done; Evidence-Honesty auf Paket-Ebene
+      - path: .claude/rules/factory-functions.md
+        why: EINE Factory über drei Deskriptoren = kein pro-Tier-Code (Beweis der Generizität)
+      - path: docs/design/anchored.default.yml
+        why: "Kind-Beziehung pro Tier: task→phases, epic→tasks (next-child)"
+    acceptance_criteria:
+      - id: a1
+        text: Ein parametrisierter Test fährt createNodeOps mit dem phase-, dem task- UND dem epic-Deskriptor durch dieselben Kern-Verben (create/read/setStatus/addEvidence) — belegbar per test-output, das alle drei Tier-Fälle grün zeigt, plus datei:zeile, die belegt dass derselbe createNodeOps-Import dreimal mit unterschiedlichem Deskriptor instanziiert wird
+        status: done
+        evidence:
+          - src/ops/tier-generic.spec.ts 'same createNodeOps serves phase/task/epic' — derselbe createNodeOps-Import 3x instanziiert (grep -c 'createNodeOps(' == 3), create+read je Tier grün
+      - id: a2
+        text: next-child arbeitet korrekt über die je-Tier-Kind-Liste (task→phases, epic→tasks) — belegbar per Test, der für task und epic je eine DAG-Auswahl asserted (test-output grün)
+        status: done
+        evidence:
+          - src/ops/tier-generic.spec.ts 'next-child uses per-tier child field' — task→phases (liefert p2), epic→tasks (liefert t2, deps auf done t1) (grün)
+      - id: a3
+        text: "Alle Quality-Gates grün für core/: eslint sauber, prettier-check sauber, tsc --noEmit ohne Fehler, bun test grün, build ohne Fehler — belegbar per gesammeltem Befehls-Output (jeder der fünf Gates mit Exit 0)"
+        status: done
+        evidence:
+          - "5 Gates exit 0: eslint, prettier --check, tsc --noEmit, bun test (59 pass/0 fail), bun build"
