@@ -33,6 +33,24 @@ export async function planCommand(args: string[], deps: CliDeps): Promise<unknow
   let reasoning: string | undefined
   let input: string
 
+  // F3: an explicit `--slug <value>` (or --slug=value) overrides the slug derived
+  // from the description — so `anchored plan epic --slug tasks-app "<long desc>"`
+  // gives a clean slug instead of slugifying the whole prose (the dogfood pain that
+  // forced repeated rm+recreate). Strip it from args before tier/input parsing.
+  let explicitSlug: string | undefined
+  const stripped: string[] = []
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!
+    if (arg === '--slug') {
+      explicitSlug = args[++i]
+    } else if (arg.startsWith('--slug=')) {
+      explicitSlug = arg.slice('--slug='.length)
+    } else {
+      stripped.push(arg)
+    }
+  }
+  args = stripped
+
   if (args[0] !== undefined && TIER_KEYWORDS.has(args[0])) {
     tier = args[0]
     input = args.slice(1).join(' ')
@@ -50,7 +68,8 @@ export async function planCommand(args: string[], deps: CliDeps): Promise<unknow
 
   // pass the explicit tier so create seeds the right shape (epic → tasks:[], status
   // plan); without it create would default to a task-shaped node (F13).
-  const node = await deps.nodeOps.create(slugFromInput(input), { title: input, tier })
+  const slug = explicitSlug ? slugFromInput(explicitSlug) : slugFromInput(input)
+  const node = await deps.nodeOps.create(slug, { title: input, tier })
   // skill-orchestrated: return the node + the resolved plan-stage steps for the
   // in-session skill to execute (spawn discover/rules-scan/decompose). No engine
   // spawn here — the headless CLI can't reach the session's Task tool.

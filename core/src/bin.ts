@@ -17,6 +17,19 @@ const defaultPath = fileURLToPath(
   new URL('../default-template/anchored.default.yml', import.meta.url),
 )
 
+// F5: real CLI version from package.json (bundled bin.js sits at dist/bin.js →
+// ../package.json = the package root). Fail-soft: 0.0.0 if it can't be read.
+const version = ((): string => {
+  try {
+    const pkg = JSON.parse(
+      readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8'),
+    ) as { version?: string }
+    return pkg.version ?? '0.0.0'
+  } catch {
+    return '0.0.0'
+  }
+})()
+
 const fs = {
   mkdir: (dir: string, opts?: { recursive?: boolean }) => mkdir(dir, opts),
   writeFile: (p: string, data: string) => writeFile(p, data),
@@ -41,6 +54,7 @@ const anchored = createAnchored({
     existsSync(`${r}/anchored.yml`) ? readFileSync(`${r}/anchored.yml`, 'utf8') : undefined,
   parseYaml: (raw) => parse(raw),
   now: () => new Date().toISOString().slice(0, 10), // YYYY-MM-DD for `created`
+  version,
   out: (line) => process.stdout.write(line + '\n'),
 })
 

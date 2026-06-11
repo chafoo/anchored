@@ -33,6 +33,7 @@ export interface TierOps {
   read(slug: string): Promise<AnyRec>
   setStatus(node: AnyRec, to: string): Promise<AnyRec>
   addChild(node: AnyRec, child: { slug: string; status: string }): Promise<AnyRec>
+  setChildField(node: AnyRec, childSlug: string, field: string, value: unknown): Promise<AnyRec>
   setChildStatus(node: AnyRec, childSlug: string, status: string): Promise<AnyRec>
   nextChild(node: AnyRec): unknown
   readyChildren(node: AnyRec): unknown
@@ -116,7 +117,14 @@ export function createSlugFacade(deps: FacadeDeps): NodeOpsFacade {
         slug: child.slug,
         status: 'pending',
         ...(child.goal !== undefined ? { goal: child.goal } : {}),
+        // F2: seed the DAG edge at creation so the scaffold agent doesn't need a
+        // second call (and can't "claim" a depends_on it never wrote).
+        ...(child.depends_on !== undefined ? { depends_on: child.depends_on } : {}),
       } as { slug: string; status: string })
+    },
+    setChildField: async (slug, childSlug, field, value) => {
+      const o = opsFor(await tierFor(slug))
+      return o.setChildField(await o.read(slug), childSlug, field, value)
     },
     nextChild: async (slug) => {
       const o = opsFor(await tierFor(slug))

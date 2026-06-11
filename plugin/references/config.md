@@ -170,24 +170,29 @@ fix im Code. Beispiel-Belegung: [`task.example.yml`](task.example.yml) /
 ### Ein eigenes Feld hinzufügen
 
 Custom-Felder werden an der **Etage** deklariert, der sie gehören — unter deren
-`fields`, als `{ name, type }`:
+`fields`, als **Record** (`name: typ`, KEINE Liste von `{name, type}`):
 
 ```yaml
 phase:
   fields:                                     # Custom-Felder der phase-Etage
-    - { name: commit, type: string }          # z.B. ein SHA pro Phase
-    - { name: coverage_pct, type: number }
+    coverage_pct: number                      # z.B. eine Zahl pro Phase
 
 task:
   fields:
-    - { name: ticket_url, type: string }      # Custom-Feld auf dem Task-File
+    commit_sha: string                        # Custom-Feld auf dem Task-File
+    ticket_url: string
 ```
 
-- `type`: `string` | `number` | `boolean` | (Liste/Objekt nach Bedarf).
+- **Record-Form, nicht Liste:** `commit_sha: string` ✓ — `- { name: commit_sha,
+  type: string }` ✗ (das Schema erwartet eine Map `name → typ`).
+- `typ`: `string` | `number` | `boolean` (skalar getypt) — alles andere wird als
+  `unknown` durchgelassen (permissiv, aber persistiert).
 - Default-Felder werden **nicht** hier wiederholt — `fields` ist **additiv**
-  (die Basis kommt aus `default.yml`).
-- Setzen/Lesen zur Laufzeit: `anchored <tier> set-field <slug> <name> <value>` /
-  `get-field`.
+  (die Basis kommt aus `default.yml`); ein Custom-Name landet zusätzlich im
+  Node-Schema, ein **un**deklarierter Key wird beim Schreiben weiterhin abgelehnt.
+- Setzen/Lesen zur Laufzeit: `anchored node set-field <slug> <name> <value>`.
+  Auf einem **Kind** (Stub/Phase): `anchored node set-child-field <slug> <child>
+  <name> <value>`.
 
 ## `_lib` — wiederverwendbare Steps (nur `anchored.yml`)
 

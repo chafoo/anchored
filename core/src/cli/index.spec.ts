@@ -7,6 +7,7 @@ export function fakeFacade(over: Partial<NodeOpsFacade> = {}): NodeOpsFacade {
     read: async (slug) => ({ slug, status: 'plan' }),
     setStatus: async (slug, status) => ({ slug, status }),
     addChild: async () => ({}),
+    setChildField: async () => ({}),
     nextChild: async () => null,
     readyChildren: async () => [],
     addQuestion: async () => ({}),

@@ -423,6 +423,26 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       return persist({ ...node, [field]: addChildOf(childrenOf(node), child) })
     },
 
+    // F2: set ANY field on a child stub/phase by slug (goal, depends_on, …) — the
+    // generic set-field can't address an array element, so the DAG edge had no CLI
+    // setter and had to be hand-edited. persist re-validates the whole node, so an
+    // illegal child shape is rejected before any write.
+    async setChildField(
+      node: AnyNode,
+      childSlug: string,
+      field: string,
+      value: unknown,
+    ): Promise<AnyNode> {
+      const cf = requireChildField()
+      const children = (node[cf] as AnyNode[] | undefined) ?? []
+      const child = children.find((c) => c.slug === childSlug)
+      if (!child) throw anchoredError('UnknownChild', `no child '${childSlug}'`)
+      return persist({
+        ...node,
+        [cf]: children.map((c) => (c.slug === childSlug ? { ...c, [field]: value } : c)),
+      })
+    },
+
     async moveChild(node: AnyNode, slug: string, toIndex: number): Promise<AnyNode> {
       const field = requireChildField()
       return persist({ ...node, [field]: moveChildOf(childrenOf(node), slug, toIndex) })

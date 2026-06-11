@@ -5,6 +5,7 @@
 // no runtime/bin access — all of that lives only in src/bin.ts. Every effect (fs,
 // yaml, spawn, merge) arrives through an injected seam, so the whole graph is
 // fakeable (wiring tests inject spy sub-factories).
+import { z } from 'zod'
 import { parse, stringify } from 'yaml'
 import { createCli, type CliDeps, type NodeOpsFacade } from './cli/index.js'
 import { createNodeOps, type TierDescriptor, type NodeOpsDeps } from './ops/node-ops.js'
@@ -23,6 +24,7 @@ import { phaseDescriptor, PhaseNodeSchema } from './schema/tiers/phase.js'
 import { taskDescriptor, TaskNodeSchema } from './schema/tiers/task.js'
 import { epicDescriptor, EpicNodeSchema } from './schema/tiers/epic.js'
 import { ConfigSchema, type Config } from './schema/config.js'
+import { extendSchemaWithFields } from './schema/custom-fields.js'
 
 export { tierOfNode }
 
@@ -43,13 +45,20 @@ function buildSubstrate(
   io: ReturnType<typeof createIo>,
   pathFor: (slug: string) => string,
   createNodeOpsFn: typeof createNodeOps,
+  // config-declared custom fields per tier (e.g. `task.fields.commit_sha`). When
+  // present, the tier schema is extended so a declared custom field validates on
+  // both read (parser) and write (persist). Absent (test harness) → strict base.
+  fieldsByTier?: Record<string, Record<string, unknown> | undefined>,
 ): Substrate {
+  const taskSchema = extendSchemaWithFields(TaskNodeSchema, fieldsByTier?.task)
+  const epicSchema = extendSchemaWithFields(EpicNodeSchema, fieldsByTier?.epic)
+  const phaseSchema = extendSchemaWithFields(PhaseNodeSchema, fieldsByTier?.phase)
   const parser = createParser({
     yaml: { parse },
     schemas: {
-      task: TaskNodeSchema,
-      epic: EpicNodeSchema,
-      phase: PhaseNodeSchema,
+      task: taskSchema,
+      epic: epicSchema,
+      phase: phaseSchema,
       config: ConfigSchema,
     },
   })
@@ -60,10 +69,18 @@ function buildSubstrate(
     parse: (raw) => parser.parseNodeYAML(raw, { profile: 'task-file', tier }),
     pathFor,
   })
+  // descriptors carry the EXTENDED schema so persist (G1) accepts declared customs.
+  const descFor = (tier: string, schema: z.ZodType): TierDescriptor => ({
+    ...DESCRIPTORS[tier]!,
+    schema,
+  })
   const opsByTier: Record<string, TierOps> = {
-    phase: createNodeOpsFn(DESCRIPTORS.phase!, opsDepsFor('phase')) as unknown as TierOps,
-    task: createNodeOpsFn(DESCRIPTORS.task!, opsDepsFor('task')) as unknown as TierOps,
-    epic: createNodeOpsFn(DESCRIPTORS.epic!, opsDepsFor('epic')) as unknown as TierOps,
+    phase: createNodeOpsFn(
+      descFor('phase', phaseSchema),
+      opsDepsFor('phase'),
+    ) as unknown as TierOps,
+    task: createNodeOpsFn(descFor('task', taskSchema), opsDepsFor('task')) as unknown as TierOps,
+    epic: createNodeOpsFn(descFor('epic', epicSchema), opsDepsFor('epic')) as unknown as TierOps,
   }
   return { opsByTier, opsFor: (tier) => opsByTier[tier] ?? opsByTier.task! }
 }
@@ -121,6 +138,7 @@ export interface AnchoredDeps {
   spawn?: SpawnLike
   classify?: CliDeps['classify']
   now?: () => string
+  version?: string
   wiring?: AnchoredWiring
 }
 
@@ -151,8 +169,16 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
   })
   const config = bootstrap.load(deps.projectRoot)
 
-  // ops — built BEFORE the engine (deps-graph order: substrate → ops → engine → cli)
-  const { opsByTier, opsFor } = buildSubstrate(io, pathFor, createNodeOpsFn)
+  // ops — built BEFORE the engine (deps-graph order: substrate → ops → engine → cli).
+  // Thread the config-declared custom fields per tier into the substrate so a
+  // declared `task.fields.<x>` validates on read + write (G1 stays strict otherwise).
+  const cfgRec = config as unknown as Record<string, { fields?: Record<string, unknown> }>
+  const fieldsByTier = {
+    task: cfgRec.task?.fields,
+    epic: cfgRec.epic?.fields,
+    phase: cfgRec.phase?.fields,
+  }
+  const { opsByTier, opsFor } = buildSubstrate(io, pathFor, createNodeOpsFn, fieldsByTier)
   const facade = createSlugFacade({
     opsFor,
     tierFor: makeTierFor(io, pathFor),
@@ -181,6 +207,7 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
     classify: deps.classify,
     steps: planner.plan,
     out: deps.out,
+    ...(deps.version !== undefined ? { version: deps.version } : {}),
   })
 
   return { cli, engine, ops: facade, config }

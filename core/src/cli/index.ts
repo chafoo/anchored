@@ -20,7 +20,11 @@ export interface NodeOpsFacade {
   create(slug: string, init: Record<string, unknown>): Promise<unknown>
   read(slug: string): Promise<unknown>
   setStatus(slug: string, status: string): Promise<unknown>
-  addChild(slug: string, child: { slug: string; goal?: string }): Promise<unknown>
+  addChild(
+    slug: string,
+    child: { slug: string; goal?: string; depends_on?: string[] },
+  ): Promise<unknown>
+  setChildField(slug: string, childSlug: string, field: string, value: unknown): Promise<unknown>
   nextChild(slug: string): Promise<unknown>
   readyChildren(slug: string): Promise<unknown>
   addQuestion(slug: string, q: { text: string; priority: string }): Promise<unknown>
@@ -52,6 +56,9 @@ export interface CliDeps {
   classify?: (input: string) => Promise<{ tier: string; reasoning?: string }>
   steps?: (tier: string, stage: string) => StepPlan
   out: (line: string) => void
+  // F5: the real package version, injected from bin.ts (the only fs-touching site).
+  // Falls back to the constant when not wired (tests).
+  version?: string
 }
 
 /** Typed CLI error → serialised into the error envelope. */
@@ -82,7 +89,7 @@ const HELP = `anchored — fractal task lifecycle (plan→refine→build→wrap)
 Usage: anchored <command> [args]
 
 Stage commands (return the orchestration plan for the in-session skill):
-  plan [epic|task|phase] <description>   create a node + plan-stage steps
+  plan [epic|task|phase] [--slug <slug>] <description>   create a node + plan-stage steps
   refine <slug>                          refine-stage plan (plan-check, rules-check, walk)
   build  <slug>                          build-stage plan (loop / implement + gates)
   wrap   <slug>                          wrap-stage plan (review/summarize | roll-up)
@@ -95,7 +102,8 @@ Node ops (agents self-write via these):
   node add-ac <slug> <phase> <text>          node append-log <slug> <at> <kind> <note>
   node add-phase-evidence <slug> <phase> <ac> <text>
   node set-child-status <slug> <child> <status>
-  node add-child <slug> <child>              node next-child <slug>
+  node add-child <slug> <child> [goal] [deps-csv]   node next-child <slug>
+  node set-child-field <slug> <child> <field> <value>
   node set-field <slug> <field> <value>      node set-executor <slug> <phase> <implement|workflow>
 
   -h, --help        show this help
@@ -113,7 +121,7 @@ export function createCli(deps: CliDeps) {
         return 0
       }
       if (verb === 'version' || verb === '--version' || verb === '-v') {
-        deps.out(`anchored ${VERSION}`)
+        deps.out(`anchored ${deps.version ?? VERSION}`)
         return 0
       }
       try {

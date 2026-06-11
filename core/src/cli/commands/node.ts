@@ -22,7 +22,32 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
     case 'set-status':
       return ops.setStatus(need(0, 'slug'), need(1, 'status'))
     case 'add-child':
-      return ops.addChild(need(0, 'slug'), { slug: need(1, 'child-slug'), goal: a[2] })
+      // add-child <slug> <child-slug> [goal] [depends_on-csv]
+      return ops.addChild(need(0, 'slug'), {
+        slug: need(1, 'child-slug'),
+        goal: a[2],
+        ...(a[3] !== undefined && a[3] !== ''
+          ? {
+              depends_on: a[3]
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean),
+            }
+          : {}),
+      })
+    case 'set-child-field': {
+      // F2: set a field on a child stub/phase (goal, depends_on, …). The value is
+      // JSON-parsed when it looks like JSON (so depends_on='["core-list"]' becomes
+      // a real array); otherwise it stays a string.
+      const raw = need(3, 'value')
+      let value: unknown
+      try {
+        value = JSON.parse(raw)
+      } catch {
+        value = raw
+      }
+      return ops.setChildField(need(0, 'slug'), need(1, 'child'), need(2, 'field'), value)
+    }
     case 'next-child':
       return ops.nextChild(need(0, 'slug'))
     case 'ready-children':
@@ -108,6 +133,8 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
         'create',
         'read',
         'set-status',
+        'add-child',
+        'set-child-field',
         'add-evidence',
         'add-phase',
         'add-ac',

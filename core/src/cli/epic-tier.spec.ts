@@ -233,3 +233,46 @@ test('H7: add-acceptance + set-acceptance-status on an epic integration AC', asy
   await cli.run(['node', 'read', 'h7'])
   expect((last().result as { acceptance: { status: string }[] }).acceptance[0]?.status).toBe('done')
 })
+
+// F2 — add-child seeds depends_on (4th arg, CSV); set-child-field edits a child
+// field post-hoc. The DAG edge had no CLI setter and had to be hand-edited.
+test('F2: add-child depends_on + set-child-field on a stub', async () => {
+  const { cli, last } = harness()
+  await cli.run(['plan', 'epic', 'f2'])
+  await cli.run(['node', 'add-child', 'f2', 'core-list', 'root'])
+  await cli.run(['node', 'add-child', 'f2', 'clear-completed', 'feature', 'core-list'])
+  await cli.run(['node', 'read', 'f2'])
+  const tasks = (last().result as { tasks: { slug: string; depends_on?: string[] }[] }).tasks
+  expect(tasks.find((t) => t.slug === 'clear-completed')?.depends_on).toEqual(['core-list'])
+
+  // ready-children gates clear-completed behind its dependency
+  await cli.run(['node', 'ready-children', 'f2'])
+  expect((last().result as unknown as { slug: string }[]).map((t) => t.slug)).toEqual(['core-list'])
+
+  // set-child-field edits the goal of an existing stub
+  await cli.run(['node', 'set-child-field', 'f2', 'core-list', 'goal', 'new goal'])
+  await cli.run(['node', 'read', 'f2'])
+  const cl = (last().result as { tasks: { slug: string; goal?: string }[] }).tasks
+  expect(cl.find((t) => t.slug === 'core-list')?.goal).toBe('new goal')
+
+  // set-child-field JSON-parses an array value (depends_on set post-hoc)
+  await cli.run(['node', 'set-child-field', 'f2', 'clear-completed', 'depends_on', '["core-list"]'])
+  await cli.run(['node', 'read', 'f2'])
+  const t2 = (last().result as { tasks: { slug: string; depends_on?: string[] }[] }).tasks
+  expect(t2.find((t) => t.slug === 'clear-completed')?.depends_on).toEqual(['core-list'])
+})
+
+// F3 — an explicit --slug overrides the slug derived from the (long) description.
+test('F3: plan --slug gives a clean slug instead of slugifying the prose', async () => {
+  const { cli, last } = harness()
+  await cli.run([
+    'plan',
+    'epic',
+    '--slug',
+    'tasks-app',
+    'a deliberately long description that would otherwise produce an ugly truncated slug',
+  ])
+  expect((last().result!.node as { slug: string }).slug).toBe('tasks-app')
+  // the long prose still becomes the title
+  expect((last().result!.node as { title: string }).title).toContain('deliberately long')
+})
