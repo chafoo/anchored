@@ -55,6 +55,8 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
       return ops.addChildEvidence(need(0, 'slug'), need(1, 'phase'), need(2, 'ac'), need(3, 'text'))
     case 'set-child-status':
       return ops.setChildStatus(need(0, 'slug'), need(1, 'child'), need(2, 'status'))
+    case 'set-phase-rules':
+      return ops.setPhaseRules(need(0, 'slug'), need(1, 'phase'), need(2, 'path'), need(3, 'why'))
     case 'set-failures':
       // gate rejects an AC: write failures + flip it back to pending (re-do loop)
       return ops.setChildFailures(need(0, 'slug'), need(1, 'phase'), need(2, 'ac'), need(3, 'text'))

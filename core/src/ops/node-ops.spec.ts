@@ -212,6 +212,28 @@ test('setChildFailures rejects a child AC (pending + failures, evidence kept)', 
   ).rejects.toThrow(/evidence/i)
 })
 
+// phase-rules F1 — setPhaseRules attaches a {path, why} to a child phase (dedup by path)
+test('setPhaseRules attaches a rule to a phase (dedup by path)', async () => {
+  const { deps } = makeDeps()
+  const ops = createNodeOps(taskDescriptor, deps)
+  const node = { slug: 't', status: 'build', phases: [{ slug: 'p1', status: 'pending' }] }
+  const r1 = (await ops.setPhaseRules(node, 'p1', {
+    path: '.claude/rules/dom.md',
+    why: 'no innerHTML',
+  })) as unknown as {
+    phases: { rules: { path: string; why: string }[] }[]
+  }
+  expect(r1.phases[0]!.rules).toEqual([{ path: '.claude/rules/dom.md', why: 'no innerHTML' }])
+  // same path → replace (dedup), not duplicate
+  const r2 = (await ops.setPhaseRules(r1 as never, 'p1', {
+    path: '.claude/rules/dom.md',
+    why: 'updated',
+  })) as unknown as {
+    phases: { rules: { path: string; why: string }[] }[]
+  }
+  expect(r2.phases[0]!.rules).toEqual([{ path: '.claude/rules/dom.md', why: 'updated' }])
+})
+
 // a4 — setStatus runs assertTransition (forward-only)
 test('setStatus enforces forward-only transitions', async () => {
   const { deps, writes } = makeDeps()

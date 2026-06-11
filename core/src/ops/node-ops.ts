@@ -253,6 +253,28 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       })
     },
 
+    // attach/replace a rule {path, why} on a CHILD phase's `rules` array (dedup by
+    // path) — so phases carry real rules the code-validate gate checks against.
+    async setPhaseRules(
+      node: AnyNode,
+      phaseSlug: string,
+      rule: { path: string; why: string },
+    ): Promise<AnyNode> {
+      const field = requireChildField()
+      const children = (node[field] as AnyNode[] | undefined) ?? []
+      const child = children.find((c) => c.slug === phaseSlug)
+      if (!child) throw anchoredError('UnknownChild', `no child '${phaseSlug}'`)
+      const rules = (child.rules as { path: string; why: string }[] | undefined) ?? []
+      const next = rules.some((r) => r.path === rule.path)
+        ? rules.map((r) => (r.path === rule.path ? rule : r))
+        : [...rules, rule]
+      const updated = { ...child, rules: next }
+      return persist({
+        ...node,
+        [field]: children.map((c) => (c.slug === phaseSlug ? updated : c)),
+      })
+    },
+
     async setExecutor(node: AnyNode, phaseRef: string, value: string): Promise<AnyNode> {
       // enum-validate first — a bogus value throws and NOTHING is written
       if (!(phaseExecutorValues as readonly string[]).includes(value)) {

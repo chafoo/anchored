@@ -23,6 +23,10 @@ Decompose into 2–5 phases. Phrase EVERY acceptance criterion so concrete evide
 ```bash
 anchored node add-phase <task-slug> <phase-slug> "<name>"
 anchored node add-ac <task-slug> <phase-slug> "<testable AC text>"   # id auto-assigned (a1, a2, …); status: pending, no evidence
+anchored node set-phase-rules <task-slug> <phase-slug> <rule-path> "<why this rule applies here>"
 ```
 The AC id is assigned automatically (a1, a2, …) — you pass only the text. Phases
 and ACs are children of the task-file, addressed by `<task-slug> <phase-slug>`.
+**Attach the applicable `.claude/rules/*.md` per phase** via `set-phase-rules` (from
+the rules-scan findings) — so each phase carries a real `rules` array the
+code-validate gate checks against, not just a log note.
