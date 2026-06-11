@@ -70,6 +70,30 @@ committen. Lehre in config.md (VCS-Beispiel) + der anchored.yml-Vorlage.
 tauchten im Chat auf. Der User hat es diesmal nicht moniert; H1/H2 greifen
 größtenteils. Niedrige Priorität — Nachschärfung optional.
 
-## Prep
-- anchored-test auf sauberen Scaffold-Baseline zurücksetzen, `anchored.yml` mit
-  vollen Customs (commit_sha-Feld wieder via Feld, da F1 gefixt) für morgen.
+### F4 — dist-Staleness (erste Session: clear-failures UnknownNodeVerb)  ✅ KEIN BUG
+Der npm-gelinkte CLI zeigt auf `core/dist` — nach jeder CLI-Änderung muss
+`npm run build` laufen, sonst ist der live-CLI stale. Aktuell gebaut + verifiziert
+(clear-failures live, alle F1-F5-Fixes in dist).
+
+### F6 — Task-Node hat kein `goal`-Feld  ⏳ BEOBACHTET (nicht gefixt)
+`set-field core-list goal …` warf „Unrecognized key". Unkritisch: der Child-JIT-
+Plan seedet aus den Outcome-ACs, das goal lebt im Stub + plan-Trail. Niedrige
+Priorität; bewusst nicht geändert (redundantes Feld).
+
+## Eval (alle Fixes live bewiesen)
+- F1: commit_sha-Feld end-to-end — live in anchored-test + im vollen Flow
+  (branch → phase-commit → `set-field commit_sha` == HEAD ✓). Unit: 5 Tests.
+- F2: add-child depends_on + set-child-field + DAG-Gating — Integration: 1 Test.
+- F3: plan --slug → sauberer Slug — Integration: 1 Test.
+- F5: `anchored --version` → 0.1.0.
+- merge-to-main: im echten Dogfood-Run nachweislich durchgelaufen.
+- Alle 5 Gates grün (208 Tests). core dist neu gebaut, Plugin v0.1.7.
+
+## Prep — anchored-test ist startklar für morgen ✅
+- Scaffold-Baseline (app.js-Stub, index.html, style.css) wiederhergestellt.
+- `anchored.yml`: volle Customs — branch-per-task, commit-per-phase **mit
+  funktionierendem commit_sha-Feld** (F1), merge-to-main (-X theirs),
+  Slug-flatten-Guard. Live validiert (3 Stages parsen, Feld schreibt).
+- Run-Task-Files ins `_archive` verschoben; Task-Branches gelöscht; nur `main`.
+- Baseline-Commit `9988ffb`. **Morgen: Plugin v0.1.7 reinstall + /reload-plugins,
+  dann `/a:plan EPIC.md`.** (CLI ist via npm-link + Rebuild bereits live.)
