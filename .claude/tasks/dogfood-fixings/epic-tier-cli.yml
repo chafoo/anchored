@@ -1,10 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
-slug:    dogfood-fixings/epic-tier-cli
-title:   "Epic-Tier durch die CLI fahrbar machen (F13 + F14)"
-status:  drafted
+slug: dogfood-fixings/epic-tier-cli
+title: Epic-Tier durch die CLI fahrbar machen (F13 + F14)
+status: done
 created: 2026-06-11
-
 context:
   plan: |
     F13 (HOCH): Der Epic-Tier (e5, Headline-Feature) läuft NICHT durch die echte CLI.
@@ -20,75 +19,92 @@ context:
     Inhalt ab (tasks[]→epic, phases[]→task), create bekommt einen EXPLIZITEN
     tier-Param, der das Shape seedet.
     REF: .claude/temp/dogfood-findings.md F13/F14.
-
 questions: []
 log: []
 phases:
-  - name: "Tier-aware create — Shape pro Tier seeden"
+  - name: Tier-aware create — Shape pro Tier seeden
     slug: tier-aware-create
-    status: pending
+    status: done
     context: |
       facade.create + planCommand so umbauen, dass der Tier explizit durchgereicht
       wird und create das richtige Shape erzeugt: epic → { tasks: [], status:
       planning }, task → { phases-fähig, status plan }, phase → leaf. Kein
       task-Default mehr.
     rules:
-      - { path: .claude/rules/factory-functions.md, why: "create über injizierte deps; tier-Param als input/output-Vertrag; fakebar" }
-      - { path: .claude/rules/cli-only-transport.md, why: "create läuft über die CLI/facade, JSON-Output" }
+      - path: .claude/rules/factory-functions.md
+        why: create über injizierte deps; tier-Param als input/output-Vertrag; fakebar
+      - path: .claude/rules/cli-only-transport.md
+        why: create läuft über die CLI/facade, JSON-Output
     acceptance_criteria:
       - id: a1
         text: "facade.create akzeptiert einen expliziten tier-Param und seedet das Tier-Shape: epic → tasks:[] + status 'planning' + epic-Deskriptor, task → status 'plan', phase → leaf. Beweis: facade-Test, der für tier='epic' einen Node mit tasks:[] + status planning asserted, für 'task' ohne tasks (grün) + datei:zeile."
-        status: pending
+        status: done
+        evidence:
+          - core/src/ops/facade.ts create nimmt expliziten tier-Param, seedet epic→tasks:[]+status planning; epic-tier.spec "plan epic seeds epic-shaped node" grün
       - id: a2
         text: "planCommand reicht den geparsten Tier an create durch (epic-Plan → epic-Node). Beweis: plan.spec/cli-Test, der `plan epic <x>` fährt und einen Node mit tasks:[] (epic-Shape) asserted, NICHT phases/task (grün) + datei:zeile plan.ts."
-        status: pending
-
-  - name: "Tier-Ableitung beim read aus dem File-Shape"
+        status: done
+        evidence:
+          - core/src/cli/commands/plan.ts:49 planCommand reicht tier an create durch (create(slug,{title,tier})); epic-tier.spec belegt epic-Shape
+  - name: Tier-Ableitung beim read aus dem File-Shape
     slug: tier-derivation
-    status: pending
+    status: done
     context: |
       tierForSlug/read den Tier aus dem File-Inhalt bestimmen (tasks[]→epic,
       phases[]→task, sonst nach schema/Default), sodass read + alle Mutationen den
       richtigen Deskriptor nutzen. add-child (Task-Stub) + next-child (Loop über
       tasks) müssen auf einem Epic funktionieren.
     rules:
-      - { path: .claude/rules/fractal-substrate-integrity.md, why: "Tier-Mechanik = Mechanismus; File-Shape ist SSOT, kein Default-Raten" }
-      - { path: .claude/rules/cli-only-transport.md, why: "alle Ops über die CLI mit korrektem Tier-Routing" }
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Tier-Mechanik = Mechanismus; File-Shape ist SSOT, kein Default-Raten
+      - path: .claude/rules/cli-only-transport.md
+        why: alle Ops über die CLI mit korrektem Tier-Routing
     acceptance_criteria:
       - id: a1
         text: "read bestimmt den Tier aus dem File-Inhalt (tasks[]→epic, phases[]→task) statt aus einem 'task'-Default; ein epic-Node wird als epic gelesen + die Ops routen zum epic-Deskriptor. Beweis: Test, der ein epic-File liest und tier='epic' + epic-Deskriptor (childField 'tasks') asserted (grün) + datei:zeile."
-        status: pending
+        status: done
+        evidence:
+          - core/src/ops/tier-derive.ts makeTierFor leitet Tier aus File-Inhalt ab (tasks[]→epic, phases[]→task, ACs ohne schema_version→phase); index.ts verdrahtet als facade.tierFor; epic-tier.spec "makeTierFor derives tier" grün
       - id: a2
         text: "add-child schreibt einen Task-Stub auf einen Epic (childField tasks), next-child loopt die tasks in DAG-Reihenfolge. Beweis: CLI-Smoke gegen das echte Binary: create epic → add-child ×2 (mit depends_on) → next-child liefert sie in DAG-Order; alle ok:true + datei:zeile."
-        status: pending
-
-  - name: "Slug-Trailing-Dash-Fix + Duplikat-Cleanup"
+        status: done
+        evidence:
+          - add-child schreibt Task-Stub auf Epic (epic-Deskriptor childField tasks), next-child loopt; epic-tier.spec "epic round-trip" grün (t1→t2 nach done); CLI-Smoke gegen Binary ok
+  - name: Slug-Trailing-Dash-Fix + Duplikat-Cleanup
     slug: slug-fix-cleanup
-    status: pending
+    status: done
     context: |
       slugFromInput: erst slice(0,48), DANN strippen — kein Trailing-Dash mehr.
       Plus: die zwei Duplikat-Epic-Files in anchored-test aufräumen.
     rules:
-      - { path: .claude/rules/cli-only-transport.md, why: "Slug muss schema-valide sein, sonst verweigern die Verben Lesen/Schreiben" }
+      - path: .claude/rules/cli-only-transport.md
+        why: Slug muss schema-valide sein, sonst verweigern die Verben Lesen/Schreiben
     acceptance_criteria:
       - id: a1
         text: "slugFromInput erzeugt für lange Titel keinen Trailing-Dash mehr (slice→strip-Reihenfolge). Beweis: Unit-Test mit einem >48-Zeichen-Titel, dessen 48. Zeichen ein Wort-Mittelpunkt ist → Slug matcht ^[a-z0-9]+(?:-[a-z0-9]+)*$ (grün) + datei:zeile plan.ts."
-        status: pending
+        status: done
+        evidence:
+          - core/src/cli/commands/plan.ts slugFromInput slice→strip-Reihenfolge; epic-tier.spec "slug has no trailing dash" grün
       - id: a2
         text: "Die Duplikat-Epic-Files in ~/Dev/anchored-test (…-vorhandenes-.yml + …-vorhandenes.yml) sind aufgeräumt (gelöscht/archiviert). Beweis: ls zeigt keine Trailing-Dash-Duplikate mehr."
-        status: pending
-
-  - name: "Epic-e2e durch die CLI (der Beweis)"
+        status: done
+        evidence:
+          - anchored-test Duplikat-Epic-Files (…-vorhandenes-.yml + …-vorhandenes.yml) nach .claude/tasks/_archive/ verschoben
+  - name: Epic-e2e durch die CLI (der Beweis)
     slug: epic-e2e
-    status: pending
+    status: done
     context: |
       Der End-to-End-Beweis: der ganze Epic-Flow läuft durch die echte CLI —
       plan epic → scaffold add-child Stubs (DAG) → next-child loopt → roll-up.
       Das ist e3 des Epics + entsperrt dogfood-epic.
     rules:
-      - { path: .claude/rules/fractal-substrate-integrity.md, why: "epic = volle Etage, build.each:task intrinsisch" }
-      - { path: .claude/rules/tooling-quality-gates.md, why: "erst grün, wenn der Epic-Roundtrip durch die CLI sauber läuft + Tests grün" }
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: epic = volle Etage, build.each:task intrinsisch
+      - path: .claude/rules/tooling-quality-gates.md
+        why: erst grün, wenn der Epic-Roundtrip durch die CLI sauber läuft + Tests grün
     acceptance_criteria:
       - id: a1
         text: "Ein CLI-Epic-Roundtrip ist grün: `anchored plan epic <x>` seedet einen epic-Node (tasks:[]), add-child ×N mit depends_on, next-child liefert die Stubs in DAG-Order, set-child-status advanced sie. Beweis: ein e2e-Spec ODER ein dokumentierter CLI-Smoke gegen das Binary, alle Schritte ok:true (grün) + die 5 Quality-Gates grün."
-        status: pending
+        status: done
+        evidence:
+          - "Epic-Roundtrip durch die echte CLI grün: plan epic→epic-shape, read→epic, add-child×2, next-child DAG (t1→t2), set-child-status advance; epic-tier.spec 5 Tests + 168 Tests gesamt + 5 Gates grün"

@@ -28,7 +28,7 @@ acceptance:
     status: done
   - id: e3
     text: "Epic-Tier durch die CLI fahrbar: `anchored plan epic` seedet einen epic-förmigen Node, scaffold schreibt Task-Stubs (add-child) mit DAG, build loopt sie — der anchored-test-Epic-Lauf wird grün (F13/F14)"
-    status: pending
+    status: done
   - id: e4
     text: "Decision-Trail vollständig: resolve-question speichert reasoning, build spawnt stop-check + dokumentiert emergente Decisions, build-notes mit at=build (F7/F10)"
     status: pending
@@ -94,7 +94,7 @@ tasks:
     depends_on: []
   - slug: epic-tier-cli
     goal: "F13 (HOCH) + F14: Epic-Tier durch die CLI fahrbar machen — create bekommt expliziten tier-Param (seedet epic-Shape tasks:[]/epic-Deskriptor/status planning), planCommand reicht tier durch; tierForSlug real ableiten (File-Shape, s. q1); read bestimmt Tier aus File-Inhalt; Slug-Trailing-Dash-Fix (slice→strip-Reihenfolge); Duplikat-Nodes in anchored-test aufräumen."
-    status: pending
+    status: done
     depends_on: []
   - slug: decision-trail
     goal: "F7 + F10: resolve-question bekommt reasoning-Arg + Invariante (source=ai ⇒ reasoning); build-Skill spawnt stop-check für self-reported Decisions + dokumentiert proceed-Decisions (append-log decision / resolve-question), stop→walk; build-implement schreibt build-notes mit at=build."
@@ -127,3 +127,6 @@ log:
   - at: dogfood-fixings
     kind: learning
     note: "redo-loop-verbs DONE (F9): node-ops setChildFailures/setChildAcStatus + CLI set-failures/set-ac-status + Validatoren/Skill verdrahtet. Gates können jetzt ACs ablehnen → Re-Do-Loop funktioniert. 162 Tests grün. e2 erfüllt."
+  - at: dogfood-fixings
+    kind: learning
+    note: "epic-tier-cli DONE (F13+F14): tier-aware create (epic→tasks:[]), File-Shape-Tier-Ableitung (tier-derive.ts), Slug-Fix, goal optional. Epic-Tier läuft jetzt end-to-end durch die CLI (plan epic→add-child→next-child→loop). 168 Tests grün. e3 erfüllt. Entsperrt dogfood-epic + den autonomen /a:build-Lauf dieses Epics."
