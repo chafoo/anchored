@@ -46,7 +46,7 @@ test('engine recurses epic.build.each:task → task.build.each:phase → phase i
   })
   const epicNode: AnyNode = {
     slug: 'e',
-    status: 'building',
+    status: 'build',
     tasks: [
       {
         slug: 't1',
@@ -68,7 +68,7 @@ test('engine recurses epic.build.each:task → task.build.each:phase → phase i
 test('sequential and workflow modes cover the same child set', async () => {
   const epicNode: AnyNode = {
     slug: 'e',
-    status: 'building',
+    status: 'build',
     tasks: [
       { slug: 't1', status: 'pending', phases: [] },
       { slug: 't2', status: 'pending', phases: [] },

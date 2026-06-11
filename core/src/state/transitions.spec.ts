@@ -13,7 +13,11 @@ test('legal forward transitions + idempotent self-edge', () => {
   }
   expect(() => assertTransition(phaseDescriptor, 'pending', 'in-progress')).not.toThrow()
   expect(() => assertTransition(phaseDescriptor, 'in-progress', 'done')).not.toThrow()
-  expect(() => assertTransition(epicDescriptor, 'planning', 'building')).not.toThrow()
+  // D1 — epic now mirrors the task chain exactly (same words + edges)
+  const epicChain = ['plan', 'drafted', 'refined', 'build', 'wrap', 'done']
+  for (let i = 0; i < epicChain.length - 1; i++) {
+    expect(() => assertTransition(epicDescriptor, epicChain[i]!, epicChain[i + 1]!)).not.toThrow()
+  }
   expect(() => assertTransition(taskDescriptor, 'build', 'build')).not.toThrow() // idempotent
 })
 
@@ -29,7 +33,7 @@ test('illegal transitions throw with suggestions', () => {
   expect((err as AnchoredError).kind).toBe('InvalidTransition')
   expect((err as AnchoredError).suggestions).toContain('drafted')
   expect(() => assertTransition(phaseDescriptor, 'done', 'pending')).toThrow()
-  expect(() => assertTransition(epicDescriptor, 'done', 'planning')).toThrow()
+  expect(() => assertTransition(epicDescriptor, 'wrap', 'plan')).toThrow() // skip-back forbidden
 })
 
 // a3 — update-mode backedge allowed; any other backedge forbidden

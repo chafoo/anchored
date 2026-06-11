@@ -121,7 +121,7 @@ test('a1: dispatch fans out in <=16 batches', async () => {
   const batches: number[] = []
   const node: AnyNode = {
     slug: 'e',
-    status: 'building',
+    status: 'build',
     phases: Array.from({ length: 17 }, (_, i) => ({ slug: `p${i}`, status: 'pending' })),
   }
   const seam: WorkflowSeam = {

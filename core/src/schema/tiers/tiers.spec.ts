@@ -6,7 +6,7 @@ import { projectDescriptor } from './project.js'
 
 const phase = { name: 'Seam', slug: 'seam', status: 'pending' as const }
 const task = { schema_version: 2, slug: 'my-task', title: 'T', status: 'plan' as const }
-const epic = { schema_version: 2, slug: 'my-epic', title: 'E', status: 'planning' as const }
+const epic = { schema_version: 2, slug: 'my-epic', title: 'E', status: 'plan' as const }
 
 // a1 — each descriptor parses a valid node, rejects a wrong-tier status
 test('descriptors parse valid nodes and reject foreign status', () => {

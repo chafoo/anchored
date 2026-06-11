@@ -66,7 +66,7 @@ test('epic schema validates a valid epic + rejects a bad status', () => {
     schema_version: 2,
     slug: 'e',
     title: 'E',
-    status: 'building',
+    status: 'build',
     tasks: [{ slug: 't1', goal: 'g', status: 'pending' }],
   }
   expect(EpicNodeSchema.safeParse(epic).success).toBe(true)
@@ -145,7 +145,7 @@ test('e2e: mini-epic loops 2 stubs in DAG order through epic→task→phase', as
   })
   const epicNode: AnyNode = {
     slug: 'mini-epic',
-    status: 'building',
+    status: 'build',
     tasks: [
       { slug: 't1', status: 'pending', phases: [{ slug: 'p1', status: 'pending' }] },
       {

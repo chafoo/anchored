@@ -61,7 +61,7 @@ test('next-child uses the per-tier child field', () => {
   const epicOps = createNodeOps(epicDescriptor, makeDeps())
   const epicNode = {
     slug: 'e',
-    status: 'building',
+    status: 'build',
     tasks: [
       { slug: 't1', status: 'done' },
       { slug: 't2', status: 'pending', depends_on: ['t1'] },

@@ -2,9 +2,12 @@
 // coarse task STUBS (the loop queue) — never phases (those live in task files).
 import { z } from 'zod'
 import { KebabSlug } from './phase.js'
-import { QuestionSchema, LogEntrySchema } from './task.js'
+import { QuestionSchema, LogEntrySchema, ContextTrails } from './task.js'
 
-export const epicStatusValues = ['planning', 'building', 'done'] as const
+// D1: the epic tier mirrors the task lifecycle EXACTLY — same words, same forward
+// edges — so plan/refine/build/wrap run uniform stage-transitions on every tier
+// (no tier-branching in the skills). The old reduced planning/building/done is gone.
+export const epicStatusValues = ['plan', 'drafted', 'refined', 'build', 'wrap', 'done'] as const
 export const EpicStatus = z.enum(epicStatusValues)
 
 const AcceptanceItem = z.strictObject({
@@ -29,6 +32,8 @@ export const EpicNodeSchema = z.strictObject({
   status: EpicStatus,
   created: z.string().optional(),
   goal: z.string().optional(),
+  // D1: epic carries the same context trails as task (plan/refine/build/wrap prose).
+  context: ContextTrails.optional(),
   acceptance: z.array(AcceptanceItem).optional(),
   questions: z.array(QuestionSchema).optional(),
   tasks: z.array(TaskStub).optional(),

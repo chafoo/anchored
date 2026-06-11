@@ -20,11 +20,17 @@ const TRANSITIONS: Record<string, Record<string, readonly string[]>> = {
     wrap: ['done', 'drafted'],
     done: ['drafted'],
   },
+  // D1: epic mirrors task's forward-only lifecycle exactly (same words + edges),
+  // incl. the backward update-mode re-entry to `drafted`.
   epic: {
-    planning: ['building'],
-    building: ['done'],
-    done: [],
+    plan: ['drafted'],
+    drafted: ['refined'],
+    refined: ['build', 'drafted'],
+    build: ['wrap', 'drafted'],
+    wrap: ['done', 'drafted'],
+    done: ['drafted'],
   },
+  // project stays RESERVED on the reduced enum (q6: out of scope until exercised).
   project: {
     planning: ['building'],
     building: ['done'],

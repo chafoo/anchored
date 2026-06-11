@@ -2,7 +2,7 @@
 schema_version: 2
 slug: dogfood-fixings-2
 title: Dogfood-Fixings 2 — Epic-Lauf-Funde + Substrat-Härtung + Epic-Refine-Redesign
-status: planning
+status: plan
 created: 2026-06-11
 goal: |
   Der Epic-Dogfood (skill-orchestrierter Runtime gegen ~/Dev/anchored-test:
@@ -38,7 +38,7 @@ acceptance:
     status: pending
   - id: e3
     text: "Epic fährt die volle Lifecycle-Symmetrie (plan→drafted→refined→build→wrap→done) legal durch die CLI; transitions.ts forward-only erweitert; Epic-Schema hat context (ContextTrails) (D1)"
-    status: pending
+    status: done
   - id: e4
     text: "Epic-refine ist echt: TaskStub.acceptance[] (Outcome-Task-ACs) + Schreib-Verb; epic.refine.steps grounded gegen Code (epic-plan-check/decompose); JIT plan-task seedet aus den Stub-ACs (löst G8); wrap-roll-up validiert Phasen-ACs gegen Task-ACs (D2)"
     status: pending
@@ -178,7 +178,7 @@ tasks:
       bekommt context (ContextTrails) wie task. Netto: Stage-Transitions
       tier-uniform → G3 verschwindet an der Wurzel. Legacy-Wording-Migration der
       bestehenden _epic.yml: siehe q5.
-    status: pending
+    status: done
     depends_on: [substrate-write-validation]
   - slug: taskstub-acceptance
     goal: |

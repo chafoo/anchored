@@ -2,7 +2,7 @@
 schema_version: 2
 slug: dogfood-fixings
 title: Dogfood-Fixings — die 14 Funde aus den Live-Läufen beheben
-status: planning
+status: plan
 goal: |
   Die echten Dogfood-Läufe (skill-orchestrierter Runtime gegen ~/Dev/anchored-test:
   /a:plan→refine→build→wrap auf core-list grün; /a:plan epic gescheitert) haben 14

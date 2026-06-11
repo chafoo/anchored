@@ -37,12 +37,12 @@ function harness() {
   return { cli, last, tierFor, files }
 }
 
-// F13 — plan epic seeds an epic-shaped node (tasks:[], status planning)
-test('plan epic seeds an epic-shaped node (tasks:[], status planning)', async () => {
+// F13 — plan epic seeds an epic-shaped node (tasks:[], status plan)
+test('plan epic seeds an epic-shaped node (tasks:[], status plan)', async () => {
   const { cli, last } = harness()
   await cli.run(['plan', 'epic', 'a multi-task build'])
   const node = last().result!.node as { status: string; tasks?: unknown }
-  expect(node.status).toBe('planning')
+  expect(node.status).toBe('plan')
   expect(Array.isArray(node.tasks)).toBe(true) // epic shape seeded
 })
 
@@ -100,4 +100,28 @@ test('epic node with a stub round-trips through render+parse', async () => {
   await cli.run(['node', 'add-child', 'rt', 't1', 'g'])
   const raw = files.get('t/rt.yml')!
   expect(parse(raw)).toEqual(parse(stringify(parse(raw)))) // stable
+})
+
+// D1 — the epic walks the FULL task-symmetric lifecycle through the CLI, and
+// carries the same context trails as a task (plan/refine/build/wrap prose).
+test('D1: epic walks plan→drafted→refined→build→wrap→done legally via the CLI', async () => {
+  const { cli, last } = harness()
+  await cli.run(['plan', 'epic', 'lifecycle epic'])
+  const slug = 'lifecycle-epic'
+  expect((last().result!.node as { status: string }).status).toBe('plan') // seeded at plan
+
+  // epic carries a context trail (D1 schema change)
+  await cli.run(['node', 'set-field', slug, 'context.plan', 'the epic plan trail'])
+  expect(last().ok).toBe(true)
+
+  for (const to of ['drafted', 'refined', 'build', 'wrap', 'done']) {
+    await cli.run(['node', 'set-status', slug, to])
+    expect(last().ok).toBe(true) // each forward edge is legal on the epic
+    await cli.run(['node', 'read', slug])
+    expect((last().result as { status: string }).status).toBe(to)
+  }
+  await cli.run(['node', 'read', slug])
+  expect((last().result as { context?: { plan?: string } }).context?.plan).toBe(
+    'the epic plan trail',
+  )
 })

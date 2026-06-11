@@ -6,7 +6,7 @@
 schema_version: 2
 slug:   history-flow-backtest
 title:  "History-Flow im Backtest beweisen"
-status: building                      # planning → building → done
+status: build                         # plan → drafted → refined → build → wrap → done (D1: task-symmetric)
 
 goal: |                               # das große Ziel in Prosa (Input für `scaffold`)
   Der volle Pipeline-Flow market → events → analysis → trader → executor → positions

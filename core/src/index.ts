@@ -31,7 +31,7 @@ const DESCRIPTORS: Record<string, TierDescriptor> = {
   task: taskDescriptor as TierDescriptor,
   epic: epicDescriptor as TierDescriptor,
 }
-const DEFAULT_STATUS: Record<string, string> = { phase: 'pending', task: 'plan', epic: 'planning' }
+const DEFAULT_STATUS: Record<string, string> = { phase: 'pending', task: 'plan', epic: 'plan' }
 
 // ── shared substrate builder (parser + renderer + io + per-tier node-ops) ──
 interface Substrate {

@@ -30,7 +30,7 @@ export const LogEntrySchema = z.strictObject({
   note: z.string(),
 })
 
-const ContextTrails = z.strictObject({
+export const ContextTrails = z.strictObject({
   plan: z.string().optional(),
   refine: z.string().optional(),
   build: z.string().optional(),

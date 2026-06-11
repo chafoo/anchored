@@ -110,7 +110,7 @@ test('a3: wiring order is ops → engine → cli', () => {
 
 // tierOfNode is the shared tier-derivation used by the engine adapter + cli
 test('tierOfNode derives epic/task from the child collection', () => {
-  expect(tierOfNode({ slug: 'e', status: 'building', tasks: [] })).toBe('epic')
+  expect(tierOfNode({ slug: 'e', status: 'build', tasks: [] })).toBe('epic')
   expect(tierOfNode({ slug: 't', status: 'build', phases: [] })).toBe('task')
   expect(tierOfNode({ slug: 'x', status: 'plan' })).toBe('task')
 })

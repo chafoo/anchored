@@ -268,7 +268,7 @@ const validEpic = (over: Record<string, unknown> = {}) => ({
   schema_version: 2,
   slug: 'e',
   title: 'E',
-  status: 'planning',
+  status: 'plan',
   tasks: [{ slug: 't1', status: 'pending' }],
   ...over,
 })

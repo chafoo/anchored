@@ -49,7 +49,7 @@ export async function planCommand(args: string[], deps: CliDeps): Promise<unknow
   }
 
   // pass the explicit tier so create seeds the right shape (epic → tasks:[], status
-  // planning); without it create would default to a task-shaped node (F13).
+  // plan); without it create would default to a task-shaped node (F13).
   const node = await deps.nodeOps.create(slugFromInput(input), { title: input, tier })
   // skill-orchestrated: return the node + the resolved plan-stage steps for the
   // in-session skill to execute (spawn discover/rules-scan/decompose). No engine
