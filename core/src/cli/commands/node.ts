@@ -58,8 +58,16 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
         kind: need(2, 'kind'),
         note: need(3, 'note'),
       })
-    case 'set-field':
-      return ops.setField(need(0, 'slug'), need(1, 'field'), need(2, 'value'))
+    case 'set-field': {
+      const field = need(1, 'field')
+      let value = need(2, 'value')
+      // H5: a multi-line context trail passed via the CLI arrives with LITERAL '\n'
+      // (bash double-quotes don't expand escapes) → normalize to real newlines for
+      // the context.* trails, so the renderer emits a readable block scalar instead
+      // of one long escaped line.
+      if (field.split('.')[0] === 'context') value = value.replace(/\\n/g, '\n')
+      return ops.setField(need(0, 'slug'), field, value)
+    }
     case 'set-executor':
       return ops.setExecutor(need(0, 'slug'), need(1, 'phase'), need(2, 'value'))
     case 'add-evidence':

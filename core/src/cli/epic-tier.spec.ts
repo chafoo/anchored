@@ -198,3 +198,18 @@ test('D1: epic walks plan→drafted→refined→build→wrap→done legally via 
     'the epic plan trail',
   )
 })
+
+// H5 — set-field normalizes literal '\n' (as bash passes it) in a context trail to
+// real newlines, so the renderer emits a readable block scalar, not one escaped line.
+test('H5: set-field normalizes literal backslash-n in a context trail', async () => {
+  const { cli, last, files } = harness()
+  await cli.run(['plan', 'task', 'h5'])
+  // the TS literal '\\n' is backslash+n — exactly what bash double-quotes pass through
+  await cli.run(['node', 'set-field', 'h5', 'context.wrap', 'line one\\nline two\\nline three'])
+  expect(last().ok).toBe(true)
+  await cli.run(['node', 'read', 'h5'])
+  expect((last().result as { context: { wrap: string } }).context.wrap).toBe(
+    'line one\nline two\nline three', // real newlines after normalization
+  )
+  expect(files.get('t/h5.yml')!).toMatch(/wrap: [|>]/) // rendered as a block scalar
+})

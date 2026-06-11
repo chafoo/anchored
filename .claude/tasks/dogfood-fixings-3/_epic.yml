@@ -162,7 +162,7 @@ tasks:
       gilt für die context.*-Felder. Test: set-field eines context-Werts mit
       literalem \n → read-back hat echte Newlines + rendert als Block-Scalar. Alle 5
       Gates.
-    status: pending
+    status: done
     depends_on: []
   - slug: epic-decompose-quality
     goal: |
