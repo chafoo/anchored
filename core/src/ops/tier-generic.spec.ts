@@ -26,15 +26,23 @@ function makeDeps() {
 test('same createNodeOps serves phase/task/epic descriptors', async () => {
   for (const desc of [phaseDescriptor, taskDescriptor, epicDescriptor] as TierDescriptor[]) {
     const ops = createNodeOps(desc, makeDeps())
-    const created = await ops.create({ slug: 'n', status: statusFor(desc) })
+    // create now validates the full tier schema before write (G1) → a complete,
+    // schema-valid node per tier (phase needs name; task/epic need schema_version + title)
+    const created = await ops.create(completeNodeFor(desc))
     expect(created.slug).toBe('n')
     const read = await ops.read('n')
     expect(read.slug).toBe('n')
   }
 })
 
-function statusFor(desc: TierDescriptor): string {
-  return desc.statusEnum[0]!
+function completeNodeFor(desc: TierDescriptor): {
+  slug: string
+  status: string
+  [k: string]: unknown
+} {
+  const status = desc.statusEnum[0]!
+  if (desc.tier === 'phase') return { name: 'N', slug: 'n', status }
+  return { schema_version: 2, slug: 'n', title: 'N', status } // task + epic
 }
 
 // a2 — next-child works over the per-tier child list (task→phases, epic→tasks)

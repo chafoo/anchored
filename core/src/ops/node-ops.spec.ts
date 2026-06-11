@@ -3,6 +3,7 @@ import { parse as yamlParse, stringify as yamlStringify } from 'yaml'
 import { createNodeOps, type NodeOpsDeps } from './node-ops.js'
 import { phaseDescriptor } from '../schema/tiers/phase.js'
 import { taskDescriptor, TaskNodeSchema } from '../schema/tiers/task.js'
+import { epicDescriptor } from '../schema/tiers/epic.js'
 import { createParser } from '../parser/parse.js'
 import { createRenderer, defaultSchemaUrl } from '../parser/render.js'
 
@@ -28,11 +29,28 @@ function makeDeps() {
   return { deps, writes, store }
 }
 
+// Fixtures are COMPLETE, schema-valid nodes — persist() now validates the full
+// tier schema before every write (G1). A real node always carries these fields
+// (read parses them; create seeds them), so the fixtures mirror reality.
+const phaseN = (over: Record<string, unknown> = {}) => ({
+  name: 'P',
+  slug: 'p',
+  status: 'pending',
+  ...over,
+})
+const taskN = (over: Record<string, unknown> = {}) => ({
+  schema_version: 2,
+  slug: 't',
+  title: 'T',
+  status: 'build',
+  ...over,
+})
+
 // a1 — factory with fake deps + a read
 test('createNodeOps is a factory over fake deps; read round-trips', async () => {
   const { deps } = makeDeps()
   const ops = createNodeOps(phaseDescriptor, deps)
-  await ops.create({ slug: 'p', status: 'pending' })
+  await ops.create(phaseN())
   const node = await ops.read('p')
   expect(node.slug).toBe('p')
 })
@@ -41,11 +59,10 @@ test('createNodeOps is a factory over fake deps; read round-trips', async () => 
 test('setAcStatus done without evidence throws and never writes', async () => {
   const { deps, writes } = makeDeps()
   const ops = createNodeOps(phaseDescriptor, deps)
-  const node = {
-    slug: 'p',
+  const node = phaseN({
     status: 'in-progress',
-    acceptance_criteria: [{ id: 'a1', status: 'pending' }],
-  }
+    acceptance_criteria: [{ id: 'a1', text: 'prove it', status: 'pending' }],
+  })
   await expect(ops.setAcStatus(node, 'a1', 'done')).rejects.toThrow()
   expect(writes.length).toBe(0)
 })
@@ -54,11 +71,10 @@ test('setAcStatus done without evidence throws and never writes', async () => {
 test('addEvidence flips ac to done atomically (single write)', async () => {
   const { deps, writes } = makeDeps()
   const ops = createNodeOps(phaseDescriptor, deps)
-  const node = {
-    slug: 'p',
+  const node = phaseN({
     status: 'in-progress',
-    acceptance_criteria: [{ id: 'a1', status: 'pending' }],
-  }
+    acceptance_criteria: [{ id: 'a1', text: 'prove it', status: 'pending' }],
+  })
   const next = await ops.addEvidence(node, 'a1', ['src/x.ts:1 — proof'])
   expect(next.acceptance_criteria?.[0]?.status).toBe('done')
   expect(next.acceptance_criteria?.[0]?.evidence).toEqual(['src/x.ts:1 — proof'])
@@ -70,7 +86,7 @@ test('addEvidence flips ac to done atomically (single write)', async () => {
 test('setExecutor writes a valid executor; a bogus value throws and never writes', async () => {
   const { deps, writes } = makeDeps()
   const ops = createNodeOps(taskDescriptor, deps)
-  const node = { slug: 't', status: 'build', phases: [{ slug: 'p1', status: 'pending' }] }
+  const node = taskN({ phases: [{ name: 'P1', slug: 'p1', status: 'pending' }] })
   const ok = await ops.setExecutor(node, 'p1', 'workflow')
   expect((ok.phases as { executor?: string }[])[0]?.executor).toBe('workflow')
   expect(writes.length).toBe(1)
@@ -103,7 +119,7 @@ test('a phase without executor round-trips byte-identical (no default injected)'
 test('set-field on reserved executor is rejected and never writes', async () => {
   const { deps, writes } = makeDeps()
   const ops = createNodeOps(taskDescriptor, deps)
-  const node = { slug: 't', status: 'build', phases: [{ slug: 'p1', status: 'pending' }] }
+  const node = taskN({ phases: [{ name: 'P1', slug: 'p1', status: 'pending' }] })
   await expect(ops.setField(node, 'executor', 'workflow')).rejects.toThrow(/reserved/i)
   expect(writes.length).toBe(0)
   await ops.setField(node, 'title', 'New')
@@ -115,10 +131,11 @@ test('addPhase + addAc grow the phases/ACs structure (dedup-guarded)', async () 
   const { deps } = makeDeps()
   const ops = createNodeOps(taskDescriptor, deps)
   type T = { phases?: { slug: string; acceptance_criteria?: { id: string }[] }[] }
-  let node = (await ops.addPhase(
-    { slug: 't', status: 'build' },
-    { slug: 'p1', status: 'pending', name: 'P1' },
-  )) as unknown as T
+  let node = (await ops.addPhase(taskN(), {
+    slug: 'p1',
+    status: 'pending',
+    name: 'P1',
+  })) as unknown as T
   expect(node.phases?.[0]?.slug).toBe('p1')
   node = (await ops.addAc(node as never, 'p1', {
     id: 'a1',
@@ -126,22 +143,25 @@ test('addPhase + addAc grow the phases/ACs structure (dedup-guarded)', async () 
     status: 'pending',
   })) as unknown as T
   expect(node.phases?.[0]?.acceptance_criteria?.[0]?.id).toBe('a1')
-  await expect(ops.addPhase(node as never, { slug: 'p1', status: 'pending' })).rejects.toThrow(
-    /already exists/,
-  )
+  await expect(
+    ops.addPhase(node as never, { slug: 'p1', status: 'pending', name: 'P1' }),
+  ).rejects.toThrow(/already exists/)
 })
 
 // q6 verb — addChildEvidence flips a CHILD phase's AC to done WITH evidence
 test('addChildEvidence flips a child-phase AC to done with evidence', async () => {
   const { deps } = makeDeps()
   const ops = createNodeOps(taskDescriptor, deps)
-  const node = {
-    slug: 't',
-    status: 'build',
+  const node = taskN({
     phases: [
-      { slug: 'p1', status: 'pending', acceptance_criteria: [{ id: 'a1', status: 'pending' }] },
+      {
+        name: 'P1',
+        slug: 'p1',
+        status: 'pending',
+        acceptance_criteria: [{ id: 'a1', text: 'prove it', status: 'pending' }],
+      },
     ],
-  }
+  })
   const next = (await ops.addChildEvidence(node, 'p1', 'a1', ['p1.ts:1 — proof'])) as unknown as {
     phases: { acceptance_criteria: { status: string; evidence: string[] }[] }[]
   }
@@ -155,7 +175,7 @@ test('addChildEvidence flips a child-phase AC to done with evidence', async () =
 test('setField dotted path writes nested context.wrap, preserves siblings', async () => {
   const { deps } = makeDeps()
   const ops = createNodeOps(taskDescriptor, deps)
-  const node = { slug: 't', status: 'wrap', context: { plan: 'P', build: 'B' } }
+  const node = taskN({ status: 'wrap', context: { plan: 'P', build: 'B' } })
   const next = (await ops.setField(node, 'context.wrap', 'the TL;DR')) as unknown as {
     context: { plan: string; build: string; wrap: string }
   }
@@ -171,17 +191,18 @@ test('setField dotted path writes nested context.wrap, preserves siblings', asyn
 test('setChildFailures rejects a child AC (pending + failures, evidence kept)', async () => {
   const { deps } = makeDeps()
   const ops = createNodeOps(taskDescriptor, deps)
-  const node = {
-    slug: 't',
-    status: 'build',
+  const node = taskN({
     phases: [
       {
+        name: 'P1',
         slug: 'p1',
         status: 'in-progress',
-        acceptance_criteria: [{ id: 'a1', status: 'done', evidence: ['x.ts:1 — proof'] }],
+        acceptance_criteria: [
+          { id: 'a1', text: 'prove it', status: 'done', evidence: ['x.ts:1 — proof'] },
+        ],
       },
     ],
-  }
+  })
   const next = (await ops.setChildFailures(node, 'p1', 'a1', [
     'gate: nicht erfüllt',
   ])) as unknown as {
@@ -194,17 +215,16 @@ test('setChildFailures rejects a child AC (pending + failures, evidence kept)', 
   // setChildAcStatus → done still requires evidence (invariant holds one tier down)
   await expect(
     ops.setChildAcStatus(
-      {
-        slug: 't',
-        status: 'build',
+      taskN({
         phases: [
           {
+            name: 'P1',
             slug: 'p1',
             status: 'in-progress',
-            acceptance_criteria: [{ id: 'a1', status: 'pending' }],
+            acceptance_criteria: [{ id: 'a1', text: 'prove it', status: 'pending' }],
           },
         ],
-      },
+      }),
       'p1',
       'a1',
       'done',
@@ -216,7 +236,7 @@ test('setChildFailures rejects a child AC (pending + failures, evidence kept)', 
 test('setPhaseRules attaches a rule to a phase (dedup by path)', async () => {
   const { deps } = makeDeps()
   const ops = createNodeOps(taskDescriptor, deps)
-  const node = { slug: 't', status: 'build', phases: [{ slug: 'p1', status: 'pending' }] }
+  const node = taskN({ phases: [{ name: 'P1', slug: 'p1', status: 'pending' }] })
   const r1 = (await ops.setPhaseRules(node, 'p1', {
     path: '.claude/rules/dom.md',
     why: 'no innerHTML',
@@ -238,7 +258,57 @@ test('setPhaseRules attaches a rule to a phase (dedup by path)', async () => {
 test('setStatus enforces forward-only transitions', async () => {
   const { deps, writes } = makeDeps()
   const ops = createNodeOps(phaseDescriptor, deps)
-  await ops.setStatus({ slug: 'p', status: 'pending' }, 'in-progress') // legal
+  await ops.setStatus(phaseN(), 'in-progress') // legal
   expect(writes.length).toBe(1)
-  await expect(ops.setStatus({ slug: 'p', status: 'pending' }, 'done')).rejects.toThrow() // skip
+  await expect(ops.setStatus(phaseN(), 'done')).rejects.toThrow() // skip
+})
+
+// ── G1: persist() validates the full tier schema BEFORE write (fail-closed) ──
+const validEpic = (over: Record<string, unknown> = {}) => ({
+  schema_version: 2,
+  slug: 'e',
+  title: 'E',
+  status: 'planning',
+  tasks: [{ slug: 't1', status: 'pending' }],
+  ...over,
+})
+
+// G1-a1 — an invalid mutation is rejected AT the writing op; io.atomicWrite never runs.
+// This is the EXACT dogfood corruption: an epic child set to a phase word that is
+// NOT in the TaskStub enum (pending|active|done|blocked). Before G1 the write
+// returned ok and bricked the node on the next read.
+test('G1: an invalid mutation is rejected at the op and never writes', async () => {
+  const { deps, writes } = makeDeps()
+  const ops = createNodeOps(epicDescriptor, deps)
+  await ops.create(validEpic())
+  expect(writes.length).toBe(1) // the valid create wrote
+  await expect(ops.setChildStatus(validEpic(), 't1', 'in-progress')).rejects.toThrow()
+  expect(writes.length).toBe(1) // the invalid mutation did NOT write
+})
+
+// G1-a2 — the rejection is a typed InvalidNode error, located (tier + slug + field path),
+// so the CLI emits the same JSON error envelope as any other op (q4).
+test('G1: rejection is a typed, located InvalidNode error', async () => {
+  const { deps } = makeDeps()
+  const ops = createNodeOps(epicDescriptor, deps)
+  let err: { kind?: string; message?: string } | undefined
+  try {
+    await ops.setChildStatus(validEpic({ slug: 'my-epic' }), 't1', 'in-progress')
+  } catch (e) {
+    err = e as { kind?: string; message?: string }
+  }
+  expect(err?.kind).toBe('InvalidNode')
+  expect(err?.message).toContain('my-epic') // slug located
+  expect(err?.message).toContain('tasks') // offending field path located
+})
+
+// G1-a3 — regression: after a rejected write the file is untouched, so read()
+// still returns the prior VALID node (no brick).
+test('G1 regression: a rejected write leaves the prior valid node re-readable', async () => {
+  const { deps } = makeDeps()
+  const ops = createNodeOps(epicDescriptor, deps)
+  await ops.create(validEpic())
+  await expect(ops.setChildStatus(validEpic(), 't1', 'in-progress')).rejects.toThrow()
+  const read = await ops.read('e')
+  expect((read.tasks as { status: string }[])[0]?.status).toBe('pending') // untouched
 })

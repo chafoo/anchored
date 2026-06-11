@@ -61,13 +61,13 @@ function freshTask(): AnyNode {
         name: 'P1',
         slug: 'p1',
         status: 'pending',
-        acceptance_criteria: [{ id: 'a1', status: 'pending' }],
+        acceptance_criteria: [{ id: 'a1', text: 'prove p1', status: 'pending' }],
       },
       {
         name: 'P2',
         slug: 'p2',
         status: 'pending',
-        acceptance_criteria: [{ id: 'a1', status: 'pending' }],
+        acceptance_criteria: [{ id: 'a1', text: 'prove p2', status: 'pending' }],
       },
     ],
   }

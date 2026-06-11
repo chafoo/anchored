@@ -27,6 +27,9 @@ export const AcceptanceCriterion = z
     text: z.string(),
     status: AcStatus,
     evidence: z.array(z.string()).optional(),
+    // gate-rejection log for the failures-driven re-do loop (setChildFailures):
+    // a gate writes why an AC was rejected and flips it back to pending.
+    failures: z.array(z.string()).optional(),
   })
   .refine((ac) => ac.status !== 'done' || isEvidenceFilled(ac.evidence), {
     error: "an acceptance criterion with status 'done' must have non-empty evidence",

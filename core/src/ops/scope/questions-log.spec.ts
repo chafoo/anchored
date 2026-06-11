@@ -65,7 +65,9 @@ test('question + log mutations write through io.atomicWrite', async () => {
     pathFor: (s) => s,
   }
   const ops = createNodeOps(taskDescriptor, deps)
-  await ops.addQuestion({ slug: 't', status: 'plan' }, { text: 'x', priority: 'low' })
-  await ops.appendLog({ slug: 't', status: 'plan' }, { at: 'p', kind: 'decision', note: 'n' })
+  // persist now validates the full task schema before write (G1) → complete nodes
+  const node = { schema_version: 2, slug: 't', title: 'T', status: 'plan' }
+  await ops.addQuestion(node, { text: 'x', priority: 'low' })
+  await ops.appendLog(node, { at: 'p', kind: 'decision', note: 'n' })
   expect(writes.length).toBe(2)
 })

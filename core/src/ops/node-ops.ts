@@ -9,6 +9,7 @@ import {
   assertAcDoneHasEvidence,
   assertNodeCompletable,
   anchoredError,
+  type AnchoredError,
 } from '../state/invariants.js'
 import {
   nextChild as nextChildOf,
@@ -73,11 +74,39 @@ function setNested(obj: Record<string, unknown>, path: string[], value: unknown)
 // solely by setExecutor (enum-validated, written on its target phase).
 const RESERVED_FIELDS = new Set(['executor'])
 
+/** Flatten a thrown schema error (ZodError-shaped) into a typed, located
+ *  AnchoredError so a rejected write reads like every other CLI op — tier + slug
+ *  + the first offending field path — not a raw stack. */
+function asInvalidNodeError(tier: string, slug: string, err: unknown): AnchoredError {
+  const issues = (err as { issues?: Array<{ path: Array<string | number>; message: string }> })
+    .issues
+  if (Array.isArray(issues) && issues.length > 0) {
+    const first = issues[0]!
+    const where = first.path.length > 0 ? first.path.join('.') : '(root)'
+    return anchoredError(
+      'InvalidNode',
+      `${tier} '${slug}' is invalid at ${where}: ${first.message}`,
+      ['the mutation produced a node that violates the tier schema — no write was performed'],
+    )
+  }
+  return anchoredError('InvalidNode', `${tier} '${slug}' is invalid: ${(err as Error).message}`)
+}
+
 export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
   const { io, render, parse, pathFor } = deps
   const childField = tierSchema.childTier ? CHILD_FIELD[tierSchema.childTier] : undefined
 
   const persist = async (node: AnyNode): Promise<AnyNode> => {
+    // Fail-closed: validate the post-mutation node against its tier schema BEFORE
+    // writing. An invalid mutation must surface HERE, at the writing op — never
+    // brick the node for the next reader (the G1 integrity hole). Validate purely
+    // as a guard; write the ORIGINAL node (render(node)) so we never silently
+    // rewrite the on-disk shape to the parsed projection.
+    try {
+      tierSchema.schema.parse(node)
+    } catch (err) {
+      throw asInvalidNodeError(tierSchema.tier, node.slug, err)
+    }
     await io.atomicWrite(pathFor(node.slug), render(node))
     return node
   }
