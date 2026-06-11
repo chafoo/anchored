@@ -199,5 +199,5 @@ tasks:
       settings.json (Plugin-Install) behalten. Plugin + CLI sind via npm-link/
       Reinstall ohnehin frisch. Danach ist anchored-test startklar für /a:plan epic.
       Hängt an allen Fix-Tasks (erst bauen, dann zurücksetzen).
-    status: pending
+    status: done
     depends_on: [plan-voice-no-mechanics, no-cryptic-abbreviations, epic-question-policy, failures-reset-on-done, set-field-newline-normalize, epic-decompose-quality, evidence-symbol-anchors]
