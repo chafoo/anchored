@@ -11,9 +11,15 @@ interface AnyRec {
 }
 
 /** Next free `a<N>` acceptance-criterion id for a phase (a1, a2, …). */
-function nextAcId(node: AnyRec, phaseSlug: string): string {
-  const phases = (node.phases as { slug: string; acceptance_criteria?: { id: string }[] }[]) ?? []
-  const acs = phases.find((p) => p.slug === phaseSlug)?.acceptance_criteria ?? []
+// next a-id for a child's acceptance_criteria. Child-field-generic: a task's child
+// is a phase, an epic's child is a task-stub (D2) — both carry acceptance_criteria.
+function nextAcId(node: AnyRec, childSlug: string): string {
+  type ChildWithAcs = { slug: string; acceptance_criteria?: { id: string }[] }
+  const children = [
+    ...((node.phases as ChildWithAcs[] | undefined) ?? []),
+    ...((node.tasks as ChildWithAcs[] | undefined) ?? []),
+  ]
+  const acs = children.find((c) => c.slug === childSlug)?.acceptance_criteria ?? []
   const max = acs.reduce((m, ac) => {
     const n = /^a(\d+)$/.exec(ac.id)
     return n ? Math.max(m, Number(n[1])) : m

@@ -188,7 +188,7 @@ tasks:
       Phasen-ACs. Plus ein CLI-Verb + node-op zum Schreiben/Setzen der Stub-ACs
       (konsistent zu add-ac, durch die validierende CLI). Die Daten-Heimat, in die
       epic-refine schreibt und gegen die der roll-up validiert.
-    status: pending
+    status: done
     depends_on: [epic-full-lifecycle]
   - slug: epic-refine-pipeline
     goal: |

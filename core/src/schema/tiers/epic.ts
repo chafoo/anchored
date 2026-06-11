@@ -1,7 +1,7 @@
 // schema/tiers/epic.ts — the epic tier descriptor. childTier = 'task'. Holds
 // coarse task STUBS (the loop queue) — never phases (those live in task files).
 import { z } from 'zod'
-import { KebabSlug } from './phase.js'
+import { KebabSlug, AcceptanceCriterion } from './phase.js'
 import { QuestionSchema, LogEntrySchema, ContextTrails } from './task.js'
 
 // D1: the epic tier mirrors the task lifecycle EXACTLY — same words, same forward
@@ -29,6 +29,11 @@ const TaskStub = z.strictObject({
   goal: z.string().optional(),
   status: z.enum(stubStatusValues),
   depends_on: z.array(KebabSlug).optional(),
+  // D2: the OUTCOME-level task-ACs epic-refine works out per stub — same AC shape
+  // as a phase ('aufgebaut wie im Task-File'), so every generic child-AC op
+  // (add-ac, add-phase-evidence, set-ac-status, set-failures) works on a stub
+  // unchanged. These are the contract the wrap roll-up validates phase-ACs against.
+  acceptance_criteria: z.array(AcceptanceCriterion).optional(),
 })
 
 export const EpicNodeSchema = z.strictObject({

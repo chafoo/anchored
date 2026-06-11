@@ -102,6 +102,40 @@ test('epic node with a stub round-trips through render+parse', async () => {
   expect(parse(raw)).toEqual(parse(stringify(parse(raw)))) // stable
 })
 
+// D2 — outcome-level task-ACs live on the stub (acceptance_criteria), and the
+// SAME generic child-AC verbs (add-ac → auto-id, add-phase-evidence → done+evidence)
+// work on an epic stub unchanged. These are the contract the wrap roll-up checks.
+test('D2: add-ac + add-phase-evidence work on an epic task-stub', async () => {
+  const { cli, last } = harness()
+  await cli.run(['plan', 'epic', 'd2 epic'])
+  await cli.run(['node', 'add-child', 'd2-epic', 'core-list', 'the foundation'])
+  // epic-refine authors an outcome-AC on the stub (id auto-assigned a1)
+  await cli.run(['node', 'add-ac', 'd2-epic', 'core-list', 'persistence to localStorage works'])
+  await cli.run(['node', 'read', 'd2-epic'])
+  const stub = (
+    last().result as {
+      tasks: { slug: string; acceptance_criteria?: { id: string; status: string }[] }[]
+    }
+  ).tasks[0]!
+  expect(stub.acceptance_criteria?.[0]?.id).toBe('a1')
+  expect(stub.acceptance_criteria?.[0]?.status).toBe('pending')
+  // the roll-up marks it satisfied WITH evidence (same invariant, one tier up)
+  await cli.run([
+    'node',
+    'add-phase-evidence',
+    'd2-epic',
+    'core-list',
+    'a1',
+    'core-list.yml persistence phase done',
+  ])
+  await cli.run(['node', 'read', 'd2-epic'])
+  const done = (
+    last().result as { tasks: { acceptance_criteria: { status: string; evidence: string[] }[] }[] }
+  ).tasks[0]!
+  expect(done.acceptance_criteria[0]?.status).toBe('done')
+  expect(done.acceptance_criteria[0]?.evidence).toEqual(['core-list.yml persistence phase done'])
+})
+
 // D1 — the epic walks the FULL task-symmetric lifecycle through the CLI, and
 // carries the same context trails as a task (plan/refine/build/wrap prose).
 test('D1: epic walks plan→drafted→refined→build→wrap→done legally via the CLI', async () => {
