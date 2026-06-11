@@ -56,6 +56,11 @@ walks only the still-open ones.
 
 ## Finish
 
-Only when **every** question is resolved: `anchored node set-status <slug>
-refined`. Tell the user: *"Plan refined — N+M auto-fixes, K Fragen geklärt. Run
-`/a:build`."* No MCP, no raw node-file edit.
+Write the refine-trail (the plan-check + rules-check rollups) to context.refine,
+then — only when **every** question is resolved — flip the status:
+```bash
+anchored node set-field <slug> context.refine "<plan-check + rules-check rollups>"
+anchored node set-status <slug> refined
+```
+Tell the user: *"Plan refined — N+M auto-fixes, K Fragen geklärt. Run `/a:build`."*
+No MCP, no raw node-file edit.

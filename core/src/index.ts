@@ -76,6 +76,7 @@ export interface WireDeps {
   tierForSlug?: (slug: string) => string
   engine?: CliDeps['engine']
   classify?: CliDeps['classify']
+  now?: () => string
 }
 
 export function buildCli(w: WireDeps) {
@@ -85,6 +86,7 @@ export function buildCli(w: WireDeps) {
     opsFor,
     tierFor: makeTierFor(io, w.pathFor),
     defaultStatus: DEFAULT_STATUS,
+    now: w.now,
   })
   const engine: CliDeps['engine'] = w.engine ?? {
     run: (_tier, node) => Promise.resolve({ node, status: 'ok' }),
@@ -118,6 +120,7 @@ export interface AnchoredDeps {
   run?: RunnerDeps['run']
   spawn?: SpawnLike
   classify?: CliDeps['classify']
+  now?: () => string
   wiring?: AnchoredWiring
 }
 
@@ -154,6 +157,7 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
     opsFor,
     tierFor: makeTierFor(io, pathFor),
     defaultStatus: DEFAULT_STATUS,
+    now: deps.now,
   })
 
   // engine — built BEFORE the cli, fed the ops from the previous stage

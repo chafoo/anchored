@@ -27,6 +27,7 @@ export const EpicNodeSchema = z.strictObject({
   slug: KebabSlug,
   title: z.string(),
   status: EpicStatus,
+  created: z.string().optional(),
   goal: z.string().optional(),
   acceptance: z.array(AcceptanceItem).optional(),
   questions: z.array(QuestionSchema).optional(),

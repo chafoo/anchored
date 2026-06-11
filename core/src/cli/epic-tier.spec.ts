@@ -30,7 +30,7 @@ function harness() {
   }
   const out: string[] = []
   const pathFor = (slug: string) => `t/${slug}.yml`
-  const cli = buildCli({ io, pathFor, out: (l) => out.push(l) })
+  const cli = buildCli({ io, pathFor, out: (l) => out.push(l), now: () => '2026-06-11' })
   const last = () =>
     JSON.parse(out[out.length - 1]!) as { ok: boolean; result?: Record<string, unknown> }
   const tierFor = makeTierFor({ readFile: io.fs.readFile }, pathFor)
@@ -71,6 +71,16 @@ test('epic round-trip: add-child stubs + next-child loops them', async () => {
   await cli.run(['node', 'set-child-status', 'roundtrip', 't1', 'done'])
   await cli.run(['node', 'next-child', 'roundtrip'])
   expect((last().result as { slug: string }).slug).toBe('t2') // advanced
+})
+
+// context-polish F3/F4 — create stamps `created` via the clock seam; list-phases returns phases
+test('create stamps created via the clock seam; node list-phases returns phases', async () => {
+  const { cli, last } = harness()
+  await cli.run(['plan', 'task', 'a task'])
+  expect((last().result!.node as { created?: string }).created).toBe('2026-06-11')
+  await cli.run(['node', 'add-phase', 'a-task', 'p1', 'P1'])
+  await cli.run(['node', 'list-phases', 'a-task'])
+  expect((last().result as { slug: string }[]).map((p) => p.slug)).toEqual(['p1'])
 })
 
 // F14 — slug generation never leaves a trailing dash, even for a long title cut mid-word

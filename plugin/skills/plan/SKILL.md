@@ -60,6 +60,12 @@ failure. Only flip when the structure is actually written.
 
 ## Finish
 
-`anchored node set-status <slug> drafted`. Tell the user: *"Plan steht — N Phasen,
-M ACs, K offene Fragen. Run `/a:refine` als nächstes."* No MCP, no raw node-file
-edit.
+Write the plan-trail prose (intro + the discover/decompose summary) to the node's
+own context, then flip the status:
+```bash
+anchored node set-field <slug> context.plan "<intro + the plan-trail summary>"
+anchored node set-status <slug> drafted
+```
+(`set-field` supports the dotted path — `context.plan` is set nested.) Tell the
+user: *"Plan steht — N Phasen, M ACs, K offene Fragen. Run `/a:refine` als
+nächstes."* No MCP, no raw node-file edit.

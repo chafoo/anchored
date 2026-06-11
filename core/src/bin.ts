@@ -40,6 +40,7 @@ const anchored = createAnchored({
   readUser: (r) =>
     existsSync(`${r}/anchored.yml`) ? readFileSync(`${r}/anchored.yml`, 'utf8') : undefined,
   parseYaml: (raw) => parse(raw),
+  now: () => new Date().toISOString().slice(0, 10), // YYYY-MM-DD for `created`
   out: (line) => process.stdout.write(line + '\n'),
 })
 

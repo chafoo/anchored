@@ -25,6 +25,11 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
       return ops.addChild(need(0, 'slug'), { slug: need(1, 'child-slug'), goal: a[2] })
     case 'next-child':
       return ops.nextChild(need(0, 'slug'))
+    case 'list-phases': {
+      // convenience: the phases[] array of a node (read + extract)
+      const n = (await ops.read(need(0, 'slug'))) as { phases?: unknown }
+      return n.phases ?? []
+    }
     case 'add-question':
       return ops.addQuestion(need(0, 'slug'), { text: need(1, 'text'), priority: a[2] ?? 'medium' })
     case 'resolve-question':

@@ -71,11 +71,14 @@ export interface FacadeDeps {
   tierFor: (slug: string) => Promise<string>
   /** Default status per tier for a freshly created node. */
   defaultStatus: Record<string, string>
+  /** Clock seam — returns an ISO date string for the `created` field. Injected
+   *  (the bin provides real time) so the core stays Date.now-free + fakeable. */
+  now?: () => string
 }
 
 /** Build the slug-based facade over the injected tier-ops. */
 export function createSlugFacade(deps: FacadeDeps): NodeOpsFacade {
-  const { opsFor, tierFor, defaultStatus } = deps
+  const { opsFor, tierFor, defaultStatus, now } = deps
   return {
     create: async (slug, init) => {
       // create is told its tier explicitly (the file doesn't exist yet to derive
@@ -87,6 +90,7 @@ export function createSlugFacade(deps: FacadeDeps): NodeOpsFacade {
       if (tier !== 'phase') {
         base.schema_version = 2
         base.title = (rest.title as string) ?? slug
+        if (now) base.created = now() // stamped via the injected clock seam
       }
       if (tier === 'epic') base.tasks = [] // seed epic shape → reads derive 'epic'
       return opsFor(tier).create({ ...base, ...rest } as AnyRec)
