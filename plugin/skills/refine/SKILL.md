@@ -79,6 +79,30 @@ If a gate agent errors, surface it and stay at `drafted` (do not flip). If the
 user aborts the walk, already-resolved questions persist; re-running `/a:refine`
 walks only the still-open ones.
 
+## Decide the per-phase executor (fan-out — task tier only, G12)
+
+The fan-out mechanism already exists (the build SKILL runs `executor: workflow`
+phases as a parallel per-AC Dynamic Workflow). What was missing is the **decision** —
+so by default every phase ran sequentially (a ~44-min epic for ~200 lines). Refine
+is where that call belongs, because the phases + their ACs are now settled.
+
+For each phase (`anchored node list-phases <slug>`), judge **fan-out suitability**:
+
+- **`workflow`** (fan-out) when the phase has **≥2 acceptance criteria that are
+  independent** — each can be implemented + verified on its own, with no AC
+  depending on another's output and no two ACs mutating the same region of the
+  same file. Then: `anchored node set-executor <slug> <phase> workflow`.
+- **`implement`** (sequential, the default) otherwise — a single AC, or ACs that
+  share sequential state / build on each other / touch the same code region.
+  Leave it unset (absent ⇒ implement); do **not** force fan-out where the ACs
+  would race on the same lines.
+
+This is an **AI judgement** (the orchestrator decides, like the walk-style) — be
+conservative: when unsure whether two ACs are truly independent, leave it
+sequential. The user can override either way with `set-executor` before build.
+Epics have no phases — task-level fan-out across independent child-tasks is a
+separate lever (the epic build loop), not this decision.
+
 ## Finish
 
 Write the refine-trail (the plan-check + rules-check rollups) to context.refine,

@@ -185,6 +185,19 @@ test('a4: build skill documents the Bash(anchored *) allowlist precondition', ()
   expect(skill.toLowerCase()).toContain('allowlist')
 })
 
+// G12 — refine decides the per-phase executor (the missing decision on top of the
+// existing fan-out mechanism); the build SKILL still runs executor:workflow phases.
+test('G12: refine SKILL decides the per-phase executor via set-executor', () => {
+  const skill = (n: string) =>
+    readFileSync(new URL(`../../../plugin/skills/${n}/SKILL.md`, import.meta.url), 'utf8')
+  const refine = skill('refine')
+  expect(refine).toContain('set-executor')
+  expect(refine).toMatch(/fan-out/i)
+  expect(refine).toMatch(/independent/i) // the suitability heuristic
+  // the build side already consumes executor: workflow
+  expect(skill('build')).toMatch(/executor: workflow/)
+})
+
 // G3/G5 — the build SKILL spells out the explicit epic each:task loop (JIT child
 // lifecycle seeded from the stub-ACs), and no SKILL carries the stale pre-D1
 // epic `building → done` transition (the lifecycle is now tier-uniform).

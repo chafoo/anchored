@@ -59,7 +59,7 @@ acceptance:
     status: pending
   - id: e10
     text: "Refine entscheidet pro Phase den executor (fan-out workflow vs sequenziell implement) und setzt ihn via set-executor; build fährt fan-out-Phasen parallel über den vorhandenen Workflow-Mechanismus → mehr-AC-Phasen laufen messbar schneller (G12)"
-    status: pending
+    status: done
   - id: e11
     text: "Epic-build-Loop baut unabhängige Child-Tasks (gleiche depends_on-Ebene) PARALLEL über das Workflow-Tool — je Child der volle JIT-Lebenszyklus plan→refine→build→wrap, lock-sicher, Walk-Fragen gebuffert; der Fächer-Rerun läuft messbar schneller als seriell (q8)"
     status: pending
@@ -256,7 +256,7 @@ tasks:
       workflow-worker). Heuristik + ob AI-entschieden oder gewalkt: Detail-Fragen
       beim Ausformulieren. (Task-Ebenen-Parallelität = separater Hebel, siehe
       epic-task-fanout.)
-    status: pending
+    status: done
     depends_on: [skill-tier-branching]
   - slug: epic-task-fanout
     goal: |
