@@ -110,7 +110,7 @@ tasks:
     depends_on: []
   - slug: workflow-skill-path
     goal: "F11: Workflow-Fan-out in die build-Skill verdrahten (Workflow-Tool, not-yet-evidenced Units parallel, collect via Task-File-Evidence, Gates einmal über merged) + Live-Test (eine Phase executor=workflow); Engine-workflowLoop-Redundanz entscheiden (q4)."
-    status: pending
+    status: done
     depends_on:
       - redo-loop-verbs
   - slug: context-polish
@@ -142,3 +142,6 @@ log:
   - at: dogfood-fixings
     kind: learning
     note: "phase-rules DONE (F1): node-ops setPhaseRules + CLI set-phase-rules-Verb (dedup by path); plan-decompose + refine-rules-check verdrahtet → Phasen tragen jetzt echte rules (nicht nur im log). 170 Tests grün. 6/8 done."
+  - at: dogfood-fixings
+    kind: learning
+    note: "workflow-skill-path DONE (F11): build-SKILL macht den Workflow-Fan-out via Workflow-Tool (neuer build-workflow-Agent, per-AC unit-worker, self-write); Engine-loop-workflow.ts auf Referenz/headless reduziert (q4). 170 Tests grün. Live-Test einer executor=workflow-Phase = Handoff (Dogfood). 7/8 done."

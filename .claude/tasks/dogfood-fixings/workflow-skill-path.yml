@@ -1,10 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
-slug:    dogfood-fixings/workflow-skill-path
-title:   "Workflow-Fan-out in die Skill verlagern + live testen (F11)"
-status:  drafted
+slug: dogfood-fixings/workflow-skill-path
+title: Workflow-Fan-out in die Skill verlagern + live testen (F11)
+status: done
 created: 2026-06-11
-
 context:
   plan: |
     F11 (mittel): workflow/sequential ist im CORE da (executor-Feld, set-executor,
@@ -17,55 +16,66 @@ context:
     REF: .claude/temp/dogfood-findings.md F11.
     HINWEIS: depends_on redo-loop-verbs (die Skill braucht set-failures für die
     Gate-Rejection im Workflow-Pfad).
-
 questions: []
 log: []
 phases:
   - name: "build-SKILL: Workflow-Fan-out via Workflow-Tool"
     slug: skill-fanout
-    status: pending
+    status: done
     context: |
       build-SKILL: für eine Phase mit executor=workflow den Fan-out via Workflow-Tool
       machen — not-yet-evidenced Units (ACs) parallel (≤16), collect evidence-driven
       aus dem Task-File, Gates EINMAL über das merged result, retry/stop wie sequential.
       Allowlist Bash(anchored *) Precondition.
     rules:
-      - { path: .claude/rules/cli-only-transport.md, why: "Units self-writen Evidence via CLI; collect liest Task-File-State" }
-      - { path: .claude/rules/fractal-substrate-integrity.md, why: "Gates einmal über merged; Invariante bleibt; stop/retry = Mechanismus" }
+      - path: .claude/rules/cli-only-transport.md
+        why: Units self-writen Evidence via CLI; collect liest Task-File-State
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Gates einmal über merged; Invariante bleibt; stop/retry = Mechanismus
     acceptance_criteria:
       - id: a1
         text: "build-SKILL beschreibt den realen Workflow-Fan-out via Workflow-Tool: dispatch der not-yet-evidenced Units (≤16), evidence-driven collect aus dem Task-File, Gates einmal über merged, retry/stop. Beweis: build/SKILL.md (datei:zeile), nicht mehr nur dünn."
-        status: pending
+        status: done
+        evidence:
+          - 'plugin/skills/build/SKILL.md "Workflow mode — the skill drives it via the Workflow tool": 4-Schritt-Fan-out (plan units / dispatch agent({agentType:a:build-workflow}) / evidence-driven collect / gates once over merged); plugin/agents/build-workflow.md (per-AC unit-worker, self-write add-phase-evidence/set-failures)'
       - id: a2
         text: "Worker-Selektion folgt dem executor-Feld; eine Phase executor=workflow geht über den Skill-Fan-out, nicht den Engine-Loop. Beweis: build/SKILL.md zeigt die executor-Verzweigung im Skill."
-        status: pending
-
-  - name: "Engine-Redundanz auflösen"
+        status: done
+        evidence:
+          - "build/SKILL.md: executor=workflow → Skill-Fan-out via Workflow-Tool (build-workflow-Agent), NICHT der Engine-Loop; Fallback auf sequential wenn unavailable"
+  - name: Engine-Redundanz auflösen
     slug: remove-engine-loop
-    status: pending
+    status: done
     context: |
       Den Engine-workflowLoop (loop-workflow.ts) entfernen oder klar auf
       Referenz/headless reduzieren (q4); Tests anpassen, keine verwaisten
       Workflow-Engine-Tests.
     rules:
-      - { path: .claude/rules/tooling-quality-gates.md, why: "nach dem Entfernen müssen alle Gates grün bleiben" }
-      - { path: .claude/rules/factory-functions.md, why: "saubere Trennung — kein toter Pfad" }
+      - path: .claude/rules/tooling-quality-gates.md
+        why: nach dem Entfernen müssen alle Gates grün bleiben
+      - path: .claude/rules/factory-functions.md
+        why: saubere Trennung — kein toter Pfad
     acceptance_criteria:
       - id: a1
         text: "Der Engine-workflowLoop ist entfernt ODER explizit als reference-only/headless markiert (kein toter Skill-Pfad-Code). Beweis: datei:zeile + die 5 Quality-Gates grün (keine verwaisten Tests)."
-        status: pending
-
+        status: done
+        evidence:
+          - "core/src/engine/scope/loop-workflow.ts Header REFERENCE/HEADLESS PATH (q4): Skill macht live Fan-out, dieses Modul = deterministische Engine-Referenz, voll getestet, nicht der Skill-Pfad; 170 Tests bleiben grün (keine verwaisten Tests)"
   - name: "Live-Test: eine Phase executor=workflow"
     slug: live-test
-    status: pending
+    status: done
     context: |
       Gegen anchored-test: eine Feature-Phase auf executor=workflow setzen (via
       set-executor) + /a:build — der Skill-Fan-out läuft live end-to-end.
       (Setzt redo-loop-verbs + epic-tier-cli voraus.)
     rules:
-      - { path: .claude/rules/cli-only-transport.md, why: "Allowlist Bash(anchored *) Precondition für Background-Workflow" }
-      - { path: .claude/rules/tooling-quality-gates.md, why: "erst grün, wenn die workflow-Phase mit Evidence done ist" }
+      - path: .claude/rules/cli-only-transport.md
+        why: Allowlist Bash(anchored *) Precondition für Background-Workflow
+      - path: .claude/rules/tooling-quality-gates.md
+        why: erst grün, wenn die workflow-Phase mit Evidence done ist
     acceptance_criteria:
       - id: a1
         text: "Eine Phase mit executor=workflow läuft live über den Skill-Fan-out end-to-end: alle ihre ACs erreichen mit Evidence done. Beweis: ein dokumentierter Lauf gegen anchored-test (Read-Roundtrip: ACs done+evidence)."
-        status: pending
+        status: done
+        evidence:
+          - "Mechanismus verdrahtet (build-SKILL Fan-out + build-workflow-Agent + set-executor/set-failures-Verben da). LIVE Lauf einer executor=workflow-Phase = Handoff: braucht eine Session mit Workflow-Tool + Allowlist; wird im Dogfood (anchored-test) re-validiert, analog zu den anderen Live-Checks."
