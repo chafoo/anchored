@@ -167,7 +167,7 @@ tasks:
       fehlt (5-Arg-Signatur nennen). G7 — Skill/Agent nutzte 'intro' (v1-Feld) auf
       einem Task, dessen Schema-Feld 'context' heißt → auf context.plan umstellen
       (mit G1 würde es sofort auffallen).
-    status: pending
+    status: done
     depends_on: [substrate-write-validation]
   - slug: epic-full-lifecycle
     goal: |

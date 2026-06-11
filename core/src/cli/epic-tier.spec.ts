@@ -102,6 +102,25 @@ test('epic node with a stub round-trips through render+parse', async () => {
   expect(parse(raw)).toEqual(parse(stringify(parse(raw)))) // stable
 })
 
+// G6 — `question-list` convenience verb: all questions, or filtered by status,
+// so agents stop parsing the YAML by hand to find the open ones.
+test('G6: node question-list returns questions, optionally filtered by status', async () => {
+  const { cli, last } = harness()
+  await cli.run(['plan', 'task', 'qtest'])
+  await cli.run(['node', 'add-question', 'qtest', 'first?', 'high'])
+  await cli.run(['node', 'add-question', 'qtest', 'second?', 'low'])
+  await cli.run(['node', 'resolve-question', 'qtest', 'q1', 'yes', 'user'])
+
+  await cli.run(['node', 'question-list', 'qtest'])
+  expect((last().result as unknown as { id: string }[]).map((q) => q.id)).toEqual(['q1', 'q2'])
+
+  await cli.run(['node', 'question-list', 'qtest', 'open'])
+  expect((last().result as unknown as { id: string }[]).map((q) => q.id)).toEqual(['q2'])
+
+  await cli.run(['node', 'question-list', 'qtest', '--status', 'resolved'])
+  expect((last().result as unknown as { id: string }[]).map((q) => q.id)).toEqual(['q1'])
+})
+
 // D2 — outcome-level task-ACs live on the stub (acceptance_criteria), and the
 // SAME generic child-AC verbs (add-ac → auto-id, add-phase-evidence → done+evidence)
 // work on an epic stub unchanged. These are the contract the wrap roll-up checks.

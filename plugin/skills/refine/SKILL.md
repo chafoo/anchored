@@ -32,7 +32,7 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   negotiated. Only a genuine architecture/code ambiguity becomes an open question.
 - **walk** — the consolidated Q&A walk. **First, pick the walk-style** (this is the
   v1 Stage-0 choice, ephemeral — never persisted): read the open questions
-  (`anchored node read <slug>` → `questions[]`), count them by priority, and ask
+  (`anchored node question-list <slug> open`), count them by priority, and ask
   the user via `AskUserQuestion`:
 
   > "N Fragen — X high, Y medium, Z low. Wie durchgehen?"

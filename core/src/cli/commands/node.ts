@@ -30,6 +30,15 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
       const n = (await ops.read(need(0, 'slug'))) as { phases?: unknown }
       return n.phases ?? []
     }
+    case 'question-list': {
+      // convenience (G6): a node's questions[], optionally filtered by status —
+      // `question-list <slug> open` or `question-list <slug> --status open`. Stops
+      // agents shelling out to python-yaml just to read the open questions.
+      const n = (await ops.read(need(0, 'slug'))) as { questions?: { status: string }[] }
+      const qs = n.questions ?? []
+      const status = a[1] === '--status' ? a[2] : a[1]
+      return status ? qs.filter((q) => q.status === status) : qs
+    }
     case 'add-question':
       return ops.addQuestion(need(0, 'slug'), { text: need(1, 'text'), priority: a[2] ?? 'medium' })
     case 'resolve-question':
@@ -83,6 +92,10 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
         'add-phase-evidence',
         'set-executor',
         'next-child',
+        'list-phases',
+        'question-list',
+        'add-question',
+        'resolve-question',
       ])
   }
 }
