@@ -44,7 +44,7 @@ acceptance:
     status: done
   - id: e5
     text: "set-child-status validiert das Child-Enum; Skills fahren uniforme tier-korrekte Stage-Transitions; expliziter Epic-each:task-Loop in der build-Skill statt python-yaml-Krücke (G2/G3/G5)"
-    status: pending
+    status: done
   - id: e6
     text: "build-implement flippt NIE den Phase-Status; der done-Flip ist strukturell exklusiv der Orchestrator NACH beiden Gates — Gate-vor-done hält (G4)"
     status: done
@@ -209,7 +209,7 @@ tasks:
       Block in der build-Skill (next-child → child active → JIT plan/refine/build/
       wrap des Child-Tasks → child done → repeat) mit tier-korrekten Verben, ersetzt
       die ad-hoc python-yaml-Parse-Krücken des Dogfoods.
-    status: pending
+    status: done
     depends_on: [epic-full-lifecycle, epic-refine-pipeline]
   - slug: build-phase-discipline
     goal: |

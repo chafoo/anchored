@@ -71,9 +71,24 @@ While `anchored node next-child <slug>` returns a child (else done):
      self-writes evidence: `anchored node add-phase-evidence <slug> <child> <ac-id>
      "<proof>"` per AC. Then spawn the two gates **in parallel** (build-task-validate
      + build-code-validate) — pure inspectors.
-   - **epic → task**: recurse the child task through plan→refine→build→wrap (JIT —
-     a stub becomes a real task-file at its task.plan). Use `/a:plan`-style
-     orchestration per task.
+   - **epic → task**: the child runs its OWN full JIT lifecycle, then the epic-child
+     is marked delivered. Per ready child (the loop's body is the child's
+     plan→refine→build→wrap, NOT a phase pipeline):
+     1. **JIT plan** — `anchored plan task <child-slug>` creates the child task-file.
+        **Seed its decomposition from the stub's outcome-ACs** (the Epic→Task
+        contract epic-decompose wrote): read them
+        (`anchored node read <epic-slug>` → `tasks[].acceptance_criteria`) and pass
+        them to plan-decompose as the outcome bar the phases must meet — so the
+        goal/contract is never lost (the G8 fix). Run plan's steps → `drafted`.
+     2. **Refine the child** (`/a:refine`-style: plan-check + rules-check + walk) →
+        `refined`. In an autonomous epic run, AI-resolve non-high questions with
+        reasoning; high ones still go to the user.
+     3. **Build the child** — recurse THIS loop on the child task (`each: phase`).
+     4. **Wrap the child** (review + summarize) → child task `done`.
+     5. Mark the epic-child delivered:
+        `anchored node set-child-status <epic-slug> <child> done`.
+     The stub's outcome-ACs are validated at the EPIC wrap (epic-roll-up,
+     hard-with-reconcile), not here.
 3. **Gates + failures (the re-do loop):** the gates REJECT a bad AC by self-writing
    `anchored node set-failures <slug> <phase> <ac-id> "<why>"` — that flips the AC
    back to `pending` with its `failures` recorded. Read the child back

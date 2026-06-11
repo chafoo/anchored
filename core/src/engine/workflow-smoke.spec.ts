@@ -185,6 +185,23 @@ test('a4: build skill documents the Bash(anchored *) allowlist precondition', ()
   expect(skill.toLowerCase()).toContain('allowlist')
 })
 
+// G3/G5 — the build SKILL spells out the explicit epic each:task loop (JIT child
+// lifecycle seeded from the stub-ACs), and no SKILL carries the stale pre-D1
+// epic `building → done` transition (the lifecycle is now tier-uniform).
+test('G3/G5: explicit epic each:task loop + no stale epic transition words', () => {
+  const skill = (n: string) =>
+    readFileSync(new URL(`../../../plugin/skills/${n}/SKILL.md`, import.meta.url), 'utf8')
+  const build = skill('build')
+  expect(build).toContain('JIT plan')
+  expect(build).toMatch(/Seed its decomposition from the stub/i)
+  expect(build).toMatch(/Build the child.*recurse/is) // child runs its own lifecycle
+  // the pre-D1 tier-special epic transitions are gone everywhere
+  for (const n of ['plan', 'refine', 'build', 'wrap']) {
+    expect(skill(n)).not.toMatch(/building\s*→\s*done/)
+    expect(skill(n)).not.toMatch(/planning\s*→\s*building/)
+  }
+})
+
 // D2 — the epic-refine pipeline's new agents exist as plugin files and document
 // their contract (epic-plan-check grounds vs code; epic-decompose authors per-stub
 // outcome-ACs; epic-roll-up validates them hard-with-reconcile).

@@ -47,6 +47,7 @@ becomes `done` once review + summary (or the roll-up) actually landed.
 
 ## Finish
 
-`anchored node set-status <slug> done` (epic: `building → done`; task: `wrap →
-done`). Tell the user: *"Wrap durch — TL;DR im context.wrap. Status: done."* No
-MCP, no raw node-file edit.
+`anchored node set-status <slug> done` — the **same `wrap → done` transition on
+every tier** (D1: the epic mirrors the task lifecycle, so there is no tier-special
+casing here anymore). Tell the user: *"Wrap durch — TL;DR im context.wrap. Status:
+done."* No MCP, no raw node-file edit.
