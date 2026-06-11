@@ -49,6 +49,13 @@ export interface TierOps {
     ac: { id: string; text: string; status?: string },
   ): Promise<AnyRec>
   addChildEvidence(node: AnyRec, childSlug: string, acId: string, ev: string[]): Promise<AnyRec>
+  setChildFailures(
+    node: AnyRec,
+    childSlug: string,
+    acId: string,
+    failures: string[],
+  ): Promise<AnyRec>
+  setChildAcStatus(node: AnyRec, childSlug: string, acId: string, status: string): Promise<AnyRec>
 }
 
 export interface FacadeDeps {
@@ -140,6 +147,14 @@ export function createSlugFacade(deps: FacadeDeps): NodeOpsFacade {
     addChildEvidence: async (slug, phase, acId, text) => {
       const o = opsFor(tierForSlug(slug))
       return o.addChildEvidence(await o.read(slug), phase, acId, [text])
+    },
+    setChildFailures: async (slug, phase, acId, text) => {
+      const o = opsFor(tierForSlug(slug))
+      return o.setChildFailures(await o.read(slug), phase, acId, [text])
+    },
+    setChildAcStatus: async (slug, phase, acId, status) => {
+      const o = opsFor(tierForSlug(slug))
+      return o.setChildAcStatus(await o.read(slug), phase, acId, status)
     },
   }
 }

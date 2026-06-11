@@ -31,6 +31,8 @@ export interface NodeOpsFacade {
   addPhase(slug: string, phase: { slug: string; name?: string }): Promise<unknown>
   addAc(slug: string, phase: string, ac: { id?: string; text: string }): Promise<unknown>
   addChildEvidence(slug: string, phase: string, acId: string, text: string): Promise<unknown>
+  setChildFailures(slug: string, phase: string, acId: string, text: string): Promise<unknown>
+  setChildAcStatus(slug: string, phase: string, acId: string, status: string): Promise<unknown>
   setChildStatus(slug: string, childSlug: string, status: string): Promise<unknown>
 }
 

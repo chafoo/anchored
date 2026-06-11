@@ -17,6 +17,8 @@ export function fakeFacade(over: Partial<NodeOpsFacade> = {}): NodeOpsFacade {
     addPhase: async () => ({}),
     addAc: async () => ({}),
     addChildEvidence: async () => ({}),
+    setChildFailures: async () => ({}),
+    setChildAcStatus: async () => ({}),
     setChildStatus: async () => ({}),
     ...over,
   }

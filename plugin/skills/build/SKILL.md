@@ -51,10 +51,12 @@ While `anchored node next-child <slug>` returns a child (else done):
    - **epic → task**: recurse the child task through plan→refine→build→wrap (JIT —
      a stub becomes a real task-file at its task.plan). Use `/a:plan`-style
      orchestration per task.
-3. **Gates + failures (the re-do loop):** read the child back
-   (`anchored node read <slug>`). If a gate rejected an AC it carries `failures`:
-   re-spawn build-implement with those failures as the fix-list, re-run the gates.
-   Retry up to `retry_limit` (default 3).
+3. **Gates + failures (the re-do loop):** the gates REJECT a bad AC by self-writing
+   `anchored node set-failures <slug> <phase> <ac-id> "<why>"` — that flips the AC
+   back to `pending` with its `failures` recorded. Read the child back
+   (`anchored node read <slug>`); for each AC carrying `failures`, re-spawn
+   build-implement with those failures as the fix-list, then re-run the gates. Retry
+   up to `retry_limit` (default 3); on exhaustion → blocked (see Failure-handling).
 4. **Advance:** when all the child's ACs are `done` (with evidence) and both gates
    pass → `anchored node set-child-status <slug> <child> done`.
 

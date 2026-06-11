@@ -53,6 +53,16 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
       return ops.addChildEvidence(need(0, 'slug'), need(1, 'phase'), need(2, 'ac'), need(3, 'text'))
     case 'set-child-status':
       return ops.setChildStatus(need(0, 'slug'), need(1, 'child'), need(2, 'status'))
+    case 'set-failures':
+      // gate rejects an AC: write failures + flip it back to pending (re-do loop)
+      return ops.setChildFailures(need(0, 'slug'), need(1, 'phase'), need(2, 'ac'), need(3, 'text'))
+    case 'set-ac-status':
+      return ops.setChildAcStatus(
+        need(0, 'slug'),
+        need(1, 'phase'),
+        need(2, 'ac'),
+        need(3, 'status'),
+      )
     default:
       throw cliError('UnknownNodeVerb', `unknown node verb '${verb ?? ''}'`, [
         'create',

@@ -66,6 +66,9 @@ log:
   - at: build
     kind: blocker
     note: "dogfood-harness-setup a1 (live: /a:plan triggert + Agent spawnbar) braucht eine Session mit cwd anchored-test + Plugin geladen — kann aus der anchored-v2-Session nicht belegt werden (interaktive /plugin-Commands + Plugin-Runtime). Handoff an User: anchored-test öffnen → /reload-plugins → /plugin list (a@anchored-v2-dev enabled) → /a:plan triggert. Echte Install (settings.json projekt-scoped), kein Symlink."
+  - at: build
+    kind: blocker
+    note: "dogfood-epic BLOCKIERT auf F13 (Epic-Tier durch CLI nicht funktionsfähig: plan epic reicht tier nicht an create, tierForSlug defaultet task → Epic-Node wird Task; scaffold fiel auf add-phase statt add-child zurück) + F14 (Slug-Trailing-Dash → Duplikat-Node). Echter Dogfood-Fund, im Engine-Test (epic-tier.spec, In-Memory) maskiert. dogfood-epic bleibt pending bis Fix. Doku: .claude/temp/dogfood-findings.md F13/F14."
 phases:
   - name: CLI/Substrat-Fundament für Skill-Orchestrierung
     slug: cli-foundation

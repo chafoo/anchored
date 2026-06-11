@@ -25,6 +25,8 @@ function spyFacade() {
     addPhase: rec('addPhase'),
     addAc: rec('addAc'),
     addChildEvidence: rec('addChildEvidence'),
+    setChildFailures: rec('setChildFailures'),
+    setChildAcStatus: rec('setChildAcStatus'),
     setChildStatus: rec('setChildStatus'),
   } as unknown as NodeOpsFacade
   return { f, calls }

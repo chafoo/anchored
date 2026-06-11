@@ -166,6 +166,52 @@ test('setField dotted path writes nested context.wrap, preserves siblings', asyn
   await expect(ops.setField(node, 'executor.x', 'y')).rejects.toThrow(/reserved/i)
 })
 
+// redo-loop-verbs F9 — setChildFailures rejects a child-phase AC (failures + pending,
+// evidence kept); setChildAcStatus flips it; done needs evidence
+test('setChildFailures rejects a child AC (pending + failures, evidence kept)', async () => {
+  const { deps } = makeDeps()
+  const ops = createNodeOps(taskDescriptor, deps)
+  const node = {
+    slug: 't',
+    status: 'build',
+    phases: [
+      {
+        slug: 'p1',
+        status: 'in-progress',
+        acceptance_criteria: [{ id: 'a1', status: 'done', evidence: ['x.ts:1 — proof'] }],
+      },
+    ],
+  }
+  const next = (await ops.setChildFailures(node, 'p1', 'a1', [
+    'gate: nicht erfüllt',
+  ])) as unknown as {
+    phases: { acceptance_criteria: { status: string; failures: string[]; evidence: string[] }[] }[]
+  }
+  const ac = next.phases[0]!.acceptance_criteria[0]!
+  expect(ac.status).toBe('pending') // flipped back for the re-do
+  expect(ac.failures).toEqual(['gate: nicht erfüllt'])
+  expect(ac.evidence).toEqual(['x.ts:1 — proof']) // prior evidence kept as history
+  // setChildAcStatus → done still requires evidence (invariant holds one tier down)
+  await expect(
+    ops.setChildAcStatus(
+      {
+        slug: 't',
+        status: 'build',
+        phases: [
+          {
+            slug: 'p1',
+            status: 'in-progress',
+            acceptance_criteria: [{ id: 'a1', status: 'pending' }],
+          },
+        ],
+      },
+      'p1',
+      'a1',
+      'done',
+    ),
+  ).rejects.toThrow(/evidence/i)
+})
+
 // a4 — setStatus runs assertTransition (forward-only)
 test('setStatus enforces forward-only transitions', async () => {
   const { deps, writes } = makeDeps()

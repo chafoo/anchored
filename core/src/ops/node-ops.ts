@@ -198,6 +198,61 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       })
     },
 
+    // phase-scoped failures: a gate rejecting a CHILD phase's AC writes failures
+    // and flips it back to pending — the prior evidence stays as history. This is
+    // the write that makes the failures-driven re-do loop work.
+    async setChildFailures(
+      node: AnyNode,
+      childSlug: string,
+      acId: string,
+      failures: string[],
+    ): Promise<AnyNode> {
+      const field = requireChildField()
+      const children = (node[field] as AnyNode[] | undefined) ?? []
+      const child = children.find((c) => c.slug === childSlug)
+      if (!child) throw anchoredError('UnknownChild', `no child '${childSlug}'`)
+      const acs = (child.acceptance_criteria as Ac[] | undefined) ?? []
+      if (!acs.some((a) => a.id === acId))
+        throw anchoredError('UnknownAc', `no acceptance criterion '${acId}' on '${childSlug}'`)
+      const updated = {
+        ...child,
+        acceptance_criteria: acs.map((a) =>
+          a.id === acId ? { ...a, failures, status: 'pending' } : a,
+        ),
+      }
+      return persist({
+        ...node,
+        [field]: children.map((c) => (c.slug === childSlug ? updated : c)),
+      })
+    },
+
+    // flip a CHILD phase's AC status (e.g. done→pending for a re-do). The hard
+    // invariant still guards: setting an AC to done requires evidence.
+    async setChildAcStatus(
+      node: AnyNode,
+      childSlug: string,
+      acId: string,
+      status: string,
+    ): Promise<AnyNode> {
+      const field = requireChildField()
+      const children = (node[field] as AnyNode[] | undefined) ?? []
+      const child = children.find((c) => c.slug === childSlug)
+      if (!child) throw anchoredError('UnknownChild', `no child '${childSlug}'`)
+      const acs = (child.acceptance_criteria as Ac[] | undefined) ?? []
+      const ac = acs.find((a) => a.id === acId)
+      if (!ac)
+        throw anchoredError('UnknownAc', `no acceptance criterion '${acId}' on '${childSlug}'`)
+      if (status === 'done') assertAcDoneHasEvidence({ ...ac, status: 'done' })
+      const updated = {
+        ...child,
+        acceptance_criteria: acs.map((a) => (a.id === acId ? { ...a, status } : a)),
+      }
+      return persist({
+        ...node,
+        [field]: children.map((c) => (c.slug === childSlug ? updated : c)),
+      })
+    },
+
     async setExecutor(node: AnyNode, phaseRef: string, value: string): Promise<AnyNode> {
       // enum-validate first — a bogus value throws and NOTHING is written
       if (!(phaseExecutorValues as readonly string[]).includes(value)) {

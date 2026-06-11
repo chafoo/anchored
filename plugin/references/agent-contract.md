@@ -47,7 +47,7 @@ Ergebnis direkt via CLI. Pro Agent-Rolle:
 | plan-decompose | `anchored node add-phase <task-slug> <phase-slug> "<name>"` · `anchored node add-ac <task-slug> <phase-slug> "<text>"` (id auto a1,a2,…) |
 | epic-scaffold | `anchored node add-child <epic-slug> <task-stub-slug>` |
 | build-implement | `anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "<beweis>"` · `anchored node set-child-status <task-slug> <phase-slug> done` |
-| build-task-validate / build-code-validate | pure inspector — Befund via `append-log`; failures treibt der Orchestrator (Skill) |
+| build-task-validate / build-code-validate | pure inspector (kein Code-Write); REJECT einer AC via `anchored node set-failures <task-slug> <phase-slug> <ac-id> "<why>"` (flippt sie pending → Re-Do-Loop) + Rollup via `append-log … build learning` |
 | wrap-summarize | `anchored node set-field <node-slug> context.wrap "<TL;DR>"` (dotted-path → nested) |
 | epic-roll-up | `anchored node append-log <epic-slug> wrap <kind> "<DoD/Retro>"` · `anchored node set-status <epic-slug> done` |
 
