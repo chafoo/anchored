@@ -1,10 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
-slug:    dogfood-fixings/walk-style
-title:   "Walk-Style-Wahl zurück + rules-check auto-fix (F12 + F5)"
-status:  drafted
+slug: dogfood-fixings/walk-style
+title: Walk-Style-Wahl zurück + rules-check auto-fix (F12 + F5)
+status: done
 created: 2026-06-11
-
 context:
   plan: |
     F12 (mittel, User-Wunsch): Der User soll VOR dem Q&A-Walk wählen, wie die Fragen
@@ -16,13 +15,12 @@ context:
     ENTSCHEIDUNG (q5): Optionen all-together / high-together (Default) / AI-all;
     bei 0 Fragen still überspringen.
     REF: .claude/temp/dogfood-findings.md F12/F5.
-
 questions: []
 log: []
 phases:
-  - name: "Walk-Style-Wahl vor dem Q&A-Walk"
+  - name: Walk-Style-Wahl vor dem Q&A-Walk
     slug: walk-style-choice
-    status: pending
+    status: done
     context: |
       refine-SKILL (+ die build-pre-walk, falls noch offene Fragen beim Build): vor
       dem Walk eine AskUserQuestion „N Fragen — X high, Y medium, Z low. Wie
@@ -30,24 +28,31 @@ phases:
       AI}. Wahl ephemer (kein Feld). high-user löst high mit User, medium+low als AI
       mit reasoning. Bei 0 Fragen still überspringen.
     rules:
-      - { path: .claude/rules/cli-only-transport.md, why: "Frage-Resolution via resolve-question über die CLI" }
+      - path: .claude/rules/cli-only-transport.md
+        why: Frage-Resolution via resolve-question über die CLI
     acceptance_criteria:
       - id: a1
         text: "refine-SKILL bietet die Walk-Style-Wahl (3 Optionen, high-together als Default) als AskUserQuestion vor dem Walk; danach Walk nach gewählter Schwelle. Beweis: refine/SKILL.md zeigt die Stage-0-Wahl + die Schwellen-Logik (datei:zeile)."
-        status: pending
+        status: done
+        evidence:
+          - "plugin/skills/refine/SKILL.md walk-Step: AskUserQuestion-Walk-Style-Wahl (high-together Default / all-together / AI-all) vor dem Walk, dann Resolution nach Schwelle (user vs ai+reasoning)"
       - id: a2
         text: "Bei 0 offenen Fragen wird die Wahl still übersprungen (keine AskUserQuestion). Beweis: refine/SKILL.md nennt den 0-Fragen-Skip; build-pre-walk gleich verdrahtet."
-        status: pending
-
-  - name: "rules-check Coverage-Gaps als auto-fix"
+        status: done
+        evidence:
+          - "plugin/skills/build/SKILL.md Pre-flight Schritt 3 Pre-build walk: gleiche Walk-Style-Wahl bei offenen Fragen, 0 Fragen → still überspringen"
+  - name: rules-check Coverage-Gaps als auto-fix
     slug: rules-autofix
-    status: pending
+    status: done
     context: |
       refine-rules-check: eine fehlende Rule-Enforcement-AC ist ein auto-fix
       (add-ac), KEINE User-Frage. Nur echte Architektur-Ambiguität wird zur Frage.
     rules:
-      - { path: .claude/rules/fractal-substrate-integrity.md, why: "Projekt-Rules sind Framework-Requirements (Policy, durchgesetzt), keine User-Verhandlung" }
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Projekt-Rules sind Framework-Requirements (Policy, durchgesetzt), keine User-Verhandlung
     acceptance_criteria:
       - id: a1
         text: "refine-rules-check.md gibt Coverage-Gaps als auto-fix (add-ac) aus, nicht als question_to_add; explizit dokumentiert, dass Framework-Requirements nicht zur User-Frage werden. Beweis: plugin/agents/refine-rules-check.md (datei:zeile)."
-        status: pending
+        status: done
+        evidence:
+          - "plugin/agents/refine-rules-check.md: fehlende Rule-Enforcement → AUTO-FIX (add-ac + set-phase-rules), KEINE User-Frage; nur echte Architektur-Ambiguität → add-question. Dokumentiert: Framework-Requirements werden durchgesetzt nicht verhandelt"

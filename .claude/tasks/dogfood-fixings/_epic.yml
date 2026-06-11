@@ -34,7 +34,7 @@ acceptance:
     status: done
   - id: e5
     text: "Walk-Style zurück: User wählt vor dem Q&A-Walk (all-AI / all-user / high-user); rules-check-Coverage-Gaps werden auto-fix statt User-Frage (F12/F5)"
-    status: pending
+    status: done
   - id: e6
     text: "Beide Dogfood-Reruns grün: core-list (task) + der Feature-Epic (epic) laufen end-to-end durch die gefixte CLI; Invariante hält real"
     status: pending
@@ -102,7 +102,7 @@ tasks:
     depends_on: []
   - slug: walk-style
     goal: "F12 + F5: refine-Skill (+ build-pre-walk) bietet vor dem Q&A-Walk die Walk-Style-Wahl (all-AI / all-user / high-user, ephemer); rules-check-Coverage-Gaps werden zu auto-fix (add-ac) statt User-Frage — User-Fragen nur für Architektur/Code."
-    status: pending
+    status: done
     depends_on: []
   - slug: phase-rules
     goal: "F1: node-ops + facade + CLI-Verb set-phase-rules <task> <phase> <path> <why> (append); plan-decompose + refine darauf verdrahten, sodass Phasen ein echtes rules-Feld tragen (statt nur im log)."
@@ -136,3 +136,6 @@ log:
   - at: dogfood-fixings
     kind: learning
     note: "decision-trail DONE (F7+F10): resolve-question reasoning-Arg + Invariante (source=ai⇒reasoning, MissingReasoning); build-SKILL emergent-decision-Flow (stop-check inline + document via resolve-question/add-question); build-implement build-notes at=build. 169 Tests grün. e4 erfüllt. 4/8 done."
+  - at: dogfood-fixings
+    kind: learning
+    note: "walk-style DONE (F12+F5): refine+build bieten Walk-Style-Wahl (high-together Default / all / AI), 0 Fragen→skip; refine-rules-check macht Coverage-Gaps zu auto-fix (add-ac+set-phase-rules) statt User-Frage. e5 erfüllt. 5/8 done."
