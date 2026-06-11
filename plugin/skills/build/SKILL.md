@@ -106,16 +106,36 @@ learning "…"`). For EACH such decision, run the **stop-check**:
   the user, and walk it before continuing. Minimise stops — proceed-and-document
   within-plan calls; stop only on a genuine deviation.
 
-## Workflow mode (fan-out) — allowlist precondition
+## Workflow mode (fan-out) — the skill drives it via the Workflow tool
 
 When a phase carries `executor: workflow` (set via `anchored node set-executor
-<slug> <phase> workflow`) and the `Workflow` tool is available, the children fan
-out as a background workflow (≤16 parallel); each unit self-writes evidence/
-failures via the CLI; the gates run **once** over the merged result. **Hard
-precondition: `Bash(anchored *)` must be pre-approved on the allowlist** — a
-background workflow has no interactive session, so an un-allowlisted `anchored`
-call hangs. If unavailable, fall back to the sequential implement path (never
-hard-error).
+<slug> <phase> workflow`) and the `Workflow` tool is available, **the SKILL** fans
+the phase's acceptance criteria out as a Dynamic Workflow — one parallel unit per
+not-yet-evidenced AC (the engine's `loop-workflow.ts` is a headless reference; the
+live fan-out lives here). The flow, sibling to the sequential implement path:
+
+1. **Plan the units.** Read the phase (`anchored node read <slug>`). A unit = one AC
+   that is `pending` OR carries `failures` (skip ACs already `done` with evidence —
+   resume-safety). ≤16 units in parallel; >16 → waves of 16.
+2. **Dispatch (Workflow tool).** One `agent({ agentType: 'a:build-workflow', … })`
+   per unit (the `build-workflow` plugin agent — the per-AC fan-out worker). Each
+   unit does its AC's work and **self-writes its own evidence/failures via the CLI**
+   (`anchored node add-phase-evidence …` on success, `anchored node set-failures …`
+   on a blocker). Background — emit one progress line, then return; the await is
+   **re-invocation**, not polling.
+3. **Collect (evidence-driven, resume-safe).** On re-engage, re-read the task-file;
+   for each AC: `done`+evidence ⇒ satisfied, anything `pending`/`failures` ⇒
+   re-dispatch ONLY that unit. No per-worker return to apply — the workers wrote to
+   disk (do NOT double-apply).
+4. **Gates ONCE over the merged result.** After the fan-out joins, spawn
+   build-task-validate + build-code-validate once over the whole phase (never
+   per-unit). Failures → the re-do loop (re-dispatch the not-yet-evidenced units),
+   retry to `retry_limit`, stop-check unchanged.
+
+**Hard precondition: `Bash(anchored *)` must be pre-approved on the allowlist** — a
+background workflow has no interactive session, so an un-allowlisted `anchored` call
+hangs. If the `Workflow` tool / `anchored:workflow` agent is unavailable, **fall back
+to the sequential implement path** (never hard-error).
 
 ## Termination
 

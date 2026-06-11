@@ -1,12 +1,20 @@
 // engine/scope/loop-workflow.ts — the WORKFLOW-mode orchestration behind the
-// injected workflow seam (Task workflow-mode). Where the SEQUENTIAL loop runs an
-// interleaved body per child, this fans the children OUT as a background workflow
-// (≤16 batches), then re-collects evidence from the task-file state and runs the
-// wrap-gates ONCE over the merged result. Three guarantees mirror the sequential
-// path: stop-conditions halt the loop, failing children retry to retry_limit, and
-// the hard invariant (no ac→done without evidence) stays in the substrate — the
-// gates never bypass it. The seam is injected, so the whole path is fakeable
-// (no real Claude-Code workflow needed in tests).
+// injected workflow seam (Task workflow-mode).
+//
+// REFERENCE / HEADLESS PATH (dogfood-fixings q4): in the skill-orchestrated runtime
+// the *build skill* drives the workflow fan-out via the Claude-Code `Workflow` tool
+// (`agentType: a:build-workflow`) — see plugin/skills/build/SKILL.md. THIS module is
+// the engine's deterministic reference of the same shape (dispatch → evidence-driven
+// collect → gates once over merged → stop/retry), kept fully tested for a future
+// headless `claude -p` engine path; it is NOT the live skill path. The two must stay
+// behaviourally equivalent.
+//
+// Where the SEQUENTIAL loop runs an interleaved body per child, this fans the
+// children OUT as a background workflow (≤16 batches), then re-collects evidence from
+// the task-file state and runs the wrap-gates ONCE over the merged result. Three
+// guarantees mirror the sequential path: stop-conditions halt the loop, failing
+// children retry to retry_limit, and the hard invariant (no ac→done without evidence)
+// stays in the substrate. The seam is injected, so the whole path is fakeable.
 import { stopCheck } from './loop-step.js'
 import type { AnyNode, MergedResult, StepResult, WorkflowUnit } from '../step-runner.js'
 import type { WorkflowSeam } from '../step-runner.js'
