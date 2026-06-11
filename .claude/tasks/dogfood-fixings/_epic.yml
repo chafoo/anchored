@@ -31,7 +31,7 @@ acceptance:
     status: done
   - id: e4
     text: "Decision-Trail vollständig: resolve-question speichert reasoning, build spawnt stop-check + dokumentiert emergente Decisions, build-notes mit at=build (F7/F10)"
-    status: pending
+    status: done
   - id: e5
     text: "Walk-Style zurück: User wählt vor dem Q&A-Walk (all-AI / all-user / high-user); rules-check-Coverage-Gaps werden auto-fix statt User-Frage (F12/F5)"
     status: pending
@@ -98,7 +98,7 @@ tasks:
     depends_on: []
   - slug: decision-trail
     goal: "F7 + F10: resolve-question bekommt reasoning-Arg + Invariante (source=ai ⇒ reasoning); build-Skill spawnt stop-check für self-reported Decisions + dokumentiert proceed-Decisions (append-log decision / resolve-question), stop→walk; build-implement schreibt build-notes mit at=build."
-    status: pending
+    status: done
     depends_on: []
   - slug: walk-style
     goal: "F12 + F5: refine-Skill (+ build-pre-walk) bietet vor dem Q&A-Walk die Walk-Style-Wahl (all-AI / all-user / high-user, ephemer); rules-check-Coverage-Gaps werden zu auto-fix (add-ac) statt User-Frage — User-Fragen nur für Architektur/Code."
@@ -133,3 +133,6 @@ log:
   - at: dogfood-fixings
     kind: learning
     note: "enforcement-hook DONE (F8): PreToolUse-Hook (plugin/hooks/block-task-file-edits.js) blockt rohe Write/Edit auf Task-Files (exit 2), erlaubt Source-Code, Escape ANCHORED_TASKFILE_EDIT=1 für Planung. Decision-Logik via piped-Tests bewiesen. HANDOFF: live Plugin-Fire in anchored-test nach /reload-plugins bestätigen (ein Agent-Roh-Write wird geblockt). e1 erfüllt. ALLE 3 HOCH-Fixes durch."
+  - at: dogfood-fixings
+    kind: learning
+    note: "decision-trail DONE (F7+F10): resolve-question reasoning-Arg + Invariante (source=ai⇒reasoning, MissingReasoning); build-SKILL emergent-decision-Flow (stop-check inline + document via resolve-question/add-question); build-implement build-notes at=build. 169 Tests grün. e4 erfüllt. 4/8 done."
