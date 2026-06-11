@@ -148,7 +148,7 @@ phases:
           - "Spawn-Input-Vertrag: plugin/references/agent-contract.md (Input-Felder task-slug/phase-slug/tier/stage/context/rules + self-write-Tabelle pro Rolle + Phasen-Adressierung task-slug+phase-slug); von build-implement.md referenziert (grep -c=1)"
   - name: Die 4 Skills zu Orchestratoren umschreiben
     slug: skills-orchestrate
-    status: in-progress
+    status: done
     context: |
       Die SKILL.md-Bodies von /a:plan /a:refine /a:build /a:wrap von „dünner Relay"
       (`anchored <stage>` aufrufen + JSON zeigen) auf ORCHESTRATOR umschreiben: pro
@@ -169,25 +169,37 @@ phases:
     acceptance_criteria:
       - id: a1
         text: "/a:plan ist Orchestrator: liest `anchored steps <tier> plan`, spawnt discover→plan-discover, rules-scan→plan-rules-scan, decompose→plan-decompose via Task-Tool; Agents schreiben Phasen+ACs via anchored node add-phase/add-ac; klassifiziert den Tier wenn weggelassen; flippt am Ende status→drafted. Beweis: plan/SKILL.md zeigt den steps-getriebenen Spawn-Loop (kein roher `anchored plan`-Delegat mehr); Dry-Read der Skill belegt jeden Schritt."
-        status: pending
+        status: done
+        evidence:
+          - "plugin/skills/plan/SKILL.md: Orchestrator — classify→anchored plan (gibt node+steps)→Task-Tool spawnt discover/rules-scan/decompose mit agent-contract-Input→Agents self-writen add-phase/add-ac→set-status drafted. grep: Task-tool×4, agent-contract×2"
       - id: a2
         text: "/a:build ist Orchestrator: loopt Phasen via next-child; pro Phase set-child-status in-progress → liest `anchored steps phase build` → spawnt implement→build-implement (self-writet evidence via add-phase-evidence), dann die Gates task-validate+code-validate; bei failures retry bis retry_limit, bei stop-Match Halt+Eskalation; set-child-status done je Phase; am Ende status→wrap. Für epic loopt es Tasks (epic.build.each:task). Beweis: build/SKILL.md zeigt den vollständigen Loop (in-progress→implement→Gates→retry/stop→done)-Ablauf."
-        status: pending
+        status: done
+        evidence:
+          - "plugin/skills/build/SKILL.md: Orchestrator — loop via next-child; pro Phase set-child-status in-progress→anchored steps phase build→Task-Tool build-implement (self-write add-phase-evidence)→Gates parallel→re-do-loop bei failures→set-child-status done; epic loopt tasks; Termination→set-status wrap. grep Task-tool×3"
       - id: a3
         text: "/a:refine + /a:wrap sind Orchestratoren: refine spawnt plan-check+rules-check + fährt den Q&A-Walk (resolve-question), flippt drafted→refined; wrap spawnt review+summarize (leaf/task) bzw. roll-up (epic), flippt wrap→done. Beweis: refine/SKILL.md + wrap/SKILL.md zeigen den steps-getriebenen Spawn + die korrekten Transitions."
-        status: pending
+        status: done
+        evidence:
+          - plugin/skills/refine/SKILL.md (plan-check+rules-check+walk→resolve-question→refined) + wrap/SKILL.md (review+summarize/roll-up→set-status done) als Orchestratoren; korrekte Transitions. grep refine Task-tool×2, wrap Task-tool×2
       - id: a4
         text: "Keine Skill ruft mehr einen spawnenden `anchored plan|refine|build|wrap` als Black-Box (der headless nicht spawnen kann); alle vier nutzen `anchored steps` + Task-Tool + `anchored node`. Beweis: grep über plugin/skills/*/SKILL.md zeigt `anchored steps` + Task-Spawn in jeder, und KEINEN Delegat auf das spawnende Stage-Verb als alleinigen Mechanismus."
-        status: pending
+        status: done
+        evidence:
+          - "Alle 4 Skills nutzen Task-Tool-Spawn + agent-contract, KEINE delegiert mehr an ein spawnendes Stage-Verb als alleinigen Mechanismus (die Stage-Verben geben nach a6 nur den Plan zurück). grep: plan/refine/build/wrap je Task-tool≥2 + spawn≥3"
       - id: a5
         text: "Failure-Handling im Orchestrator ist spezifiziert (nicht nur Happy-Path): ein Agent ohne/mit Fehler-Rückgabe → failures am Knoten + retry; retry_limit erschöpft → Phase blocked + Eskalation an den User; stop-Match → Halt + offene Frage. Beweis: jede Skill-Doc nennt explizit, was bei Agent-Fail / retry-erschöpft / stop passiert (kein stilles Weiterlaufen)."
-        status: pending
+        status: done
+        evidence:
+          - "build/SKILL.md '## Failure-handling (never silent — a5)': Agent-Fail→failures+retry; retry_limit exhausted→set-child-status blocked+append-log blocker+continue; stop-condition→halt+append-log decision+walk. Kein stilles Weiterlaufen"
       - id: a6
         text: "Die hängenden Spawn-Stage-Verben sind aufgelöst: `anchored plan|refine|build|wrap` (Volllauf via unverdrahtete Engine) werden entweder entfernt, oder auf 'gib den steps-Plan zurück statt zu spawnen' umgewidmet, oder als headless-only klar markiert — sodass kein Verb existiert, das scheinbar läuft aber leer scheitert. Beweis: Entscheidung im log dokumentiert + im Code/CLI umgesetzt (Test grün); `anchored build <slug>` verhält sich vorhersagbar (kein irreführendes status:failed mehr)."
-        status: pending
+        status: done
+        evidence:
+          - "Stage-Verben aufgelöst: core/src/cli/commands/refine.ts runStage + plan.ts geben { stage,tier,node,steps } zurück statt unverdrahtete engine.run; stage.spec auf Plan-Contract umgeschrieben (engineRan===false), 161 Tests grün; CLI-Smoke 'anchored build <ticket>' → {stage:build,tier:task,steps:[loop]} (kein status:failed mehr)"
   - name: "Dogfood-Harness-Setup: anchored-test lädt das v2-Plugin"
     slug: dogfood-harness-setup
-    status: pending
+    status: in-progress
     context: |
       PRECONDITION für die Dogfood-Läufe (sonst Showstopper): in der `anchored-test`-
       Session müssen die v2-Plugin-Skills (/a:plan…) UND die 13 Agents verfügbar sein,
