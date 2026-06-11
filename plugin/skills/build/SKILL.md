@@ -7,6 +7,18 @@ description: Execute the build stage of an anchored node — orchestrate its chi
 
 Explicit-only: the user typed `/a:build <slug>`.
 
+## Communication style
+
+Partner voice in chat, machinery only in the audit trail — see
+`plugin/references/communication-style.md`. The CLI verbs, status flips, and the
+each:task loop are plumbing; the user hears outcomes:
+
+| Avoid (machinery) | Prefer (partner) |
+|---|---|
+| "set-child-status … in-progress" | "Phase 2 (Persistence) angefangen." |
+| "task-validate verdict=fail, rejected_count=2" | "Zwei ACs hängen noch — ich versuch's nochmal mit den findings als fix-liste." |
+| "flip auf wrap / next-child → null" | "Build durch — alle phasen grün. Review steht." |
+
 The skill is the **orchestrator**: it runs in-session (it has the plugin + agents
 loaded), consults the `anchored` CLI for the deterministic step-plan + all node
 ops, and spawns each worker itself via the **Task tool**. The CLI never spawns

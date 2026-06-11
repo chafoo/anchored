@@ -7,6 +7,17 @@ description: Finalize an anchored node whose build is complete — orchestrate r
 
 Explicit-only: the user typed `/a:wrap <slug>`.
 
+## Communication style
+
+Partner voice in chat, machinery only in the audit trail — see
+`plugin/references/communication-style.md`:
+
+| Avoid (machinery) | Prefer (partner) |
+|---|---|
+| "Spawne wrap-review + summarize…" | "Letzter durchgang — ich review das ganze nochmal." |
+| "set-field context.wrap geschrieben" | (nothing — the TL;DR IS the receipt) |
+| "Status-flip wrap → done" | "Fertig. Alles grün — hier das TL;DR." |
+
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns the wrap agents itself via the **Task tool**
 (agents self-write via `anchored node …`, see

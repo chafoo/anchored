@@ -50,7 +50,7 @@ acceptance:
     status: done
   - id: e7
     text: "Skills sprechen Partner-Stimme (communication-style portiert + pro SKILL Avoid/Prefer-Tabelle); kein Framework-Leak im Chat (G10)"
-    status: pending
+    status: done
   - id: e8
     text: "User-anchored.yml-Override nachweislich wirksam durch die deployte CLI (inkl. Deep-Merge) ODER nachgebaut + Regressions-Test; CLI-DX-Lücken geschlossen (question-list, resolve-question-Fehler, intro→context) (V1/G6/G9/G7)"
     status: done
@@ -229,7 +229,7 @@ tasks:
       die Hard-Rule gegen Leakage erweitern. Stage-Nummern, Config-Slots,
       CLI-Verben, Status-Flips → SILENT; nur Outcome + echte Entscheidungen
       erreichen den Chat. Unabhängig.
-    status: pending
+    status: done
     depends_on: []
   - slug: config-override-verify
     goal: |

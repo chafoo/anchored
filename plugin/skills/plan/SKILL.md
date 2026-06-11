@@ -7,6 +7,17 @@ description: Brainstorm a raw task description into a drafted plan with phases +
 
 Explicit-only: the user typed `/a:plan <tier?> <description>`.
 
+## Communication style
+
+Partner voice in chat, machinery only in the audit trail — see
+`plugin/references/communication-style.md`:
+
+| Avoid (machinery) | Prefer (partner) |
+|---|---|
+| "anchored plan epic … → node erstellt (status plan)" | "Lege das epic für `<slug>` an." |
+| "Spawne discover + decompose…" | "Lass uns das durchsprechen — was genau soll rein?" |
+| "Status-flip plan → drafted" | "Plan steht — N phasen, M ACs, K offene fragen. Run `/a:refine`." |
+
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns each plan agent itself via the **Task tool**. The
 agents self-write phases/ACs via `anchored node …` (see

@@ -7,6 +7,17 @@ description: Validate a drafted plan against current code + rules and walk the o
 
 Explicit-only: the user typed `/a:refine <slug>`.
 
+## Communication style
+
+Partner voice in chat, machinery only in the audit trail — see
+`plugin/references/communication-style.md`:
+
+| Avoid (machinery) | Prefer (partner) |
+|---|---|
+| "Spawne plan-check + rules-check parallel…" | "Lass mich den plan kurz gegen den aktuellen code-stand prüfen." |
+| "Walk-Style = high-together" | "Okay — die wichtigen kläre ich mit dir, den rest mach ich selbst." |
+| "Status-Transition drafted → refined" | "Plan ist refined. Run `/a:build`." |
+
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns the refine agents itself via the **Task tool**
 (agents self-write via `anchored node …`, see

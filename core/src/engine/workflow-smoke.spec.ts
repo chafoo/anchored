@@ -185,6 +185,24 @@ test('a4: build skill documents the Bash(anchored *) allowlist precondition', ()
   expect(skill.toLowerCase()).toContain('allowlist')
 })
 
+// G10 — partner-voice: the communication-style reference exists and every stage
+// SKILL links it (so machinery vocabulary stops leaking into the user's chat).
+test('G10: every stage SKILL references the communication-style guide', () => {
+  const ref = readFileSync(
+    new URL('../../../plugin/references/communication-style.md', import.meta.url),
+    'utf8',
+  )
+  expect(ref.toLowerCase()).toContain('pair-programmer partner')
+  for (const skill of ['plan', 'refine', 'build', 'wrap']) {
+    const md = readFileSync(
+      new URL(`../../../plugin/skills/${skill}/SKILL.md`, import.meta.url),
+      'utf8',
+    )
+    expect(md).toContain('communication-style.md')
+    expect(md).toContain('Avoid (machinery)')
+  }
+})
+
 // G4 — the build-implement agent is evidence-only: its contract must NOT instruct
 // it to flip the phase status (that bypassed the gate-before-done guarantee).
 test('G4: build-implement agent is evidence-only — never flips the phase status', () => {
