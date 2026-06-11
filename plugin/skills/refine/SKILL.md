@@ -78,6 +78,28 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   required for `source=ai`).
   `anchored node resolve-question <slug> <id> "<answer>" <user|ai> ["<reasoning>"]`
 
+### Epic-wide question policy (H3 — epics only)
+
+When you refine an **epic**, the choice above ALSO decides how the questions that
+arise *later* — in each child-task's own refine during the build loop — get handled.
+For an epic, offer a **fourth, richer option** and remember the choice for the build:
+
+> "Wie wollen wir's mit den Fragen halten — auch bei den einzelnen Tasks später?"
+> - **Nur die wichtigen — den Rest entscheide ich** (the recommended default;
+>   internal: `high-together`)
+> - **Alle gemeinsam durchgehen** (internal: `all-together`)
+> - **Du entscheidest alles** (internal: `AI-all`)
+> - **Sag mir, worauf du Einfluss willst** — frei beschrieben, z.B. "frag mich bei
+>   allem zu Persistenz oder der UI-Sprache, den Rest entscheidest du"
+>   (internal: `conditions`, plus the user's own words)
+
+This follows `plugin/references/question-style.md` (recommended option first,
+implications named). Hold the chosen policy **in your working memory for this epic
+run** — ephemeral, never written to a field. Within the same session it carries from
+refine into the `/a:build` loop, where it governs every child-task's refine. The
+free-form option is epic-only (a single task's refine just uses the three fixed
+styles; its build-time decisions are already covered by the stop-conditions).
+
   **Every question you put to the user follows `plugin/references/question-style.md`:**
   the question text already carries a worked-out **recommendation** + 1–3
   **implication** bullets (the authoring agent baked them in). In the

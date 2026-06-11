@@ -85,8 +85,15 @@ While `anchored node next-child <slug>` returns a child (else done):
         them to plan-decompose as the outcome bar the phases must meet — so the
         goal/contract is never lost (the G8 fix). Run plan's steps → `drafted`.
      2. **Refine the child** (`/a:refine`-style: plan-check + rules-check + walk) →
-        `refined`. In an autonomous epic run, AI-resolve non-high questions with
-        reasoning; high ones still go to the user.
+        `refined`. Apply the **epic-wide question policy** the user set at the
+        epic-refine (held in your working memory for this run, H3) — do NOT re-ask
+        the walk-style per child. For each child question, route it by that policy:
+        priority-threshold / all-user / all-AI, OR — if the user gave a free-form
+        condition — **judge each question against their words** ("does this touch
+        what they asked to be involved in?"): a match goes to the user, the rest you
+        resolve yourself with reasoning. If you reach the build WITHOUT a remembered
+        policy (fresh session, or refine was skipped), ask it once now — same choice
+        as the epic-refine walk (see refine SKILL "Epic-wide question policy").
      3. **Build the child** — recurse THIS loop on the child task (`each: phase`).
      4. **Wrap the child** (review + summarize) → child task `done`.
      5. Mark the epic-child delivered:
@@ -125,11 +132,12 @@ tool**, fan them out:
    lock + validate-before-write (G1) serialize those safely — concurrent child
    status writes never corrupt the epic.
 4. **Walk-questions are BUFFERED:** a child's refine walk can't prompt the user from
-   a background unit. In a fan-out run, the child AI-resolves non-high questions
-   with reasoning and **records any high/blocking question on its task-file**
-   (`add-question`) instead of prompting — exactly like the phase-workflow buffering.
-   At the **join**, the orchestrator reads each child's open questions and walks the
-   buffered high ones with the user, then continues.
+   a background unit. In a fan-out run, the child AI-resolves whatever the epic-wide
+   question policy (H3) lets it, and **records any question the policy routes to the
+   user on its task-file** (`add-question`) instead of prompting — exactly like the
+   phase-workflow buffering. At the **join**, the orchestrator reads each child's open
+   questions and walks those buffered ones with the user (per the same policy), then
+   continues.
 5. **Join + advance:** when a unit's child task reaches `done`, mark its epic-child
    delivered (`set-child-status <epic-slug> <child> done`). Re-run `ready-children`
    for the next wave until the queue drains, then terminate as below.

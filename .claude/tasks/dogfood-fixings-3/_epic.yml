@@ -36,7 +36,7 @@ acceptance:
     status: done
   - id: e3
     text: "Das Epic-Refine fragt einmal, welche Fragen der User in den Child-Refines selbst beantwortet — nach Wichtigkeit / alles KI / alles User / freie Beschreibung mit Bedingungen; steuert alle Child-Refines; pro Frage wertet die KI die Bedingungen aus; Build fragt nach, falls Refine übersprungen; ephemer; verträgt sich mit dem Fan-out (H3)"
-    status: pending
+    status: done
   - id: e4
     text: "Eine re-evidenced done-AC trägt KEINEN stalen failures-Eintrag mehr: der done-Flip räumt failures atomar (addEvidence/addChildEvidence/setChildAcStatus); ein clear-failures-Verb existiert für den Workaround; Test deckt den redo→done-Pfad (H4)"
     status: done
@@ -138,7 +138,7 @@ tasks:
       mit dem gebufferten Fan-out (q8 aus fixings-2). Betrifft: refine-Skill (Wahl im
       Epic-Refine), build-Skill (Loop wendet an + pre-build-Fallback),
       communication-style/question-style. + Grep-Test.
-    status: pending
+    status: done
     depends_on: [plan-voice-no-mechanics, no-cryptic-abbreviations]
   - slug: failures-reset-on-done
     goal: |

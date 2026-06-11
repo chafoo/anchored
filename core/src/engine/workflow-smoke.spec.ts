@@ -208,6 +208,24 @@ test('G14: question-style reference exists; agents + walks follow it', () => {
   }
 })
 
+// H3 — the epic-wide question policy: refine offers the richer choice (incl. a
+// free-form conditions option) and remembers it; build applies it to child refines.
+test('H3: epic-wide question policy in refine + applied in the build loop', () => {
+  const refine = readFileSync(
+    new URL('../../../plugin/skills/refine/SKILL.md', import.meta.url),
+    'utf8',
+  )
+  expect(refine).toMatch(/Epic-wide question policy/i)
+  expect(refine).toContain('Sag mir, worauf du Einfluss willst') // the free-form option
+  expect(refine).toMatch(/conditions/) // the internal code for it
+  const build = readFileSync(
+    new URL('../../../plugin/skills/build/SKILL.md', import.meta.url),
+    'utf8',
+  )
+  expect(build).toMatch(/epic-wide question policy/i)
+  expect(build).toMatch(/do NOT re-ask[\s\S]*walk-style per child/i)
+})
+
 // H2 — no cryptic abbreviations: the policy is in communication-style + question-style,
 // and the concrete template leaks are fixed (walk-prompt enum tokens, build finish
 // status word, "ACs" in chat lines, the build.stop "DAG").
