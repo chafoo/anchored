@@ -35,7 +35,7 @@ acceptance:
     status: done
   - id: e2
     text: "Full-Lifecycle-e2e grün für Task UND Epic durch die echten CLI-Verben, mit read-back nach JEDEM Schritt; plus invalid-write-Regression (Epic-Child in-progress / unbekanntes Feld → ok:false, Node bleibt lesbar) (G11)"
-    status: pending
+    status: done
   - id: e3
     text: "Epic fährt die volle Lifecycle-Symmetrie (plan→drafted→refined→build→wrap→done) legal durch die CLI; transitions.ts forward-only erweitert; Epic-Schema hat context (ContextTrails) (D1)"
     status: done
@@ -147,7 +147,7 @@ tasks:
       nach JEDEM Schritt, plus eine invalid-write-Regression (Epic-Child
       'in-progress' / unbekanntes Feld → ok:false am Op, Node bleibt lesbar).
       Braucht substrate-write-validation für die Reject-Assertion.
-    status: pending
+    status: done
     depends_on: [substrate-write-validation]
   - slug: child-status-enum
     goal: |
