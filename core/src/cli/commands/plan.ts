@@ -8,12 +8,14 @@ import { cliError, type CliDeps } from '../index.js'
 const TIER_KEYWORDS = new Set(['epic', 'task', 'phase'])
 
 function slugFromInput(input: string): string {
+  // slice FIRST, then strip leading/trailing dashes — the cut can land mid-word and
+  // leave a trailing dash, which the kebab-slug regex rejects (F14).
   return (
     input
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '')
-      .slice(0, 48) || 'untitled'
+      .slice(0, 48)
+      .replace(/(^-|-$)/g, '') || 'untitled'
   )
 }
 
@@ -46,7 +48,9 @@ export async function planCommand(args: string[], deps: CliDeps): Promise<unknow
     reasoning = verdict.reasoning
   }
 
-  const node = await deps.nodeOps.create(slugFromInput(input), { title: input })
+  // pass the explicit tier so create seeds the right shape (epic → tasks:[], status
+  // planning); without it create would default to a task-shaped node (F13).
+  const node = await deps.nodeOps.create(slugFromInput(input), { title: input, tier })
   // skill-orchestrated: return the node + the resolved plan-stage steps for the
   // in-session skill to execute (spawn discover/rules-scan/decompose). No engine
   // spawn here — the headless CLI can't reach the session's Task tool.

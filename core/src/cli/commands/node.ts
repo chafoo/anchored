@@ -22,7 +22,7 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
     case 'set-status':
       return ops.setStatus(need(0, 'slug'), need(1, 'status'))
     case 'add-child':
-      return ops.addChild(need(0, 'slug'), { slug: need(1, 'child-slug') })
+      return ops.addChild(need(0, 'slug'), { slug: need(1, 'child-slug'), goal: a[2] })
     case 'next-child':
       return ops.nextChild(need(0, 'slug'))
     case 'add-question':

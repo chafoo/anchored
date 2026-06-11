@@ -10,6 +10,7 @@ import { createCli, type CliDeps, type NodeOpsFacade } from './cli/index.js'
 import { createNodeOps, type TierDescriptor, type NodeOpsDeps } from './ops/node-ops.js'
 import { createSlugFacade, type TierOps } from './ops/facade.js'
 import { createEngineOps, tierOfNode } from './ops/engine-ops.js'
+import { makeTierFor } from './ops/tier-derive.js'
 import { createStepsPlanner } from './ops/steps-planner.js'
 import { createParser } from './parser/parse.js'
 import { createRenderer, defaultSchemaUrl } from './parser/render.js'
@@ -79,9 +80,12 @@ export interface WireDeps {
 
 export function buildCli(w: WireDeps) {
   const io = createIo(w.io)
-  const tierForSlug = w.tierForSlug ?? (() => 'task')
   const { opsFor } = buildSubstrate(io, w.pathFor, createNodeOps)
-  const facade = createSlugFacade({ opsFor, tierForSlug, defaultStatus: DEFAULT_STATUS })
+  const facade = createSlugFacade({
+    opsFor,
+    tierFor: makeTierFor(io, w.pathFor),
+    defaultStatus: DEFAULT_STATUS,
+  })
   const engine: CliDeps['engine'] = w.engine ?? {
     run: (_tier, node) => Promise.resolve({ node, status: 'ok' }),
   }
@@ -134,7 +138,6 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
   const io = createIo(deps.io)
   const pathFor =
     deps.pathFor ?? ((slug: string) => `${deps.projectRoot}/.claude/tasks/${slug}.yml`)
-  const tierForSlug = deps.tierForSlug ?? (() => 'task')
 
   // config: merge default-template ⊕ user delta EXACTLY ONCE (base dependency)
   const bootstrap = createBootstrap({
@@ -147,7 +150,11 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
 
   // ops — built BEFORE the engine (deps-graph order: substrate → ops → engine → cli)
   const { opsByTier, opsFor } = buildSubstrate(io, pathFor, createNodeOpsFn)
-  const facade = createSlugFacade({ opsFor, tierForSlug, defaultStatus: DEFAULT_STATUS })
+  const facade = createSlugFacade({
+    opsFor,
+    tierFor: makeTierFor(io, pathFor),
+    defaultStatus: DEFAULT_STATUS,
+  })
 
   // engine — built BEFORE the cli, fed the ops from the previous stage
   const spawn = deps.spawn ?? createSpawn(config as unknown as { spawn?: { mode?: string } }, {})

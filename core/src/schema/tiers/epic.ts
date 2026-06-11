@@ -15,7 +15,9 @@ const AcceptanceItem = z.strictObject({
 
 const TaskStub = z.strictObject({
   slug: KebabSlug,
-  goal: z.string(),
+  // optional so a bare `add-child` stub is valid (rolling-wave: scaffold/set-field
+  // fills the goal); a meaningful stub still carries one.
+  goal: z.string().optional(),
   status: z.enum(['pending', 'active', 'done', 'blocked']),
   depends_on: z.array(KebabSlug).optional(),
 })
