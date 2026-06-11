@@ -33,7 +33,7 @@ acceptance:
     status: done
   - id: e2
     text: "Keine kryptischen Abkürzungen im User-Text — inkl. der SKILL-Templates selbst: build-Finish ohne Status-Wort, refine-Walk-Prompt ohne englische Enum-Tokens (X high/medium/low) + ohne interne Style-Codes (high-together), 'AC' ausgeschrieben; build.stop-String ohne 'DAG'; interne IDs nur im Audit-Trail (H2)"
-    status: pending
+    status: done
   - id: e3
     text: "Das Epic-Refine fragt einmal, welche Fragen der User in den Child-Refines selbst beantwortet — nach Wichtigkeit / alles KI / alles User / freie Beschreibung mit Bedingungen; steuert alle Child-Refines; pro Frage wertet die KI die Bedingungen aus; Build fragt nach, falls Refine übersprungen; ephemer; verträgt sich mit dem Fan-out (H3)"
     status: pending
@@ -121,7 +121,7 @@ tasks:
       den build.stop-Config-String (Epic) ohne "DAG". Codes aus 1-2 Buchstaben (e3,
       q4, a1) + interne IDs bleiben im Audit-Trail, nicht im Chat. Grenze siehe q1.
       + Grep-Test.
-    status: pending
+    status: done
     depends_on: []
   - slug: epic-question-policy
     goal: |

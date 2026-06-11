@@ -17,7 +17,7 @@ Partner voice in chat, machinery only in the audit trail — see
 | "anchored plan epic … → node erstellt (status plan)" | "Lege das epic für `<slug>` an." |
 | "Spawne discover + decompose…" | "Lass uns das durchsprechen — was genau soll rein?" |
 | "ich fahre die zwei Plan-Steps: discover dann scaffold (Stubs + Abhängigkeits-Reihenfolge)" | "Ich schau kurz den Code an und skizzier die zwei Tasks." |
-| "Status-flip plan → drafted" | "Plan steht — N phasen, M ACs, K offene fragen. Run `/a:refine`." |
+| "Status-flip plan → drafted" | "Plan steht — N phasen, M Akzeptanz-Kriterien, K offene fragen. Run `/a:refine`." |
 
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns each plan agent itself via the **Task tool**. The
@@ -92,5 +92,5 @@ anchored node set-field <slug> context.plan "<intro + the plan-trail summary>"
 anchored node set-status <slug> drafted
 ```
 (`set-field` supports the dotted path — `context.plan` is set nested.) Tell the
-user: *"Plan steht — N Phasen, M ACs, K offene Fragen. Run `/a:refine` als
+user: *"Plan steht — N Phasen, M Akzeptanz-Kriterien, K offene Fragen. Run `/a:refine` als
 nächstes."* No MCP, no raw node-file edit.

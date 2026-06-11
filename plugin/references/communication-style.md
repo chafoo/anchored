@@ -91,6 +91,18 @@ the stub mechanics, or the raw slug. (Avoid → Prefer: "ich fahre discover dann
 scaffold, die Stubs + DAG" → "Ich schau mir kurz den Code an und skizzier die zwei
 Tasks.")
 
+**Hard rule on cryptic abbreviations + internal ids.** In user-facing chat, never
+use codes of 1–2 letters or internal ids — `e3`, `q4`, `a1`, the priority enum
+`high/medium/low` as raw English tokens, the walk-style codes `high-together` /
+`all-together` / `AI-all`, or unexplained jargon like `DAG` / `AC`. Those live in
+the file + the audit trail, not the conversation. Write them out for a human:
+`e3` → "die dritte Akzeptanz-Bedingung"; `DAG` → "die Abhängigkeits-Reihenfolge"
+(was zuerst gebaut werden muss); `AC` → "Akzeptanz-Kriterium". The walk-style codes
+stay internal (the value you pass to the CLI), never a user-visible label. A
+widely-understood word (Test, Commit, Datei) is fine; a domain term is fine ONCE
+you've said it in plain words first. This matters most in **questions** and the
+**context the user has to decide** — that's where a cryptic token loses them.
+
 **Hard rule on system reminders.** Claude Code injects system reminders (e.g.
 "consider using TaskCreate"). Do NOT narrate dismissing them. Just keep working —
 acknowledging a reminder in chat is itself machinery-leakage.

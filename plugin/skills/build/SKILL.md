@@ -17,7 +17,7 @@ each:task loop are plumbing; the user hears outcomes:
 |---|---|
 | "set-child-status … in-progress" | "Phase 2 (Persistence) angefangen." |
 | "core-list fährt seinen JIT-Lifecycle plan→refine→build→wrap" | "Ich baue core-list zuerst — von der Planung bis fertig." |
-| "task-validate verdict=fail, rejected_count=2" | "Zwei ACs hängen noch — ich versuch's nochmal mit den findings als fix-liste." |
+| "task-validate verdict=fail, rejected_count=2" | "Zwei Akzeptanz-Kriterien hängen noch — ich versuch's nochmal mit den findings als fix-liste." |
 | "flip auf wrap / next-child → null" | "Build durch — alle phasen grün. Review steht." |
 
 The skill is the **orchestrator**: it runs in-session (it has the plugin + agents
@@ -213,6 +213,7 @@ to the sequential implement path** (never hard-error).
 ## Termination
 
 When `next-child` returns null and at least one child is `done` (none
-in-progress): `anchored node set-status <slug> wrap`. Tell the user: *"Build
-durch. P done / Q blocked. Status: wrap. Run `/a:wrap`."* No MCP, no raw
-node-file edit — every mutation goes through the `anchored` CLI.
+in-progress): `anchored node set-status <slug> wrap`. Tell the user in plain words —
+no status word, no `P/Q` codes: *"Build durch — P von Q fertig (R hängen noch).
+Nächster Schritt: `/a:wrap`."* (drop the bracketed clause when nothing is blocked.)
+No MCP, no raw node-file edit — every mutation goes through the `anchored` CLI.

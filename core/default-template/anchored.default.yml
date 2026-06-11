@@ -99,7 +99,7 @@ epic:
   build:                              # Loop auf task
     each: task                        # intrinsisch — pro Tier fix (epic→task), nicht konfigurierbar (nur Doku)
     stop:
-      - 'an architectural boundary is crossed (layer, DAG, contract)'
+      - 'an architectural boundary is crossed (a layer, the task dependency order, a contract)'
     retry_limit: 3
   wrap:
     steps:

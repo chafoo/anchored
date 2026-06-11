@@ -61,11 +61,15 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   (`anchored node question-list <slug> open`), count them by priority, and ask
   the user via `AskUserQuestion`:
 
-  > "N Fragen — X high, Y medium, Z low. Wie durchgehen?"
-  > - **Nur die wichtigen (high) — Rest entscheide ich** (`high-together`, the
-  >   recommended default / sweet spot)
-  > - **Alle gemeinsam** (`all-together`)
-  > - **Du entscheidest alles** (`AI-all`)
+  Phrase it for a human — **plain priority words, no raw enum tokens, and the
+  walk-style codes stay INTERNAL** (they're only the value you pass to
+  `resolve-question`, never a user-visible label):
+
+  > "N Fragen — X wichtige, Y mittlere, Z geringe. Wie wollen wir die durchgehen?"
+  > - **Nur die wichtigen — den Rest entscheide ich** (internal: `high-together`,
+  >   the recommended default / sweet spot)
+  > - **Alle gemeinsam durchgehen** (internal: `all-together`)
+  > - **Du entscheidest alles** (internal: `AI-all`)
 
   **If there are 0 open questions, skip this silently** (no AskUserQuestion). Then
   walk each question in priority order per the chosen style: a question AT-or-above

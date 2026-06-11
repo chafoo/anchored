@@ -62,3 +62,9 @@ code/context before presenting — never ask the bare question.
   lower-risk side.
 - **Language:** the project's prevailing language (German/English), per
   `communication-style.md`.
+- **No cryptic abbreviations in the question the user reads.** The question text +
+  its implications are plain language — never the internal ids (`q4`, `a1`, `e3`),
+  raw enum tokens (`high`/`medium`/`low`), or unexplained jargon (`DAG`, `AC`). Say
+  "die dritte Akzeptanz-Bedingung", "die Abhängigkeits-Reihenfolge". The internal
+  ids stay in the file + audit trail (see `communication-style.md`'s abbreviation
+  rule). This matters most here — a question the user can't parse can't be answered.

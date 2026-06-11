@@ -208,6 +208,38 @@ test('G14: question-style reference exists; agents + walks follow it', () => {
   }
 })
 
+// H2 — no cryptic abbreviations: the policy is in communication-style + question-style,
+// and the concrete template leaks are fixed (walk-prompt enum tokens, build finish
+// status word, "ACs" in chat lines, the build.stop "DAG").
+test('H2: no cryptic abbreviations — policy + concrete template fixes', () => {
+  const ref = readFileSync(
+    new URL('../../../plugin/references/communication-style.md', import.meta.url),
+    'utf8',
+  )
+  expect(ref).toMatch(/cryptic abbreviations/i)
+  expect(ref).toMatch(/Abhängigkeits-Reihenfolge/)
+  // refine walk-prompt uses plain priority words, not raw "X high, Y medium, Z low"
+  const refine = readFileSync(
+    new URL('../../../plugin/skills/refine/SKILL.md', import.meta.url),
+    'utf8',
+  )
+  expect(refine).toContain('X wichtige, Y mittlere, Z geringe')
+  expect(refine).not.toMatch(/"N Fragen — X high, Y medium, Z low/)
+  // build finish line dropped the status word; chat example expands "ACs"
+  const build = readFileSync(
+    new URL('../../../plugin/skills/build/SKILL.md', import.meta.url),
+    'utf8',
+  )
+  expect(build).not.toMatch(/Build\s*\n?\s*durch\. P done \/ Q blocked\. Status: wrap/)
+  expect(build).toContain('Zwei Akzeptanz-Kriterien hängen noch')
+  // the build.stop config string no longer abbreviates the dependency order as "DAG"
+  const tmpl = readFileSync(
+    new URL('../../default-template/anchored.default.yml', import.meta.url),
+    'utf8',
+  )
+  expect(tmpl).not.toMatch(/layer, DAG, contract/)
+})
+
 // H1 — pipeline-narration is forbidden: communication-style names the rule, and the
 // stage skills carry a partner-voice replacement for the step-by-step play-by-play.
 test('H1: no pipeline narration — rule in communication-style + skill replacements', () => {
