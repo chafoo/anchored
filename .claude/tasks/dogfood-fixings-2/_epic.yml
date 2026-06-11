@@ -53,7 +53,7 @@ acceptance:
     status: pending
   - id: e8
     text: "User-anchored.yml-Override nachweislich wirksam durch die deployte CLI (inkl. Deep-Merge) ODER nachgebaut + Regressions-Test; CLI-DX-Lücken geschlossen (question-list, resolve-question-Fehler, intro→context) (V1/G6/G9/G7)"
-    status: pending
+    status: done
   - id: e9
     text: "Dritter Dogfood-Rerun (task + epic) grün end-to-end durch die gefixte CLI; alle 5 Quality-Gates (lint/format/typecheck/test/build) grün"
     status: pending
@@ -240,7 +240,7 @@ tasks:
       mit Override-anchored.yml anlegen, 'anchored steps …' MUSS den Override
       zeigen. Falls der Override nicht greift (oder Merge nur shallow ist) → Merge
       fixen. Unabhängig.
-    status: pending
+    status: done
     depends_on: []
   - slug: phase-executor-refine
     goal: |
