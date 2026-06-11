@@ -69,7 +69,10 @@ While `anchored node next-child <slug>` returns a child (else done):
    build-implement with those failures as the fix-list, then re-run the gates. Retry
    up to `retry_limit` (default 3); on exhaustion → blocked (see Failure-handling).
 4. **Advance:** when all the child's ACs are `done` (with evidence) and both gates
-   pass → `anchored node set-child-status <slug> <child> done`.
+   pass → `anchored node set-child-status <slug> <child> done`. This is the **only**
+   place a phase reaches `done` — the build-implement agent is evidence-only and
+   never flips the phase status (G4: that flip must come AFTER the gates, never
+   before, or the gates would inspect an already-`done` phase).
 
 ## Emergent decisions → document or stop (the decision-trail)
 

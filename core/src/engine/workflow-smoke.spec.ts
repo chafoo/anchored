@@ -184,3 +184,17 @@ test('a4: build skill documents the Bash(anchored *) allowlist precondition', ()
   expect(skill).toContain('Bash(anchored *)')
   expect(skill.toLowerCase()).toContain('allowlist')
 })
+
+// G4 — the build-implement agent is evidence-only: its contract must NOT instruct
+// it to flip the phase status (that bypassed the gate-before-done guarantee).
+test('G4: build-implement agent is evidence-only — never flips the phase status', () => {
+  const agent = readFileSync(
+    new URL('../../../plugin/agents/build-implement.md', import.meta.url),
+    'utf8',
+  )
+  // it documents evidence-only + the no-flip rule
+  expect(agent.toLowerCase()).toContain('evidence-only')
+  expect(agent).toMatch(/not\s+yours\s+to\s+flip/i)
+  // it does NOT tell the agent to advance the phase to done via set-child-status
+  expect(agent).not.toMatch(/set-child-status\s+<task-slug>\s+<phase-slug>\s+done/)
+})

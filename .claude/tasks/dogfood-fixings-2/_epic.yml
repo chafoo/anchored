@@ -47,7 +47,7 @@ acceptance:
     status: pending
   - id: e6
     text: "build-implement flippt NIE den Phase-Status; der done-Flip ist strukturell exklusiv der Orchestrator NACH beiden Gates — Gate-vor-done hält (G4)"
-    status: pending
+    status: done
   - id: e7
     text: "Skills sprechen Partner-Stimme (communication-style portiert + pro SKILL Avoid/Prefer-Tabelle); kein Framework-Leak im Chat (G10)"
     status: pending
@@ -219,7 +219,7 @@ tasks:
       Dogfood flippte der Agent eine Phase teils 'done', bevor task-validate/
       code-validate liefen). Spiegelt die Stelle, wo der Agent es richtig machte.
       Unabhängig vom Epic-Strang.
-    status: pending
+    status: done
     depends_on: []
   - slug: user-language
     goal: |

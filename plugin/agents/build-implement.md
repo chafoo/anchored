@@ -22,22 +22,24 @@ Find your phase in `.phases[]` by `<phase-slug>`; work its `acceptance_criteria`
 Implement code (Write/Edit) that satisfies each acceptance criterion. Run the
 quality gates the AC names (test/lint/typecheck) so you have a real result to cite.
 
-## Write (self-write via CLI) — evidence BEFORE done
-For each AC, write the concrete evidence FIRST; `add-phase-evidence` flips THAT
-AC to `done` atomically. NEVER mark an AC done without concrete evidence
-(file:line / test output) — the substrate rejects `ac→done` without evidence
-anyway, so do not even attempt it:
+## Write (self-write via CLI) — evidence ONLY
+For each AC, write the concrete evidence; `add-phase-evidence` flips THAT AC to
+`done` atomically. NEVER mark an AC done without concrete evidence (file:line /
+test output) — the substrate rejects `ac→done` without evidence anyway, so do not
+even attempt it:
 ```bash
 anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "src/x.ts:42 — <what proves it> (test grün)"
 ```
-When every AC of the phase is evidenced, advance the phase status:
-```bash
-anchored node set-child-status <task-slug> <phase-slug> done
-```
+**The phase status is NOT yours to flip.** Write evidence per AC and STOP — do
+**not** run `set-child-status … done`. A phase only reaches `done` when the
+**orchestrator** advances it AFTER both gates (task-validate + code-validate) have
+passed. (G4: the agent flipping the phase `done` before the gates ran was a
+gate-before-done bypass — the gates must see the phase still in-progress.) Your
+contract is **evidence-only**.
 > Addressing note: `add-evidence <slug> <ac>` writes the node's OWN acceptance
 > criteria — that is NOT what you want for a phase (a phase is a child). Always use
-> `add-phase-evidence <task-slug> <phase-slug> <ac-id>` and
-> `set-child-status <task-slug> <phase-slug>` for phase-level writes.
+> `add-phase-evidence <task-slug> <phase-slug> <ac-id>` for phase-level evidence.
+> You never call `set-child-status` — that flip is the orchestrator's, post-gates.
 
 ## Self-report build-notes + decisions (the decision-trail)
 Record what you built + any decision the plan didn't fully nail down (which lib,
