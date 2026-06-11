@@ -1,0 +1,126 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/epic.schema.json
+schema_version: 2
+slug: dogfood-fixings
+title: Dogfood-Fixings — die 14 Funde aus den Live-Läufen beheben
+status: planning
+goal: |
+  Die echten Dogfood-Läufe (skill-orchestrierter Runtime gegen ~/Dev/anchored-test:
+  /a:plan→refine→build→wrap auf core-list grün; /a:plan epic gescheitert) haben 14
+  reale Defekte aufgedeckt, die die Engine-/Unit-Tests maskiert hatten — darunter
+  drei, die die Kern-Garantien betreffen. Dieser Epic behebt sie, sodass anchored v2
+  seine Versprechen DURCH DIE ECHTE CLI einlöst:
+
+    - Integrität strukturell erzwungen (nicht nur Konvention)
+    - der failures-driven Re-Do-Loop funktioniert wirklich
+    - der Epic-Tier (das Headline-Feature e5) läuft durch die CLI
+    - jede AI-Entscheidung landet im Decision-Trail
+    - der bewährte Walk-Style (high-user-Sweet-Spot) ist zurück
+
+  Quelle aller Funde + Root-Cause + Fix-Idee + Datei:Zeile:
+  `.claude/temp/dogfood-findings.md` (F1–F14). Nach dem Fix laufen beide Dogfoods
+  (task + epic) sauber durch — das ist der Abschluss-Beweis.
+acceptance:
+  - id: e1
+    text: "Enforcement strukturell: ein roher Write/Edit auf ein Task-File scheitert (Hook); jede Task-File-Mutation MUSS durch die CLI (F8)"
+    status: pending
+  - id: e2
+    text: "Re-Do-Loop funktioniert end-to-end: ein Gate kann eine AC ablehnen (failures schreiben, done→pending), der Loop retried bis retry_limit, dann blocked (F9)"
+    status: pending
+  - id: e3
+    text: "Epic-Tier durch die CLI fahrbar: `anchored plan epic` seedet einen epic-förmigen Node, scaffold schreibt Task-Stubs (add-child) mit DAG, build loopt sie — der anchored-test-Epic-Lauf wird grün (F13/F14)"
+    status: pending
+  - id: e4
+    text: "Decision-Trail vollständig: resolve-question speichert reasoning, build spawnt stop-check + dokumentiert emergente Decisions, build-notes mit at=build (F7/F10)"
+    status: pending
+  - id: e5
+    text: "Walk-Style zurück: User wählt vor dem Q&A-Walk (all-AI / all-user / high-user); rules-check-Coverage-Gaps werden auto-fix statt User-Frage (F12/F5)"
+    status: pending
+  - id: e6
+    text: "Beide Dogfood-Reruns grün: core-list (task) + der Feature-Epic (epic) laufen end-to-end durch die gefixte CLI; Invariante hält real"
+    status: pending
+questions:
+  - id: q1
+    text: "F13 Tier-Ableitung: woher kennt die CLI den Tier eines Slugs? (a) beim read aus dem File-Shape (tasks[]→epic, phases[]→task) + create bekommt einen expliziten tier-Param der das Shape seedet; (b) ein persistentes `tier`-Feld im File; (c) Slug-/Pfad-Konvention (_epic.yml vs <slug>.yml). Empfehlung: (a) — File-Shape ist die SSOT, create seedet sie."
+    priority: high
+    origin: dogfood
+    status: resolved
+    source: user
+    answer: "File-Shape als SSOT: read leitet Tier aus tasks[]/phases[] ab; create bekommt einen expliziten tier-Param, der das Shape seedet (epic→tasks:[], status planning)."
+  - id: q2
+    text: "F8 Hook-Verhalten: hart deny oder warn+confirm? Scope nur `.claude/tasks/**/*.yml` (+ _epic.yml)? UND: gilt der Hook auch für die MAIN-Session (die in der Plan-/Design-Phase manuell editiert, wie wir gerade) oder nur für Subagents/Build-Betrieb? (Manuelles Editieren in der Planung soll möglich bleiben.)"
+    priority: high
+    origin: dogfood
+    status: resolved
+    source: user
+    answer: Hook nur im Build-/Agent-Kontext (Subagents/Build-Betrieb) hart deny auf .claude/tasks/**/*.yml + _epic.yml; Main-Session-Planung bleibt frei.
+  - id: q3
+    text: "F2 context vs log: die Prosa-Trails (plan/refine/build-Notes, Gate-Rollups) — offiziell in context.plan/refine/build befüllen (set-field dotted-path), ODER bewusst auf das log[] umstellen + wrap/Doku angleichen? (Aktuell landet alles im log, context bleibt leer.)"
+    priority: medium
+    origin: dogfood
+    status: resolved
+    source: user
+    answer: context.plan/refine/build via set-field (dotted-path) befüllen wie v1; log[] bleibt das append-only PM-Notizbuch.
+  - id: q4
+    text: "F11 Workflow-Architektur: den Engine-workflowLoop (loop-workflow.ts) behalten (headless-Pfad) ODER entfernen und den Fan-out ganz in die build-Skill verlagern (Workflow-Tool), analog zum sequential-Loop? Eins ist redundant."
+    priority: medium
+    origin: dogfood
+    status: resolved
+    source: user
+    answer: Workflow-Fan-out ganz in die build-Skill (Workflow-Tool), konsistent mit dem sequential-Loop; Engine-workflowLoop entfernen/auf Referenz reduzieren.
+  - id: q5
+    text: "F12 Walk-Style: Default bestätigen — high-user als Default-Vorschlag? Genaue Optionstexte/Reihenfolge in der AskUserQuestion? Soll bei 0 Fragen still übersprungen werden (ja)?"
+    priority: medium
+    origin: dogfood
+    status: resolved
+    source: ai
+    answer: "Walk-Style-Optionen: all-together / high-together (Default) / AI-all; high-user = Default-Vorschlag; bei 0 offenen Fragen still überspringen. (Empfehlung — User kann überstimmen.)"
+    reasoning: "Dogfood-Fix-Planung 2026-06-11: sinnvoller Default, bewährt bzw. minimal-invasiv; vom User überstimmbar."
+  - id: q6
+    text: "F3 created-Feld: via injizierte clock-Naht beim create setzen (bin liefert echte Zeit), ODER aus dem Schema/der Erwartung nehmen? (Date.now ist im Engine-Code verboten.)"
+    priority: low
+    origin: dogfood
+    status: resolved
+    source: ai
+    answer: created beim create via injizierte clock-Naht setzen (bin liefert echte Zeit, kein Date.now im Engine-Code); Feld bleibt im Schema. (Empfehlung.)
+    reasoning: "Dogfood-Fix-Planung 2026-06-11: sinnvoller Default, bewährt bzw. minimal-invasiv; vom User überstimmbar."
+tasks:
+  - slug: enforcement-hook
+    goal: "F8 (HOCH): PreToolUse-Hook im Plugin, der Write/Edit auf Task-Files (.claude/tasks/**/*.yml + _epic.yml) blockt → CLI-only strukturell erzwungen. Hook in plugin/hooks/ + plugin.json-Registrierung. Scope/Verhalten siehe q2."
+    status: pending
+    depends_on: []
+  - slug: redo-loop-verbs
+    goal: "F9 (HOCH): node-ops setFailures(node,phase,ac,failures[]) (flippt AC pending+failures, Evidence als History) + setAcStatus exponieren; CLI-Verben set-failures + set-ac-status; agent-contract + build-Skill + Validatoren darauf verdrahten → Re-Do-Loop funktioniert."
+    status: pending
+    depends_on: []
+  - slug: epic-tier-cli
+    goal: "F13 (HOCH) + F14: Epic-Tier durch die CLI fahrbar machen — create bekommt expliziten tier-Param (seedet epic-Shape tasks:[]/epic-Deskriptor/status planning), planCommand reicht tier durch; tierForSlug real ableiten (File-Shape, s. q1); read bestimmt Tier aus File-Inhalt; Slug-Trailing-Dash-Fix (slice→strip-Reihenfolge); Duplikat-Nodes in anchored-test aufräumen."
+    status: pending
+    depends_on: []
+  - slug: decision-trail
+    goal: "F7 + F10: resolve-question bekommt reasoning-Arg + Invariante (source=ai ⇒ reasoning); build-Skill spawnt stop-check für self-reported Decisions + dokumentiert proceed-Decisions (append-log decision / resolve-question), stop→walk; build-implement schreibt build-notes mit at=build."
+    status: pending
+    depends_on: []
+  - slug: walk-style
+    goal: "F12 + F5: refine-Skill (+ build-pre-walk) bietet vor dem Q&A-Walk die Walk-Style-Wahl (all-AI / all-user / high-user, ephemer); rules-check-Coverage-Gaps werden zu auto-fix (add-ac) statt User-Frage — User-Fragen nur für Architektur/Code."
+    status: pending
+    depends_on: []
+  - slug: phase-rules
+    goal: "F1: node-ops + facade + CLI-Verb set-phase-rules <task> <phase> <path> <why> (append); plan-decompose + refine darauf verdrahten, sodass Phasen ein echtes rules-Feld tragen (statt nur im log)."
+    status: pending
+    depends_on: []
+  - slug: workflow-skill-path
+    goal: "F11: Workflow-Fan-out in die build-Skill verdrahten (Workflow-Tool, not-yet-evidenced Units parallel, collect via Task-File-Evidence, Gates einmal über merged) + Live-Test (eine Phase executor=workflow); Engine-workflowLoop-Redundanz entscheiden (q4)."
+    status: pending
+    depends_on:
+      - redo-loop-verbs
+  - slug: context-polish
+    goal: "F2 + F3 + F4 + F6: context-Felder-Entscheidung umsetzen (q3); created-Feld (q6); node list-phases-Convenience-Verb (oder Doku auf read festlegen); refine-Trigger-Quirk (Unknown command) beobachten/klären."
+    status: pending
+    depends_on: []
+log:
+  - at: dogfood-fixings
+    kind: decision
+    note: "Epic angelegt aus den 14 Dogfood-Findings (.claude/temp/dogfood-findings.md). 8 Tasks, gruppiert nach Thema+Severity. 3 HOCH zuerst: enforcement-hook (F8), redo-loop-verbs (F9), epic-tier-cli (F13/F14). Manuell geschrieben, weil der Epic-Tier durch die CLI selbst noch kaputt ist (F13) — Henne-Ei: epic-tier-cli muss früh gefixt werden, damit dieser Epic später via /a:build autonom laufen kann."
+  - at: dogfood-fixings
+    kind: decision
+    note: "Offene Fragen geklärt (2026-06-11): q1 Tier aus File-Shape+expliziter create-tier-Param · q2 Hook nur Build/Agent-Kontext · q3 context.* befüllen (v1-Stil) · q4 Workflow ganz in die Skill (Engine-loop weg) · q5 Walk-Style high-user-Default · q6 created via clock-Naht. q1-q4 User, q5/q6 AI-Empfehlung (überstimmbar)."
