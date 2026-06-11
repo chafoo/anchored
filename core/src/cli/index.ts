@@ -65,11 +65,46 @@ function emit(
   return ok ? 0 : 1
 }
 
+const VERSION = '0.0.0'
+const HELP = `anchored — fractal task lifecycle (plan→refine→build→wrap), CLI-only.
+
+Usage: anchored <command> [args]
+
+Stage commands (return the orchestration plan for the in-session skill):
+  plan [epic|task|phase] <description>   create a node + plan-stage steps
+  refine <slug>                          refine-stage plan (plan-check, rules-check, walk)
+  build  <slug>                          build-stage plan (loop / implement + gates)
+  wrap   <slug>                          wrap-stage plan (review/summarize | roll-up)
+  steps  <tier> <stage>                  resolved step plan for a tier/stage
+
+Node ops (agents self-write via these):
+  node read <slug>
+  node set-status <slug> <status>            node add-question <slug> <text> [priority]
+  node add-phase <slug> <phase> <name>       node resolve-question <slug> <id> <answer> [src]
+  node add-ac <slug> <phase> <text>          node append-log <slug> <at> <kind> <note>
+  node add-phase-evidence <slug> <phase> <ac> <text>
+  node set-child-status <slug> <child> <status>
+  node add-child <slug> <child>              node next-child <slug>
+  node set-field <slug> <field> <value>      node set-executor <slug> <phase> <implement|workflow>
+
+  -h, --help        show this help
+  -v, --version     print the version
+
+All commands emit a JSON envelope { ok, command, result|error }. No MCP.`
+
 export function createCli(deps: CliDeps) {
   return {
     async run(argv: string[]): Promise<number> {
       const verb = argv[0] ?? ''
       const rest = argv.slice(1)
+      if (verb === 'help' || verb === '--help' || verb === '-h' || verb === '') {
+        deps.out(HELP)
+        return 0
+      }
+      if (verb === 'version' || verb === '--version' || verb === '-v') {
+        deps.out(`anchored ${VERSION}`)
+        return 0
+      }
       try {
         let result: unknown
         switch (verb) {
