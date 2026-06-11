@@ -1,26 +1,47 @@
 ---
 name: refine
-description: Validate a drafted plan against current code + rules and walk the open questions before build. Triggers ONLY on the explicit `/a:refine <slug>` command. Runs plan-check + rules-check + the question-walk via the `anchored` CLI. Use for `/a:refine`, not for general code review.
+description: Validate a drafted plan against current code + rules and walk the open questions before build, orchestrating the refine agents in-session. Triggers ONLY on the explicit `/a:refine <slug>` command. Use for `/a:refine`, not for general code review.
 ---
 
-# /a:refine — fractal refine stage
+# /a:refine — fractal refine stage (skill-orchestrated)
 
 Explicit-only: the user typed `/a:refine <slug>`.
 
-## Pre-flight
+The skill is the **orchestrator**: it consults the `anchored` CLI for the
+step-plan + node ops and spawns the refine agents itself via the **Task tool**
+(agents self-write via `anchored node …`, see
+`plugin/references/agent-contract.md`). The CLI never spawns.
 
-- Load `anchored.yml`. Resolve the `<slug>` to a task/epic node.
-- State gate: refine expects a `drafted` node; the CLI reports if the status is wrong.
+## Pre-flight + plan
 
-## Run (CLI-only, via Bash)
+1. `anchored refine <slug>` → `{ stage, tier, node, steps }` (tier derived from the
+   node; does NOT spawn). State gate: refine expects `drafted`.
+2. `steps` is the resolved refine pipeline: for a task
+   `[plan-check, rules-check, walk]`, for an epic `[walk]`.
 
-The tier is **derived from the node** — the only argument is the slug. The refine
-stage runs entirely through the `anchored` CLI (no MCP, no raw node-file edit):
+## Spawn each step's agent (Task tool, in order)
 
-```bash
-anchored refine <slug>
-```
+- **plan-check → refine-plan-check** — validates the plan against current code
+  (stale paths, unacknowledged handlers, hidden defaults); self-writes the rollup:
+  `anchored node append-log <slug> refine learning "<plan-check rollup>"`. Any
+  drift it can't auto-fix becomes an open question.
+- **rules-check → refine-rules-check** — verifies each phase covers the applicable
+  `.claude/rules/*.md`; self-writes the coverage rollup via `append-log`; missing
+  rules → open questions.
+- **walk** — the consolidated Q&A walk over every open question
+  (`anchored node read <slug>` → the `questions[]` array). Ask the user the
+  high-priority ones (respect the step's `involve` level), let the AI decide the
+  rest with reasoning. Resolve each:
+  `anchored node resolve-question <slug> <id> "<answer>" <user|ai>`.
 
-This drives `plan-check → rules-check → walk` (the question-walk respects the
-stage's `involve` level). The CLI emits a JSON envelope; relay what was resolved
-and what stays open. After refine, the node is `refined` and ready for `/a:build`.
+## Failure-handling
+
+If a gate agent errors, surface it and stay at `drafted` (do not flip). If the
+user aborts the walk, already-resolved questions persist; re-running `/a:refine`
+walks only the still-open ones.
+
+## Finish
+
+Only when **every** question is resolved: `anchored node set-status <slug>
+refined`. Tell the user: *"Plan refined — N+M auto-fixes, K Fragen geklärt. Run
+`/a:build`."* No MCP, no raw node-file edit.

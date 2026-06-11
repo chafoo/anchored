@@ -1,47 +1,65 @@
 ---
 name: plan
-description: Brainstorm a raw task description into a drafted plan with phases + testable acceptance criteria. Triggers ONLY on the explicit `/a:plan <epic|task|phase>? <description>` command. Decomposes the work and surfaces open questions via the `anchored` CLI; classifies the tier when it is omitted. Use for `/a:plan`, not for general planning chatter.
+description: Brainstorm a raw task description into a drafted plan with phases + testable acceptance criteria by orchestrating the plan agents in-session. Triggers ONLY on the explicit `/a:plan <epic|task|phase>? <description>` command. Decomposes the work and surfaces open questions; classifies the tier when omitted. Use for `/a:plan`, not for general planning chatter.
 ---
 
-# /a:plan — fractal plan stage
+# /a:plan — fractal plan stage (skill-orchestrated)
 
-Explicit-only: the user typed `/a:plan …`. Don't second-guess whether they meant
-it — they did.
+Explicit-only: the user typed `/a:plan <tier?> <description>`.
 
-## Pre-flight
+The skill is the **orchestrator**: it consults the `anchored` CLI for the
+step-plan + node ops and spawns each plan agent itself via the **Task tool**. The
+agents self-write phases/ACs via `anchored node …` (see
+`plugin/references/agent-contract.md`). The CLI never spawns agents — a headless
+subprocess can't reach the session's Task tool.
 
-- Load `anchored.yml` from the project root. If it's missing, lazy-init a minimal
-  one (schema directive + a pointer to the shipped default reference). Add
-  `Bash(anchored *)` to `.claude/settings.local.json` so the CLI runs without a
-  prompt.
-- Derive a slug from the input — kebab-case, short; nested `<epic>/<slug>` when
-  planning under an existing epic.
+## Classify the tier (when omitted)
 
-## Run (CLI-only, via Bash)
+If the user gave an explicit `epic|task|phase`, use it. Otherwise probe the scope
+and apply the tripwire (fractal-redesign Item 1): `<5` phases → `task`, `5–9` →
+independence test (does each unit need its own plan→refine→build→wrap?), `≥10` →
+`epic`. Surface the recommendation, confirm via `AskUserQuestion`, then proceed.
+This routing lives only in the skill — no `classify` step, no `classify` agent.
 
-The plan stage runs **entirely through the `anchored` CLI** — never MCP, never a
-raw Write/Edit on the task-file. The CLI emits a JSON envelope; relay the result.
+## Get the orchestration plan + create the node
 
 ```bash
-anchored plan <tier?> <input>
+anchored plan <tier> "<description>"   # → { tier, node, steps }   (creates the node, does NOT spawn)
 ```
 
-- With an explicit tier (`epic` | `task` | `phase`): runs directly.
-- Without a tier: **classify-routing** picks one (below), then runs.
+(A missing `anchored.yml` is fine — the CLI lazy-inits a minimal one + the
+`Bash(anchored *)` allowlist on first use.) `steps` is the resolved plan-stage
+pipeline: for a task `[discover, rules-scan, decompose]`, for an epic
+`[discover, scaffold]`.
 
-## classify-routing — ephemeral skill logic (NOT a persisted step, NOT an agent)
+## Spawn each step's agent (Task tool, in order)
 
-This routing lives **only in this skill**: it writes no `classify` step into the
-task-file and spawns no `classify` agent. It runs **only when the tier argument is
-missing**. `discover` probes the codebase, then the thresholds
-(fractal-redesign-notes.md):
+For each worker step in `steps`, spawn its `agent` via the Task tool with the
+agent-contract input `{ task-slug: <node.slug>, tier, stage: plan, context, rules,
+instructions }`:
 
-- **`<5` phases → `task`**
-- **`5–9` → independence test** (does each unit need its own
-  plan→refine→build→wrap?) → `task` or `epic`
-- **`≥10` → `epic`**
+- **discover → plan-discover** — scans the codebase; self-writes findings:
+  `anchored node append-log <slug> plan learning "<affected paths / patterns>"`.
+- **rules-scan → plan-rules-scan** — collects applicable `.claude/rules/`:
+  `anchored node append-log <slug> plan learning "<relevant rules>"`.
+- **decompose → plan-decompose** (task) — writes phases + testable ACs:
+  `anchored node add-phase <slug> <phase-slug> "<name>"` then
+  `anchored node add-ac <slug> <phase-slug> "<testable AC>"` (id auto-assigned).
+- **scaffold → epic-scaffold** (epic) — coarse task stubs:
+  `anchored node add-child <slug> <task-stub-slug>` (DAG via depends_on).
 
-Surface the recommendation, confirm with the user (`AskUserQuestion`), then run
-`anchored plan <chosen-tier> <input>` via Bash.
+Surface generously: any ambiguity the decompose agent hits becomes an open
+question (`anchored node add-question <slug> "<q>" high`), NOT a silent decision —
+`/a:refine` walks them.
 
-Exit with the open questions still open — `/a:refine` walks them next.
+## Failure-handling
+
+If an agent returns nothing or errors, do NOT flip to drafted — surface what
+failed and let the user re-run; a half-decomposed plan is worse than a clear
+failure. Only flip when the structure is actually written.
+
+## Finish
+
+`anchored node set-status <slug> drafted`. Tell the user: *"Plan steht — N Phasen,
+M ACs, K offene Fragen. Run `/a:refine` als nächstes."* No MCP, no raw node-file
+edit.

@@ -47,6 +47,9 @@ export async function planCommand(args: string[], deps: CliDeps): Promise<unknow
   }
 
   const node = await deps.nodeOps.create(slugFromInput(input), { title: input })
-  const r = await deps.engine.run(tier, node)
-  return { tier, ...(reasoning !== undefined ? { reasoning } : {}), status: r.status, node: r.node }
+  // skill-orchestrated: return the node + the resolved plan-stage steps for the
+  // in-session skill to execute (spawn discover/rules-scan/decompose). No engine
+  // spawn here — the headless CLI can't reach the session's Task tool.
+  const steps = deps.steps ? deps.steps(tier, 'plan').steps : []
+  return { tier, ...(reasoning !== undefined ? { reasoning } : {}), node, steps }
 }

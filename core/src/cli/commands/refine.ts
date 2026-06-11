@@ -1,6 +1,10 @@
-// cli/commands/refine.ts — `anchored refine <slug>`. Loads the node via nodeOps,
-// derives its tier, runs the engine once. runStage is the shared helper for the
-// three slug-only stage verbs (refine/build/wrap).
+// cli/commands/refine.ts — `anchored refine|build|wrap <slug>`. Returns the
+// ORCHESTRATION PLAN for the stage (the node + the resolved, config-driven steps)
+// for the in-session SKILL to execute. The CLI does NOT spawn agents here — a
+// headless subprocess can't reach the session's Task tool, so spawning is the
+// skill's job (skill-orchestrated runtime). The deterministic engine stays wired +
+// tested for a future headless path, but it is not the skill path. runStage is the
+// shared helper for the three slug-only stage verbs (refine/build/wrap).
 import { cliError, type CliDeps } from '../index.js'
 
 export async function runStage(stage: string, args: string[], deps: CliDeps): Promise<unknown> {
@@ -8,14 +12,8 @@ export async function runStage(stage: string, args: string[], deps: CliDeps): Pr
   if (slug === undefined) throw cliError('MissingArgument', 'missing argument: slug')
   const node = await deps.nodeOps.read(slug)
   const tier = deps.tierFor(node)
-  const r = await deps.engine.run(tier, node)
-  return {
-    stage,
-    tier,
-    status: r.status,
-    node: r.node,
-    ...(r.evidence ? { evidence: r.evidence } : {}),
-  }
+  const steps = deps.steps ? deps.steps(tier, stage).steps : []
+  return { stage, tier, node, steps }
 }
 
 export async function refineCommand(args: string[], deps: CliDeps): Promise<unknown> {

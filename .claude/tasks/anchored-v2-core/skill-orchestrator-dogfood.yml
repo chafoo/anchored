@@ -101,7 +101,7 @@ phases:
           - npm link in core/ → /Users/jack/.nvm/versions/node/v24.8.0/bin/anchored; anchored steps task plan ok aus tmp-cwd; bun test 160 pass/0 fail, lint+format+typecheck+build grün
   - name: 13 Agent-Docs auf reale CLI-Verben angleichen + Spawn-Input-Vertrag
     slug: agents-reconcile
-    status: in-progress
+    status: done
     context: |
       ZUERST (vor skills-orchestrate): der Agent-Vertrag muss stehen, bevor die Skill
       ihn aufruft. Zwei Teile:
@@ -133,16 +133,22 @@ phases:
     acceptance_criteria:
       - id: a1
         text: "Bestandsaufnahme: pro Agent die aufgerufenen `anchored node …`-Verben + Args den real verfügbaren CLI-Verben (node.ts switch) gegenübergestellt; ALLE Mismatches gelistet (plan-check-Basis: build-implement add-evidence→add-phase-evidence + set-status→set-child-status; wrap-summarize set-field-nested; plan-decompose stale-OPEN-Note). Beweis: eine Mismatch-Tabelle (Agent → falsches Verb/Sig → korrektes Verb/Sig), die mind. diese 3 abdeckt."
-        status: pending
+        status: done
+        evidence:
+          - "Mismatch-Tabelle: grep-Survey aller 13 Agents (anchored node-Aufrufe) → 3 echte Mismatches (build-implement add-evidence→add-phase-evidence + set-status→set-child-status; wrap-summarize set-field-nested; plan-decompose stale OPEN-Note); übrige 10 (add-child/append-log/add-ac/epic set-status) bestätigt korrekt"
       - id: a2
         text: "Alle Agent-Docs angeglichen: build-implement nutzt add-phase-evidence + set-child-status, wrap-summarize schreibt context.wrap korrekt (dotted-path-Op oder eigene Op — Mechanismus-Entscheidung dokumentiert), plan-decompose stale-Note gelöscht; alle übrigen bestätigt korrekt. Beweis: grep über plugin/agents/*.md zeigt nur real existierende Verben/Signaturen; ein Trockenlauf jedes self-write-Befehls gegen die CLI gibt ok:true. PRECONDITION: Trockenlauf NICHT aus dem anchored-v2-Repo-cwd (Root-anchored.yml crasht Bootstrap, s. log) — aus clean tmp-dir laufen."
-        status: pending
+        status: done
+        evidence:
+          - "Fixes: build-implement.md nutzt add-phase-evidence+set-child-status (grep zeigt nur reale Verben); plan-decompose stale-Note gelöscht (grep -c=0); context.wrap-Mechanismus = dotted-path set-field (core/src/ops/node-ops.ts setNested + setField, node-ops.spec dotted-path-Test grün, CLI-Smoke context.wrap nested + plan erhalten); Trockenlauf add-phase-evidence/set-child-status gegen echte CLI ok:true; bun test 161 pass"
       - id: a3
         text: "Der Spawn-Input-Vertrag ist explizit dokumentiert + von beiden Seiten referenziert: die Skill reicht { task-slug, phase-slug, tier, stage, context, rules, self-write-Befehle } durch; jeder Agent-Doc nennt am Kopf, welche Felder er erwartet + welche `anchored node`-Befehle er ausführt; Phasen werden über TASK-slug+phase-slug adressiert (nicht als Standalone-Node). Beweis: ein Vertrag-Abschnitt (references/-Datei oder pro Agent-Kopf) + Quer-Check, dass plugin/skills die gleichen Felder spawnen, die plugin/agents erwarten."
-        status: pending
+        status: done
+        evidence:
+          - "Spawn-Input-Vertrag: plugin/references/agent-contract.md (Input-Felder task-slug/phase-slug/tier/stage/context/rules + self-write-Tabelle pro Rolle + Phasen-Adressierung task-slug+phase-slug); von build-implement.md referenziert (grep -c=1)"
   - name: Die 4 Skills zu Orchestratoren umschreiben
     slug: skills-orchestrate
-    status: pending
+    status: in-progress
     context: |
       Die SKILL.md-Bodies von /a:plan /a:refine /a:build /a:wrap von „dünner Relay"
       (`anchored <stage>` aufrufen + JSON zeigen) auf ORCHESTRATOR umschreiben: pro

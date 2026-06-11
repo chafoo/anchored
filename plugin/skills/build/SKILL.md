@@ -1,54 +1,92 @@
 ---
 name: build
-description: Execute the build stage of an anchored node — iterate its children to completion with the failures-driven re-do loop. Triggers ONLY on the explicit `/a:build <slug>` command. Runs the fractal build via the `anchored` CLI. Use for `/a:build`, not for general "build the app" requests.
+description: Execute the build stage of an anchored node — orchestrate its children to completion in-session, spawning the build agents and driving the failures-driven re-do loop. Triggers ONLY on the explicit `/a:build <slug>` command. Use for `/a:build`, not for general "build the app" requests.
 ---
 
-# /a:build — fractal build stage
+# /a:build — fractal build stage (skill-orchestrated)
 
 Explicit-only: the user typed `/a:build <slug>`.
 
+The skill is the **orchestrator**: it runs in-session (it has the plugin + agents
+loaded), consults the `anchored` CLI for the deterministic step-plan + all node
+ops, and spawns each worker itself via the **Task tool**. The CLI never spawns
+agents — a headless subprocess can't reach the session's Task tool. Agents
+self-write their results via `anchored node …` (see
+`plugin/references/agent-contract.md`).
+
 ## Pre-flight
 
-- Load `anchored.yml`. Resolve the `<slug>` to a node; the **tier is derived from
-  the node** (the only argument is the slug).
-- State gate: build expects a `refined` node (the CLI warns + asks once if you skip
-  refine).
+1. `anchored node read <slug>` — the **tier is derived from the node**. (A
+   missing `anchored.yml` is fine — the CLI falls back to the framework defaults;
+   it lazy-inits a minimal one + the `Bash(anchored *)` allowlist on first use.)
+2. State gate: `refined` → flip up front `anchored node set-status <slug> build`
+   (so the terminal `build → wrap` is legal); `build` → resume directly; `plan`/
+   `drafted` → tell the user to run `/a:plan` + `/a:refine` first; `wrap`/`done`
+   → already past build.
 
-## Run (CLI-only, via Bash)
+## Get the orchestration plan
 
 ```bash
-anchored build <slug>
+anchored build <slug>      # → { stage, tier, node, steps }   (does NOT spawn)
 ```
 
-## Fractal build semantics
+`steps` is the resolved, config-driven plan. For a **looping tier** it is a single
+`{ kind: 'loop', each: <child-tier>, stop, retry_limit }` — that is the recursion
+edge you drive below. For a **leaf phase** it is the worker pipeline
+(`implement → task-validate → code-validate`).
 
-The CLI runs the build deterministically — this is what happens behind it:
+## Drive the loop (task.build.each: phase / epic.build.each: task)
 
-- **Leaf (`phase`)**: `build` has no `each`, so it runs once — `implement`, then the
-  `task-validate` + `code-validate` gates.
-- **Looping tiers (`task.build.each: phase`, `epic.build.each: task`)**: the loop
-  runs each child's body **interleaved** (child A fully, then child B), recursing
-  into the child tier. The DAG (`next-child`) picks the next runnable child.
-- **`stop` + `retry_limit`** are properties of a looping `build`: a failing child is
-  re-run up to `retry_limit` (default 3); a `stop`-condition match halts the loop and
-  escalates. These hold on every looping tier.
+While `anchored node next-child <slug>` returns a child (else done):
 
-The CLI emits a JSON envelope; relay per-child status + evidence. No MCP, no raw
-node-file edit.
+1. **Mark in-progress:** `anchored node set-child-status <slug> <child> in-progress`.
+2. **Per-child body:**
+   - **task → phase** (leaf): `anchored steps phase build` gives
+     `[implement, task-validate, code-validate]`. Spawn **build-implement** via the
+     Task tool with the agent-contract input `{ task-slug: <slug>, phase-slug:
+     <child>, tier: phase, stage: build, context, rules }`. It writes code +
+     self-writes evidence: `anchored node add-phase-evidence <slug> <child> <ac-id>
+     "<proof>"` per AC. Then spawn the two gates **in parallel** (build-task-validate
+     + build-code-validate) — pure inspectors.
+   - **epic → task**: recurse the child task through plan→refine→build→wrap (JIT —
+     a stub becomes a real task-file at its task.plan). Use `/a:plan`-style
+     orchestration per task.
+3. **Gates + failures (the re-do loop):** read the child back
+   (`anchored node read <slug>`). If a gate rejected an AC it carries `failures`:
+   re-spawn build-implement with those failures as the fix-list, re-run the gates.
+   Retry up to `retry_limit` (default 3).
+4. **Advance:** when all the child's ACs are `done` (with evidence) and both gates
+   pass → `anchored node set-child-status <slug> <child> done`.
+
+## Failure-handling (never silent — a5)
+
+- **Agent returns nothing / errors** → treat as a failed AC: record it as a
+  `failures` entry and retry (counts toward `retry_limit`).
+- **retry_limit exhausted** → `anchored node set-child-status <slug> <child>
+  blocked`, note what was tried in `anchored node append-log <slug> build blocker
+  "<phase> blocked after N attempts: <ACs>"`, then continue with the next child
+  (the wrap reviewer surfaces blocked phases). Retry-exhaustion is a bounded
+  mechanical limit, NOT a stop.
+- **stop-condition** (a worker flags a decision matching a `build.stop` rule, e.g.
+  *"a decision deviates from the plan"*) → **halt** the loop, record the decision
+  `anchored node append-log <slug> build decision "STOP: <decision>"`, surface it to
+  the user, and walk it before continuing. Minimise stops — proceed-and-document
+  within-plan calls; stop only on a genuine deviation.
 
 ## Workflow mode (fan-out) — allowlist precondition
 
-When a looping `build` runs in **workflow mode** (`build.mode: workflow`, opt-in;
-phases marked `executor: workflow` via `anchored node set-executor <slug> <phase>
-workflow`), the loop fans the children out as a **background** Claude-Code workflow
-(≤16 parallel) instead of running them interleaved. Each unit does its work and
-self-writes its evidence/failures via the `anchored` CLI; the loop then collects
-that state back from the task-file (evidence-driven, resume-safe) and runs the
-wrap-gates **once** over the merged result.
+When a phase carries `executor: workflow` (set via `anchored node set-executor
+<slug> <phase> workflow`) and the `Workflow` tool is available, the children fan
+out as a background workflow (≤16 parallel); each unit self-writes evidence/
+failures via the CLI; the gates run **once** over the merged result. **Hard
+precondition: `Bash(anchored *)` must be pre-approved on the allowlist** — a
+background workflow has no interactive session, so an un-allowlisted `anchored`
+call hangs. If unavailable, fall back to the sequential implement path (never
+hard-error).
 
-**Hard precondition: `Bash(anchored *)` must be pre-approved on the allowlist.**
-A background workflow has no interactive session, so an un-allowlisted `anchored`
-call **hangs on the permission prompt** — the units can never self-write and the
-collect stalls. Before starting a workflow-mode build, ensure the project's
-settings allowlist `Bash(anchored *)` (the lazy-init in `/a:plan` seeds this). If
-it is missing, surface it as a known failure condition and do not dispatch.
+## Termination
+
+When `next-child` returns null and at least one child is `done` (none
+in-progress): `anchored node set-status <slug> wrap`. Tell the user: *"Build
+durch. P done / Q blocked. Status: wrap. Run `/a:wrap`."* No MCP, no raw
+node-file edit — every mutation goes through the `anchored` CLI.
