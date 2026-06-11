@@ -24,8 +24,13 @@ its phase-ACs (with evidence) cover each stub outcome-AC. Then check each
 `epic.acceptance` (the epic-level DoD) is met.
 
 Per resolved q7 this is **hard with a reconcile seam**:
-- **Satisfied** stub-AC → mark it done WITH evidence pointing at the delivering
-  phase-AC: `anchored node add-phase-evidence <epic-slug> <task-stub-slug> <ac-id> "<task>/<phase> <ac> — delivered"`.
+- **Satisfied** stub-AC → mark it done. The evidence is a **contract pointer in the
+  prescribed provenance form FIRST** (H8) — `<task>/<phase> <ac> — delivered` — not a
+  second code audit; a `file:line` may follow as supporting detail, but the provenance
+  pointer leads: `anchored node add-phase-evidence <epic-slug> <task-stub-slug> <ac-id> "core-list/persistence a1 — delivered (app.js saveTasks)"`.
+- **Epic-level integration AC** (the node's OWN `acceptance`, H7) → validate each
+  across the composed tasks. Met → `anchored node set-acceptance-status <epic-slug>
+  <e-id> done`; a gap → the same reconcile question as a stub-AC.
 - **Gap** (a stub outcome-AC NOT covered by the built task) → do **NOT** pass it.
   Surface it as a question so the user reconciles — (a) it IS met, here's why →
   resolve; (b) re-open the task; (c) the AC was too strict → revise:

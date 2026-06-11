@@ -218,6 +218,31 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       })
     },
 
+    // H7: the node's OWN acceptance[] — the epic/project-tier integration DoD (NOT a
+    // child's acceptance_criteria). epic-decompose authors a whole-epic integration
+    // AC here; the roll-up validates + flips it. Auto-ids e1, e2, … (status pending).
+    async addAcceptance(node: AnyNode, text: string): Promise<AnyNode> {
+      const items = (node.acceptance as { id: string }[] | undefined) ?? []
+      const max = items.reduce((m, a) => {
+        const n = /^e(\d+)$/.exec(a.id)
+        return n ? Math.max(m, Number(n[1])) : m
+      }, 0)
+      return persist({
+        ...node,
+        acceptance: [...items, { id: `e${max + 1}`, text, status: 'pending' }],
+      })
+    },
+
+    async setAcceptanceStatus(node: AnyNode, id: string, status: string): Promise<AnyNode> {
+      const items = (node.acceptance as { id: string }[] | undefined) ?? []
+      if (!items.some((a) => a.id === id))
+        throw anchoredError('UnknownAcceptance', `no acceptance item '${id}'`)
+      return persist({
+        ...node,
+        acceptance: items.map((a) => (a.id === id ? { ...a, status } : a)),
+      })
+    },
+
     // phase-scoped evidence: the write a phase-worker makes (the leaf has no own
     // file). Adds evidence to a CHILD phase's AC and flips it done atomically —
     // the same invariant as addEvidence, one tier down.

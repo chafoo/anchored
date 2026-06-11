@@ -213,3 +213,23 @@ test('H5: set-field normalizes literal backslash-n in a context trail', async ()
   )
   expect(files.get('t/h5.yml')!).toMatch(/wrap: [|>]/) // rendered as a block scalar
 })
+
+// H7 — the node's own acceptance[] (epic integration DoD): add-acceptance appends an
+// item (auto-id e1, e2), set-acceptance-status flips it.
+test('H7: add-acceptance + set-acceptance-status on an epic integration AC', async () => {
+  const { cli, last } = harness()
+  await cli.run(['plan', 'epic', 'h7'])
+  await cli.run([
+    'node',
+    'add-acceptance',
+    'h7',
+    'core-list and clear-completed stay in sync after a clear',
+  ])
+  await cli.run(['node', 'read', 'h7'])
+  const acc = (last().result as { acceptance?: { id: string; status: string }[] }).acceptance!
+  expect(acc[0]?.id).toBe('e1')
+  expect(acc[0]?.status).toBe('pending')
+  await cli.run(['node', 'set-acceptance-status', 'h7', 'e1', 'done'])
+  await cli.run(['node', 'read', 'h7'])
+  expect((last().result as { acceptance: { status: string }[] }).acceptance[0]?.status).toBe('done')
+})

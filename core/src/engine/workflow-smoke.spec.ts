@@ -337,6 +337,24 @@ test('G3/G5: explicit epic each:task loop + no stale epic transition words', () 
   }
 })
 
+// H7/H8 — epic-decompose authors an epic-level integration AC + keeps outcome-ACs
+// mechanism-free; epic-roll-up uses the provenance form + validates epic.acceptance.
+test('H7/H8: epic-decompose + epic-roll-up quality', () => {
+  const dec = readFileSync(
+    new URL('../../../plugin/agents/epic-decompose.md', import.meta.url),
+    'utf8',
+  )
+  expect(dec).toContain('add-acceptance') // authors the epic integration AC (H7)
+  expect(dec.toLowerCase()).toContain('mechanism-free') // H8 guidance
+  expect(dec.toLowerCase()).toContain('integration ac') // the >1-task-with-dependency rule
+  const roll = readFileSync(
+    new URL('../../../plugin/agents/epic-roll-up.md', import.meta.url),
+    'utf8',
+  )
+  expect(roll).toContain('provenance form FIRST') // H8 — provenance pointer leads
+  expect(roll).toContain('set-acceptance-status') // validates the epic integration AC
+})
+
 // D2 — the epic-refine pipeline's new agents exist as plugin files and document
 // their contract (epic-plan-check grounds vs code; epic-decompose authors per-stub
 // outcome-ACs; epic-roll-up validates them hard-with-reconcile).

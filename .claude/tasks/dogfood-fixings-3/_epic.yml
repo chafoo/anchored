@@ -48,7 +48,7 @@ acceptance:
     status: pending
   - id: e7
     text: "Epic-decompose autort ≥1 epic-eigene Integrations-Acceptance, wenn ein Epic >1 Task mit Abhängigkeits-Kante hat (Roll-up prüft das Ganze, nicht nur die Summe); Outcome-ACs bleiben mechanismus-frei (kein textContent/innerHTML im Stub-AC); Roll-up nutzt das Provenienz-Format <task>/<phase> — delivered (H7/H8)"
-    status: pending
+    status: done
   - id: e8
     text: "Nächster Dogfood-Rerun bestätigt live: Partner-Stimme (kein Mechanik-Erklären, keine Abkürzungen) + Epic-weite Frage-Policy + die Politur-Fixes greifen end-to-end"
     status: pending
@@ -175,7 +175,7 @@ tasks:
       verschärfen + ein Negativ-Beispiel. (c) epic-roll-up nutzt das vorgeschriebene
       Provenienz-Format "<task>/<phase> <ac> — delivered" statt roher file:line.
       + Grep-Test.
-    status: pending
+    status: done
     depends_on: []
   - slug: evidence-symbol-anchors
     goal: |

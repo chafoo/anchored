@@ -77,6 +77,12 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
     case 'add-ac':
       // add-ac <slug> <phase> <text> — id auto-assigned (a1, a2, …)
       return ops.addAc(need(0, 'slug'), need(1, 'phase'), { text: need(2, 'text') })
+    case 'add-acceptance':
+      // H7: append an epic/project-tier integration acceptance item (node's OWN
+      // acceptance[], NOT a child AC) — id auto-assigned e1, e2, …
+      return ops.addAcceptance(need(0, 'slug'), need(1, 'text'))
+    case 'set-acceptance-status':
+      return ops.setAcceptanceStatus(need(0, 'slug'), need(1, 'id'), need(2, 'status'))
     case 'add-phase-evidence':
       return ops.addChildEvidence(need(0, 'slug'), need(1, 'phase'), need(2, 'ac'), need(3, 'text'))
     case 'set-child-status':
@@ -105,6 +111,8 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
         'add-evidence',
         'add-phase',
         'add-ac',
+        'add-acceptance',
+        'set-acceptance-status',
         'add-phase-evidence',
         'set-executor',
         'next-child',

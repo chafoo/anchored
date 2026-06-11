@@ -55,6 +55,8 @@ export interface TierOps {
     childSlug: string,
     ac: { id: string; text: string; status?: string },
   ): Promise<AnyRec>
+  addAcceptance(node: AnyRec, text: string): Promise<AnyRec>
+  setAcceptanceStatus(node: AnyRec, id: string, status: string): Promise<AnyRec>
   addChildEvidence(node: AnyRec, childSlug: string, acId: string, ev: string[]): Promise<AnyRec>
   setChildFailures(
     node: AnyRec,
@@ -170,6 +172,14 @@ export function createSlugFacade(deps: FacadeDeps): NodeOpsFacade {
       // auto-assign the next a-id when the caller didn't pass one (agent-ergonomic)
       const id = ac.id ?? nextAcId(node, phase)
       return o.addAc(node, phase, { id, status: 'pending', text: ac.text })
+    },
+    addAcceptance: async (slug, text) => {
+      const o = opsFor(await tierFor(slug))
+      return o.addAcceptance(await o.read(slug), text)
+    },
+    setAcceptanceStatus: async (slug, id, status) => {
+      const o = opsFor(await tierFor(slug))
+      return o.setAcceptanceStatus(await o.read(slug), id, status)
     },
     setChildStatus: async (slug, childSlug, status) => {
       const o = opsFor(await tierFor(slug))
