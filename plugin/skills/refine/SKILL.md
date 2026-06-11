@@ -26,13 +26,27 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   `anchored node append-log <slug> refine learning "<plan-check rollup>"`. Any
   drift it can't auto-fix becomes an open question.
 - **rules-check → refine-rules-check** — verifies each phase covers the applicable
-  `.claude/rules/*.md`; self-writes the coverage rollup via `append-log`; missing
-  rules → open questions.
-- **walk** — the consolidated Q&A walk over every open question
-  (`anchored node read <slug>` → the `questions[]` array). Ask the user the
-  high-priority ones (respect the step's `involve` level), let the AI decide the
-  rest with reasoning. Resolve each:
-  `anchored node resolve-question <slug> <id> "<answer>" <user|ai>`.
+  `.claude/rules/*.md`; self-writes the coverage rollup via `append-log`. A missing
+  rule-enforcement is an **auto-fix** (the agent adds an enforcing AC itself), NOT a
+  user question — project rules are framework requirements that get enforced, not
+  negotiated. Only a genuine architecture/code ambiguity becomes an open question.
+- **walk** — the consolidated Q&A walk. **First, pick the walk-style** (this is the
+  v1 Stage-0 choice, ephemeral — never persisted): read the open questions
+  (`anchored node read <slug>` → `questions[]`), count them by priority, and ask
+  the user via `AskUserQuestion`:
+
+  > "N Fragen — X high, Y medium, Z low. Wie durchgehen?"
+  > - **Nur die wichtigen (high) — Rest entscheide ich** (`high-together`, the
+  >   recommended default / sweet spot)
+  > - **Alle gemeinsam** (`all-together`)
+  > - **Du entscheidest alles** (`AI-all`)
+
+  **If there are 0 open questions, skip this silently** (no AskUserQuestion). Then
+  walk each question in priority order per the chosen style: a question AT-or-above
+  the threshold goes to the user (`resolve … user "<answer>"`); the rest the AI
+  decides WITH reasoning (`resolve … ai "<answer>" "<why>"` — reasoning is
+  required for `source=ai`).
+  `anchored node resolve-question <slug> <id> "<answer>" <user|ai> ["<reasoning>"]`
 
 ## Failure-handling
 

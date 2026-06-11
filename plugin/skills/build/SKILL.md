@@ -23,6 +23,12 @@ self-write their results via `anchored node …` (see
    (so the terminal `build → wrap` is legal); `build` → resume directly; `plan`/
    `drafted` → tell the user to run `/a:plan` + `/a:refine` first; `wrap`/`done`
    → already past build.
+3. **Pre-build walk:** if the node still has open `questions[]` (e.g. a skip-refine
+   shortcut), clear them BEFORE the long run using the SAME walk-style choice as
+   `/a:refine` (all-together / high-together (default) / AI-all) — `AskUserQuestion`
+   first, then resolve each (`resolve-question … user|ai ["<reasoning>"]`). **0 open
+   questions → skip this silently.** (Build's own autonomy is for EMERGENT build-time
+   decisions only; pre-existing plan questions go through the walk.)
 
 ## Get the orchestration plan
 
