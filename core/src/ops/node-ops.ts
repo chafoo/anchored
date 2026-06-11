@@ -122,6 +122,15 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
     await io.atomicWrite(pathFor(node.slug), render(node))
     return node
   }
+  // H4: when an AC flips to `done` after a failures-driven redo, retire its
+  // transient `failures` log — a passed AC must never read as still-failed. The
+  // rejection survives in the node's log[]; the live `failures` slot is cleared.
+  const retireFailures = (ac: Ac): Ac => {
+    if (!('failures' in ac)) return ac
+    const next = { ...(ac as Record<string, unknown>) }
+    delete next.failures
+    return next as unknown as Ac
+  }
   const childrenOf = (node: AnyNode): ChildLike[] =>
     childField ? ((node[childField] as ChildLike[] | undefined) ?? []) : []
   const requireChildField = (): string => {
@@ -230,7 +239,7 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       const updated = {
         ...child,
         acceptance_criteria: acs.map((a) =>
-          a.id === acId ? { ...a, evidence, status: 'done' } : a,
+          a.id === acId ? retireFailures({ ...a, evidence, status: 'done' }) : a,
         ),
       }
       return persist({
@@ -267,6 +276,27 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       })
     },
 
+    // H4: explicitly clear a CHILD AC's transient failures (status untouched). The
+    // redo path retires failures on the done-flip automatically; this verb is the
+    // manual escape hatch (the workaround that hit UnknownNodeVerb in the dogfood).
+    async clearChildFailures(node: AnyNode, childSlug: string, acId: string): Promise<AnyNode> {
+      const field = requireChildField()
+      const children = (node[field] as AnyNode[] | undefined) ?? []
+      const child = children.find((c) => c.slug === childSlug)
+      if (!child) throw anchoredError('UnknownChild', `no child '${childSlug}'`)
+      const acs = (child.acceptance_criteria as Ac[] | undefined) ?? []
+      if (!acs.some((a) => a.id === acId))
+        throw anchoredError('UnknownAc', `no acceptance criterion '${acId}' on '${childSlug}'`)
+      const updated = {
+        ...child,
+        acceptance_criteria: acs.map((a) => (a.id === acId ? retireFailures(a) : a)),
+      }
+      return persist({
+        ...node,
+        [field]: children.map((c) => (c.slug === childSlug ? updated : c)),
+      })
+    },
+
     // flip a CHILD phase's AC status (e.g. done→pending for a re-do). The hard
     // invariant still guards: setting an AC to done requires evidence.
     async setChildAcStatus(
@@ -286,7 +316,13 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       if (status === 'done') assertAcDoneHasEvidence({ ...ac, status: 'done' })
       const updated = {
         ...child,
-        acceptance_criteria: acs.map((a) => (a.id === acId ? { ...a, status } : a)),
+        acceptance_criteria: acs.map((a) =>
+          a.id === acId
+            ? status === 'done'
+              ? retireFailures({ ...a, status })
+              : { ...a, status }
+            : a,
+        ),
       }
       return persist({
         ...node,
@@ -339,11 +375,12 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       const ac = acs.find((a) => a.id === acId)
       if (!ac) throw anchoredError('UnknownAc', `no acceptance criterion '${acId}'`)
       const evidence = [...(ac.evidence ?? []), ...ev]
-      // evidence now present → flip the AC to done atomically (single write)
+      // evidence now present → flip the AC to done atomically (single write);
+      // retire any prior failures (H4) — it re-passed, so it isn't failed anymore
       return persist({
         ...node,
         acceptance_criteria: acs.map((a) =>
-          a.id === acId ? { ...a, evidence, status: 'done' } : a,
+          a.id === acId ? retireFailures({ ...a, evidence, status: 'done' }) : a,
         ),
       })
     },

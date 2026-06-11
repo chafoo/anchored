@@ -232,6 +232,51 @@ test('setChildFailures rejects a child AC (pending + failures, evidence kept)', 
   ).rejects.toThrow(/evidence/i)
 })
 
+// H4 — a re-evidenced AC retires its failures on the done-flip; clear-failures
+// is the manual escape hatch. A 'done' AC must never still read as failed.
+test('H4: the done-flip clears failures; clear-failures retires them manually', async () => {
+  const { deps } = makeDeps()
+  const ops = createNodeOps(taskDescriptor, deps)
+  // an AC that was rejected: pending + failures (the redo state)
+  const rejected = () =>
+    taskN({
+      phases: [
+        {
+          name: 'P1',
+          slug: 'p1',
+          status: 'in-progress',
+          acceptance_criteria: [
+            {
+              id: 'a1',
+              text: 'prove it',
+              status: 'pending',
+              failures: ['gate: dishonest evidence'],
+            },
+          ],
+        },
+      ],
+    })
+
+  // re-evidence → done, and the stale failures are GONE (not [], absent)
+  const redone = (await ops.addChildEvidence(rejected(), 'p1', 'a1', [
+    'app.ts:1 — real proof',
+  ])) as unknown as {
+    phases: { acceptance_criteria: { status: string; evidence: string[]; failures?: string[] }[] }[]
+  }
+  const ac = redone.phases[0]!.acceptance_criteria[0]!
+  expect(ac.status).toBe('done')
+  expect(ac.evidence).toEqual(['app.ts:1 — real proof']) // the honest evidence
+  expect('failures' in ac).toBe(false) // retired — no stale failed-and-passed contradiction
+
+  // clear-failures retires failures WITHOUT touching status (the manual verb)
+  const cleared = (await ops.clearChildFailures(rejected(), 'p1', 'a1')) as unknown as {
+    phases: { acceptance_criteria: { status: string; failures?: string[] }[] }[]
+  }
+  const ac2 = cleared.phases[0]!.acceptance_criteria[0]!
+  expect('failures' in ac2).toBe(false)
+  expect(ac2.status).toBe('pending') // status untouched
+})
+
 // phase-rules F1 — setPhaseRules attaches a {path, why} to a child phase (dedup by path)
 test('setPhaseRules attaches a rule to a phase (dedup by path)', async () => {
   const { deps } = makeDeps()

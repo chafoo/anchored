@@ -63,6 +63,7 @@ export interface TierOps {
     failures: string[],
   ): Promise<AnyRec>
   setChildAcStatus(node: AnyRec, childSlug: string, acId: string, status: string): Promise<AnyRec>
+  clearChildFailures(node: AnyRec, childSlug: string, acId: string): Promise<AnyRec>
   setPhaseRules(
     node: AnyRec,
     phaseSlug: string,
@@ -181,6 +182,10 @@ export function createSlugFacade(deps: FacadeDeps): NodeOpsFacade {
     setChildFailures: async (slug, phase, acId, text) => {
       const o = opsFor(await tierFor(slug))
       return o.setChildFailures(await o.read(slug), phase, acId, [text])
+    },
+    clearChildFailures: async (slug, phase, acId) => {
+      const o = opsFor(await tierFor(slug))
+      return o.clearChildFailures(await o.read(slug), phase, acId)
     },
     setChildAcStatus: async (slug, phase, acId, status) => {
       const o = opsFor(await tierFor(slug))

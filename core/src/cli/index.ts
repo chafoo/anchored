@@ -38,6 +38,7 @@ export interface NodeOpsFacade {
   addChildEvidence(slug: string, phase: string, acId: string, text: string): Promise<unknown>
   setChildFailures(slug: string, phase: string, acId: string, text: string): Promise<unknown>
   setChildAcStatus(slug: string, phase: string, acId: string, status: string): Promise<unknown>
+  clearChildFailures(slug: string, phase: string, acId: string): Promise<unknown>
   setPhaseRules(slug: string, phase: string, path: string, why: string): Promise<unknown>
   setChildStatus(slug: string, childSlug: string, status: string): Promise<unknown>
 }

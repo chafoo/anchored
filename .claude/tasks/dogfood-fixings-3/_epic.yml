@@ -1,0 +1,203 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/epic.schema.json
+schema_version: 2
+slug: dogfood-fixings-3
+title: Dogfood-Fixings 3 — Kommunikation + Kontrolle + Politur aus dem dritten Rerun
+status: plan
+created: 2026-06-11
+goal: |
+  Der dritte Dogfood-Rerun lief end-to-end sauber durch (gefixte CLI + Plugin
+  v0.1.2). Der 6-Agent-Audit bestätigt: e9 ist grün, alle dogfood-fixings-2-Fixes
+  (G1/D1/G2/D2/G5 + die Evidence-Honesty-USP) halten im Feld. Was bleibt sind
+  Kommunikations- + Kontroll-Verfeinerungen plus ein paar kleine Politur-Funde aus
+  dem Audit:
+
+    - H1: beim Planen erzählt die AI die Framework-Mechanik statt das Ticket zu
+      planen — die SKILL-Templates selbst lehren diese Maschinen-Voice.
+    - H2: kryptische Abkürzungen + interne Kürzel (e3, q4, a1, DAG, "AC") im Chat;
+      auch hier sind die Template-Zeilen die Quelle.
+    - H3: im langen Epic-Lauf kann der User nicht vorab festlegen, welche Fragen er
+      selbst beantwortet (reichere Wahl inkl. freier Bedingungen).
+    - H4: eine re-evidenced done-AC behält einen stalen failures-Eintrag (kein Reset
+      beim done-Flip, kein clear-failures-Verb).
+    - H5: mehrzeilige context-Trails werden mit literalen \n geschrieben → unlesbar.
+    - H6-H8: Evidence-Zeilennummern veralten nach Sibling-Edit; Epic done ohne
+      epic-eigene Integrations-Acceptance; Outcome-ACs backen manchmal Mechanismus.
+
+  Quelle: .claude/temp/dogfood-findings-3.md (H1-H8). H1/H2/H3 sind reine
+  Skill-Prosa; H4/H5 kleine Substrat-Fixes; H6-H8 Anleitung/Agent-Prosa.
+  Abschluss-Beweis: der nächste Rerun zeigt Partner-Stimme + Frage-Policy + die
+  Politur live.
+acceptance:
+  - id: e1
+    text: "Beim Planen/Orchestrieren erzählt der Chat keine Framework-Mechanik mehr — auch die SKILL-Finish-/Fortschritts-Zeilen sind umgeschrieben (kein discover/scaffold/Stubs/Abhängigkeits-Reihenfolge, kein roher slug); Partner-Stimme, nur Outcome + Entscheidung (H1)"
+    status: pending
+  - id: e2
+    text: "Keine kryptischen Abkürzungen im User-Text — inkl. der SKILL-Templates selbst: build-Finish ohne Status-Wort, refine-Walk-Prompt ohne englische Enum-Tokens (X high/medium/low) + ohne interne Style-Codes (high-together), 'AC' ausgeschrieben; build.stop-String ohne 'DAG'; interne IDs nur im Audit-Trail (H2)"
+    status: pending
+  - id: e3
+    text: "Das Epic-Refine fragt einmal, welche Fragen der User in den Child-Refines selbst beantwortet — nach Wichtigkeit / alles KI / alles User / freie Beschreibung mit Bedingungen; steuert alle Child-Refines; pro Frage wertet die KI die Bedingungen aus; Build fragt nach, falls Refine übersprungen; ephemer; verträgt sich mit dem Fan-out (H3)"
+    status: pending
+  - id: e4
+    text: "Eine re-evidenced done-AC trägt KEINEN stalen failures-Eintrag mehr: der done-Flip räumt failures atomar (addEvidence/addChildEvidence/setChildAcStatus); ein clear-failures-Verb existiert für den Workaround; Test deckt den redo→done-Pfad (H4)"
+    status: done
+  - id: e5
+    text: "Mehrzeilige context-Trails rendern lesbar: set-field normalisiert literale \\n zu echten Newlines vor dem Persist (oder die schreibenden Agents schreiben echte Newlines); Test mit \\n-haltigem context (H5)"
+    status: pending
+  - id: e6
+    text: "Evidence bevorzugt Symbol-/Funktions-Anker statt roher Zeilennummern (Anleitung der Evidence-autorenden Agents), damit Sibling-Edits an geteilten Dateien die gespeicherte Evidence nicht veralten lassen (H6)"
+    status: pending
+  - id: e7
+    text: "Epic-decompose autort ≥1 epic-eigene Integrations-Acceptance, wenn ein Epic >1 Task mit Abhängigkeits-Kante hat (Roll-up prüft das Ganze, nicht nur die Summe); Outcome-ACs bleiben mechanismus-frei (kein textContent/innerHTML im Stub-AC); Roll-up nutzt das Provenienz-Format <task>/<phase> — delivered (H7/H8)"
+    status: pending
+  - id: e8
+    text: "Nächster Dogfood-Rerun bestätigt live: Partner-Stimme (kein Mechanik-Erklären, keine Abkürzungen) + Epic-weite Frage-Policy + die Politur-Fixes greifen end-to-end"
+    status: pending
+questions:
+  - id: q1
+    text: |
+      Wo verläuft die Grenze bei Abkürzungen (H2)? Manche sind allgemein bekannt
+      (Test, Commit, Datei) und im Klartext lesbar, andere kryptisch (e3, q4, DAG).
+      Empfehlung: Verbieten = Codes aus 1-2 Buchstaben + interne Kürzel/IDs +
+      ungeklärte Fachbegriffe; erlaubt = allgemein verständliche Wörter, ein
+      Fachbegriff darf, wenn er beim ersten Mal in Klartext erklärt wird.
+    priority: medium
+    origin: dogfood
+    status: resolved
+    source: user
+    answer: "Grenze bestätigt: verboten = Codes aus 1-2 Buchstaben + interne Kürzel/IDs + ungeklärte Fachbegriffe; erlaubt = allgemein verständliche Wörter; ein Fachbegriff darf, wenn er beim ersten Mal in Klartext erklärt wird."
+  - id: q2
+    text: |
+      Wann wird die Frage-Policy gewählt — im Refine oder zu Build-Beginn (H3)?
+      Empfehlung: zu Build-Beginn (frischeste Wahl direkt vor der Child-Schleife).
+    priority: medium
+    origin: dogfood
+    status: resolved
+    source: user
+    answer: "Wie beim Task: die Frage-Policy/der Walk wird im REFINE gewählt und die Fragen dort entschieden. Wurde Refine übersprungen und sind noch Fragen offen, fragt der Build (pre-build-Walk) sie nach. Gilt für Task UND Epic — beim Epic wird die Policy im Epic-Refine gesetzt und steuert die Child-Refines im Build-Loop."
+  - id: q3
+    text: |
+      Gilt die freie Beschreibung mit Bedingungen auch für einen einzelnen
+      Task-Refine, oder nur für Epics (H3)?
+      Empfehlung: überall anbieten — die freie Beschreibung kann strikt mehr.
+    priority: medium
+    origin: dogfood
+    status: resolved
+    source: user
+    answer: "Nur für Epic. Beim Einzel-Task ist es schon klar: die Build-Stop-Conditions (aus v1 übernommen — build.stop + stop-check, als vorhanden bestätigt) geben die Kontrolle über Build-Zeit-Entscheidungen, der normale Walk-Style die über Refine-Fragen. Die freie Beschreibung mit Bedingungen ist nur die Epic-Ebene (Frage-Routing für die Child-Refines)."
+  - id: q4
+    text: |
+      Wie werden die frei beschriebenen Bedingungen ausgewertet (H3)?
+      Empfehlung: die KI beurteilt jede Frage gegen die Beschreibung (trifft zu /
+      trifft nicht zu) — kein starres Muster-Matching.
+    priority: low
+    origin: dogfood
+    status: resolved
+    source: user
+    answer: "Die KI beurteilt jede Frage gegen die freie Beschreibung des Users (liest Bedingung + Frage, entscheidet ob es zutrifft) — kein starres Muster-Matching."
+tasks:
+  - slug: plan-voice-no-mechanics
+    goal: |
+      H1 (+ Audit-Schärfung): beim Planen/Orchestrieren keine Framework-Mechanik mehr
+      erzählen — UND die SKILL-Templates selbst umschreiben, die diese Voice lehren.
+      Reine Skill-Prosa: communication-style-Referenz + die Avoid/Prefer-Tabellen der
+      plan/refine/build-Skills bekommen die Regel; als Pair-Programmer das Ticket
+      planen, nur Outcome + echte Entscheidung in den Chat; KEINE Schritt-Namen
+      (discover/scaffold/walk), keine Task-Stubs/Abhängigkeits-Reihenfolge, kein
+      roher slug, kein "ich fahre die zwei Plan-Steps". Konkret die vom Audit
+      gefundenen Template-Zeilen entschärfen (z.B. die Fortschritts-/Finish-Zeilen,
+      die Mechanik nennen). Die Tool-Aufrufe sind sichtbar und begleiten sich selbst.
+      + Grep-Test.
+    status: pending
+    depends_on: []
+  - slug: no-cryptic-abbreviations
+    goal: |
+      H2 (+ Audit-Schärfung): keine kryptischen Abkürzungen im User-Text — die
+      SKILL-Templates SELBST sind die Hauptquelle. Policy in communication-style +
+      Querverweis in question-style; PLUS die konkreten Template-Zeilen fixen:
+      build/SKILL.md Finish-Zeile ohne Status-Wort ("Status: wrap" raus);
+      refine/SKILL.md Walk-Prompt ohne englische Enum-Tokens ("X high, Y medium, Z
+      low" → "X wichtige, Y mittlere, Z geringe") und ohne interne Style-Codes
+      ("(high-together)" etc. nur intern, nicht im Label); "AC"/"ACs" ausschreiben;
+      den build.stop-Config-String (Epic) ohne "DAG". Codes aus 1-2 Buchstaben (e3,
+      q4, a1) + interne IDs bleiben im Audit-Trail, nicht im Chat. Grenze siehe q1.
+      + Grep-Test.
+    status: pending
+    depends_on: []
+  - slug: epic-question-policy
+    goal: |
+      H3: der Walk-Style wird zu einer Frage-Handling-Policy mit freier Beschreibung
+      — NUR auf Epic-Ebene (q3). Reine Skill-Prosa (ephemer, kein Schema). Das
+      EPIC-REFINE fragt EINMAL (q2: im Refine wählen, wie beim Task) ab, welche
+      Fragen der User in den Child-Task-Refines selbst beantwortet — nach Wichtigkeit
+      (nur wichtige / wichtige+mittlere / alle), alles-KI, alles-User, oder eine
+      FREIE BESCHREIBUNG mit Bedingungen ("frag mich bei allem zu Persistenz oder
+      Sprache, den Rest entscheidest du"). Die Policy steuert alle Child-Refines im
+      Build-Loop (kein erneutes Fragen pro Child). Pro Child-Frage beurteilt die KI
+      die Policy (Bedingung trifft zu → User fragen, sonst KI mit Begründung; q4).
+      Wurde Refine übersprungen + Fragen offen → Build fragt nach (q2). Verträgt sich
+      mit dem gebufferten Fan-out (q8 aus fixings-2). Betrifft: refine-Skill (Wahl im
+      Epic-Refine), build-Skill (Loop wendet an + pre-build-Fallback),
+      communication-style/question-style. + Grep-Test.
+    status: pending
+    depends_on: [plan-voice-no-mechanics, no-cryptic-abbreviations]
+  - slug: failures-reset-on-done
+    goal: |
+      H4 (Substrat): eine re-evidenced done-AC darf keinen stalen failures-Eintrag
+      mehr tragen. Der done-Flip räumt failures atomar — in addEvidence
+      (node-ops.ts:341) + addChildEvidence (:230) + dem done-Zweig von
+      setChildAcStatus (:289): beim Übergang auf status done failures leeren/droppen
+      ({...a, evidence, failures: [], status: 'done'}). Plus ein clear-failures-Verb
+      (CLI + facade + node-ops), das den im Lauf gesehenen UnknownNodeVerb-Workaround
+      schließt. Die Rejection bleibt im log[] als Historie erhalten, nicht im
+      live-failures-Slot. Tests: redo-Loop re-evidenced → AC done OHNE failures;
+      clear-failures-Verb grün. Alle 5 Gates.
+    status: done
+    depends_on: []
+  - slug: set-field-newline-normalize
+    goal: |
+      H5 (Substrat): mehrzeilige context-Trails sollen lesbar rendern. Heute schrieb
+      der Roll-up context.wrap mit literalen \n statt echten Newlines → eine
+      unlesbare Zeile. Fix: set-field/setField normalisiert literale \n-Sequenzen zu
+      echten Newlines vor dem Persist (dann greift das Block-Scalar im Renderer);
+      gilt für die context.*-Felder. Test: set-field eines context-Werts mit
+      literalem \n → read-back hat echte Newlines + rendert als Block-Scalar. Alle 5
+      Gates.
+    status: pending
+    depends_on: []
+  - slug: epic-decompose-quality
+    goal: |
+      H7+H8 (Agent-Prosa): epic-decompose + epic-roll-up schärfen. (a) epic-decompose
+      autort ≥1 EPIC-EIGENE Integrations-Acceptance (epic.acceptance), wenn ein Epic
+      >1 Task mit Abhängigkeits-Kante hat — so prüft der Roll-up das Zusammenspiel,
+      nicht nur die Summe der per-Task-Outcome-ACs. (b) Outcome-ACs bleiben
+      mechanismus-frei: kein "textContent/innerHTML" o.ä. im Stub-AC (die Regel
+      gehört dom.md/Child-rules-check) — die Anleitung in epic-decompose.md
+      verschärfen + ein Negativ-Beispiel. (c) epic-roll-up nutzt das vorgeschriebene
+      Provenienz-Format "<task>/<phase> <ac> — delivered" statt roher file:line.
+      + Grep-Test.
+    status: pending
+    depends_on: []
+  - slug: evidence-symbol-anchors
+    goal: |
+      H6 (Anleitung): Evidence-autorende Agents (build-implement, die Validatoren,
+      epic-roll-up) bevorzugen Symbol-/Funktions-Anker ("saveTasks() in app.js")
+      statt roher Zeilennummern ("app.js:110-112") — damit ein Sibling-Task, der
+      später dieselbe Datei editiert, die gespeicherte Evidence nicht veralten lässt
+      (im Lauf rutschten core-lists Zeilennummern ~20 Zeilen). Anleitung in den
+      Agent-Files + agent-contract; Zeilennummer als optionaler Zusatz erlaubt, aber
+      der Funktions-/Symbol-Anker führt. + Grep-Test.
+    status: pending
+    depends_on: []
+  - slug: restore-anchored-test-scaffold
+    goal: |
+      Operativer Prep-Schritt (kein Framework-Code) — der LETZTE Schritt vor dem
+      e8-Rerun: anchored-test (~/Dev/anchored-test) auf den sauberen
+      Scaffold-Ausgangszustand zurücksetzen, damit der Rerun von vorne testet. Wie
+      bei den vorigen Reruns: getrackte Dateien auf HEAD zurück (app.js → 8-Zeilen-
+      Stub, index.html/style.css/anchored.yml), die generierten Task-Files unter
+      .claude/tasks/ entfernen (nur _archive bewahren), EPIC.md + .claude/
+      settings.json (Plugin-Install) behalten. Plugin + CLI sind via npm-link/
+      Reinstall ohnehin frisch. Danach ist anchored-test startklar für /a:plan epic.
+      Hängt an allen Fix-Tasks (erst bauen, dann zurücksetzen).
+    status: pending
+    depends_on: [plan-voice-no-mechanics, no-cryptic-abbreviations, epic-question-policy, failures-reset-on-done, set-field-newline-normalize, epic-decompose-quality, evidence-symbol-anchors]
