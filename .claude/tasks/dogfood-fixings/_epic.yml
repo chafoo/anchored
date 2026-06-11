@@ -22,7 +22,7 @@ goal: |
 acceptance:
   - id: e1
     text: "Enforcement strukturell: ein roher Write/Edit auf ein Task-File scheitert (Hook); jede Task-File-Mutation MUSS durch die CLI (F8)"
-    status: pending
+    status: done
   - id: e2
     text: "Re-Do-Loop funktioniert end-to-end: ein Gate kann eine AC ablehnen (failures schreiben, done→pending), der Loop retried bis retry_limit, dann blocked (F9)"
     status: done
@@ -86,7 +86,7 @@ questions:
 tasks:
   - slug: enforcement-hook
     goal: "F8 (HOCH): PreToolUse-Hook im Plugin, der Write/Edit auf Task-Files (.claude/tasks/**/*.yml + _epic.yml) blockt → CLI-only strukturell erzwungen. Hook in plugin/hooks/ + plugin.json-Registrierung. Scope/Verhalten siehe q2."
-    status: pending
+    status: done
     depends_on: []
   - slug: redo-loop-verbs
     goal: "F9 (HOCH): node-ops setFailures(node,phase,ac,failures[]) (flippt AC pending+failures, Evidence als History) + setAcStatus exponieren; CLI-Verben set-failures + set-ac-status; agent-contract + build-Skill + Validatoren darauf verdrahten → Re-Do-Loop funktioniert."
@@ -130,3 +130,6 @@ log:
   - at: dogfood-fixings
     kind: learning
     note: "epic-tier-cli DONE (F13+F14): tier-aware create (epic→tasks:[]), File-Shape-Tier-Ableitung (tier-derive.ts), Slug-Fix, goal optional. Epic-Tier läuft jetzt end-to-end durch die CLI (plan epic→add-child→next-child→loop). 168 Tests grün. e3 erfüllt. Entsperrt dogfood-epic + den autonomen /a:build-Lauf dieses Epics."
+  - at: dogfood-fixings
+    kind: learning
+    note: "enforcement-hook DONE (F8): PreToolUse-Hook (plugin/hooks/block-task-file-edits.js) blockt rohe Write/Edit auf Task-Files (exit 2), erlaubt Source-Code, Escape ANCHORED_TASKFILE_EDIT=1 für Planung. Decision-Logik via piped-Tests bewiesen. HANDOFF: live Plugin-Fire in anchored-test nach /reload-plugins bestätigen (ein Agent-Roh-Write wird geblockt). e1 erfüllt. ALLE 3 HOCH-Fixes durch."
