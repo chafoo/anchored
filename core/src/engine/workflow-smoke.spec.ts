@@ -185,6 +185,26 @@ test('a4: build skill documents the Bash(anchored *) allowlist precondition', ()
   expect(skill.toLowerCase()).toContain('allowlist')
 })
 
+// G13 — the setup skill exists (config-editor-that-consults, no funnel) and the
+// plan skill offers onboarding when there is no anchored.yml yet.
+test('G13: setup skill + onboarding offer on missing anchored.yml', () => {
+  const setup = readFileSync(
+    new URL('../../../plugin/skills/setup/SKILL.md', import.meta.url),
+    'utf8',
+  )
+  expect(setup).toMatch(/name:\s*setup/)
+  expect(setup.toLowerCase()).toContain('config editor that consults')
+  expect(setup.toLowerCase()).toContain('never sell a setup')
+  expect(setup).toMatch(/## Onboarding/i)
+  // the plan skill routes onboarding to setup without blocking planning
+  const plan = readFileSync(
+    new URL('../../../plugin/skills/plan/SKILL.md', import.meta.url),
+    'utf8',
+  )
+  expect(plan.toLowerCase()).toContain('onboarding')
+  expect(plan).toContain('setup')
+})
+
 // q8 — the build SKILL documents the epic task-level fan-out (ready-children batch
 // → parallel child-task lifecycles, lock-safe, buffered walk-questions).
 test('q8: build SKILL documents epic task-level fan-out via ready-children', () => {

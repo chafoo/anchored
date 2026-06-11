@@ -38,8 +38,17 @@ This routing lives only in the skill — no `classify` step, no `classify` agent
 anchored plan <tier> "<description>"   # → { tier, node, steps }   (creates the node, does NOT spawn)
 ```
 
-(A missing `anchored.yml` is fine — the CLI lazy-inits a minimal one + the
-`Bash(anchored *)` allowlist on first use.) `steps` is the resolved plan-stage
+**Onboarding (no `anchored.yml` yet, G13):** a missing `anchored.yml` is fine — the
+CLI lazy-inits a minimal one (deltas-only = all defaults) + the `Bash(anchored *)`
+allowlist on first use, so planning proceeds immediately. The FIRST time you see a
+project with no prior `anchored.yml`, after the node is created, mention in **one
+line** that anchored is running on defaults and offer to tune it together — a
+single `AskUserQuestion`: *"Jetzt kurz auf dein Projekt anpassen (test/lint-command,
+commit-per-phase, …) oder erstmal nur das Nötigste?"* → **Jetzt einrichten** routes
+to the `setup` skill; **nur das Nötigste** proceeds with defaults (`/a:setup` is
+there later). Partner voice, no funnel — never block planning on it.
+
+`steps` is the resolved plan-stage
 pipeline: for a task `[discover, rules-scan, decompose]`, for an epic
 `[discover, scaffold]`.
 

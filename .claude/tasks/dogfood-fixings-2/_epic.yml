@@ -65,7 +65,7 @@ acceptance:
     status: done
   - id: e12
     text: "Onboarding: eine /a:-Skill ohne vorhandene anchored.yml richtet das Nötigste lazy ein (minimale anchored.yml + Bash-Allowlist) und bietet dem User an, den Prozess gemeinsam zu optimieren (setup-Skill, aus v1 portiert: config-editor-that-consults) — als Frage 'jetzt einrichten / erstmal nur das Nötigste'; Partner-Stimme, kein Funnel (G13)"
-    status: pending
+    status: done
 questions:
   - id: q1
     text: "D1 Form: bekommt der Epic die volle Lifecycle-Symmetrie mit denselben Wörtern wie task (plan→drafted→refined→build→wrap→done)?"
@@ -284,5 +284,5 @@ tasks:
       teilt dem User mit, dass er den Prozess mit dem setup-Skill gemeinsam
       optimieren kann — als Frage 'jetzt gemeinsam einrichten / erstmal nur das
       Nötigste'. Partner-Stimme (communication-style), kein Verkaufstrichter.
-    status: pending
+    status: done
     depends_on: [skill-tier-branching, user-language]
