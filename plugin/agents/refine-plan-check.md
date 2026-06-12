@@ -17,7 +17,26 @@ anchored node read <slug>
 ## Work
 Inspect each phase against the current code: stale file paths, already-existing handlers the plan ignores, silent default decisions. Read-only.
 
-## Write (self-write via CLI)
-```bash
-anchored node append-log <slug> refine learning "<plan-check rollup>"
-```
+## Write (self-write via CLI) — PERSIST every finding, never just prose (B3)
+A finding that only lives in your returned prose is lost the moment the
+orchestrator doesn't read it closely — in the dogfood a real rebinding bug was
+reported as prose, persisted no question, and almost slipped through. So every
+actionable finding goes onto the node via the CLI:
+
+- **An ambiguity / hidden default / decision the plan didn't settle** → a question:
+  ```bash
+  anchored node add-question <slug> "<the question, with a (lean X) recommendation>" <high|medium|low>
+  ```
+- **A missing acceptance criterion the plan needs** (e.g. an enforcement the code
+  demands) → add it to the right phase:
+  ```bash
+  anchored node add-ac <slug> <phase-slug> "<observable AC text>"
+  ```
+- **The rollup** (what you checked + verdict) is the audit summary, NOT where
+  findings hide:
+  ```bash
+  anchored node append-log <slug> refine learning "<plan-check rollup>"
+  ```
+
+If a finding needs a human/AI call, it MUST be a question; if it's a concrete gap
+in coverage, it MUST be an AC. Returning it as prose only is a contract violation.

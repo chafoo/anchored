@@ -344,12 +344,12 @@ test('H6: evidence-author guidance prefers symbol anchors over line numbers', ()
     new URL('../../../plugin/agents/build-implement.md', import.meta.url),
     'utf8',
   )
-  expect(impl).toMatch(/SYMBOL, not raw line numbers/i)
+  expect(impl).toMatch(/NO raw line numbers/i)
   const contract = readFileSync(
     new URL('../../../plugin/references/agent-contract.md', import.meta.url),
     'utf8',
   )
-  expect(contract).toMatch(/Symbol-Anker/i)
+  expect(contract).toMatch(/am Symbol verankern/i)
 })
 
 // H7/H8 — epic-decompose authors an epic-level integration AC + keeps outcome-ACs
@@ -472,4 +472,41 @@ test('config.md + setup teach the real run-step variable contract + positioning'
   )
   expect(setup).toContain('after:') // positioning guidance reaches the author
   expect(setup).toMatch(/no\s+`?\$SLUG/i) // warns off the empty-message trap
+})
+
+// findings-4 fixes — B1 (no raw line numbers in evidence), B3 (refine persists
+// findings via CLI, not prose), B5 (the CLI-only hook also covers Bash writes).
+test('B1: evidence guidance forbids raw line numbers (symbol-anchored only)', () => {
+  const impl = readFileSync(
+    new URL('../../../plugin/agents/build-implement.md', import.meta.url),
+    'utf8',
+  )
+  const contract = readFileSync(
+    new URL('../../../plugin/references/agent-contract.md', import.meta.url),
+    'utf8',
+  )
+  expect(impl).toMatch(/NO raw line numbers/i)
+  expect(impl).not.toMatch(/line ~?\d+\)/) // no "(line 110)" style in the example
+  expect(contract).toMatch(/KEINE rohen Zeilennummern/i)
+})
+
+test('B3: refine-plan-check persists findings as questions/ACs, not just prose', () => {
+  const pc = readFileSync(
+    new URL('../../../plugin/agents/refine-plan-check.md', import.meta.url),
+    'utf8',
+  )
+  expect(pc).toContain('add-question')
+  expect(pc).toContain('add-ac')
+  expect(pc).toMatch(/contract violation/i) // prose-only is forbidden
+})
+
+test('B5: the task-file-CLI hook covers Bash writes too, not just Edit tools', () => {
+  const hooks = readFileSync(new URL('../../../plugin/hooks/hooks.json', import.meta.url), 'utf8')
+  expect(hooks).toContain('Bash') // matcher includes Bash
+  const hook = readFileSync(
+    new URL('../../../plugin/hooks/block-task-file-edits.js', import.meta.url),
+    'utf8',
+  )
+  expect(hook).toContain('bashWritesTaskFile') // the Bash-write detector exists
+  expect(hook).toMatch(/tee|sed|writeFileSync/) // covers the common write shapes
 })

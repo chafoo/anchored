@@ -30,10 +30,12 @@ adressiert ein phase-level-Agent seine Schreibvorgänge über **`<task-slug>
 <phase-slug>`**, nie als eigenständigen Node:
 
 - Evidence pro Phasen-AC → `anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "<beweis>"`
-  — **Evidence am Symbol verankern, nicht an rohen Zeilennummern (H6):** führe mit
-  der Funktion/dem Symbol/der Datei (`saveTasks() in app.js`), wo der Beweis lebt;
-  eine Zeilennummer veraltet, sobald ein Geschwister-Task dieselbe Datei editiert —
-  höchstens als nachgestellter Hinweis, nie als Anker.
+  — **Evidence am Symbol verankern, KEINE rohen Zeilennummern (H6, verschärft):**
+  führe mit der Funktion/dem Symbol/der Datei (`saveTasks() in app.js`) + einem
+  kurzen Code-Snippet, wo der Beweis lebt. Hänge **kein** „(line NN)" an — eine
+  Zeilennummer veraltet schon *innerhalb desselben Tasks*, sobald eine spätere Phase
+  Code darüber einfügt (im Dogfood driftete Evidence ~40 Zeilen auf fremden Code).
+  Symbol + Snippet ist stabil; die Zeilennummer ist nur veraltender Lärm.
 - Phasen-Status setzen → `anchored node set-child-status <task-slug> <phase-slug> <status>`
 
 Ein **node-level**-Agent (task/epic, z. B. wrap-summarize, epic-roll-up) adressiert
