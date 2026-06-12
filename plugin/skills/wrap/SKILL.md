@@ -61,19 +61,35 @@ A failed run-step (e.g. a merge conflict) is a real failure: surface it, stay
 pre-`done`, do **not** flip the status. Keep the git plumbing out of chat — report
 the human outcome ("core-list ist auf develop gemerged."), not the commands.
 
-## Open concerns — the "check at the end" threads (harden-3)
+## Concern-walk — the "check at the end" threads (harden-3)
 
-Workers + gates record unexpected things that need a final look as concern entries
-on the log (`anchored node append-log <slug> <stage> concern "<what>"`) — the v1
-`task.context` "still to discuss" surface, made explicit. Before you finish:
+During the build, workers + gates raise unexpected things that need a final look as
+**concerns** on the node (`anchored node add-concern <slug> "<what>" <priority>`) —
+a failed `--run` gate, a deferred edge, a decision the build flagged. This is the v1
+`task.context` "still to discuss" surface, made a real surface. **The substrate
+blocks `done` while ANY concern is open (`ConcernsOpen`)** — nothing slips past.
 
-1. Read them: `anchored node read <slug>` → `log[]` entries with `kind: concern`
-   (a failed gate, a deferred edge, a decision the build flagged).
-2. **Each open concern must be addressed** — resolved (note how), turned into a
-   follow-up, or explicitly accepted with a reason. Surface them to the user; do
-   not flip to `done` while a concern is unhandled and unmentioned. A failed gate
-   concern (from `--run` GateFailed) means the phase's work isn't actually green —
-   that's a real blocker, not a footnote.
+So before you finish, run a **concern-walk** — the SAME shape as the refine Q&A walk:
+
+1. List the open ones: `anchored node concern-list <slug> open`. If none, skip
+   silently.
+2. **Pick the walk-style** (ephemeral, never persisted) via `AskUserQuestion`,
+   exactly like refine: *"N offene Punkte — X wichtige … Wie gehen wir die durch?"*
+   - **Nur die wichtigen gemeinsam — Rest entscheide ich** (high-together, default)
+   - **Alle gemeinsam durchgehen** (all-together)
+   - **Du entscheidest alles** (AI-all)
+   Each `AskUserQuestion` follows `question-style.md` (recommended option first,
+   implications named).
+3. **Resolve each open concern** by that style — the user answers, or you decide
+   with reasoning:
+   ```bash
+   anchored node resolve-concern <slug> <id> "<how it's addressed>" user
+   anchored node resolve-concern <slug> <id> "<decision>" ai "<why — read later>"
+   ```
+   "Addressed" = fixed, turned into a tracked follow-up, or explicitly accepted with
+   a reason. A failed-gate concern means the work isn't actually green — that's a
+   real blocker, resolve it honestly, don't rubber-stamp it.
+4. Only once every concern is resolved does `done` go through (the substrate enforces it).
 
 ## Failure-handling
 

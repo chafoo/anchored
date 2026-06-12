@@ -541,6 +541,8 @@ test('harden-3: --run verified-evidence + concern threads are documented', () =>
   const impl = read('agents/build-implement.md')
   expect(impl).toContain('add-phase-evidence <task-slug> <phase-slug> <ac-id> --run')
   expect(impl).toMatch(/GateFailed/)
+  expect(impl).toContain('add-concern') // failed gate → a real concern, not a log line
   const wrap = read('skills/wrap/SKILL.md')
-  expect(wrap).toMatch(/kind: concern|concern entries|open concern/i)
+  expect(wrap.toLowerCase()).toContain('concern-walk') // wrap resolves them in a walk
+  expect(wrap).toMatch(/resolve-concern/) // via the real op
 })

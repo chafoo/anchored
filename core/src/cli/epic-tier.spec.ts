@@ -309,3 +309,24 @@ test('F3: plan --slug gives a clean slug instead of slugifying the prose', async
   // the long prose still becomes the title
   expect((last().result!.node as { title: string }).title).toContain('deliberately long')
 })
+
+// harden-3 — a concern raised during build blocks `done` until resolved (the
+// "nothing open stays open" floor; concerns are walked + resolved at wrap).
+test('harden-3: an open concern blocks done; resolving it frees done', async () => {
+  const { cli, last } = harness()
+  await cli.run(['plan', 'task', 'concern-test'])
+  for (const s of ['drafted', 'refined', 'build', 'wrap']) {
+    await cli.run(['node', 'set-status', 'concern-test', s])
+  }
+  await cli.run(['node', 'add-concern', 'concern-test', 'gate X failed', 'high'])
+  await cli.run(['node', 'concern-list', 'concern-test', 'open'])
+  expect((last().result as unknown as { id: string }[])[0]?.id).toBe('c1')
+
+  await cli.run(['node', 'set-status', 'concern-test', 'done'])
+  expect(last().ok).toBe(false)
+  expect((last().error as { name: string }).name).toBe('ConcernsOpen')
+
+  await cli.run(['node', 'resolve-concern', 'concern-test', 'c1', 'fixed it', 'user'])
+  await cli.run(['node', 'set-status', 'concern-test', 'done'])
+  expect(last().ok).toBe(true) // concern resolved → done now allowed
+})

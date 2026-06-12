@@ -50,10 +50,11 @@ claimed:
 anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> --run "<command>"
 ```
 A non-zero exit returns `GateFailed` and writes nothing — the AC stays pending.
-**Do not lower the bar to get a green.** Note the failure as a concern and fix it
-or surface the decision:
+**Do not lower the bar to get a green.** Raise it as a concern (the substrate blocks
+the task's `done` until every concern is resolved at wrap) and fix it or surface the
+decision:
 ```bash
-anchored node append-log <task-slug> build concern "<what failed + that it must be resolved before this phase completes>"
+anchored node add-concern <task-slug> "<what failed + must be resolved before completion>" high
 ```
 (Because a phase only reaches `done` when all its ACs are done-with-evidence (M2),
 a command-verifiable AC evidenced via `--run` makes "the gate actually ran green"

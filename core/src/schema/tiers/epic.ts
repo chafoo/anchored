@@ -51,6 +51,8 @@ export const EpicNodeSchema = z.strictObject({
   context: ContextTrails.optional(),
   acceptance: z.array(AcceptanceItem).optional(),
   questions: z.array(QuestionSchema).optional(),
+  // harden-3: "check at the end" threads (see task.ts) — done blocks while open.
+  concerns: z.array(QuestionSchema).optional(),
   tasks: z.array(TaskStub).optional(),
   log: z.array(LogEntrySchema).optional(),
 })

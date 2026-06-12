@@ -46,6 +46,15 @@ export interface TierOps {
     id: string,
     r: { answer: string; source: 'user' | 'ai'; reasoning?: string },
   ): Promise<AnyRec>
+  addConcern(
+    node: AnyRec,
+    init: { text: string; priority: 'low' | 'medium' | 'high' },
+  ): Promise<AnyRec>
+  resolveConcern(
+    node: AnyRec,
+    id: string,
+    r: { answer: string; source: 'user' | 'ai'; reasoning?: string },
+  ): Promise<AnyRec>
   appendLog(node: AnyRec, e: { at: string; kind: string; note: string }): Promise<AnyRec>
   setField(node: AnyRec, field: string, value: unknown): Promise<AnyRec>
   setExecutor(node: AnyRec, phase: string, value: string): Promise<AnyRec>
@@ -149,6 +158,21 @@ export function createSlugFacade(deps: FacadeDeps): NodeOpsFacade {
     resolveQuestion: async (slug, id, r) => {
       const o = opsFor(await tierFor(slug))
       return o.resolveQuestion(await o.read(slug), id, {
+        answer: r.answer,
+        source: r.source as 'user' | 'ai',
+        ...(r.reasoning !== undefined ? { reasoning: r.reasoning } : {}),
+      })
+    },
+    addConcern: async (slug, q) => {
+      const o = opsFor(await tierFor(slug))
+      return o.addConcern(await o.read(slug), {
+        text: q.text,
+        priority: q.priority as 'low' | 'medium' | 'high',
+      })
+    },
+    resolveConcern: async (slug, id, r) => {
+      const o = opsFor(await tierFor(slug))
+      return o.resolveConcern(await o.read(slug), id, {
         answer: r.answer,
         source: r.source as 'user' | 'ai',
         ...(r.reasoning !== undefined ? { reasoning: r.reasoning } : {}),

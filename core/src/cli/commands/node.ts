@@ -77,6 +77,23 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
         source: a[3] ?? 'ai',
         ...(a[4] !== undefined ? { reasoning: a[4] } : {}),
       })
+    case 'concern-list': {
+      // harden-3: a node's concerns[], optionally filtered by status (open|resolved)
+      const n = (await ops.read(need(0, 'slug'))) as { concerns?: { status: string }[] }
+      const cs = n.concerns ?? []
+      const status = a[1] === '--status' ? a[2] : a[1]
+      return status ? cs.filter((c) => c.status === status) : cs
+    }
+    case 'add-concern':
+      // add-concern <slug> <text> [priority] — a build-time "check at the end" thread
+      return ops.addConcern(need(0, 'slug'), { text: need(1, 'text'), priority: a[2] ?? 'medium' })
+    case 'resolve-concern':
+      // resolve-concern <slug> <id> <answer> [source] [reasoning] — done blocks while open
+      return ops.resolveConcern(need(0, 'slug'), need(1, 'id'), {
+        answer: need(2, 'answer'),
+        source: a[3] ?? 'ai',
+        ...(a[4] !== undefined ? { reasoning: a[4] } : {}),
+      })
     case 'append-log':
       return ops.appendLog(need(0, 'slug'), {
         at: need(1, 'at'),
@@ -178,6 +195,9 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
         'question-list',
         'add-question',
         'resolve-question',
+        'add-concern',
+        'resolve-concern',
+        'concern-list',
       ])
   }
 }

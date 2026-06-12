@@ -25,9 +25,9 @@ anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> --run "<gate c
   command actually ran green; the record proves it.
 - **Non-zero** → the CLI returns `GateFailed` and writes **nothing** (the AC stays
   un-evidenced). **Do not retry-until-green by lowering the bar.** Note it as a
-  concern and let the orchestrator decide how to proceed:
+  concern (the substrate blocks `done` until concerns are resolved at the wrap walk):
   ```bash
-  anchored node append-log <task-slug> build concern "<gate> failed (exit N): <short why> — needs a fix or a decision before this phase completes"
+  anchored node add-concern <task-slug> "<gate> failed (exit N): <short why> — needs a fix or a decision" high
   ```
 
 ## What you do

@@ -200,6 +200,19 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       if (to === 'done') {
         // completing a node requires every acceptance criterion to be evidence-backed
         assertNodeCompletable(node)
+        // harden-3: …AND no open concern (the "check at the end" floor — nothing
+        // unaddressed slips past done; concerns are walked + resolved at wrap).
+        const openConcerns = (
+          (node.concerns as { id: string; status: string }[] | undefined) ?? []
+        ).filter((c) => c.status !== 'resolved')
+        if (openConcerns.length > 0) {
+          throw anchoredError(
+            'ConcernsOpen',
+            `cannot complete '${node.slug}': ${openConcerns.length} open concern(s) — ` +
+              openConcerns.map((c) => c.id).join(', '),
+            [`resolve them in the wrap concern-walk (resolve-concern <slug> <id> <answer>)`],
+          )
+        }
         // M1: …AND every child terminal-OK (no pending/active/in-progress/blocked).
         // task/epic have no own ACs, so without this their done was a vacuum pass —
         // an epic could complete with a still-pending task-stub.
@@ -588,6 +601,18 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
     async resolveQuestion(node: AnyNode, id: string, r: QuestionResolution): Promise<AnyNode> {
       const questions = (node.questions as Question[] | undefined) ?? []
       return persist({ ...node, questions: resolveQuestionOf(questions, id, r) })
+    },
+
+    // harden-3: concerns reuse the question machinery on a separate `concerns`
+    // field — raised during build, resolved in the wrap concern-walk. setStatus
+    // blocks `done` while any concern is open (below).
+    async addConcern(node: AnyNode, init: QuestionInit): Promise<AnyNode> {
+      const concerns = (node.concerns as Question[] | undefined) ?? []
+      return persist({ ...node, concerns: addQuestionOf(concerns, init, 'c') })
+    },
+    async resolveConcern(node: AnyNode, id: string, r: QuestionResolution): Promise<AnyNode> {
+      const concerns = (node.concerns as Question[] | undefined) ?? []
+      return persist({ ...node, concerns: resolveQuestionOf(concerns, id, r) })
     },
 
     async appendLog(node: AnyNode, entry: LogEntry): Promise<AnyNode> {

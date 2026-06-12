@@ -1,5 +1,14 @@
 # Ticket: Harden-3 — Trust → Enforcement: Gate-Agent + erfasster exit-code + Context-Fäden (L)
 
+**STATUS: ERLEDIGT ✅** (254 Tests grün) — L1a `add-phase-evidence --run` (exit-code
+durch Code, nur exit-0 → Evidenz, sonst lautes GateFailed), L1b build-gate-Agent +
+build-implement-Guidance, L2 per Komposition (M2 blockt Phase-done ohne grüne
+--run-AC), Concern-Fläche HART im Substrat: `add-concern`/`resolve-concern`,
+`setStatus→done` lehnt mit `ConcernsOpen` ab solange offen; Wrap-Concern-Walk (gleicher
+Walk-Style wie Refine: nur wichtige / alle / alles-AI) löst sie auf. „Nichts bleibt
+offen, aber Concerns können geklärt werden" — live + Test bewiesen.
+
+
 **Quelle:** Härtungs-Review + Design-Gespräch. Verschlankt gegenüber der ersten
 Fassung: statt zwei Schwergewichten (gate-Verb + strukturiertes Evidenz-System) →
 **EIN** Gate/Verify-Agent + **ein** kleines erfassendes CLI-Verb. „Lieber etwas als

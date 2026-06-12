@@ -26,9 +26,9 @@ export interface QuestionResolution {
   reasoning?: string
 }
 
-export function addQuestion(questions: Question[], init: QuestionInit): Question[] {
+export function addQuestion(questions: Question[], init: QuestionInit, idPrefix = 'q'): Question[] {
   const q: Question = {
-    id: `q${questions.length + 1}`,
+    id: `${idPrefix}${questions.length + 1}`,
     text: init.text,
     priority: init.priority,
     status: 'open',

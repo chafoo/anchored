@@ -45,6 +45,10 @@ export const TaskNodeSchema = z.strictObject({
   status: TaskStatus,
   context: ContextTrails.optional(),
   questions: z.array(QuestionSchema).optional(),
+  // harden-3: "check at the end" threads raised during build (a failed gate, a
+  // deferred edge, a flagged decision). Same shape as a question; the substrate
+  // blocks `done` while any concern is open (resolved in the wrap concern-walk).
+  concerns: z.array(QuestionSchema).optional(),
   log: z.array(LogEntrySchema).optional(),
   phases: z.array(PhaseNodeSchema).optional(),
 })
