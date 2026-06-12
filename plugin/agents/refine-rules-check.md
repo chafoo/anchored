@@ -28,9 +28,13 @@ missing coverage + conflicts. Read-only inspection.
   (And attach the rule to the phase: `anchored node set-phase-rules <slug>
   <phase-slug> <rule-path> "<why>"`.)
 - **Only a genuine architecture/code ambiguity** (a real design fork, not a rule
-  gap) becomes an open question for the user to decide. **Carry a worked-out
-  recommendation + 1–3 implication bullets** in the text (see
-  `plugin/references/question-style.md`), never a bare question:
+  gap) becomes an open question for the user to decide. **Question lens — task:**
+  rule *gaps* are auto-fixed (never asked); only a genuine architecture/code fork
+  the rules don't settle is a question. Within that narrow scope apply
+  `plugin/references/question-discipline.md`'s generosity + impact-calibration —
+  don't quietly resolve a real fork. **Carry a worked-out recommendation + 1–3
+  implication bullets** in the text (see `plugin/references/question-style.md`),
+  never a bare question:
   ```bash
   anchored node add-question <slug> "<the architecture ambiguity>
   Empfehlung: <recommended answer, formed from the rules + code>.

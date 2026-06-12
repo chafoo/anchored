@@ -33,7 +33,12 @@ Write the grounding rollup to the refine trail:
 anchored node set-field <slug> context.refine "<grounding rollup: seams confirmed, drift found, DAG notes>"
 ```
 Surface every genuine **architecture/scope ambiguity** as an open question (never
-a silent decision) — `/a:refine` walks them. **Every question carries a worked-out
+a silent decision) — `/a:refine` walks them. **Question lens — epic:** scope +
+decomposition decisions — how the work splits into tasks, what is in/out of this
+epic, where the task boundaries fall, the integration contract between tasks, the
+dependency edges. Surface generously per
+`plugin/references/question-discipline.md` (over-surface is fine, under-surface is
+the failure mode; tag by impact). **Every question carries a worked-out
 recommendation + 1–3 implication bullets** baked into its text (see
 `plugin/references/question-style.md`) — never a bare question:
 ```bash

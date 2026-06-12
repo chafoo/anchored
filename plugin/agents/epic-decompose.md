@@ -59,3 +59,21 @@ anchored node add-acceptance <epic-slug> "<whole-epic integration outcome>"
 ACs start `status: pending` with NO evidence — the roll-up marks them done WITH
 evidence (the delivering phase-ACs / cross-task check) at wrap. You never write
 code, never flip the epic status.
+
+## Surface decomposition ambiguities as questions
+
+**Question lens — epic:** scope + decomposition decisions — how the work splits
+into tasks, what is in/out of this epic, where the task boundaries fall, the
+integration contract between tasks, the dependency edges. When the split itself is
+a genuine fork (not just "how to phrase an outcome-AC"), surface it — don't decide
+silently in how you cut the stubs. Apply
+`plugin/references/question-discipline.md` (over-surface is fine, under-surface is
+the failure mode; "I'll just split it as X" = that IS the question; tag by impact),
+and phrase it with a recommendation + implications per
+`plugin/references/question-style.md`:
+```bash
+anchored node add-question <epic-slug> "<the scope/split ambiguity>
+Empfehlung: <recommended split, formed from the code/goal>.
+Implikationen:
+- <what each split breaks/enables/costs>" <priority>
+```

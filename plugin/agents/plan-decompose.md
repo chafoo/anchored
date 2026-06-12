@@ -31,6 +31,13 @@ and ACs are children of the task-file, addressed by `<task-slug> <phase-slug>`.
 the rules-scan findings) — so each phase carries a real `rules` array the
 code-validate gate checks against, not just a log note.
 
+**Question lens — task / phase:** feature + UX decisions the input left open —
+behavior, visual style, sort order, error-UX, empty-state, accessibility level,
+whether a sub-feature (delete, pagination, undo) is in scope. Surface generously:
+apply `plugin/references/question-discipline.md` (over-surface is fine,
+under-surface is the failure mode; "I'll just pick X" = that IS the question; tag
+by impact, higher when unsure).
+
 **Surface every ambiguity as a question — WITH a recommendation + implications.**
 A real design fork the plan can't settle becomes an open question for `/a:refine`
 to walk. Never a bare question: carry a worked-out recommendation + 1–3 implication

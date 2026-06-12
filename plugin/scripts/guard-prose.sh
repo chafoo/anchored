@@ -75,6 +75,34 @@ else
   bad "question-style.md does not link the jargon mapping table"
 fi
 
+echo "== question-discipline =="
+QD="$REFS/question-discipline.md"
+
+# 1) the reference exists + carries the four generalized v1 directives.
+if [ -f "$QD" ]; then pass "question-discipline.md exists"; else bad "question-discipline.md missing"; fi
+while IFS= read -r marker; do
+  [ -z "$marker" ] && continue
+  if grep -qF "$marker" "$QD" 2>/dev/null; then pass "directive: $marker"; else bad "question-discipline.md missing directive: $marker"; fi
+done <<'MARKERS'
+under-surface is the failure mode
+that IS the question
+by impact, not difficulty
+MARKERS
+
+# 2) it explicitly distinguishes itself from question-style.md (WHEN vs HOW).
+if grep -qF "WHEN you raise one at all" "$QD" 2>/dev/null; then
+  pass "question-discipline delimits WHEN vs question-style's HOW"
+else
+  bad "question-discipline.md missing the WHEN-vs-HOW boundary"
+fi
+
+# 3) all five question-authoring agents link it + carry a tier Question lens.
+for a in plan-decompose epic-decompose refine-plan-check refine-rules-check epic-plan-check; do
+  af="$ROOT/plugin/agents/$a.md"
+  if grep -q "question-discipline.md" "$af" 2>/dev/null; then pass "$a links question-discipline"; else bad "$a does not link question-discipline"; fi
+  if grep -q "Question lens" "$af" 2>/dev/null; then pass "$a carries a Question lens"; else bad "$a missing a Question lens"; fi
+done
+
 echo
 if [ "$fail" -eq 0 ]; then echo "guard-prose: ALL GREEN"; else echo "guard-prose: VIOLATIONS"; fi
 exit "$fail"

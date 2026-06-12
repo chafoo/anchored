@@ -23,7 +23,12 @@ orchestrator doesn't read it closely — in the dogfood a real rebinding bug was
 reported as prose, persisted no question, and almost slipped through. So every
 actionable finding goes onto the node via the CLI:
 
-- **An ambiguity / hidden default / decision the plan didn't settle** → a question:
+- **An ambiguity / hidden default / decision the plan didn't settle** → a question.
+  **Question lens — task / phase:** feature + UX decisions the plan quietly settled
+  — behavior, style, sort order, error-UX, empty-state, accessibility, a silent
+  default buried in a context paragraph. Surface generously per
+  `plugin/references/question-discipline.md` (under-surface is the failure mode;
+  a hidden default *is* a question):
   ```bash
   anchored node add-question <slug> "<the question, with a (lean X) recommendation>" <high|medium|low>
   ```
