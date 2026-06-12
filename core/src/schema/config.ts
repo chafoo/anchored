@@ -15,7 +15,9 @@ const BuildStage = z.strictObject({
   steps: StepList.optional(),
   each: TierName.optional(),
   stop: z.array(z.string()).optional(),
-  retry_limit: z.number().int().min(1).optional(),
+  // Q4 (harden-1): upper-bounded so a config can't request a runaway loop (1e9
+  // retries → effective hang/DoS). 20 is far above any real retry need.
+  retry_limit: z.number().int().min(1).max(20).optional(),
   mode: z.enum(['sequential', 'workflow']).optional(),
 })
 

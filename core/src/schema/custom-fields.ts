@@ -28,8 +28,21 @@ const SIMPLE: Record<string, () => z.ZodType> = {
 
 function zodForTypeString(t: unknown): z.ZodType {
   if (typeof t === 'string') {
-    const f = SIMPLE[t.trim().toLowerCase()]
+    const s = t.trim()
+    const f = SIMPLE[s.toLowerCase()]
     if (f) return f()
+    // Q4 (harden-1): a pipe-union of literals (`a | b | c`) → a real enum, so a
+    // declared status-like custom field rejects an off-enum value instead of
+    // accepting anything. Anything richer (list<…>, view<…>) keeps the permissive
+    // `unknown` fallback — a hard fail here would break the default template's own
+    // non-scalar field declarations (decisions: view<…>, evidence: list<…>).
+    const parts = s
+      .split('|')
+      .map((p) => p.trim())
+      .filter(Boolean)
+    if (parts.length >= 2 && parts.every((p) => /^[\w-]+$/.test(p))) {
+      return z.enum(parts as [string, ...string[]])
+    }
   }
   return z.unknown()
 }

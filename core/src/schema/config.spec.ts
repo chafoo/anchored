@@ -44,3 +44,11 @@ test('config: parse helpers', () => {
   expect(() => parseConfig({ bogus: 1 })).toThrow()
   expect(safeParseConfig({}).ok).toBe(true)
 })
+
+// Q4 (harden-1) — retry_limit is upper-bounded so a config can't request a runaway loop.
+test('Q4: retry_limit above the cap is rejected', () => {
+  expect(safeParseConfig({ task: { build: { each: 'phase', retry_limit: 1000000000 } } }).ok).toBe(
+    false,
+  )
+  expect(safeParseConfig({ task: { build: { each: 'phase', retry_limit: 5 } } }).ok).toBe(true)
+})

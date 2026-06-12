@@ -43,4 +43,10 @@ describe('extendSchemaWithFields', () => {
     })
     expect(() => schema.parse({ ...base, status: 'not-a-real-status' })).toThrow()
   })
+
+  it('Q4: a pipe-union type string becomes a real enum (off-enum value rejected)', () => {
+    const schema = extendSchemaWithFields(TaskNodeSchema, { tier_level: 'low | medium | high' })
+    expect(schema.parse({ ...base, tier_level: 'medium' })).toMatchObject({ tier_level: 'medium' })
+    expect(() => schema.parse({ ...base, tier_level: 'bogus' })).toThrow()
+  })
 })

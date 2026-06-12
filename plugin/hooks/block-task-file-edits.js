@@ -26,23 +26,34 @@ const TASK_FILE_PATH = /\.claude\/tasks\/[^\s'"]*\.ya?ml/
 const EPIC_FILE_PATH = /(^|\/)_epic\.ya?ml/
 
 // Heuristic: does a Bash command WRITE to a task-file? Matches the common write
-// shapes; reads (cat/grep/less/head/tail) are deliberately not matched.
+// shapes; reads (cat/grep/less/head/tail) are deliberately not matched. Best-effort
+// defence-in-depth — the authoritative guard is the validating CLI (persist), since
+// an allowlist-of-shapes can never be exhaustive (see the header note).
 function bashWritesTaskFile(cmd) {
   const hits = (re) => re.test(cmd)
-  const tasks = `(?:\\.claude\\/tasks\\/[^\\s'"|&;>]*\\.ya?ml|[^\\s'"|&;>]*_epic\\.ya?ml)`
+  // a task-file path token — with a leading path-prefix so ABSOLUTE paths match too
+  // (Q2: the .claude/tasks branch used to require the path to START at .claude, so
+  // `echo x > /abs/.../.claude/tasks/foo.yml` — the common form — slipped through).
+  const P = `[^\\s'"|&;>]*`
+  const tasks = `(?:${P}\\.claude\\/tasks\\/${P}\\.ya?ml|${P}_epic\\.ya?ml)`
   return (
-    // redirect into a task-file:  > x.yml   >> x.yml
-    hits(new RegExp(`>>?\\s*['"]?${tasks}`)) ||
+    // redirect into a task-file:  > x.yml   >> x.yml   >| x.yml
+    hits(new RegExp(`>>?\\|?\\s*['"]?${tasks}`)) ||
     // tee x.yml
     hits(new RegExp(`\\btee\\b[^|&;]*${tasks}`)) ||
-    // in-place edit: sed -i … x.yml   /   perl -i … x.yml
+    // in-place edit: sed -i … / perl -i … / gawk -i inplace … x.yml
     hits(new RegExp(`\\b(?:sed|perl)\\b[^|&;]*-i\\b[^|&;]*${tasks}`)) ||
-    // cp/mv … x.yml   (writing TO a task-file as the destination)
+    hits(new RegExp(`\\bgawk\\b[^|&;]*-i[^|&;]*inplace[^|&;]*${tasks}`)) ||
+    // dd of=…x.yml  /  truncate … x.yml
+    hits(new RegExp(`\\bdd\\b[^|&;]*\\bof=['"]?${tasks}`)) ||
+    hits(new RegExp(`\\btruncate\\b[^|&;]*${tasks}`)) ||
+    // cp/mv/install … x.yml  (writing TO a task-file as the destination)
     hits(new RegExp(`\\b(?:cp|mv|install)\\b[^|&;]*${tasks}`)) ||
-    // python/node opening a task-file for writing:  open('…x.yml', 'w')
+    // python/node opening a task-file for writing:  open('…x.yml', 'w') / write_text
     hits(new RegExp(`open\\s*\\([^)]*${tasks}[^)]*['"][wa]`)) ||
-    // a heredoc/redirect tool fed a task path with a write-mode flag nearby
-    hits(new RegExp(`writeFileSync\\s*\\([^)]*${tasks}`))
+    hits(new RegExp(`write_text\\s*\\(`)) && hits(new RegExp(tasks)) ||
+    // node fs writers fed a task path
+    hits(new RegExp(`(?:writeFileSync|writeFile|appendFileSync|appendFile)\\s*\\([^)]*${tasks}`))
   )
 }
 
@@ -62,10 +73,14 @@ process.stdin.on('end', () => {
     process.exit(0) // can't parse → don't block (fail-open on malformed input)
   }
 
-  if (process.env.ANCHORED_TASKFILE_EDIT === '1') process.exit(0) // manual-edit opt-out
-
   const editTools = tool === 'Write' || tool === 'Edit' || tool === 'MultiEdit'
-  const editHit = editTools && (TASK_FILE_PATH.test(filePath) || EPIC_FILE_PATH.test(filePath))
+  // Q4a: the ANCHORED_TASKFILE_EDIT opt-out is ONLY for the main session's manual
+  // planning edits via the Write/Edit tools — it must NOT excuse Bash writes (a
+  // build-time agent that inherits the flag in its env could otherwise echo > …yml
+  // straight past the CLI). Bash writes are always blocked.
+  const optedOut = process.env.ANCHORED_TASKFILE_EDIT === '1'
+  const editHit =
+    editTools && !optedOut && (TASK_FILE_PATH.test(filePath) || EPIC_FILE_PATH.test(filePath))
   const bashHit = tool === 'Bash' && bashWritesTaskFile(command)
 
   if (editHit || bashHit) {

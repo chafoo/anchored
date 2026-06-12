@@ -32,7 +32,11 @@ function harness() {
   const pathFor = (slug: string) => `t/${slug}.yml`
   const cli = buildCli({ io, pathFor, out: (l) => out.push(l), now: () => '2026-06-11' })
   const last = () =>
-    JSON.parse(out[out.length - 1]!) as { ok: boolean; result?: Record<string, unknown> }
+    JSON.parse(out[out.length - 1]!) as {
+      ok: boolean
+      result?: Record<string, unknown>
+      error?: Record<string, unknown>
+    }
   const tierFor = makeTierFor({ readFile: io.fs.readFile }, pathFor)
   return { cli, last, tierFor, files }
 }
@@ -260,6 +264,25 @@ test('F2: add-child depends_on + set-child-field on a stub', async () => {
   await cli.run(['node', 'read', 'f2'])
   const t2 = (last().result as { tasks: { slug: string; depends_on?: string[] }[] }).tasks
   expect(t2.find((t) => t.slug === 'clear-completed')?.depends_on).toEqual(['core-list'])
+})
+
+// Q1 (harden-1) — status is reserved: a raw set-field / set-child-field can NOT
+// teleport a node or child to done, bypassing transitions + the evidence invariant.
+test('Q1: set-field status + set-child-field status are rejected (ReservedField)', async () => {
+  const { cli, last } = harness()
+  await cli.run(['plan', 'task', 'reserve-test'])
+  await cli.run(['node', 'set-field', 'reserve-test', 'status', 'done'])
+  expect(last().ok).toBe(false)
+  expect((last().error as { name: string }).name).toBe('ReservedField')
+  // status untouched
+  await cli.run(['node', 'read', 'reserve-test'])
+  expect((last().result as { status: string }).status).toBe('plan')
+
+  // child status too
+  await cli.run(['node', 'add-phase', 'reserve-test', 'p1', 'P1'])
+  await cli.run(['node', 'set-child-field', 'reserve-test', 'p1', 'status', 'done'])
+  expect(last().ok).toBe(false)
+  expect((last().error as { name: string }).name).toBe('ReservedField')
 })
 
 // F3 — an explicit --slug overrides the slug derived from the (long) description.

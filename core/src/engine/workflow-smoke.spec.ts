@@ -509,6 +509,11 @@ test('B5: the task-file-CLI hook covers Bash writes too, not just Edit tools', (
   )
   expect(hook).toContain('bashWritesTaskFile') // the Bash-write detector exists
   expect(hook).toMatch(/tee|sed|writeFileSync/) // covers the common write shapes
+  // Q2 (harden-1): the tasks pattern has a leading path-prefix so ABSOLUTE paths
+  // match, and the opt-out flag must NOT excuse Bash writes.
+  expect(hook).toMatch(/\$\{P\}\\\\\.claude/) // P prefix before .claude/tasks
+  expect(hook).toMatch(/optedOut[\s\S]*editTools|editTools[\s\S]*optedOut/)
+  expect(hook).toMatch(/dd|truncate|gawk/) // extra write shapes
 })
 
 // D2 — custom run/use steps must fire in ALL four stage skills (plan + refine were

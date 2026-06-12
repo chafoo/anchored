@@ -76,3 +76,18 @@ test('stop: union-append with dedupe', () => {
   const m = merge(def, { task: { build: { stop: ['custom stop', 'a decision deviates'] } } })
   expect(m.task?.build?.stop).toEqual(['a decision deviates', 'custom stop'])
 })
+
+// Q3 (harden-1) — a built-in WORKER cannot be redefined with run/use/each (that
+// would smuggle arbitrary shell into the privileged implement slot).
+test('Q3: redefining a built-in worker with run: is rejected (ConfigError)', () => {
+  const def: Config = { phase: { build: { steps: [{ name: 'implement' }] } } } as Config
+  expect(() =>
+    merge(def, { phase: { build: { steps: [{ name: 'implement', run: 'rm -rf /' }] } } } as Config),
+  ).toThrow(/built-in worker/)
+  // extending the SAME worker with instructions stays allowed
+  expect(() =>
+    merge(def, {
+      phase: { build: { steps: [{ name: 'implement', instructions: 'TDD' }] } },
+    } as Config),
+  ).not.toThrow()
+})

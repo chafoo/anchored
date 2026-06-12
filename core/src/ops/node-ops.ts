@@ -84,7 +84,25 @@ function setNested(obj: Record<string, unknown>, path: string[], value: unknown)
 // Reserved fields: scheduling/mechanism fields a generic `set-field` must never
 // touch, so a user-supplied custom field can't shadow them. `executor` is owned
 // solely by setExecutor (enum-validated, written on its target phase).
-const RESERVED_FIELDS = new Set(['executor'])
+//
+// Q1 (harden-1): `status` is reserved too — a raw `set-field <slug> status done`
+// would teleport a node plan→done with NO evidence and NO transition check (it goes
+// through blank persist(), bypassing assertTransition + assertNodeCompletable). All
+// status changes MUST go through setStatus. The managed collections (acceptance_*,
+// evidence, failures, phases, tasks, questions, log) are owned by dedicated
+// validating ops and must never be blind-overwritten via the generic set-field.
+const RESERVED_FIELDS = new Set([
+  'executor',
+  'status',
+  'acceptance_criteria',
+  'acceptance',
+  'evidence',
+  'failures',
+  'phases',
+  'tasks',
+  'questions',
+  'log',
+])
 
 /** Flatten a thrown schema error (ZodError-shaped) into a typed, located
  *  AnchoredError so a rejected write reads like every other CLI op — tier + slug
@@ -434,6 +452,17 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       value: unknown,
     ): Promise<AnyNode> {
       const cf = requireChildField()
+      // Q1: a child's `status` must go through setChildStatus (enum-guarded, and the
+      // completion checks land there) — never the generic child-field path. Same for
+      // the managed per-child collections.
+      const top = field.split('.')[0]!
+      if (RESERVED_FIELDS.has(top)) {
+        throw anchoredError(
+          'ReservedField',
+          `child field '${top}' is reserved and cannot be set via set-child-field`,
+          [`use the dedicated op (e.g. set-child-status for 'status')`],
+        )
+      }
       const children = (node[cf] as AnyNode[] | undefined) ?? []
       const child = children.find((c) => c.slug === childSlug)
       if (!child) throw anchoredError('UnknownChild', `no child '${childSlug}'`)

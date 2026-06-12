@@ -23,6 +23,24 @@ function mergeSteps(def: unknown[], user: unknown[]): unknown[] {
     if (idx >= 0) {
       // known built-in: extend in place, keep position. Append instructions.
       const existing = result[idx]!
+      // Q3 (harden-1): a built-in WORKER (a bare default step — no run/use/each) may
+      // only be EXTENDED (instructions / involve), never redefined with run/use/each.
+      // Otherwise `{name: implement, run: 'rm -rf /'}` merges into the privileged
+      // implement worker and toPlanStep reclassifies it to a run-step → arbitrary
+      // shell executes under the "implement" slot. Reject loudly.
+      const existingIsWorker =
+        existing.run === undefined && existing.use === undefined && existing.each === undefined
+      if (
+        existingIsWorker &&
+        (us.run !== undefined || us.use !== undefined || us.each !== undefined)
+      ) {
+        const e = new Error(
+          `step '${String(us.name)}' is a built-in worker — extend it with instructions only; ` +
+            `it cannot be redefined with run/use/each`,
+        )
+        e.name = 'ConfigError'
+        throw e
+      }
       const rest: Rec = { ...us }
       delete rest.before
       delete rest.after

@@ -1,5 +1,11 @@
 # Ticket: Harden-1 — Substrat- + Security-Quick-Wins (S-Tier)
 
+**STATUS: ERLEDIGT ✅** (247 Tests grün) — Q1 `status`/Collections reserviert
+(set-field + set-child-field), Q2 Hook absolute Pfade + dd/gawk/truncate/clobber +
+opt-out nur für Edit, Q3 Built-in-Worker-run-Guard, Q4 retry_limit≤20 + pipe-union-
+Enum. Alle live bewiesen. Hook als Best-Effort dokumentiert.
+
+
 **Quelle:** 5-Agent-Härtungs-Review (harden-anchored-v2). Diese Gruppe = isolierte,
 risikoarme Einzeländerungen mit höchstem Sicherheit-pro-Aufwand. Alle S.
 
