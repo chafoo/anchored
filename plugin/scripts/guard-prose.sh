@@ -103,6 +103,48 @@ for a in plan-decompose epic-decompose refine-plan-check refine-rules-check epic
   if grep -q "Question lens" "$af" 2>/dev/null; then pass "$a carries a Question lens"; else bad "$a missing a Question lens"; fi
 done
 
+echo "== fanout-fastest-safe =="
+RF="$SKILLS/refine/SKILL.md"
+BF="$SKILLS/build/SKILL.md"
+
+# 1) executor default flipped to the fastest safe path (workflow), not sequential.
+if grep -qF "Default to the fastest safe path" "$RF"; then
+  pass "refine defaults the executor to the fastest safe path"
+else
+  bad "refine missing the 'fastest safe path' default"
+fi
+if grep -qF "(sequential, the default)" "$RF"; then
+  bad "refine still calls sequential 'the default' (old conservative default)"
+else
+  pass "old 'sequential, the default' wording is gone"
+fi
+
+# 2) the safety-floor stays, framed as correctness (not speed-vs-quality).
+if grep -qF "Safety-floor" "$RF" && grep -qF "correctness, NOT" "$RF"; then
+  pass "safety-floor preserved + framed as correctness"
+else
+  bad "refine missing the correctness-framed safety-floor"
+fi
+
+# 3) the ephemeral speed-vs-watchability preference, explicitly never-a-quality-call.
+if grep -qF "die Qualität ist" "$RF" && grep -qF "Tempo vs. Zuschauen" "$RF"; then
+  pass "refine asks the speed-vs-watch preference (quality identical)"
+else
+  bad "refine missing the speed-vs-watch preference"
+fi
+
+# 4) build: worktree isolation is a directive for fan-out, not a caveat.
+if grep -qF "directive, not caveat" "$BF"; then
+  pass "build states worktree isolation as a directive"
+else
+  bad "build missing the worktree-isolation directive"
+fi
+if grep -qF "Fan-out caveat" "$BF"; then
+  bad "build still frames worktree isolation as a 'Fan-out caveat'"
+else
+  pass "old 'Fan-out caveat' framing is gone"
+fi
+
 echo
 if [ "$fail" -eq 0 ]; then echo "guard-prose: ALL GREEN"; else echo "guard-prose: VIOLATIONS"; fi
 exit "$fail"

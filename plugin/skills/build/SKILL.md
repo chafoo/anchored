@@ -154,11 +154,15 @@ where `$STEP_RUN` is the step's `run` string verbatim. **Per-phase commits don't
 leak into chat** — narrate the phase outcome ("Phase 2 grün, committed."), not the
 git plumbing (see communication-style.md).
 
-> **Fan-out caveat:** the per-task git branch (`task/<slug>`) assumes a single
-> working tree. The sequential loop is safe; the **task-level parallel fan-out**
-> (epic, q8) would have N children `git switch`-ing one shared tree at once — only
-> fan out per-task-branch builds under git **worktree isolation**, else fall back to
-> the sequential loop for a repo using a branch-per-task VCS strategy.
+> **Fan-out runs under git worktree isolation — directive, not caveat.** Every
+> fan-out worker runs in its **own git worktree** — both the per-AC **phase** fan-out
+> (workflow mode, below) and the **task-level** parallel fan-out (epic). A per-task
+> branch (`task/<slug>`) assumes a single working tree, so N parallel workers
+> `git switch`-ing one shared checkout would clobber each other; isolated worktrees
+> never contend. This is what makes "fastest where safe" robust even against a wrong
+> independence call — isolated worktrees merge cleanly, and the cross-process lock +
+> CAS catch the rest. Worktree isolation is the **default for any fan-out**, not a
+> fallback to a sequential loop.
 
 ## Epic task-level fan-out (parallel independent children, q8)
 
@@ -246,9 +250,11 @@ live fan-out lives here). The flow, sibling to the sequential implement path:
 1. **Plan the units.** Read the phase (`anchored node read <slug>`). A unit = one AC
    that is `pending` OR carries `failures` (skip ACs already `done` with evidence —
    resume-safety). ≤16 units in parallel; >16 → waves of 16.
-2. **Dispatch (Workflow tool).** One `agent({ agentType: 'a:build-workflow', … })`
-   per unit (the `build-workflow` plugin agent — the per-AC fan-out worker). Each
-   unit does its AC's work and **self-writes its own evidence/failures via the CLI**
+2. **Dispatch (Workflow tool).** One `agent({ agentType: 'a:build-workflow',
+   isolation: 'worktree', … })` per unit (the `build-workflow` plugin agent — the
+   per-AC fan-out worker), each in its **own git worktree** per the fan-out directive
+   above, so parallel units never contend on one checkout. Each unit does its AC's
+   work and **self-writes its own evidence/failures via the CLI**
    (`anchored node add-phase-evidence …` on success, `anchored node set-failures …`
    on a blocker). Background — emit one progress line, then return; the await is
    **re-invocation**, not polling.

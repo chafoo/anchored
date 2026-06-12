@@ -140,20 +140,35 @@ phases as a parallel per-AC Dynamic Workflow). What was missing is the **decisio
 so by default every phase ran sequentially (a ~44-min epic for ~200 lines). Refine
 is where that call belongs, because the phases + their ACs are now settled.
 
-For each phase (`anchored node list-phases <slug>`), judge **fan-out suitability**:
+**Default to the fastest safe path.** For each phase (`anchored node list-phases
+<slug>`), the call is about **correctness, never quality** — parallel and sequential
+build the exact same thing:
 
-- **`workflow`** (fan-out) when the phase has **≥2 acceptance criteria that are
-  independent** — each can be implemented + verified on its own, with no AC
-  depending on another's output and no two ACs mutating the same region of the
-  same file. Then: `anchored node set-executor <slug> <phase> workflow`.
-- **`implement`** (sequential, the default) otherwise — a single AC, or ACs that
-  share sequential state / build on each other / touch the same code region.
-  Leave it unset (absent ⇒ implement); do **not** force fan-out where the ACs
-  would race on the same lines.
+- **Safety-floor (hard, non-negotiable — this is correctness, NOT
+  speed-vs-quality).** Fan-out is safe only when the phase's ACs are genuinely
+  **independent**: no AC depends on another's output, and no two ACs mutate the same
+  region of the same file. Non-independent ACs would race → corruption. That's the
+  only thing the floor protects.
+- **Within "safe" → default to `workflow`** (the fastest path), not sequential. A
+  phase with **≥2 independent ACs fans out by default**:
+  `anchored node set-executor <slug> <phase> workflow`.
+- **`implement`** (sequential) only when the floor doesn't hold — a single AC, or
+  ACs that share sequential state / build on each other / touch the same region —
+  **or** when you're genuinely unsure two ACs are independent (when the doubt is
+  about *correctness*, stay sequential; leave it unset, absent ⇒ implement).
 
-This is an **AI judgement** (the orchestrator decides, like the walk-style) — be
-conservative: when unsure whether two ACs are truly independent, leave it
-sequential. The user can override either way with `set-executor` before build.
+**Ask the user once — speed vs. watchability (never a quality call).** The ONLY real
+difference between parallel and sequential is that sequential lands the phases one
+after another (the user can half-watch) while parallel lands them together — the
+quality is identical. So offer it once, ephemeral (like the walk-style), phrased per
+`question-style.md`:
+> "Wo's sicher ist — so schnell wie möglich (parallel) oder lieber nacheinander,
+> damit du mitschauen kannst? Rein Tempo vs. Zuschauen — die Qualität ist
+> identisch." Default: so schnell wie sicher.
+
+Hold the answer in memory for this refine. If they pick "sequential to watch", leave
+the executors unset regardless of the floor. The user can always override a single
+phase with `set-executor` before build.
 Epics have no phases — task-level fan-out across independent child-tasks is a
 separate lever (the epic build loop), not this decision.
 
