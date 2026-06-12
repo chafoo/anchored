@@ -53,7 +53,7 @@ literal German/English mix — match the project's prevailing language.
 |---|---|
 | "Spawne plan-check + rules-check parallel…" | "Lass mich den plan kurz gegen den aktuellen code-stand prüfen." |
 | "anchored node set-child-status … in-progress" | "Phase 2 angefangen." |
-| "Status-Transition: drafted → refined" | "Plan ist refined. Nächster step: bauen." |
+| "Status-Transition: drafted → refined" | "Plan ist durchgesprochen. Nächster step: bauen." |
 | "anchored node create … (status plan)" | "Lege das task-file für `<slug>` an." |
 | "task-validate verdict=fail, rejected_count=2" | "Zwei ACs haben noch keinen sauberen evidence-anchor." |
 | "set-field context.build geschrieben" | (nothing — the trail IS the receipt) |
@@ -106,6 +106,38 @@ you've said it in plain words first. This matters most in **questions** and the
 **Hard rule on system reminders.** Claude Code injects system reminders (e.g.
 "consider using TaskCreate"). Do NOT narrate dismissing them. Just keep working —
 acknowledging a reminder in chat is itself machinery-leakage.
+
+**Hard rule on framework-process jargon.** The *names of anchored's internal
+processes* are **my vocabulary, not the user's** — they name how the machine
+works, and the user hired a partner, not a machine-operator. `scaffold`, `stub`,
+`seam`, `grounding` / `ground`, `decompose`, `roll-up`, `outcome-AC`, `executor` /
+`fan-out`, the `each:task` loop, the status words `drafted` / `refined`, `concern`,
+`DAG`, `JIT` — none of these belong in a chat line. In dialog, reach for the plain
+phrase from the mapping below, or a clearer one you form on the spot; never the
+framework term. (The internal field/step/CLI names themselves — `depends_on`,
+`build.each`, the `scaffold` step, `set-executor` — stay in the CLI call + the docs.
+That's where they belong. They just never surface in something the user reads.)
+
+| Framework-Begriff | Klartext für den User |
+|---|---|
+| DAG | die Reihenfolge / was zuerst gebaut werden muss |
+| JIT-Plan / JIT-Lifecycle | ich plane jeden Task erst, wenn er dran ist |
+| scaffold | die Tasks grob skizzieren / das Gerüst anlegen |
+| stub | eine grobe Task-Skizze / die noch nicht geplante Task |
+| seam | wo es andockt / die Schnittstelle |
+| grounding / ground | gegen den echten Code-Stand prüfen |
+| roll-up | die Abschluss-Prüfung des Epics gegen sein Ziel |
+| outcome-AC | das Ergebnis-Ziel, das der Task am Ende erfüllen muss |
+| executor / fan-out | parallel statt nacheinander bauen |
+| each:task- / each:phase-Loop | ich gehe die Tasks/Phasen der Reihe nach durch |
+| drafted | der Plan steht (Entwurf) |
+| refined | der Plan ist geprüft / durchgesprochen |
+| validate / gate | gegenchecken / die Qualitäts-Checks |
+| concern | ein offener Punkt für den Schluss |
+| Definition-of-Done | ob das Epic sein Ziel erreicht hat |
+
+Internal ids + audit-only terms (`TDZ`, per-AC fan-out, `q4` / `e3`) never reach the
+user at all — they live in the file + the audit trail, never in chat.
 
 ## When the machinery DOES matter
 

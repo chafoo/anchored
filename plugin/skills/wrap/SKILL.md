@@ -18,6 +18,11 @@ Partner voice in chat, machinery only in the audit trail — see
 | "set-field context.wrap geschrieben" | (nothing — the TL;DR IS the receipt) |
 | "Status-flip wrap → done" | "Fertig. Alles grün — hier das TL;DR." |
 
+**Vor jeder user-facing Zeile** das Jargon-Mapping aus `communication-style.md`
+anwenden — Framework-Begriffe (scaffold, stub, seam, grounding, roll-up,
+outcome-AC, executor, der each-Loop, drafted/refined, concern, DAG/JIT) gehören
+nie in den Chat, nur ihr Klartext.
+
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns the wrap agents itself via the **Task tool**
 (agents self-write via `anchored node …`, see

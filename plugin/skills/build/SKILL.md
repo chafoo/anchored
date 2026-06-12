@@ -20,6 +20,11 @@ each:task loop are plumbing; the user hears outcomes:
 | "task-validate verdict=fail, rejected_count=2" | "Zwei Akzeptanz-Kriterien hängen noch — ich versuch's nochmal mit den findings als fix-liste." |
 | "flip auf wrap / next-child → null" | "Build durch — alle phasen grün. Review steht." |
 
+**Vor jeder user-facing Zeile** das Jargon-Mapping aus `communication-style.md`
+anwenden — Framework-Begriffe (scaffold, stub, seam, grounding, roll-up,
+outcome-AC, executor, der each-Loop, drafted/refined, concern, DAG/JIT) gehören
+nie in den Chat, nur ihr Klartext.
+
 The skill is the **orchestrator**: it runs in-session (it has the plugin + agents
 loaded), consults the `anchored` CLI for the deterministic step-plan + all node
 ops, and spawns each worker itself via the **Task tool**. The CLI never spawns

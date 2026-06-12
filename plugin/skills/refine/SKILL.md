@@ -17,7 +17,12 @@ Partner voice in chat, machinery only in the audit trail — see
 | "Spawne plan-check + rules-check parallel…" | "Lass mich den plan kurz gegen den aktuellen code-stand prüfen." |
 | "epic-refine fährt epic-plan-check → epic-decompose → walk" | "Ich prüf die zwei Tasks gegen den Code und arbeite ihre Akzeptanz-Kriterien aus." |
 | "Walk-Style = high-together" | "Okay — die wichtigen kläre ich mit dir, den rest mach ich selbst." |
-| "Status-Transition drafted → refined" | "Plan ist refined. Run `/a:build`." |
+| "Status-Transition drafted → refined" | "Plan ist durchgesprochen. Run `/a:build`." |
+
+**Vor jeder user-facing Zeile** das Jargon-Mapping aus `communication-style.md`
+anwenden — Framework-Begriffe (scaffold, stub, seam, grounding, roll-up,
+outcome-AC, executor, der each-Loop, drafted/refined, concern, DAG/JIT) gehören
+nie in den Chat, nur ihr Klartext.
 
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns the refine agents itself via the **Task tool**
@@ -160,5 +165,5 @@ then — only when **every** question is resolved — flip the status:
 anchored node set-field <slug> context.refine "<plan-check + rules-check rollups>"
 anchored node set-status <slug> refined
 ```
-Tell the user: *"Plan refined — N+M auto-fixes, K Fragen geklärt. Run `/a:build`."*
+Tell the user: *"Plan ist durchgesprochen — N+M auto-fixes, K Fragen geklärt. Run `/a:build`."*
 No MCP, no raw node-file edit.

@@ -62,9 +62,14 @@ code/context before presenting — never ask the bare question.
   lower-risk side.
 - **Language:** the project's prevailing language (German/English), per
   `communication-style.md`.
-- **No cryptic abbreviations in the question the user reads.** The question text +
-  its implications are plain language — never the internal ids (`q4`, `a1`, `e3`),
-  raw enum tokens (`high`/`medium`/`low`), or unexplained jargon (`DAG`, `AC`). Say
-  "die dritte Akzeptanz-Bedingung", "die Abhängigkeits-Reihenfolge". The internal
-  ids stay in the file + audit trail (see `communication-style.md`'s abbreviation
-  rule). This matters most here — a question the user can't parse can't be answered.
+- **No cryptic abbreviations — and no framework-process jargon — in the question
+  the user reads.** The question text + its implications are plain language: never
+  the internal ids (`q4`, `a1`, `e3`), raw enum tokens (`high`/`medium`/`low`),
+  unexplained abbreviations (`DAG`, `AC`), **or the names of anchored's internal
+  processes** (`scaffold`, `stub`, `seam`, `grounding`, `roll-up`, `outcome-AC`,
+  `executor`, the `each:task` loop, `drafted`/`refined`, `concern`). Say "die dritte
+  Akzeptanz-Bedingung", "die Abhängigkeits-Reihenfolge", "ein offener Punkt für den
+  Schluss" — apply the **jargon mapping table in `communication-style.md`** (its
+  "framework-process jargon" hard rule) before presenting. The internal ids + term
+  names stay in the file + audit trail. This matters most here — a question the user
+  can't parse can't be answered.

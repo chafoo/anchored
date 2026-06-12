@@ -19,6 +19,11 @@ Partner voice in chat, machinery only in the audit trail — see
 | "ich fahre die zwei Plan-Steps: discover dann scaffold (Stubs + Abhängigkeits-Reihenfolge)" | "Ich schau kurz den Code an und skizzier die zwei Tasks." |
 | "Status-flip plan → drafted" | "Plan steht — N phasen, M Akzeptanz-Kriterien, K offene fragen. Run `/a:refine`." |
 
+**Vor jeder user-facing Zeile** das Jargon-Mapping aus `communication-style.md`
+anwenden — Framework-Begriffe (scaffold, stub, seam, grounding, roll-up,
+outcome-AC, executor, der each-Loop, drafted/refined, concern, DAG/JIT) gehören
+nie in den Chat, nur ihr Klartext.
+
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns each plan agent itself via the **Task tool**. The
 agents self-write phases/ACs via `anchored node …` (see
