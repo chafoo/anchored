@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: question-discipline
+title: question-discipline
+created: 2026-06-12
+status: done
+phases:
+  - name: question-discipline.md anlegen (v1-Generositaet generalisiert)
+    slug: create-reference
+    status: done
+    acceptance_criteria:
+      - id: a1
+        text: "plugin/references/question-discipline.md existiert + enthaelt die vier v1-Direktiven: over-surface-ok/under-surface-Failure-Mode, 'pick X = die Frage', Klammer-Empfehlung, Prioritaets-Kalibrierung (grep: Datei + vier Marker)."
+        status: done
+        evidence:
+          - plugin/references/question-discipline.md angelegt mit den vier v1-Direktiven (over-surface/under-surface=Failure-Mode, 'pick X = die Frage', Prioritaets-Kalibrierung nach Impact). guard-prose.sh 'directive:'-Checks (3x) gruen.
+      - id: a2
+        text: "question-discipline.md grenzt sich explizit von question-style.md ab (WANN vs. WIE) (grep: Abgrenzungs-Zeile)."
+        status: done
+        evidence:
+          - question-discipline.md grenzt sich von question-style.md ab (WANN vs. WIE / 'WHEN you raise one at all'). guard 'delimits WHEN vs HOW' gruen.
+  - name: Link + tier-Linse in die fuenf Frage-Agenten
+    slug: wire-agents
+    status: done
+    acceptance_criteria:
+      - id: a1
+        text: "Alle fuenf Agenten (plan-decompose, epic-decompose, refine-plan-check, refine-rules-check, epic-plan-check) verlinken question-discipline.md (grep: Link in jedem)."
+        status: done
+        evidence:
+          - Alle fuenf Agenten verlinken question-discipline.md (guard '<agent> links question-discipline' 5x gruen).
+      - id: a2
+        text: "Task/Phase-Agenten tragen die Feature-/UX-Linse, Epic-Agenten die Scope-/Zerlegungs-Linse (grep: tier-spezifische Linsen-Zeile je Agent)."
+        status: done
+        evidence:
+          - Task-Linse in plan-decompose/refine-plan-check/refine-rules-check (Feature-UX bzw. rules-Fork), Epic-Linse in epic-decompose/epic-plan-check (Scope/Split). guard '<agent> carries a Question lens' 5x gruen.
+  - name: guard-prose.sh um die question-discipline-Verdrahtung erweitern
+    slug: guard
+    status: done
+    acceptance_criteria:
+      - id: a1
+        text: "guard-prose.sh prueft: Referenz existiert + Abgrenzung + alle fuenf Agenten verlinken + tier-Linse; echter Lauf gruen."
+        status: done
+        evidence:
+          - "guard-prose.sh um question-discipline-Block erweitert (Referenz+Direktiven+Abgrenzung+5 Agenten-Links+5 Linsen). Echter Lauf: 'guard-prose: ALL GREEN', exit=0."

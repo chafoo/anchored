@@ -1,0 +1,109 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/epic.schema.json
+schema_version: 2
+slug: dogfood-fixings-4
+title: Dogfood-Fixings 4 — Jargon-Scrub, Frage-Disziplin, Fan-out-Default, VCS-Provenance
+status: wrap
+created: 2026-06-12
+goal: "Vier Tickets aus der 3-Agent-Analyse des v0.1.13-Dogfood-Laufs. App + Prozess liefen sauber — das hier ist Politur + eine Core-Härtung. Drei reine Plugin-Prosa-Tickets, eins Core-Code. Owner-Reihenfolge (impact-first): erst die drei Prosa-Härtungen (Jargon-Mapping + SKILLs säubern, Frage-Generosität aus v1 zurückholen, Fan-out auf den schnellsten sicheren Weg drehen), dann das schwere Core-Ticket in zwei Tasks (commit_sha-Semantik + archive/reset-Verben, danach Provenance-Mechanismus + Task-File-Commit-Policy). Höchste Einzel-Prio: Jargon-Scrub (Owner-Hauptbefund: 'niemand spricht die Framework-Sprache')."
+acceptance:
+  - id: e1
+    text: Kein Framework-Prozess-Jargon mehr in Chat-naher Prosa oder den 'Prefer (partner voice)'-Spalten der vier SKILLs; eine universelle Hard-Rule + die Mapping-Tabelle stehen zentral in communication-style.md; question-style verlinkt sie; Grep-Test grün (jargon-scrub).
+    status: done
+    evidence:
+      - "Geliefert in 683839c: communication-style.md Hard-Rule + 15-Zeilen-Mapping-Tabelle; vier SKILLs gescrubbt; question-style verlinkt; guard-prose.sh gruen."
+  - id: e2
+    text: "Die Frage-Generosität ist zurück: plugin/references/question-discipline.md existiert (v1-Direktiven generalisiert) und alle fünf Frage-autorenden Agenten verlinken sie mit ihrer tier-spezifischen Linse; ein Trockenlauf surfaced wieder Fragen statt '0' (question-discipline)."
+    status: done
+    evidence:
+      - "Geliefert in ec2668d: question-discipline.md (v1-Generositaet generalisiert) + alle fuenf Frage-Agenten verlinkt mit tier-Linse; guard gruen."
+  - id: e3
+    text: Der per-Phase-executor-Default ist auf 'schnellster sicherer Weg' gedreht (parallel/workflow sobald der Sicherheits-Floor unabhängiger ACs hält); die ephemere Tempo-vs-Zuschauen-Präferenz wird einmal im Refine gefragt und ist nie eine Qualitätsentscheidung; git-Worktree-Isolation ist Vorgabe (nicht Caveat); Grep-Test grün (fanout-fastest-safe).
+    status: done
+    evidence:
+      - "Geliefert in 75b61bf: executor-Default auf 'schnellster sicherer Weg' (Korrektheits-Floor), ephemere Tempo-vs-Zuschauen-Praeferenz, Worktree als Vorgabe; guard gruen."
+  - id: e4
+    text: commit_sha (oder sein Nachfolger) zeigt nach dem task-Wrap auf einen ÜBERLEBENDEN Commit; die VCS-Provenance landet verlässlich im Feld ohne hand-verdrahtetes Write-Back (Mechanismus hinter dem run-Seam); der Audit-Trail (Task-File) ist nach einem Lauf committet; anchored archive + anchored reset existieren und ersetzen die manuelle Repo-Rücksetzung; alle fünf Quality-Gates grün (vcs-provenance).
+    status: done
+    evidence:
+      - "Geliefert in 7b23626 + 7b0107a: archive/reset (develop/main geschuetzt, live getestet), commit_sha+merge_commit additiv, Provenance-Mechanismus hinter dem run-Seam, Audit-Trail-Commit-Policy als Default-Template-Step; alle fuenf Gates gruen."
+  - id: e5
+    text: "Der nächste Dogfood-Rerun bestätigt live end-to-end: klare Partner-Sprache ohne Framework-Jargon, generöse Fragen statt '0', schneller Fan-out wo sicher, und saubere VCS-Provenance + reproduzierbares reset."
+    status: pending
+questions:
+  - id: q1
+    text: "Ein Epic mit fünf Tasks (so geplant) lassen, oder splitten — die drei Prosa-Tasks als ein Epic, vcs-provenance (Core-Code, ganz andere Rules + TDD/Gates) als eigenes? Empfehlung: zusammenlassen wie hier — du sagtest 'auf die Tickets / alle', und die Task-Trennung hält Prosa und Code sauber auseinander."
+    priority: high
+    status: resolved
+    answer: Ein Epic lassen — Prosa und Core als getrennte Tasks in einem dogfood-fixings-4-Epic gefuehrt.
+    source: user
+  - id: q2
+    text: "commit_sha-Semantik: auf den überlebenden Merge-Commit auf develop umbiegen, ODER commit_sha → phase_commit umbenennen und zusätzlich ein task-level merge_commit-Feld führen? Empfehlung: phase_commit + merge_commit — behält den Phase-Anker fürs Audit UND einen überlebenden Task-Anker, statt die Semantik still zu überladen."
+    priority: high
+    status: resolved
+    answer: "Additiv: commit_sha behalten (Phasen-Anker fuers Audit) + neues merge_commit (ueberlebender Task-Anker). Kein Rename, keine Test-/config.md-/example-yml-Migration."
+    source: user
+  - id: q3
+    text: Was genau tun archive und reset (bitte je Verb konkret)? archive = Phase-/Task-Branches löschen + Task-File einfrieren/wegräumen, oder nur read-only markieren? reset = Task-File + Phase-Branches in den Ausgangszustand UND develop/main zurückspulen, oder nur die Task-Artefakte? Das bestimmt die Verb-Akzeptanz maßgeblich.
+    priority: high
+    status: resolved
+    answer: "Sanft: archive = Phasen-/Task-Branches loeschen + Task-File als archiviert einfrieren (read-only); reset = Task-File auf Ausgangszustand + Branches loeschen, develop/main NICHT anfassen."
+    source: user
+  - id: q4
+    text: "Ist der VCS-Provenance-SHA-Write-Back reiner Mechanismus (engine-nah hinter dem run-Seam) oder ein Hybrid (Mechanismus fängt den SHA ein, Policy entscheidet ob/wohin geschrieben wird)? Empfehlung: Hybrid — das Einfangen ist Mechanismus, das WAS committet wird bleibt Policy, wie im Ticket gezogen."
+    priority: high
+    status: resolved
+    answer: "Hybrid: der Mechanismus faengt den SHA verlaesslich ein, die Policy (User-Config) entscheidet ob und in welches Feld geschrieben wird."
+    source: user
+  - id: q5
+    text: "Task-File-State-Commit: committen wir das Task-File pro Phase im SELBEN Commit wie den Source oder als SEPARATEN Commit? Empfehlung: separat — hält den Audit-Trail-Commit vom Code-Diff getrennt und übersteht ein per-Phase-Squash sauberer."
+    priority: medium
+    status: resolved
+    answer: Separat committen — Task-File-State in einem eigenen Commit, nicht im Source-Commit.
+    source: ai
+    reasoning: Haelt den Audit-Trail-Commit vom Code-Diff getrennt, uebersteht ein per-Phase-Squash sauberer und entkoppelt die Provenance-Persistenz von der Commit-Strategie des Users.
+  - id: q6
+    text: "Soll Jargon NUR aus Chat-naher Prosa + den Prefer-Spalten gescrubbt werden, oder auch aus internen Step-Namen / CLI-Verben / Feldnamen? Empfehlung: nur Chat-nahe Prosa — die Tickets sagen, interne Namen (depends_on, build.each, der scaffold-Step) bleiben; sie sind dein Vokabular, nicht das des Users."
+    priority: medium
+    status: resolved
+    answer: Nur Chat-nahe Prosa + die Prefer-Spalten scrubben; interne Step-/Feld-/CLI-Namen bleiben.
+    source: ai
+    reasoning: Die Tickets sagen explizit, interne Namen (depends_on, build.each, der scaffold-Step) bleiben — sie sind das Framework-Vokabular im CLI/Doku, nur der User-Chat wird uebersetzt.
+  - id: q7
+    text: "Soll der optionale Sub-Concern (plan-decompose emittiert Enforcement-ACs wie trim/whitespace/Selektor-Scoping schon beim Zerlegen) in diesem Epic mitgebaut oder rausgehalten werden? Empfehlung: rauslassen — niedrigste Prio, das Ticket sagt separat halten, nicht mit 1-4 koppeln."
+    priority: medium
+    status: resolved
+    answer: Rauslassen — der optionale Enforcement-AC-Sub-Concern bleibt aus diesem Epic.
+    source: ai
+    reasoning: Niedrigste Prio; das vcs-provenance-Ticket sagt 'separat halten, nicht mit 1-4 koppeln'. Bleibt als a6 im Ticket fuer spaeter dokumentiert.
+  - id: q8
+    text: "Soll das 'Tempo vs. Zuschauen, Qualität identisch'-Framing AUCH zentral in communication-style.md stehen, oder nur in refine/build-SKILL? Empfehlung: auch zentral in communication-style.md — dann verlinken die SKILLs statt es zu duplizieren."
+    priority: low
+    status: resolved
+    answer: Das Tempo-vs-Zuschauen-Framing kommt inline in refine/SKILL (+ build/SKILL), NICHT zentral in communication-style.md.
+    source: ai
+    reasoning: Kleines executor-spezifisches Framing — am Ort der Entscheidung gehalten spart einen Cross-File-Link UND loest die Same-File-Kollision mit jargon-scrub auf communication-style.md (Grounding-Befund) komplett auf; fanout-fastest-safe fasst communication-style.md damit gar nicht an.
+  - id: q9
+    text: "Wie tief soll der Grep-Test für die Prosa-Tasks gehen — ein einzelnes zentrales Guard-Script mit allen Assertions, oder pro SKILL/Referenz ein eigener Test? Empfehlung: ein zentrales Guard-Script — eine Stelle, die der Build grün/rot fährt, leichter zu pflegen als verstreute Einzeltests."
+    priority: low
+    status: resolved
+    answer: Ein zentrales Guard-Script fuer die Prosa-Tasks statt verstreuter Einzeltests.
+    source: ai
+    reasoning: Eine Stelle, die der Build gruen/rot faehrt, leichter zu pflegen; alle Jargon-/Verlinkungs-/Floor-Assertions sammeln sich dort.
+tasks:
+  - slug: jargon-scrub
+    goal: "Reine Plugin-Prosa (höchste Prio). (a) Universelle Hard-Rule 'kein Framework-Prozess-Jargon im User-Chat' + Mapping-Tabelle in plugin/references/communication-style.md einfügen (nach den bestehenden Hard-Rules ~:104; die Tabelle existiert noch nicht). Mapping u.a.: DAG → 'was zuerst gebaut werden muss', scaffold → 'das Gerüst skizzieren', stub → 'grobe Task-Skizze', seam → 'die Schnittstelle/Andock-Stelle', grounding → 'gegen den echten Code-Stand prüfen', roll-up → 'die Abschluss-Prüfung des Epics', outcome-AC → 'das Ergebnis-Ziel', executor/fan-out → 'parallel statt nacheinander', each-Loop → 'der Reihe nach durchgehen', drafted → 'Plan steht (Entwurf)', refined → 'Plan ist durchgesprochen', concern → 'offener Punkt für den Schluss'. (b) Die vier SKILLs (plan/refine/build/wrap) scrubben — ihre Avoid→Prefer-Tabellen + Prosa lehren den Leak aktuell selbst (z.B. plan ~:89 'Stubs + DAG', refine :20 'Plan ist refined', build :19/:80-82 'JIT', wrap :32 'roll-up/Definition-of-Done'). question-style.md (:65-70) verlinkt die Tabelle + erweitert seine Schranke. Interne Step-/Feld-/CLI-Namen bleiben unangetastet — gescrubbt wird NUR Chat-nahe Prosa + die Prefer-Spalten. Grep-Test sichert die Regel + jargon-freie Prefer-Spalten."
+    status: done
+  - slug: question-discipline
+    goal: "Reine Plugin-Prosa. NEUE Referenz plugin/references/question-discipline.md (existiert noch nicht), generalisiert aus dem v1-Tuning (~/Dev/anchored/plugin/agents/plan.md): 'over-surface ok, under-surface = Failure-Mode', der 'ich pick einfach X = das IST die Frage'-Reflex, der Klammer-Empfehlungs-Trick (… ? (lean X — weil Y)), Prioritäts-Kalibrierung (high = User wäre sauer wenn ohne ihn entschieden / medium = prägt das Gefühl aber tauschbar / low = in 5 Min reversibel). Klare Abgrenzung zu question-style.md: discipline = WANN/wie generös, style = WIE formuliert. Dann Link + pro-Etage-Linse in die fünf Frage-autorenden Agenten (plan-decompose, epic-decompose, refine-plan-check, refine-rules-check, epic-plan-check): Task/Phase-Linse = Feature-/UX-Entscheidungen (Verhalten, Style, Sortierung, Error-UX, Empty-State, A11y); Epic-Linse = Scope-/Zerlegungs-Entscheidungen (Split, drin/draußen, Task-Grenzen, Integrations-Vertrag, Abhängigkeits-Kanten). Grep-Test sichert Referenz + Verlinkung + tier-Linse je Agent."
+    status: done
+  - slug: fanout-fastest-safe
+    goal: "Reine Plugin-Prosa. executor-Default umdrehen: heute konservativ-sequentiell (der Fan-out feuert nie), neu 'schnellster sicherer Weg → parallel/workflow; sequentiell nur als bewusste Wahl oder wenn unsicher'. set-executor … workflow existiert bereits — reiner Default-Flip, kein neuer Mechanismus. Sicherheits-Floor (genuinely unabhängige ACs: keine fasst die andere an, keine zwei dieselbe Datei-Region) bleibt als KORREKTHEITS-Schranke erhalten und wird klar als Korrektheit geframt, NICHT als Tempo-vs-Qualität. Ephemere Refine-Präferenz analog zum Walk-Style (refine ~:59-112): 'so schnell wie sicher (parallel) oder lieber sequenziell zum Zuschauen — rein Tempo vs. Zuschaubarkeit, die Qualität ist identisch'. build/SKILL.md (~:152-157): den Worktree-'Caveat' zur VORGABE machen — jeder Fan-out-Worker (Phase- UND Task-Level) unter git-Worktree-Isolation. Betrifft refine/SKILL.md (executor-Section 131-154) + build/SKILL.md, ggf. communication-style.md (das Framing). Grep-Test sichert die Verdrahtung + dass der Floor erhalten bleibt."
+    status: done
+  - slug: vcs-provenance-schema-cli
+    goal: "Core-Code (TDD: Test zuerst, rot→grün; alle fünf Quality-Gates grün vor done). (1) commit_sha-Semantik klären — das Custom-Field zeigt heute auf den beim task-Wrap --no-ff-Merge GELÖSCHTEN Phase-Branch-Commit (nach dem Merge tot). Entweder auf den überlebenden Merge-Commit auf develop zeigen, oder commit_sha → phase_commit umbenennen UND ein zusätzliches task-level merge_commit führen. (4) Neue CLI-Verben anchored archive <slug> + anchored reset <slug> — Registrierung = neues core/src/cli/commands/<verb>.ts + Import + Switch-Case (index.ts ~147-179) + HELP-Eintrag (~104-130) + ggf. NodeOpsFacade. Als Factories createX(cfg,deps)→{verb()}, VCS-Effekt als injizierte Dep, git via node:child_process (nie Bun.*), JSON-Envelope-Output. (5) plan/SKILL.md Re-Plan reicht --slug durch statt rm+recreate (--slug ist in commands/plan.ts ~36-52 schon geparst — reiner SKILL-Edit). Trägt alle vier .claude/rules."
+    status: done
+  - slug: vcs-provenance-mechanism-policy
+    goal: "Core-Code (TDD; fünf Gates grün), baut auf vcs-provenance-schema-cli auf. (2) Engine-naher, optionaler VCS-Provenance-Mechanismus hinter dem run-Seam (core/src/bin.ts exec), der den Merge-/Commit-SHA deterministisch einfängt + ins Feld schreibt — ohne dass jeder User-Step das Zurückschreiben selbst hand-verdrahtet (F1 hat genau das schon mal getroffen). Mechanismus-vs-Policy-Grenze sauber: WAS committet wird = Policy (User-Config); DASS der resultierende SHA verlässlich ins Feld kommt = darf Mechanismus sein. (3) Task-File-State-Commit-Policy als Default-Template-Step in anchored.default.yml: der Evidence-Trail (das Task-/_epic-File mit ACs/evidence/log) bleibt heute uncommitted im Working-Tree; Policy entscheiden + verdrahten (committen wir pro Phase, separat oder im selben Commit). Als Default-Template-Step (Policy), NICHT als omittbarer Mechanismus. Provenance-Mechanismus ist eine Factory mit injizierter VCS-Dep (im Test fakebar, kein echtes git). Trägt alle vier .claude/rules."
+    status: done
+    depends_on:
+      - vcs-provenance-schema-cli

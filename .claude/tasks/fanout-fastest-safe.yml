@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: fanout-fastest-safe
+title: fanout-fastest-safe
+created: 2026-06-12
+status: done
+phases:
+  - name: "refine-SKILL: Default auf schnellsten sicheren Weg (workflow) + ephemere Praeferenz"
+    slug: flip-executor-default
+    status: done
+    acceptance_criteria:
+      - id: a1
+        text: refine/SKILL.md waehlt workflow als Default sobald der Sicherheits-Floor (unabhaengige ACs) haelt; kein 'sequential, the default' mehr (grep).
+        status: done
+        evidence:
+          - "refine/SKILL.md: executor-Default auf 'fastest safe path' (workflow bei >=2 unabhaengigen ACs); 'sequential, the default' entfernt. guard: 2 Checks gruen."
+      - id: a2
+        text: refine/SKILL.md fragt einmal die ephemere Tempo-vs-Zuschauen-Praeferenz mit 'Qualitaet ist identisch'-Disclaimer; der Sicherheits-Floor bleibt als Korrektheits-Schranke (nicht Tempo-vs-Qualitaet) (grep).
+        status: done
+        evidence:
+          - "refine/SKILL.md: ephemere Tempo-vs-Zuschauen-Praeferenz mit 'Qualitaet ist identisch'-Disclaimer; Sicherheits-Floor als Korrektheit (nicht Tempo-vs-Qualitaet) geframt. guard: 2 Checks gruen."
+  - name: "build-SKILL: Worktree-Isolation fuer Fan-out als Vorgabe (Phase- + Task-Level)"
+    slug: worktree-directive
+    status: done
+    acceptance_criteria:
+      - id: a1
+        text: "build/SKILL.md formuliert git-Worktree-Isolation als Vorgabe (nicht 'caveat') fuer Fan-out-Worker auf Phase- und Task-Level (grep: Directive-Wortlaut, kein 'Fan-out caveat')."
+        status: done
+        evidence:
+          - "build/SKILL.md: Worktree-Isolation als 'directive, not caveat' fuer Phase- + Task-Level Fan-out; Dispatch-Step nutzt isolation: 'worktree'; 'Fan-out caveat' entfernt. guard: 2 Checks gruen."
+  - name: guard-prose.sh um die fanout-Verdrahtung erweitern
+    slug: guard
+    status: done
+    acceptance_criteria:
+      - id: a1
+        text: guard-prose.sh prueft den fanout-Default + die Praeferenz + die Worktree-Vorgabe; echter Lauf gruen.
+        status: done
+        evidence:
+          - "guard-prose.sh um fanout-Block (6 Checks) erweitert. Echter Lauf: 'guard-prose: ALL GREEN', exit 0."

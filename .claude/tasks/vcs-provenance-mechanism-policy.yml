@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: vcs-provenance-mechanism-policy
+title: vcs-provenance-mechanism-policy
+created: 2026-06-12
+status: done
+phases:
+  - name: "Hybrid-Mechanismus: provenance auf run-Step faengt SHA + schreibt Feld (Engine)"
+    slug: provenance-mechanism
+    status: done
+    acceptance_criteria:
+      - id: a1
+        text: "schema/step.ts: provenance?: {field, ref?} auf Step, nur auf run-Step gueltig (refine); Test deckt die XOR/Gueltigkeit (rot vor gruen)."
+        status: done
+        evidence:
+          - "schema/step.ts: provenance?: {field, ref?} auf Step + StepSchema; .refine erzwingt nur-auf-run-Step. step.spec.ts: parst auf run-Step (mit/ohne ref), Ablehnung auf use/bare/leeres field. bun test gruen."
+      - id: a2
+        text: "engine/scope/run-step.ts: nach erfolgreichem run mit provenance faengt deps.run('git rev-parse <ref|HEAD>') den SHA + schreibt ihn ins Feld via ops (Mechanismus); Test mit fake run+ops (kein echtes git)."
+        status: done
+        evidence:
+          - "engine/scope/run-step.ts: nach erfolgreichem run mit provenance faengt deps.run('git rev-parse <ref|HEAD>') den SHA + schreibt via deps.ops.setField (neu in OpsLike + engine-ops). run-step.spec.ts (fake run+ops): SHA landet im Feld, ohne provenance kein setField, failed cmd kein capture, failed rev-parse bleibt ok. Nur deps.run, kein child_process."
+      - id: a3
+        text: "Mechanismus-vs-Policy: WAS committet wird bleibt Policy (der run-Befehl), DASS der SHA verlaesslich ins Feld kommt ist Mechanismus; in config.md/Kommentar dokumentiert."
+        status: done
+        evidence:
+          - "Mechanismus-vs-Policy: git-Effekt + SHA-Capture = Mechanismus (Engine, hinter deps.run-Seam); WAS committet wird + welches Feld = Policy (config). In config.md dokumentiert."
+  - name: Task-File-Commit als Default-Template-Step (separat) + Demo + SKILL-Spiegel
+    slug: commit-policy
+    status: done
+    acceptance_criteria:
+      - id: a1
+        text: "core/default-template/anchored.default.yml: task.wrap bekommt einen task-file-state-commit-Step (SEPARATER Commit des Audit-Trails, guarded: no-op ausserhalb git/ohne Aenderung); parst sauber."
+        status: done
+        evidence:
+          - "default-template/anchored.default.yml:72 task.wrap 'commit-audit-trail' (SEPARATER Commit; guarded: no-op ausserhalb git/ohne Aenderung). anchored validate: config ok (Default-Template parst sauber)."
+      - id: a2
+        text: "anchored.example-comprehensive.yml demonstriert provenance: {field: commit} statt hand-verdrahtetem set-field; build/SKILL.md Prosa spiegelt den Mechanismus fuer den live-Build."
+        status: done
+        evidence:
+          - "anchored.example-comprehensive.yml: provenance:{field:commit_sha} (Phase-Commit, Z.92) + {field:merge_commit} (Wrap-Merge, Z.65) statt hand-verdrahtetem set-field; build/SKILL.md spiegelt den Mechanismus fuer den live-Build."
+      - id: a3
+        text: "Alle fuenf Quality-Gates gruen: lint, format, typecheck, test, build."
+        status: done
+        evidence:
+          - "Alle fuenf Gates unabhaengig verifiziert: lint exit0, format 'All matched files use Prettier code style', typecheck exit0, build exit0, bun test 273 pass/2 skip/0 fail."

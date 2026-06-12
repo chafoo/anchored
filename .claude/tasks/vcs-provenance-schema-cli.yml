@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
+schema_version: 2
+slug: vcs-provenance-schema-cli
+title: vcs-provenance-schema-cli
+created: 2026-06-12
+status: done
+phases:
+  - name: io remove/move + facade archive/reset + Tests (TDD)
+    slug: substrate-primitives
+    status: done
+    acceptance_criteria:
+      - id: a1
+        text: io.ts exponiert remove(path) (fs.unlink) + move(from,to) (fs.rename); IoFs.unlink ergaenzt + in bin.ts verdrahtet; Test mit fake-fs deckt beide (rot vor gruen).
+        status: done
+        evidence:
+          - "io.ts: remove(path)=fs.unlink + move(from,to)=mkdir+rename; IoFs.unlink ergaenzt + in bin.ts verdrahtet. io.spec.ts deckt beide (fake-fs). bun test 267 pass/0 fail."
+      - id: a2
+        text: Facade-Methoden archive(slug) (verschiebt Task-File nach .claude/tasks/archive/<slug>.yml) + reset(slug) (loescht Task-File); Test mit fake-io.
+        status: done
+        evidence:
+          - "ops/facade.ts: archive(slug) verschiebt Task-File nach .claude/tasks/archive/<slug>.yml, reset(slug) loescht es; UnknownNode bei fehlender Datei. facade.archive-reset.spec.ts gruen. Live verifiziert: archive verschob smoke-archive.yml nach archive/, reset loeschte smoke-reset.yml."
+  - name: archive/reset CLI-Commands + index-Wiring + HELP + Tests
+    slug: cli-commands
+    status: done
+    acceptance_criteria:
+      - id: a1
+        text: "anchored archive <slug> [--branch <name>]... : loescht via deps.run die genannten Branches (Default task/<slug>, best-effort) + friert das Task-File ein (Facade archive); develop/main NIE angefasst; JSON-Envelope; Test mit fake run+io."
+        status: done
+        evidence:
+          - "anchored archive <slug> [--branch]: loescht via deps.run die Branches (Default task/<slug>, best-effort) + friert File ein; JSON-Envelope. Live: result.branchesDeleted=[task/smoke-archive], develop+main ueberlebten, File in archive/."
+      - id: a2
+        text: "anchored reset <slug> [--branch <name>]... : setzt Task-File auf Ausgangszustand (loescht es) + loescht die Branches; develop/main NIE angefasst; JSON-Envelope; Test."
+        status: done
+        evidence:
+          - "anchored reset <slug>: loescht Task-File + Branches; develop/main NIE angefasst (in parseBranches gefiltert). Live: smoke-reset.yml weg, task/smoke-reset geloescht, develop+main da."
+      - id: a3
+        text: Beide Verben in cli/index.ts registriert (import + switch-case + HELP-Eintrag); git-Effekt laeuft ausschliesslich ueber deps.run (node:child_process in bin.ts), kein Bun.*, als Factory ohne Klassen.
+        status: done
+        evidence:
+          - Beide in cli/index.ts registriert (import+switch+HELP 'Lifecycle ops'+UnknownCommand-suggestions); git ausschliesslich ueber deps.run (node:child_process in bin.ts), kein Bun.*, scope/lifecycle.ts als pure Helfer. lint exit0 + typecheck exit0.
+  - name: merge_commit additiv + commit_sha-Semantik dokumentiert + --slug-Re-Plan
+    slug: anchor-and-replan
+    status: done
+    acceptance_criteria:
+      - id: a1
+        text: merge_commit als zusaetzliches Custom-Field in anchored.example-comprehensive.yml deklariert (commit_sha BLEIBT); config.md dokumentiert die Semantik (commit_sha = Phasen-Anker/interim, merge_commit = ueberlebender Task-Anker).
+        status: done
+        evidence:
+          - "merge_commit: string additiv in anchored.example-comprehensive.yml (commit_sha BLEIBT); config.md neue Sektion: commit_sha=Phasen-Anker/interim (Phase-Branch wird beim Wrap-Merge geloescht) vs merge_commit=ueberlebender Task-Anker."
+      - id: a2
+        text: plan/SKILL.md Re-Plan reicht --slug durch statt rm+recreate (Prosa-Edit; --slug ist in commands/plan.ts schon geparst).
+        status: done
+        evidence:
+          - "plan/SKILL.md Re-Plan-Sektion: --slug <slug> reuse statt rm+recreate (behaelt Provenance + Slug-Stabilitaet, auf die branches task/<slug> + archive/reset bauen)."
+      - id: a3
+        text: "Alle fuenf Quality-Gates gruen: lint, format, typecheck, test, build."
+        status: done
+        evidence:
+          - "Alle fuenf Gates unabhaengig verifiziert (core/): lint exit0, format 'All matched files use Prettier code style', typecheck exit0, build exit0, bun test 267 pass / 2 skip / 0 fail."
