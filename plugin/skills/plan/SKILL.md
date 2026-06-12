@@ -41,8 +41,16 @@ This routing lives only in the skill — no `classify` step, no `classify` agent
 ## Get the orchestration plan + create the node
 
 ```bash
-anchored plan <tier> "<description>"   # → { tier, node, steps }   (creates the node, does NOT spawn)
+anchored plan <tier> --slug <short-slug> "<description>"   # → { tier, node, steps }   (creates the node, does NOT spawn)
 ```
+
+**Always pass a short, explicit `--slug`.** Derive a 2–3-word kebab slug from the
+gist (`add OAuth device flow` → `oauth-device-flow`, not the whole sentence). Without
+`--slug` the CLI slugifies the *entire description* (capped at 48 chars) into an
+unwieldy name like `tasks-app-test-lauf-kleiner-epic-mit-genau-zwei` — which then
+shows up in every later command, the branch `task/<slug>`, and the task-file. The
+slug is the node's stable handle for its whole life; pick it deliberately. Never `rm`
+a long auto-slug and recreate — pass `--slug` from the start.
 
 **Re-planning an existing node:** when the user re-plans a slug that already exists
 (refining the brief, restarting the plan stage), pass `--slug <slug>` to **reuse the

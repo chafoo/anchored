@@ -30,6 +30,7 @@ export interface Step {
   each?: TierName
   steps?: Step[]
   provenance?: { field: string; ref?: string }
+  after_done?: boolean
 }
 
 // A step is one of: a bare built-in reference (name only), a run step, a use
@@ -55,6 +56,10 @@ export const StepSchema: z.ZodType<Step> = z.lazy(() =>
       provenance: z
         .strictObject({ field: z.string().min(1), ref: z.string().optional() })
         .optional(),
+      // after_done: a marker on a pure-recorder run-step (e.g. commit-audit-trail).
+      // The wrap SKILL runs such steps AFTER the done-flip so they capture the
+      // terminal `status: done` and leave a clean tree (policy, not mechanism).
+      after_done: z.boolean().optional(),
     })
     .refine(
       (s) =>
@@ -78,6 +83,10 @@ export const StepSchema: z.ZodType<Step> = z.lazy(() =>
     })
     .refine((s) => s.provenance === undefined || s.run !== undefined, {
       error: 'provenance is only valid on a run-step (it captures the SHA the run produced)',
+    })
+    .refine((s) => s.after_done === undefined || s.run !== undefined, {
+      error:
+        'after_done is only valid on a run-step (a pure-recorder step run after the done-flip)',
     }),
 )
 

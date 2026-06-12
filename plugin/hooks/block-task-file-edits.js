@@ -88,8 +88,11 @@ process.stdin.on('end', () => {
     process.stderr.write(
       `anchored: ${what} — task-files are CLI-only. Mutate via 'anchored node …' ` +
         `(the CLI enforces the no-done-without-evidence invariant + atomic writes). ` +
-        `Reading is fine via 'anchored node read'. To override for a manual planning ` +
-        `edit, set ANCHORED_TASKFILE_EDIT=1.\n`,
+        `Reading is fine via 'anchored node read'. ` +
+        `To clean up / reset a run, use the CLI verbs — 'anchored archive <slug>' ` +
+        `(freeze + branches) or 'anchored reset <slug>' (remove + branches); never ` +
+        `mv/rm the file by hand. To override for a manual planning edit, set ` +
+        `ANCHORED_TASKFILE_EDIT=1.\n`,
     )
     process.exit(2) // block
   }

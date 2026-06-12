@@ -29,9 +29,16 @@ export function createStepsPlanner(config: Record<string, unknown>) {
         retry_limit: buildCfg.retry_limit ?? 3,
       }
     }
-    // bash run-step (explicit command, or the bare `run` built-in = "run this child")
+    // bash run-step (explicit command, or the bare `run` built-in = "run this child").
+    // after_done flows through so the wrap SKILL knows to run this pure-recorder step
+    // AFTER the done-flip (e.g. commit-audit-trail captures the terminal status).
     if (s.run !== undefined || s.name === 'run') {
-      return { name: s.name, kind: 'run', ...(s.run !== undefined ? { run: s.run } : {}) }
+      return {
+        name: s.name,
+        kind: 'run',
+        ...(s.run !== undefined ? { run: s.run } : {}),
+        ...(s.after_done !== undefined ? { after_done: s.after_done } : {}),
+      }
     }
     // worker — resolve the step name to its plugin agent (the skill spawns it)
     const ref = dispatch.resolveWorker(s.use ?? s.name)

@@ -48,6 +48,16 @@ test('plans epic.build (loop tasks) + epic.wrap (roll-up)', () => {
   ])
 })
 
+// task.wrap surfaces the commit-audit-trail run-step with after_done:true so the
+// wrap SKILL runs it AFTER the done-flip (captures terminal status, clean tree)
+test('plans task.wrap with commit-audit-trail carrying after_done:true', () => {
+  const plan = createStepsPlanner(defaultCfg).plan('task', 'wrap')
+  const commit = plan.steps.find((s) => s.name === 'commit-audit-trail')
+  expect(commit).toBeDefined()
+  expect(commit!.kind).toBe('run')
+  expect(commit!.after_done).toBe(true)
+})
+
 // D2 — epic.refine is now a REAL pipeline: ground vs code, author per-stub
 // outcome-ACs, then walk (was just [walk]).
 test('plans epic.refine as epic-plan-check → epic-decompose → walk (D2)', () => {

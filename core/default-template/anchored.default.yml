@@ -67,9 +67,13 @@ task:
       - { name: review }
       - { name: summarize }
       # POLICY (überschreibbar): der Framework-Default committet den Audit-Trail
-      # (die Task-Files) als SEPARATEN Commit — getrennt vom Code-Diff. No-op
-      # außerhalb eines git-Repos oder wenn nichts zu committen ist (bulletproof).
+      # (die Task-Files) als SEPARATEN Commit — getrennt vom Code-Diff. Läuft via
+      # after_done NACH dem wrap-done-Flip, damit der Commit den terminalen
+      # `status: done` festhält und einen sauberen Working-Tree hinterlässt (sonst
+      # committet er ein nicht-terminales `status: wrap` und der Flip re-dirtied den
+      # Tree). No-op außerhalb eines git-Repos oder wenn nichts gestaged ist (bulletproof).
       - name: commit-audit-trail
+        after_done: true
         run: |
           git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
           git add .claude/tasks >/dev/null 2>&1 || exit 0

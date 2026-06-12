@@ -11,6 +11,7 @@ export interface PlanStep {
   kind: 'worker' | 'run' | 'loop'
   agent?: string // worker: the plugin agent to spawn (build-implement, …)
   run?: string // run: the bash command
+  after_done?: boolean // run: a pure-recorder step the wrap SKILL runs AFTER the done-flip
   instructions?: string
   each?: string // loop: the child tier to iterate
   stop?: string[]
