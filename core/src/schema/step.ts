@@ -56,7 +56,8 @@ export const StepSchema: z.ZodType<Step> = z.lazy(() =>
       provenance: z
         .strictObject({ field: z.string().min(1), ref: z.string().optional() })
         .optional(),
-      // after_done: a marker on a pure-recorder run-step (e.g. commit-audit-trail).
+      // after_done: a marker on a pure-recorder run-step (e.g. a user's opt-in
+      // audit-trail or provenance commit — the framework ships no git default).
       // The wrap SKILL runs such steps AFTER the done-flip so they capture the
       // terminal `status: done` and leave a clean tree (policy, not mechanism).
       after_done: z.boolean().optional(),

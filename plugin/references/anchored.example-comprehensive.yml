@@ -63,6 +63,17 @@ task:
           git diff --cached --quiet || git commit -m "wrap: ${TASK_SLUG}"
           git checkout main && git merge --no-ff -X theirs "$BRANCH" -m "merge: ${TASK_SLUG}"
         provenance: { field: merge_commit }
+      # OPT-IN: commit the audit-trail (.claude/tasks) as a SEPARATE commit so the
+      # evidence/decisions survive the run. `after_done: true` runs it AFTER the wrap
+      # done-flip, so the committed task-file shows the terminal `status: done` and
+      # leaves a clean tree. The framework ships NO git default — committing is your
+      # policy; this is how you opt in. (The merge step above excludes .claude/tasks
+      # via `:!.claude/tasks` precisely so this step owns the task-files.)
+      - name: commit-audit-trail
+        after_done: true
+        run: |
+          git add .claude/tasks >/dev/null 2>&1 || exit 0
+          git diff --cached --quiet || git commit -q -m "chore(${TASK_SLUG}): audit trail"
 
 # ─── phase ───────────────────────────────────────────────────────────
 phase:

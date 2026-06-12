@@ -61,8 +61,9 @@ A run-step's `after_done` flag decides which side of the flip it lands on:
   pre-`done` means a failure keeps the node pre-`done` (the merge only "counts" once
   the task actually finished).
 - **`after_done: true` — runs AFTER the flip.** These are the steps that only
-  **record the finished result**: the framework's `commit-audit-trail`, a provenance
-  commit. They run *after* `done` so the committed task-file shows the terminal
+  **record the finished result** — e.g. a user's own audit-trail or provenance
+  commit (an opt-in step in *their* `anchored.yml`; the framework ships no git
+  default). They run *after* `done` so the committed task-file shows the terminal
   `status: done` and the working tree is left clean — not one flip stale. (See the
   Finish sequencing below.)
 
@@ -123,9 +124,9 @@ kinds of trailing run-step:
 2. **Flip:** `anchored node set-status <slug> done` — the **same `wrap → done`
    transition on every tier** (D1: the epic mirrors the task lifecycle, no
    tier-special casing).
-3. **`after_done` run-steps** (the framework's `commit-audit-trail`, a provenance
-   commit) — run them now, *after* the flip, so the committed task-file shows the
-   terminal `status: done` and the tree is left clean.
+3. **`after_done` run-steps** (a user's opt-in audit-trail or provenance commit) —
+   run them now, *after* the flip, so the committed task-file shows the terminal
+   `status: done` and the tree is left clean.
 
 Then tell the user: *"Wrap durch — TL;DR im context.wrap. Status: done."* No MCP, no
 raw node-file edit.

@@ -48,14 +48,28 @@ test('plans epic.build (loop tasks) + epic.wrap (roll-up)', () => {
   ])
 })
 
-// task.wrap surfaces the commit-audit-trail run-step with after_done:true so the
-// wrap SKILL runs it AFTER the done-flip (captures terminal status, clean tree)
-test('plans task.wrap with commit-audit-trail carrying after_done:true', () => {
+// the framework default task.wrap is git-free — only the review + summarize
+// workers. The framework writes to the task-files via the CLI; it never commits.
+test('default task.wrap is review + summarize only (no git/commit default)', () => {
   const plan = createStepsPlanner(defaultCfg).plan('task', 'wrap')
-  const commit = plan.steps.find((s) => s.name === 'commit-audit-trail')
-  expect(commit).toBeDefined()
-  expect(commit!.kind).toBe('run')
-  expect(commit!.after_done).toBe(true)
+  expect(plan.steps.map((s) => [s.name, s.agent])).toEqual([
+    ['review', 'wrap-review'],
+    ['summarize', 'wrap-summarize'],
+  ])
+  expect(plan.steps.some((s) => s.kind === 'run')).toBe(false)
+})
+
+// after_done is an OPT-IN marker: when a user adds a trailing run-step with
+// after_done, the planner surfaces it so the wrap SKILL runs it AFTER the
+// done-flip (captures the terminal status, clean tree).
+test('passes after_done through for a user-declared trailing run-step', () => {
+  const cfg = {
+    task: { wrap: { steps: [{ name: 'commit', after_done: true, run: 'echo hi' }] } },
+  } as Record<string, unknown>
+  const plan = createStepsPlanner(cfg).plan('task', 'wrap')
+  const commit = plan.steps.find((s) => s.name === 'commit')
+  expect(commit?.kind).toBe('run')
+  expect(commit?.after_done).toBe(true)
 })
 
 // D2 — epic.refine is now a REAL pipeline: ground vs code, author per-stub

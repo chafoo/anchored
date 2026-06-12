@@ -31,7 +31,8 @@ export function createStepsPlanner(config: Record<string, unknown>) {
     }
     // bash run-step (explicit command, or the bare `run` built-in = "run this child").
     // after_done flows through so the wrap SKILL knows to run this pure-recorder step
-    // AFTER the done-flip (e.g. commit-audit-trail captures the terminal status).
+    // AFTER the done-flip (e.g. a user's opt-in audit-trail commit captures the
+    // terminal status). The framework default uses no such step.
     if (s.run !== undefined || s.name === 'run') {
       return {
         name: s.name,
