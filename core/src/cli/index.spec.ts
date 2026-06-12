@@ -92,3 +92,50 @@ test('thrown handler error is caught and serialised', async () => {
   expect(env.ok).toBe(false)
   expect(env.error.message).toBe('boom')
 })
+
+// L1a (harden-3) — `add-phase-evidence --run`: exit 0 writes evidence via the
+// facade; non-zero is a loud GateFailed and writes NOTHING (AC stays un-evidenced).
+test('L1a: --run writes evidence on exit 0, GateFailed on non-zero', async () => {
+  const calls: string[] = []
+  const facade = fakeFacade({
+    addChildEvidence: async (_s, _p, _a, text) => {
+      calls.push(text)
+      return {}
+    },
+  })
+  // exit 0 → evidence written
+  const ok = makeDeps({
+    nodeOps: facade,
+    run: async () => ({ code: 0, stdout: 'PASS', stderr: '' }),
+  })
+  const c1 = await createCli(ok.deps).run([
+    'node',
+    'add-phase-evidence',
+    's',
+    'p',
+    'a1',
+    '--run',
+    'npm test',
+  ])
+  expect(c1).toBe(0)
+  expect(calls.length).toBe(1)
+  expect(calls[0]).toContain('[verified-run exit 0] npm test')
+
+  // exit 1 → GateFailed, no evidence
+  const fail = makeDeps({
+    nodeOps: facade,
+    run: async () => ({ code: 1, stdout: '', stderr: '2 failing' }),
+  })
+  const c2 = await createCli(fail.deps).run([
+    'node',
+    'add-phase-evidence',
+    's',
+    'p',
+    'a2',
+    '--run',
+    'npm test',
+  ])
+  expect(c2).toBe(1)
+  expect(JSON.parse(fail.out[0]!).error.name).toBe('GateFailed')
+  expect(calls.length).toBe(1) // unchanged — nothing written
+})

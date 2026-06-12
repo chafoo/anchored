@@ -62,6 +62,10 @@ export interface CliDeps {
   steps?: (tier: string, stage: string) => StepPlan
   // D1: `anchored validate` — report the resolved shape across every tier×stage.
   validate?: () => unknown
+  // L1a (harden-3): a real shell runner, used by `add-phase-evidence --run` to
+  // EXECUTE a gate command, capture its exit code, and accept the evidence only on
+  // exit 0 — the deterministic evidence-honesty floor (the agent can't fake it).
+  run?: (cmd: string) => Promise<{ code: number; stdout: string; stderr: string }>
   out: (line: string) => void
   // F5: the real package version, injected from bin.ts (the only fs-touching site).
   // Falls back to the constant when not wired (tests).

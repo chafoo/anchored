@@ -212,6 +212,7 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
     classify: deps.classify,
     steps: planner.plan,
     validate: validator.validate,
+    ...(deps.run !== undefined ? { run: deps.run } : {}),
     out: deps.out,
     ...(deps.version !== undefined ? { version: deps.version } : {}),
   })

@@ -41,6 +41,23 @@ Reproducibility note (B4): prefer evidence you can re-run — a grep/source quot
 a COMMITTED test file. If you ran a throwaway script to check behaviour, phrase it
 as a logic walkthrough, not "simulation confirmed: all passed" (an uncommitted
 simulation can't be re-run, so it reads as a hollow claim).
+
+**Verified-run evidence (L1a, the strongest floor).** When an AC is provable by a
+command (a test, a typecheck, a grep), evidence it through the capturing CLI — it
+RUNS the command and only writes evidence on exit 0, so the proof is real, not
+claimed:
+```bash
+anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> --run "<command>"
+```
+A non-zero exit returns `GateFailed` and writes nothing — the AC stays pending.
+**Do not lower the bar to get a green.** Note the failure as a concern and fix it
+or surface the decision:
+```bash
+anchored node append-log <task-slug> build concern "<what failed + that it must be resolved before this phase completes>"
+```
+(Because a phase only reaches `done` when all its ACs are done-with-evidence (M2),
+a command-verifiable AC evidenced via `--run` makes "the gate actually ran green"
+a precondition of phase completion — not orchestrator discipline.)
 **The phase status is NOT yours to flip.** Write evidence per AC and STOP — do
 **not** run `set-child-status … done`. A phase only reaches `done` when the
 **orchestrator** advances it AFTER both gates (task-validate + code-validate) have

@@ -6,6 +6,7 @@
 import { mkdir, writeFile, rename, readFile, stat, open, unlink } from 'node:fs/promises'
 import { readFileSync, existsSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
+import { exec } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { parse } from 'yaml'
 import { createAnchored } from './index.js'
@@ -126,6 +127,21 @@ try {
     parseYaml: (raw) => parse(raw, { maxAliasCount: 100 }),
     now: () => new Date().toISOString().slice(0, 10), // YYYY-MM-DD for `created`
     version,
+    // L1a (harden-3): the real shell runner for `add-phase-evidence --run` — runs a
+    // gate command in the project root, captures exit code + output. Non-zero exit
+    // surfaces as GateFailed (the AC is NOT evidenced).
+    run: (cmd: string) =>
+      new Promise((resolve) => {
+        exec(cmd, { cwd: root, timeout: 600_000, maxBuffer: 8 * 1024 * 1024 }, (err, so, se) => {
+          const code =
+            err && typeof (err as { code?: unknown }).code === 'number'
+              ? (err as { code: number }).code
+              : err
+                ? 1
+                : 0
+          resolve({ code, stdout: String(so), stderr: String(se) })
+        })
+      }),
     out: (line) => process.stdout.write(line + '\n'),
   })
 

@@ -529,3 +529,18 @@ test('D2: plan + refine SKILLs dispatch custom run/use steps', () => {
     expect(md).toContain('TASK_SLUG') // the variable contract reaches the step
   }
 })
+
+// Harden-3 (L1) — the verified-run floor is documented across the gate agent,
+// build-implement, and the wrap concern-check.
+test('harden-3: --run verified-evidence + concern threads are documented', () => {
+  const read = (p: string) => readFileSync(new URL(`../../../plugin/${p}`, import.meta.url), 'utf8')
+  const gate = read('agents/build-gate.md')
+  expect(gate).toContain('--run')
+  expect(gate.toLowerCase()).toContain('exit 0')
+  expect(gate).toContain('concern')
+  const impl = read('agents/build-implement.md')
+  expect(impl).toContain('add-phase-evidence <task-slug> <phase-slug> <ac-id> --run')
+  expect(impl).toMatch(/GateFailed/)
+  const wrap = read('skills/wrap/SKILL.md')
+  expect(wrap).toMatch(/kind: concern|concern entries|open concern/i)
+})

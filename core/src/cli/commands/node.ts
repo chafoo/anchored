@@ -114,8 +114,30 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
         need(2, 'status'),
         a[3] !== undefined ? [a[3]] : undefined,
       )
-    case 'add-phase-evidence':
-      return ops.addChildEvidence(need(0, 'slug'), need(1, 'phase'), need(2, 'ac'), need(3, 'text'))
+    case 'add-phase-evidence': {
+      const slug = need(0, 'slug')
+      const phase = need(1, 'phase')
+      const ac = need(2, 'ac')
+      // L1a (harden-3): `--run "<cmd>"` EXECUTES the command and only writes evidence
+      // (flipping the AC done) on exit 0 — the deterministic floor. On non-zero the
+      // AC is NOT evidenced and a loud GateFailed comes back, so the orchestrator
+      // notes it as a concern and decides how to proceed (never silent, never auto-done).
+      if (a[3] === '--run') {
+        const cmd = need(4, 'command')
+        if (!deps.run) throw cliError('Unsupported', '--run is not wired in this CLI build')
+        const r = await deps.run(cmd)
+        const output = `${r.stdout}${r.stderr}`.trim().slice(0, 1000)
+        if (r.code !== 0) {
+          throw cliError('GateFailed', `'${cmd}' exited ${r.code} — AC '${ac}' not evidenced`, [
+            output || '(no output)',
+            'note this as a concern (append-log … concern) and decide how to proceed',
+          ])
+        }
+        const evidence = `[verified-run exit 0] ${cmd}${output ? `\n${output}` : ''}`
+        return ops.addChildEvidence(slug, phase, ac, evidence)
+      }
+      return ops.addChildEvidence(slug, phase, ac, need(3, 'text'))
+    }
     case 'set-child-status':
       return ops.setChildStatus(need(0, 'slug'), need(1, 'child'), need(2, 'status'))
     case 'set-phase-rules':

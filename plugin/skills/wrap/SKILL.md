@@ -61,6 +61,20 @@ A failed run-step (e.g. a merge conflict) is a real failure: surface it, stay
 pre-`done`, do **not** flip the status. Keep the git plumbing out of chat — report
 the human outcome ("core-list ist auf develop gemerged."), not the commands.
 
+## Open concerns — the "check at the end" threads (harden-3)
+
+Workers + gates record unexpected things that need a final look as concern entries
+on the log (`anchored node append-log <slug> <stage> concern "<what>"`) — the v1
+`task.context` "still to discuss" surface, made explicit. Before you finish:
+
+1. Read them: `anchored node read <slug>` → `log[]` entries with `kind: concern`
+   (a failed gate, a deferred edge, a decision the build flagged).
+2. **Each open concern must be addressed** — resolved (note how), turned into a
+   follow-up, or explicitly accepted with a reason. Surface them to the user; do
+   not flip to `done` while a concern is unhandled and unmentioned. A failed gate
+   concern (from `--run` GateFailed) means the phase's work isn't actually green —
+   that's a real blocker, not a footnote.
+
 ## Failure-handling
 
 If an agent errors, surface it and stay pre-`done` (do not flip). The node only
