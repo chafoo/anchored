@@ -26,6 +26,7 @@ function anchoredWith(userYml?: string) {
         },
         rename: async () => undefined,
         readFile: async (p: string) => store.get(p) ?? '',
+        unlink: async () => undefined,
       },
       lock: { acquire: async () => async () => {} },
       rand: () => 'r',

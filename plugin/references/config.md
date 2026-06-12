@@ -194,6 +194,25 @@ task:
   Auf einem **Kind** (Stub/Phase): `anchored node set-child-field <slug> <child>
   <name> <value>`.
 
+### Commit-Anchors: `commit_sha` vs. `merge_commit` (Zwei-Anker-Semantik)
+
+Wenn du Commit-Wiring nutzt (siehe
+[`anchored.example-comprehensive.yml`](anchored.example-comprehensive.yml)),
+trägt das Task-File **zwei** Anker — additiv, keine Umbenennung (bestehende Specs/
+Docs bleiben intakt):
+
+- **`commit_sha`** = **Per-Phase-Anker** (Interim). Der per-Phase-Commit-Step
+  schreibt nach jeder Phase den `HEAD`-SHA hierher. Achtung: Der Phasen-Branch,
+  auf den dieser SHA zeigt, **kann vom Task-Wrap-`--no-ff`-Merge gelöscht werden** —
+  `commit_sha` ist dann ein verwaister (interimsmäßiger) Zeiger.
+- **`merge_commit`** = der **überlebende Task-Level-Merge-Commit**. Das ist der
+  stabile Anker auf `develop`/`main`, der nach dem Wrap-Merge bestehen bleibt
+  (während der Phasen-Anchor verschwinden kann).
+
+Beide sind gewöhnliche Custom-Felder (`string`), additiv deklariert — der
+Mechanismus, der `merge_commit` füllt, ist nicht Teil dieser Deklaration (er wird
+separat verdrahtet); hier wird nur das Feld bereitgestellt + dokumentiert.
+
 ## `_lib` — wiederverwendbare Steps (nur `anchored.yml`)
 
 YAML-Anchors sind **auf dem `anchored.yml`-Pfad erlaubt** (user-authored Config),

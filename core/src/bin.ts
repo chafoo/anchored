@@ -36,6 +36,7 @@ const fs = {
   writeFile: (p: string, data: string) => writeFile(p, data),
   rename: (from: string, to: string) => rename(from, to),
   readFile: (p: string) => readFile(p, 'utf8'),
+  unlink: (p: string) => unlink(p),
   // M4: a cheap version token (mtime+size) for the compare-and-swap. Missing file → undefined.
   statVersion: async (p: string): Promise<string | undefined> => {
     try {

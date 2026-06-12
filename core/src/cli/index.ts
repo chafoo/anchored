@@ -9,6 +9,8 @@ import { refineCommand } from './commands/refine.js'
 import { buildCommand } from './commands/build.js'
 import { wrapCommand } from './commands/wrap.js'
 import { stepsCommand, type StepPlan } from './commands/steps.js'
+import { archiveCommand } from './commands/archive.js'
+import { resetCommand } from './commands/reset.js'
 
 export interface EngineResult {
   node: unknown
@@ -58,6 +60,11 @@ export interface NodeOpsFacade {
   clearChildFailures(slug: string, phase: string, acId: string): Promise<unknown>
   setPhaseRules(slug: string, phase: string, path: string, why: string): Promise<unknown>
   setChildStatus(slug: string, childSlug: string, status: string): Promise<unknown>
+  // Lifecycle ops: archive MOVES the task-file into archive/ (freeze it out of the
+  // active set), reset REMOVES it (back to before the task existed). Substrate-only —
+  // the git branch cleanup lives in the archive/reset CLI commands (they hold `run`).
+  archive(slug: string): Promise<unknown>
+  reset(slug: string): Promise<unknown>
 }
 
 export interface CliDeps {
@@ -124,6 +131,10 @@ Node ops (agents self-write via these):
   node set-child-field <slug> <child> <field> <value>
   node set-field <slug> <field> <value>      node set-executor <slug> <phase> <implement|workflow>
 
+Lifecycle ops (clean up a finished/abandoned task — never touches develop/main):
+  archive <slug> [--branch <name> …]     freeze: move the task-file to archive/ + git branch -D (default task/<slug>)
+  reset   <slug> [--branch <name> …]     undo: remove the task-file + git branch -D (default task/<slug>)
+
   -h, --help        show this help
   -v, --version     print the version
 
@@ -163,6 +174,12 @@ export function createCli(deps: CliDeps) {
           case 'steps':
             result = await stepsCommand(rest, deps)
             break
+          case 'archive':
+            result = await archiveCommand(rest, deps)
+            break
+          case 'reset':
+            result = await resetCommand(rest, deps)
+            break
           case 'validate':
             // the merged yml already parsed (createAnchored would have thrown
             // otherwise); report the resolved shape across every tier×stage.
@@ -174,7 +191,17 @@ export function createCli(deps: CliDeps) {
             return emit(deps, false, verb, undefined, {
               name: 'UnknownCommand',
               message: `unknown command '${verb}'`,
-              suggestions: ['plan', 'refine', 'build', 'wrap', 'validate', 'steps', 'node'],
+              suggestions: [
+                'plan',
+                'refine',
+                'build',
+                'wrap',
+                'validate',
+                'steps',
+                'node',
+                'archive',
+                'reset',
+              ],
             })
         }
         return emit(deps, true, verb, result)

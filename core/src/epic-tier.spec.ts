@@ -48,6 +48,9 @@ test('io writes a nested slug to .claude/tasks/<epic>/<slug>.yml', async () => {
         if (d === undefined) throw new Error('ENOENT')
         return d
       },
+      async unlink(p: string) {
+        files.delete(p)
+      },
     },
     lock: { acquire: async () => async () => {} },
     rand: () => 'r',

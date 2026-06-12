@@ -28,6 +28,8 @@ export function fakeFacade(over: Partial<NodeOpsFacade> = {}): NodeOpsFacade {
     setChildAcStatus: async () => ({}),
     setPhaseRules: async () => ({}),
     setChildStatus: async () => ({}),
+    archive: async (slug) => ({ slug, archived: true }),
+    reset: async (slug) => ({ slug, reset: true }),
     ...over,
   }
 }

@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { mkdir, writeFile, rename, readFile, mkdtemp } from 'node:fs/promises'
+import { mkdir, writeFile, rename, readFile, unlink, mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { buildCli } from '../index.js'
@@ -16,6 +16,7 @@ async function setup() {
         writeFile: (p, data) => writeFile(p, data),
         rename: (from, to) => rename(from, to),
         readFile: (p) => readFile(p, 'utf8'),
+        unlink: (p) => unlink(p),
       },
       lock: { acquire: async () => async () => {} },
       rand: () => 'r',

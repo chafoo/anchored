@@ -3,6 +3,7 @@
 // slug→verb surface: read the node, apply the verb, persist. All the await-bearing
 // glue lives HERE (not in index.ts, which stays a pure, await-free wiring factory).
 import type { NodeOpsFacade } from '../cli/index.js'
+import { anchoredError } from '../state/invariants.js'
 
 interface AnyRec {
   slug: string
@@ -99,11 +100,41 @@ export interface FacadeDeps {
   /** Clock seam — returns an ISO date string for the `created` field. Injected
    *  (the bin provides real time) so the core stays Date.now-free + fakeable. */
   now?: () => string
+  /** Path of a node's task-file. Lifecycle ops (archive/reset) relocate/delete the
+   *  file by path, so they need it directly (the tier-ops keep it internal). */
+  pathFor: (slug: string) => string
+  /** The io seam's whole-file ops (move/remove) + a raw read for existence checks.
+   *  archive/reset bypass the validating tier-ops on purpose — they move/delete the
+   *  file as a unit, they don't mutate its contents. */
+  io: {
+    readFile(path: string): Promise<string>
+    move(from: string, to: string): Promise<void>
+    remove(path: string): Promise<void>
+  }
 }
 
 /** Build the slug-based facade over the injected tier-ops. */
 export function createSlugFacade(deps: FacadeDeps): NodeOpsFacade {
-  const { opsFor, tierFor, defaultStatus, now } = deps
+  const { opsFor, tierFor, defaultStatus, now, pathFor, io } = deps
+  // archive path = the task-file's dir + `archive/<slug>.yml`. Derived from pathFor
+  // (replace the final `<slug>.yml` segment) so it tracks whatever layout pathFor
+  // produces — no hardcoded `.claude/tasks` here.
+  const archivePathFor = (slug: string): string => {
+    const path = pathFor(slug)
+    const i = path.lastIndexOf('/')
+    return i < 0 ? `archive/${path}` : `${path.slice(0, i)}/archive/${path.slice(i + 1)}`
+  }
+  // existence guard — both lifecycle ops must fail LOUD on a missing node (never a
+  // silent no-op). A successful raw read proves the file is there before we touch it.
+  const requireExists = async (slug: string): Promise<void> => {
+    try {
+      await io.readFile(pathFor(slug))
+    } catch {
+      throw anchoredError('UnknownNode', `no node '${slug}' to operate on`, [
+        `nothing at ${pathFor(slug)} — check the slug`,
+      ])
+    }
+  }
   return {
     create: async (slug, init) => {
       // create is told its tier explicitly (the file doesn't exist yet to derive
@@ -121,6 +152,20 @@ export function createSlugFacade(deps: FacadeDeps): NodeOpsFacade {
       return opsFor(tier).create({ ...base, ...rest } as AnyRec)
     },
     read: async (slug) => opsFor(await tierFor(slug)).read(slug),
+    // archive — freeze the task-file out of the active set: MOVE it to archive/<slug>.yml.
+    // The substrate touch only; git (branch cleanup) is the command's job (it has `run`).
+    archive: async (slug) => {
+      await requireExists(slug)
+      const to = archivePathFor(slug)
+      await io.move(pathFor(slug), to)
+      return { slug, archived: true, to }
+    },
+    // reset — back to before the task existed: REMOVE the task-file entirely.
+    reset: async (slug) => {
+      await requireExists(slug)
+      await io.remove(pathFor(slug))
+      return { slug, reset: true }
+    },
     setStatus: async (slug, status) => {
       const o = opsFor(await tierFor(slug))
       return o.setStatus(await o.read(slug), status)

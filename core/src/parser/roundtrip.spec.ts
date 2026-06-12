@@ -45,6 +45,9 @@ test('atomicWrite(render(node)) → readFile → parse deep-equals node', async 
         files.delete(from)
         if (d !== undefined) files.set(to, d)
       },
+      async unlink(p: string) {
+        files.delete(p)
+      },
       async readFile(p: string) {
         const d = files.get(p)
         if (d === undefined) throw new Error('ENOENT')

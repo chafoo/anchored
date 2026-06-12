@@ -95,6 +95,8 @@ export interface WireDeps {
   engine?: CliDeps['engine']
   classify?: CliDeps['classify']
   now?: () => string
+  // optional shell runner — lifecycle ops (archive/reset) issue git branch -D through it.
+  run?: CliDeps['run']
 }
 
 export function buildCli(w: WireDeps) {
@@ -105,6 +107,8 @@ export function buildCli(w: WireDeps) {
     tierFor: makeTierFor(io, w.pathFor),
     defaultStatus: DEFAULT_STATUS,
     now: w.now,
+    pathFor: w.pathFor,
+    io,
   })
   const engine: CliDeps['engine'] = w.engine ?? {
     run: (_tier, node) => Promise.resolve({ node, status: 'ok' }),
@@ -114,6 +118,7 @@ export function buildCli(w: WireDeps) {
     engine,
     tierFor: tierOfNode,
     classify: w.classify,
+    ...(w.run !== undefined ? { run: w.run } : {}),
     out: w.out,
   })
 }
@@ -185,6 +190,8 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
     tierFor: makeTierFor(io, pathFor),
     defaultStatus: DEFAULT_STATUS,
     now: deps.now,
+    pathFor,
+    io,
   })
 
   // engine — built BEFORE the cli, fed the ops from the previous stage

@@ -16,7 +16,9 @@ task:
   # custom data-model fields on the task-file (additive — defaults stay)
   fields:
     research: string        # web-research findings, written by the plan research step
-    commit_sha: string      # SHA of the task's last phase commit
+    commit_sha: string      # per-phase anchor: SHA of the task's last phase commit
+    merge_commit: string    # surviving task-level merge commit; commit_sha is the per-phase
+                            # anchor that the wrap merge may delete (the phase branch is gone)
 
   plan:
     steps:

@@ -44,6 +44,14 @@ This routing lives only in the skill — no `classify` step, no `classify` agent
 anchored plan <tier> "<description>"   # → { tier, node, steps }   (creates the node, does NOT spawn)
 ```
 
+**Re-planning an existing node:** when the user re-plans a slug that already exists
+(refining the brief, restarting the plan stage), pass `--slug <slug>` to **reuse the
+same node** — `anchored plan <tier> --slug <existing-slug> "<description>"`. This keeps
+the node's provenance (log, questions, created date, prior context). Do **not** `rm`
+the task-file and recreate it: that throws away the history and the slug stability the
+rest of the lifecycle (branches `task/<slug>`, archive/reset) depends on. `--slug` is
+the supported re-plan path; deleting + recreating is not.
+
 **Onboarding (no `anchored.yml` yet, G13):** a missing `anchored.yml` is fine — the
 CLI lazy-inits a minimal one (deltas-only = all defaults) + the `Bash(anchored *)`
 allowlist on first use, so planning proceeds immediately. The FIRST time you see a

@@ -10,6 +10,8 @@ export interface IoFs {
   writeFile(path: string, data: string): Promise<void>
   rename(oldPath: string, newPath: string): Promise<void>
   readFile(path: string): Promise<string>
+  /** Delete a file. Used by remove() (task reset) — behind the same injected seam. */
+  unlink(path: string): Promise<void>
   /** A cheap version token of the file (mtime+size), used for compare-and-swap.
    *  Optional: a fake fs without it simply disables CAS (single-writer tests). */
   statVersion?(path: string): Promise<string | undefined>
@@ -73,6 +75,17 @@ export function createIo(deps: IoDeps) {
     },
     async readFile(path: string): Promise<string> {
       return fs.readFile(path)
+    },
+    // remove — delete a file outright (task reset: back to before it existed). Small,
+    // behind the injected fs seam (no node:fs here) so it stays fakeable.
+    async remove(path: string): Promise<void> {
+      await fs.unlink(path)
+    },
+    // move — relocate a file (task archive: freeze it out of the active set). mkdir -p
+    // the destination dir first (the archive/ subdir may not exist), then atomic rename.
+    async move(from: string, to: string): Promise<void> {
+      await fs.mkdir(dirname(to), { recursive: true })
+      await fs.rename(from, to)
     },
     async statVersion(path: string): Promise<string | undefined> {
       return fs.statVersion ? fs.statVersion(path) : undefined

@@ -14,6 +14,7 @@ function baseDeps(over: Partial<AnchoredDeps> = {}): AnchoredDeps {
         readFile: async () => {
           throw new Error('ENOENT')
         },
+        unlink: async () => undefined,
       },
       lock: { acquire: async () => async () => {} },
       rand: () => 'r',

@@ -23,6 +23,9 @@ function harness() {
         if (d === undefined) throw new Error('ENOENT')
         return d
       },
+      unlink: async (p) => {
+        files.delete(p)
+      },
     },
     lock: { acquire: async () => async () => {} },
     rand: () => 'r',

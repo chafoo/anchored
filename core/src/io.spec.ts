@@ -26,6 +26,10 @@ function makeFakeIo(opts?: { lockFails?: boolean; writeFails?: boolean }) {
         if (d === undefined) throw new Error(`ENOENT: ${p}`)
         return d
       },
+      async unlink(p: string) {
+        calls.push(`unlink:${p}`)
+        files.delete(p)
+      },
     },
     lock: {
       async acquire(p: string) {
@@ -84,6 +88,32 @@ test('lock timeout throws WriteContention; write error still releases lock', asy
   const failed = makeFakeIo({ writeFails: true })
   await expect(createIo(failed.deps).atomicWrite('base/x.yml', 'c')).rejects.toThrow('disk full')
   expect(failed.calls).toContain('release') // released despite write failure
+})
+
+// remove — deletes the file through the injected fs.unlink seam (no real node:fs).
+test('remove deletes the file via fs.unlink', async () => {
+  const { deps, calls, files } = makeFakeIo()
+  const io = createIo(deps)
+  await io.atomicWrite('base/x.yml', 'hello')
+  expect(files.get('base/x.yml')).toBe('hello')
+  await io.remove('base/x.yml')
+  expect(files.has('base/x.yml')).toBe(false)
+  expect(calls).toContain('unlink:base/x.yml')
+})
+
+// move — mkdir -p the destination dir, then rename (atomic relocation).
+test('move mkdir -p the dest dir then renames', async () => {
+  const { deps, calls, files } = makeFakeIo()
+  const io = createIo(deps)
+  await io.atomicWrite('base/x.yml', 'hello')
+  await io.move('base/x.yml', 'base/archive/x.yml')
+  expect(files.get('base/archive/x.yml')).toBe('hello')
+  expect(files.has('base/x.yml')).toBe(false)
+  // mkdir of the dest dir comes before the rename
+  const mkdirIdx = calls.indexOf('mkdir:base/archive')
+  const renameIdx = calls.lastIndexOf('rename')
+  expect(mkdirIdx).toBeGreaterThanOrEqual(0)
+  expect(renameIdx).toBeGreaterThan(mkdirIdx)
 })
 
 // M4 (harden-2) — compare-and-swap: a write whose read-time version no longer

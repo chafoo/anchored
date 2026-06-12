@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { mkdir, writeFile, rename, readFile, mkdtemp } from 'node:fs/promises'
+import { mkdir, writeFile, rename, readFile, unlink, mkdtemp } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -35,6 +35,7 @@ async function harness() {
       writeFile: (p: string, data: string) => writeFile(p, data),
       rename: (from: string, to: string) => rename(from, to),
       readFile: (p: string) => readFile(p, 'utf8'),
+      unlink: (p: string) => unlink(p),
     },
     lock: { acquire: async () => async () => {} },
     rand: () => 'r',
