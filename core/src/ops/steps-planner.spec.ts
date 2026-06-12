@@ -59,17 +59,26 @@ test('default task.wrap is review + summarize only (no git/commit default)', () 
   expect(plan.steps.some((s) => s.kind === 'run')).toBe(false)
 })
 
-// after_done is an OPT-IN marker: when a user adds a trailing run-step with
-// after_done, the planner surfaces it so the wrap SKILL runs it AFTER the
-// done-flip (captures the terminal status, clean tree).
-test('passes after_done through for a user-declared trailing run-step', () => {
+// instructions flows through UNIFORMLY — a run-step's prose guidance reaches the
+// SKILL just like it does for use/worker steps (not just `use`).
+test('passes instructions through for a run-step', () => {
   const cfg = {
-    task: { wrap: { steps: [{ name: 'commit', after_done: true, run: 'echo hi' }] } },
+    task: {
+      wrap: {
+        steps: [
+          {
+            name: 'commit',
+            run: 'git commit',
+            instructions: 'commit with a conventional message; nothing-staged is fine',
+          },
+        ],
+      },
+    },
   } as Record<string, unknown>
   const plan = createStepsPlanner(cfg).plan('task', 'wrap')
   const commit = plan.steps.find((s) => s.name === 'commit')
   expect(commit?.kind).toBe('run')
-  expect(commit?.after_done).toBe(true)
+  expect(commit?.instructions).toBe('commit with a conventional message; nothing-staged is fine')
 })
 
 // D2 — epic.refine is now a REAL pipeline: ground vs code, author per-stub

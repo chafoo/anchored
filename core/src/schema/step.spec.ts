@@ -38,48 +38,21 @@ test('step: loop step parses recursive body; loop+run rejected', () => {
   ).toBe(false)
 })
 
-// provenance — only on a run-step; { field, ref? } shape; field required
-test('step: provenance is run-step-only and shaped { field, ref? }', () => {
-  // provenance on a run-step parses (field only, and field+ref)
+// instructions — allowed on any step shape, including a run-step
+test('step: instructions is accepted on a run-step', () => {
   expect(
-    StepSchema.safeParse({ name: 'commit', run: 'git commit', provenance: { field: 'commit_sha' } })
-      .success,
+    StepSchema.safeParse({
+      name: 'commit',
+      run: 'git ...',
+      instructions: 'commit with a conventional message',
+    }).success,
   ).toBe(true)
-  const withRef = parseStep({
+  const parsed = parseStep({
     name: 'commit',
-    run: 'git commit',
-    provenance: { field: 'commit_sha', ref: 'HEAD' },
+    run: 'git ...',
+    instructions: 'commit with a conventional message',
   })
-  expect(withRef.provenance?.field).toBe('commit_sha')
-  expect(withRef.provenance?.ref).toBe('HEAD')
-  // provenance on a use-step is rejected (not a run-step)
-  expect(
-    StepSchema.safeParse({ name: 'x', use: 'agent', provenance: { field: 'f' } }).success,
-  ).toBe(false)
-  // provenance on a bare built-in reference is rejected (no run)
-  expect(StepSchema.safeParse({ name: 'implement', provenance: { field: 'f' } }).success).toBe(
-    false,
-  )
-  // provenance.field is required + non-empty
-  expect(StepSchema.safeParse({ name: 'c', run: 'git commit', provenance: {} }).success).toBe(false)
-  expect(
-    StepSchema.safeParse({ name: 'c', run: 'git commit', provenance: { field: '' } }).success,
-  ).toBe(false)
-})
-
-// after_done — only on a run-step; marks a pure-recorder step the wrap SKILL runs
-// AFTER the done-flip (so it captures the terminal status + a clean tree)
-test('step: after_done is run-step-only and boolean', () => {
-  // after_done on a run-step parses
-  expect(
-    StepSchema.safeParse({ name: 'commit', run: 'git commit', after_done: true }).success,
-  ).toBe(true)
-  const parsed = parseStep({ name: 'commit', run: 'git commit', after_done: true })
-  expect(parsed.after_done).toBe(true)
-  // after_done on a use-step is rejected (not a run-step)
-  expect(StepSchema.safeParse({ name: 'x', use: 'agent', after_done: true }).success).toBe(false)
-  // after_done on a bare built-in reference is rejected (no run)
-  expect(StepSchema.safeParse({ name: 'implement', after_done: true }).success).toBe(false)
+  expect(parsed.instructions).toBe('commit with a conventional message')
 })
 
 // a4 — parseStep throws; safeParseStep returns a discriminated union

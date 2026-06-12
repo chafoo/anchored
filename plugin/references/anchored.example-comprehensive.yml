@@ -5,7 +5,8 @@
 #
 # Demonstrates:
 #   • custom field `research` filled by a web-research step in PLAN
-#   • custom field `commit_sha` filled by a per-phase commit step in BUILD
+#   • custom field `commit_sha` filled by a per-phase commit step in BUILD (the
+#     step's own run: writes it via `anchored node set-field` — git is all yours)
 #   • a global TDD methodology instruction on the implement worker (the "architecture")
 #   • custom steps across plan / refine / build / wrap (all four stages fire)
 #
@@ -51,10 +52,11 @@ task:
       - { name: review }
       - { name: summarize }
       # custom run-step in wrap: merge the finished task branch locally (no PR).
-      # provenance captures the surviving --no-ff merge commit (HEAD on main after
-      # the merge) into merge_commit — the stable task-level anchor, again with no
-      # hand-wired set-field. (commit_sha pointed at a phase branch that this merge
-      # may prune; merge_commit is the durable pointer.)
+      # The SHA capture is hand-wired in the run: itself — the surviving --no-ff
+      # merge commit (HEAD on main after the merge) is written into merge_commit, the
+      # stable task-level anchor. Git lives entirely in your run-step; the framework
+      # never touches it. (commit_sha pointed at a phase branch that this merge may
+      # prune; merge_commit is the durable pointer.)
       - name: merge
         after: summarize
         run: |
@@ -62,15 +64,16 @@ task:
           git add -A -- ':!.claude/tasks'
           git diff --cached --quiet || git commit -m "wrap: ${TASK_SLUG}"
           git checkout main && git merge --no-ff -X theirs "$BRANCH" -m "merge: ${TASK_SLUG}"
-        provenance: { field: merge_commit }
+          anchored node set-field "${TASK_SLUG}" merge_commit "$(git rev-parse HEAD)"
       # OPT-IN: commit the audit-trail (.claude/tasks) as a SEPARATE commit so the
-      # evidence/decisions survive the run. `after_done: true` runs it AFTER the wrap
-      # done-flip, so the committed task-file shows the terminal `status: done` and
-      # leaves a clean tree. The framework ships NO git default — committing is your
-      # policy; this is how you opt in. (The merge step above excludes .claude/tasks
-      # via `:!.claude/tasks` precisely so this step owns the task-files.)
+      # evidence/decisions survive the run. The framework ships NO git default —
+      # committing is your policy; this is how you opt in. The ordering lives in
+      # prose: `instructions` tells the AI to run this AFTER the done-flip, so the
+      # committed task-file shows the terminal status and the tree stays clean. (The
+      # merge step above excludes .claude/tasks via `:!.claude/tasks` precisely so
+      # this step owns the task-files.)
       - name: commit-audit-trail
-        after_done: true
+        instructions: "Run this AFTER the task is flipped to done, so the committed task-file shows the terminal status and the tree stays clean."
         run: |
           git add .claude/tasks >/dev/null 2>&1 || exit 0
           git diff --cached --quiet || git commit -q -m "chore(${TASK_SLUG}): audit trail"
@@ -91,16 +94,16 @@ phase:
           a test exists for it. Cite the test in the AC evidence.
       - { name: task-validate }
       - { name: code-validate }
-      # per-phase commit — the SHA write-back is no longer hand-wired. `provenance`
-      # tells the engine: after this run-step succeeds, capture `git rev-parse HEAD`
-      # and write it into `commit_sha`. The run: only does the commit (POLICY: what's
-      # committed + which field); the capture+write is the engine MECHANISM.
+      # per-phase commit — the SHA write-back is hand-wired in the run: itself. After
+      # committing, capture `git rev-parse HEAD` and write it into `commit_sha` with
+      # a `set-field` call. Git is entirely yours: the framework writes only to the
+      # task-file (via the CLI you call here), it never runs git on your behalf.
       - name: commit
         after: code-validate
         run: |
           git add -A -- ':!.claude/tasks'
           git diff --cached --quiet || git commit -m "phase: ${PHASE_SLUG} — ${PHASE_NAME}"
-        provenance: { field: commit_sha }
+          anchored node set-field "${TASK_SLUG}" commit_sha "$(git rev-parse HEAD)"
 
 # ─── epic ────────────────────────────────────────────────────────────
 epic:

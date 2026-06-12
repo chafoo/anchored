@@ -11,7 +11,6 @@ const noopOps: OpsLike = {
   resolveQuestion: async (n) => n,
   appendLog: async (n) => n,
   setChildStatus: async (n) => n,
-  setField: async (n) => n,
 }
 
 function makeDeps(recorded: string[]): RunnerDeps {

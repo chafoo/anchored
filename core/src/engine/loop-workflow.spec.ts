@@ -21,7 +21,6 @@ function makeOps(): OpsLike {
     addQuestion: async (n) => n,
     resolveQuestion: async (n) => n,
     appendLog: async (n) => n,
-    setField: async (n) => n,
   }
 }
 

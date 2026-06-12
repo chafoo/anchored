@@ -39,6 +39,5 @@ export function createEngineOps(opsByTier: Record<string, TierOps>): OpsLike {
     addQuestion: async (n, init) => asNode(pick(n).addQuestion(await freshen(n), init)),
     resolveQuestion: async (n, id, r) => asNode(pick(n).resolveQuestion(await freshen(n), id, r)),
     appendLog: async (n, e) => asNode(pick(n).appendLog(await freshen(n), e)),
-    setField: async (n, field, value) => asNode(pick(n).setField(await freshen(n), field, value)),
   }
 }

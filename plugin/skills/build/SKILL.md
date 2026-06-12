@@ -131,7 +131,10 @@ known workers. Besides `kind: 'worker'` (spawn the plugin agent) and `kind: 'loo
   per-phase `commit`, a `push`, a `coverage` gate). **YOU execute it via Bash**, in
   declaration order, at the point it sits in the plan. For `phase.build` the
   trailing run-steps fire in step 5 above (after the gates + advance, on a green
-  phase); a run-step positioned *before* a worker runs before that worker.
+  phase); a run-step positioned *before* a worker runs before that worker. A `run:`
+  step may carry **`instructions:`** — prose you read and follow when executing the
+  command (conditions, how to treat its output/errors, ordering hints). This is
+  uniform with the `use:` step's `instructions`.
 - **`kind: 'use'`** — spawn the named subagent (or, with `type: skill`, invoke the
   skill) with the step's `instructions` + the same phase/task context the workers get.
 
@@ -152,22 +155,9 @@ TASK_SLUG='core-list' PHASE_SLUG='persistence' PHASE_NAME='Local persistence' EP
 ```
 where `$STEP_RUN` is the step's `run` string verbatim. **Per-phase commits don't
 leak into chat** — narrate the phase outcome ("Phase 2 grün, committed."), not the
-git plumbing (see communication-style.md).
-
-**`provenance: { field, ref? }` on a run-step — capture the SHA, no hand-wiring.**
-When a `build.steps` run-step carries `provenance`, then *after* you run it (and it
-exited 0), capture the resulting commit and write it back yourself — this is the
-live mirror of the engine's run-step mechanism, so the user's `run:` no longer
-hand-wires the set-field:
-```bash
-SHA=$(git rev-parse "${REF:-HEAD}")   # REF = step.provenance.ref, default HEAD
-anchored node set-field "$TASK_SLUG" "$FIELD" "$SHA"   # FIELD = step.provenance.field
-```
-If `git rev-parse` fails (e.g. nothing committed / no repo), **do not fail the
-phase** — the `run:` already succeeded; just skip the write-back (note it in the
-build trail). The author thus declares `provenance: { field: commit_sha }` on the
-commit step instead of appending `anchored node set-field … "$(git rev-parse HEAD)"`
-to the `run:` themselves.
+git plumbing (see communication-style.md). Git is never the framework's concern: if
+the user wants to capture a SHA into a field, their own `run:` script does it
+(`anchored node set-field "${TASK_SLUG}" commit_sha "$(git rev-parse HEAD)"`).
 
 > **Fan-out runs under git worktree isolation — directive, not caveat.** Every
 > fan-out worker runs in its **own git worktree** — both the per-AC **phase** fan-out

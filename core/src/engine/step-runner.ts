@@ -58,7 +58,6 @@ export interface OpsLike {
   ): Promise<AnyNode>
   appendLog(node: AnyNode, entry: { at: string; kind: string; note: string }): Promise<AnyNode>
   setChildStatus(node: AnyNode, childSlug: string, status: string): Promise<AnyNode>
-  setField(node: AnyNode, field: string, value: unknown): Promise<AnyNode>
 }
 
 export type TierCfg = Record<string, unknown>

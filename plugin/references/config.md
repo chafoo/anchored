@@ -36,12 +36,13 @@ Typ ab.
 | `run` | ✗ | **Pflicht** (Shell/Prosa) | ✗ |
 | `use` | ✗ | ✗ | **Pflicht** (Worker) |
 | `type` | ✗ | ✗ | optional · `agent` (default) \| `skill` |
-| `instructions` | optional (steuert den Built-in) | — | optional (an den Worker) |
+| `instructions` | optional (steuert den Built-in) | optional (leitet das `run:` an) | optional (an den Worker) |
 | `involve` | nur auf `walk` · `all`\|`high-only`\|`none` | ✗ | ✗ |
 | `each` (+`steps`) | nur auf `loop` (siehe unten) | ✗ | ✗ |
 
-**Invarianten:** `run` **XOR** `use` (nie beides) · `type`/`instructions` nur mit
-`use` · Built-ins haben weder `run` noch `use` (dispatchen sich selbst) · Built-ins
+**Invarianten:** `run` **XOR** `use` (nie beides) · `type` nur mit `use` ·
+`instructions` ist auf **jedem** Step erlaubt (run/use/Built-in) · Built-ins haben
+weder `run` noch `use` (dispatchen sich selbst) · Built-ins
 sind **nicht entfernbar/umsortierbar** — nur per `instructions` erweiterbar (append).
 
 ```yaml
@@ -60,6 +61,14 @@ sind **nicht entfernbar/umsortierbar** — nur per `instructions` erweiterbar (a
 # Custom use-step, Skill in der Session, mit Instruktion:
 - { name: pr-review, use: pr-reviewer, type: skill, instructions: 're-scan touched modules only' }
 ```
+
+> **`instructions:` ist auf JEDEM Step erlaubt** — Prosa, die die AI befolgt, wenn
+> sie den Step ausführt bzw. dispatcht. Uniform über `run` / `use` / Worker: bei
+> einem `run:`-Step leitet sie an, WIE die AI den Befehl fährt (Bedingungen, Umgang
+> mit Output/Fehlern, Reihenfolge — z.B. *"führe das aus, NACHDEM die Task auf done
+> geflippt ist"*); bei einem `use:`-Step wird sie an den Worker durchgereicht; bei
+> einem Built-in erweitert sie dessen Verhalten (append). Es gibt kein
+> Sonder-Flag für „nach done" — die Reihenfolge steht in den `instructions`.
 
 ### Variablen in `run:`-Steps
 
@@ -201,8 +210,9 @@ Wenn du Commit-Wiring nutzt (siehe
 trägt das Task-File **zwei** Anker — additiv, keine Umbenennung (bestehende Specs/
 Docs bleiben intakt):
 
-- **`commit_sha`** = **Per-Phase-Anker** (Interim). Der per-Phase-Commit-Step
-  schreibt nach jeder Phase den `HEAD`-SHA hierher. Achtung: Der Phasen-Branch,
+- **`commit_sha`** = **Per-Phase-Anker** (Interim). Dein per-Phase-Commit-Step
+  schreibt nach jeder Phase den `HEAD`-SHA selbst hierher (`anchored node set-field
+  … "$(git rev-parse HEAD)"` im `run:`). Achtung: Der Phasen-Branch,
   auf den dieser SHA zeigt, **kann vom Task-Wrap-`--no-ff`-Merge gelöscht werden** —
   `commit_sha` ist dann ein verwaister (interimsmäßiger) Zeiger.
 - **`merge_commit`** = der **überlebende Task-Level-Merge-Commit**. Das ist der
@@ -211,11 +221,10 @@ Docs bleiben intakt):
 
 Beide sind gewöhnliche Custom-Felder (`string`), additiv deklariert.
 
-#### `provenance: { field, ref? }` — der SHA-Anker ohne Hand-Wiring
+#### SHA-Anker: selbst im `run:`-Step verdrahten
 
-Ein **Run-Step** kann `provenance` tragen. Nachdem der Step erfolgreich gelaufen
-ist, **erfasst der Mechanismus** `git rev-parse <ref|HEAD>` und **schreibt** den
-SHA in `field` (kein Step verdrahtet den Write-Back mehr selbst):
+Das Framework füllt diese Felder **nicht** automatisch — git ist komplett deine
+Sache. In deinem eigenen Commit-Step schreibst du den SHA per `set-field` selbst:
 
 ```yaml
 - name: commit
@@ -223,23 +232,12 @@ SHA in `field` (kein Step verdrahtet den Write-Back mehr selbst):
   run: |
     git add -A -- ':!.claude/tasks'
     git diff --cached --quiet || git commit -m "phase: ${PHASE_SLUG}"
-  provenance: { field: commit_sha }      # ← Mechanismus: rev-parse HEAD → commit_sha
+    anchored node set-field "${TASK_SLUG}" commit_sha "$(git rev-parse HEAD)"
 ```
 
-- `field` (Pflicht) = welches Task-File-Feld den SHA bekommt.
-- `ref` (optional, default `HEAD`) = was `git rev-parse` auflöst (z.B. `develop`
-  für einen überlebenden Merge-Commit → `provenance: { field: merge_commit, ref: HEAD }`).
-- Nur auf **Run-Steps** gültig (er erfasst den SHA, den der `run:` erzeugt hat) —
-  auf use-/bare-Steps wird er von der Config-Validierung abgelehnt.
-
-**Mechanismus vs. Policy:** Der git-Effekt + das zuverlässige Erfassen + Schreiben
-des SHA ist **Mechanismus** (deterministischer Engine-Code hinter der injizierten
-`run`-Naht). WAS committet wird und WELCHES Feld den SHA bekommt ist **Policy**
-(deine Config). Schlägt das `rev-parse` fehl (z.B. kein git-Repo), bricht der Step
-**nicht** ab — der `run:` war ja schon erfolgreich; der Miss landet im Audit-Trail.
-
-Damit entfällt die frühere Hand-Verdrahtung
-`anchored node set-field … "$(git rev-parse HEAD)"` — siehe
+Das Framework schreibt ausschließlich ins Task-File (über die CLI, die du im `run:`
+aufrufst) — es führt **nie** git für dich aus. WAS committet wird, WELCHES Feld den
+SHA bekommt und WANN: alles **Policy** in deinem `run:`. Siehe
 [`anchored.example-comprehensive.yml`](anchored.example-comprehensive.yml).
 
 ## `_lib` — wiederverwendbare Steps (nur `anchored.yml`)

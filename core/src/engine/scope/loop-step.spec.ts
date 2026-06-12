@@ -30,7 +30,6 @@ function makeOps(rec?: { setChild: [string, string][]; questions: unknown[] }): 
     },
     resolveQuestion: async (n) => n,
     appendLog: async (n) => n,
-    setField: async (n) => n,
   }
 }
 

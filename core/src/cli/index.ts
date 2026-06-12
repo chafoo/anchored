@@ -61,8 +61,8 @@ export interface NodeOpsFacade {
   setPhaseRules(slug: string, phase: string, path: string, why: string): Promise<unknown>
   setChildStatus(slug: string, childSlug: string, status: string): Promise<unknown>
   // Lifecycle ops: archive MOVES the task-file into archive/ (freeze it out of the
-  // active set), reset REMOVES it (back to before the task existed). Substrate-only —
-  // the git branch cleanup lives in the archive/reset CLI commands (they hold `run`).
+  // active set), reset REMOVES it (back to before the task existed). File-only — the
+  // archive/reset CLI commands write exclusively to the task-files (no git).
   archive(slug: string): Promise<unknown>
   reset(slug: string): Promise<unknown>
 }
@@ -131,9 +131,9 @@ Node ops (agents self-write via these):
   node set-child-field <slug> <child> <field> <value>
   node set-field <slug> <field> <value>      node set-executor <slug> <phase> <implement|workflow>
 
-Lifecycle ops (clean up a finished/abandoned task — never touches develop/main):
-  archive <slug> [--branch <name> …]     freeze: move the task-file to archive/ + git branch -D (default task/<slug>)
-  reset   <slug> [--branch <name> …]     undo: remove the task-file + git branch -D (default task/<slug>)
+Lifecycle ops (clean up a finished/abandoned task — file-only, no git):
+  archive <slug>                         freeze: move the task-file to archive/<slug>.yml (file-only, no git)
+  reset   <slug>                         undo: remove the task-file (file-only, no git)
 
   -h, --help        show this help
   -v, --version     print the version

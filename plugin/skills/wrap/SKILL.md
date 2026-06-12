@@ -53,19 +53,11 @@ strategy). A `kind: 'run'` step is **yours to execute via Bash**, in declaration
 order, at its position in the plan. A `kind: 'use'` step spawns the named
 subagent/skill.
 
-**Two kinds of trailing run-step — one runs before the `done` flip, one after.**
-A run-step's `after_done` flag decides which side of the flip it lands on:
-
-- **`after_done` absent (the default) — runs BEFORE the flip.** These are the steps
-  that **gate completion**: a `merge`/`push` that can conflict or fail. Running them
-  pre-`done` means a failure keeps the node pre-`done` (the merge only "counts" once
-  the task actually finished).
-- **`after_done: true` — runs AFTER the flip.** These are the steps that only
-  **record the finished result** — e.g. a user's own audit-trail or provenance
-  commit (an opt-in step in *their* `anchored.yml`; the framework ships no git
-  default). They run *after* `done` so the committed task-file shows the terminal
-  `status: done` and the working tree is left clean — not one flip stale. (See the
-  Finish sequencing below.)
+**A `run:` step may carry `instructions:`** — prose you read and follow when you
+execute the command (conditions, how to treat its output/errors, ordering hints
+like "run this after the done-flip"). This is **uniform** with `use:` steps, which
+also carry `instructions`. There is no special after-the-flip marker: a step that
+must run *after* `done` simply says so in its `instructions`, and you honour that.
 
 **Variable contract** — every `run` step gets these as real environment variables
 (the config author writes `${TASK_SLUG}`; you export it, never string-substitute):
@@ -116,17 +108,18 @@ becomes `done` once review + summary (or the roll-up) actually landed.
 
 ## Finish
 
-Run the closing sequence in this exact order — the `done` flip sits between the two
-kinds of trailing run-step:
+Run the closing sequence: first the trailing custom run-steps (in declaration
+order, **following each step's `instructions`** — a step whose `instructions` say
+to run after the done-flip you defer accordingly), then flip `done` as the closing
+action.
 
-1. **Gating run-steps** (`after_done` absent — a `merge`/`push`) — run them now,
-   pre-`done`. A failure here keeps the node pre-`done` (see Failure-handling).
-2. **Flip:** `anchored node set-status <slug> done` — the **same `wrap → done`
-   transition on every tier** (D1: the epic mirrors the task lifecycle, no
-   tier-special casing).
-3. **`after_done` run-steps** (a user's opt-in audit-trail or provenance commit) —
-   run them now, *after* the flip, so the committed task-file shows the terminal
-   `status: done` and the tree is left clean.
+- **Trailing run-steps** (a `merge`/`push`) — run them in order, each per its own
+  `instructions`. A failing **gating** run-step (e.g. a merge conflict) keeps the
+  node pre-`done` (see Failure-handling); a step whose `instructions` place it
+  *after* the flip runs once `done` has landed.
+- **Flip:** `anchored node set-status <slug> done` — the **same `wrap → done`
+  transition on every tier** (D1: the epic mirrors the task lifecycle, no
+  tier-special casing).
 
 Then tell the user: *"Wrap durch — TL;DR im context.wrap. Status: done."* No MCP, no
 raw node-file edit.
