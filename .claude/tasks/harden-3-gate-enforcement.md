@@ -1,47 +1,60 @@
-# Ticket: Harden-3 — Trust → Enforcement: echte Gates + Evidenz-Boden (L-Tier)
+# Ticket: Harden-3 — Trust → Enforcement: Gate-Agent + erfasster exit-code + Context-Fäden (L)
 
-**Quelle:** Härtungs-Review. Die strategisch wichtigste, aber tiefste Gruppe:
-verschiebt „Gates liefen wirklich", „Phase done erst nach Gates" und „Evidenz ist
-echt" von SKILL-Prosa/AI-Trust in deterministischen Code. Ändert den Build-Flow +
-den Agent-Contract. M→L.
+**Quelle:** Härtungs-Review + Design-Gespräch. Verschlankt gegenüber der ersten
+Fassung: statt zwei Schwergewichten (gate-Verb + strukturiertes Evidenz-System) →
+**EIN** Gate/Verify-Agent + **ein** kleines erfassendes CLI-Verb. „Lieber etwas als
+zu wenig", aber mit echtem deterministischen Boden.
 
-## Findings + Fix
+## Designentscheidung (festgehalten)
+**Der exit-code geht durch Code, nicht durch den Agenten.** Ein Agent, der selbst
+„exit 0" behauptet, wäre nur der Validator umbenannt. Stattdessen fährt der Agent
+seine Runs durch eine **erfassende CLI**, die das Kommando real ausführt, `code` +
+`stdout` erfasst (`run-step.ts` kann das schon) und nur bei **exit-0** Evidenz
+akzeptiert. **Regel: nur bei exit 0 → AC done. Bei Fehler → in Context notieren +
+entscheiden wie weiter (nie still, nie auto-done).**
 
-### L1 — Build-Gates sind AI-Richter ohne deterministischen Backstop
-Nichts im Substrat verlangt, dass lint/typecheck/test tatsächlich liefen und 0
-zurückgaben, bevor ein AC akzeptiert wird (`build-task-validate.md`,
-`build-code-validate.md`; die `run`-Naht in `run-step.ts` erfasst code+stdout
-bereits, wird aber dafür nicht genutzt). Halluzinieren die Gates „pass", shippt eine
-kaputte Phase.
-**Fix:** `anchored gate <slug> <phase>`-Verb, das die konfigurierten Gate-Commands
-über die run-Naht fährt, exit-codes erfasst und einen pass/fail-Record auf die Phase
-schreibt. Das AI-code-validate bleibt als Defence-in-Depth fürs *qualitative*
-Regel-Urteil; das *binäre* „exited 0" wird Code.
+## L1 + L3 (verschmolzen) — Gate/Verify-Agent + erfassendes Verb
 
-### L2 — Phase-done-Flip nicht an grünen Gate-Record gekoppelt (nur G4-Prosa)
-`setChildStatus(node, phase, 'done')` (`node-ops.ts:451`) hat keine Vorbedingung,
-dass die Gates liefen — nur die SKILL-Prosa hält den Orchestrator zurück. Ein
-driftender Orchestrator flippt die Phase done, bevor die Gates laufen.
-**Fix:** Phase-done an den grünen Gate-Record (L1) koppeln: `setChildStatus→done`
-für eine Phase verlangt (a) alle ACs done-mit-Evidenz UND (b) grüner Gate-Record,
-sonst `GateNotRun`. (Baut auf Harden-2/M1+M2 auf.)
+### L1a — erfassendes Evidenz-Verb (deterministischer Boden, S–M)
+`anchored node add-phase-evidence <slug> <phase> <ac> --run "<cmd>"`: führt `<cmd>`
+über die run-Naht aus, schreibt strukturierte Evidenz `{command, exit_code, output}`,
+**akzeptiert die AC nur bei exit-0**. Prosa-Evidenz bleibt weiter erlaubt (für nicht
+command-verifizierbare Fälle: Browser-Verhalten, Design), aber im Datenmodell
+unterscheidbar (reproduzierbar vs. behauptet). Der exit-code wird von Code erfasst,
+nicht vom Agenten behauptet.
 
-### L3 — Evidenz-Honesty ohne reproduzierbaren Artefakt-Boden
-`isEvidenceFilled` (`invariants.ts:24`) akzeptiert jeden nicht-leeren String, also
-flippt `add-phase-evidence … 'verified, all good'` das AC auf done; einziger
-Inspektor ist ein foolbarer AI-Agent.
-**Fix:** strukturierte Evidenz-Variante `{command, exit_code, output}` einführen,
-die `anchored node add-phase-evidence --verified-run "<cmd>"` über die run-Naht
-ausführt und nur bei exit-0 akzeptiert. Prosa-Evidenz bleibt erlaubt, aber im
-Datenmodell unterscheidbar (reproduzierbar vs. behauptet).
+### L1b — Gate/Verify-Agent (das Flexible, AI)
+Ein Agent, der:
+- **Instruktionen + Command(s)** bekommt (config-getrieben, wie ein custom step;
+  hier landen die Projekt-Gate-Commands test/lint/typecheck),
+- die Runs **durch das erfassende Verb (L1a)** fährt → deterministischer exit-0-Boden,
+- **Evidence + Probleme interpretiert** (das qualitative Urteil bleibt sinnvoll AI),
+- alles in den **Context** schreibt — Ergebnis-Summary + jeden unerwarteten Punkt als
+  offenen Faden (siehe Context-Sektion).
 
-## Implikationen (Chat)
-- Ändert den Build-Loop: der Orchestrator/CLI fährt die Gates wirklich; Agent-
-  Contract der Validatoren wird angepasst (binär→Code, qualitativ→AI).
-- Braucht eine Stelle in der Config, wo die Gate-Commands deklariert werden
-  (test/lint/typecheck) — passt zum custom-step-Modell, aber ist neue Oberfläche.
-- Abhängig von Harden-2 (Completion-Checks), auf die L2 aufsetzt.
+**Bei Fehler (exit ≠ 0):** der Agent notiert den Fehler im Context (offener Faden),
+die AC bleibt NICHT done; Mensch/AI entscheidet, wie weiter (fix, defer, akzeptieren
+mit Begründung). Nie still durchwinken.
 
-## Reihenfolge
-Harden-1 → Harden-2 → Harden-3 (jede Stufe baut auf der vorigen; Gate-Enforcement
-erst, wenn Completion deterministisch ist).
+## L2 — Phase-done an grünen Record gekoppelt (M)
+`setChildStatus(phase, done)` verlangt: (a) alle ACs done-mit-Evidenz UND (b) wo ein
+Gate-Command definiert ist, ein **grüner erfasster Record** (exit-0). Sonst
+`GateNotRun`/`GateFailed`. Baut auf L1a + Harden-2/M2 (AC-Completion) auf. Danach
+kann der Orchestrator die Phase nicht mehr vor grünen Gates done setzen.
+
+## Context-„offene Fäden" — die v1-`task.context`-Stärke zurückholen (S–M)
+In v1 hielt `task.context` alles fest + hatte eine „muss noch besprochen werden"-
+Sektion. v2 fehlt das als bewusste Oberfläche. Einbauen:
+- Eine laufende **„offene Fäden / am Ende prüfen"-Liste**: Gate-Agent + jeder Worker
+  hängt unerwartete Punkte an — `anchored node append-log <slug> <stage> concern
+  "<was am Ende geprüft werden muss>"` (`log[]` + `kind` existiert; wir brauchen die
+  Konvention `kind: concern` + einen View darüber).
+- **Wrap/roll-up prüft die offenen Fäden** und hakt den Abschluss, solange welche
+  offen/unadressiert sind. Deterministische Hälfte: nicht „die AI erinnert sich",
+  sondern „das Substrat zeigt die offenen Punkte, done blockiert bis adressiert".
+- Fängt genau die unerwarteten Gate-/Run-Fehler strukturiert ab, statt im Prosa-
+  Trail unterzugehen.
+
+## Reihenfolge / Abhängigkeit
+Harden-1 → Harden-2 → Harden-3. L2 braucht L1a + Harden-2/M2. Der Context-Faden-
+Mechanismus kann früh kommen (billig) und wird von L1b genutzt.
