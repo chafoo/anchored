@@ -58,13 +58,21 @@ export interface TierDescriptor {
 
 export interface NodeOpsDeps {
   io: {
-    atomicWrite(path: string, content: string): Promise<void>
+    atomicWrite(path: string, content: string, expectedVersion?: string): Promise<void>
     readFile(path: string): Promise<string>
+    // M4: a version token captured at read, checked at write (compare-and-swap).
+    // Optional — a fake io without it disables CAS (single-writer tests).
+    statVersion?(path: string): Promise<string | undefined>
   }
   render: (node: unknown) => string
   parse: (raw: string) => unknown
   pathFor: (slug: string) => string
 }
+
+// M4: a transient version marker that rides a node from read → persist, invisible
+// to the schema (strictObject ignores symbol keys) and to render (JSON/YAML ignore
+// symbols). persist passes it to atomicWrite for the compare-and-swap.
+const VERSION = Symbol('anchored.version')
 
 interface Ac {
   id: string
@@ -147,7 +155,11 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
     } catch (err) {
       throw asInvalidNodeError(tierSchema.tier, node.slug, err)
     }
-    await io.atomicWrite(pathFor(node.slug), render(node))
+    // M4: thread the read-time version (if any) into the write for compare-and-swap.
+    const expectedVersion = (node as unknown as Record<symbol, unknown>)[VERSION] as
+      | string
+      | undefined
+    await io.atomicWrite(pathFor(node.slug), render(node), expectedVersion)
     return node
   }
   // H4: when an AC flips to `done` after a failures-driven redo, retire its
@@ -168,7 +180,15 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
 
   return {
     async read(slug: string): Promise<AnyNode> {
-      return parse(await io.readFile(pathFor(slug))) as AnyNode
+      const path = pathFor(slug)
+      const node = parse(await io.readFile(path)) as AnyNode
+      // M4: stamp the file's version onto the node (symbol key → invisible to schema
+      // + render) so the eventual persist can compare-and-swap against it.
+      if (io.statVersion) {
+        const v = await io.statVersion(path)
+        if (v !== undefined) (node as unknown as Record<symbol, unknown>)[VERSION] = v
+      }
+      return node
     },
 
     async create(init: AnyNode): Promise<AnyNode> {

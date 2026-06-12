@@ -1,5 +1,13 @@
 # Ticket: Harden-2 — Deterministische Completion + echte Concurrency (M-Tier)
 
+**STATUS: ERLEDIGT ✅** (251 Tests grün) — M1 kind-aware Completion (done|deferred-
+Policy), M2 Kind-done verlangt evidenzierte ACs, M3 epic-acceptance[]-Evidenz-Pflicht,
+M4 echter File-Lock (O_EXCL + Stale-Takeover) + Compare-and-Swap (mtime/size-Version
+reist als Symbol vom Read zum Write, lehnt stale Lost-Updates laut ab statt still),
+M5 mergeRec-Tiefenguard(64) + anchored.yml-Size-Cap(512KB) + maxAliasCount. blocked
+hält den Parent offen, deferred nicht.
+
+
 **Quelle:** Härtungs-Review. Diese Gruppe berührt den Substrat-Kern (Completion-
 Garantien + Schreib-Serialisierung) — braucht mehr Tests, ändert aber NICHT den
 Agent-Contract. M-Aufwand.

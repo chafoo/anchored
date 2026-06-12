@@ -3,7 +3,7 @@
 // the real node effects (fs, crypto). It wires those effects into the pure
 // createAnchored factory (src/index.ts) and runs the cli. Keeping this here is what
 // lets index.ts stay a pure, fakeable wiring factory.
-import { mkdir, writeFile, rename, readFile } from 'node:fs/promises'
+import { mkdir, writeFile, rename, readFile, stat, open, unlink } from 'node:fs/promises'
 import { readFileSync, existsSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
@@ -35,10 +35,63 @@ const fs = {
   writeFile: (p: string, data: string) => writeFile(p, data),
   rename: (from: string, to: string) => rename(from, to),
   readFile: (p: string) => readFile(p, 'utf8'),
+  // M4: a cheap version token (mtime+size) for the compare-and-swap. Missing file → undefined.
+  statVersion: async (p: string): Promise<string | undefined> => {
+    try {
+      const s = await stat(p)
+      return `${s.mtimeMs}:${s.size}`
+    } catch {
+      return undefined
+    }
+  },
 }
+
+// M4: a real cross-process file lock (replaces the no-op). An O_EXCL lockfile holds
+// the PID + acquire-time; a holder older than STALE is taken over (crash recovery);
+// acquisition gives up after TIMEOUT. bin.ts is the effectful entry, so wall-clock +
+// setTimeout are allowed here (the determinism ban is on core/engine/config/ops).
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const fileLock = {
+  async acquire(path: string): Promise<() => Promise<void>> {
+    const lockPath = `${path}.lock`
+    const start = Date.now()
+    const TIMEOUT = 10_000
+    const STALE = 30_000
+    for (;;) {
+      try {
+        const fh = await open(lockPath, 'wx') // O_EXCL — EEXIST if already held
+        await fh.writeFile(`${process.pid} ${Date.now()}`)
+        await fh.close()
+        return async () => {
+          try {
+            await unlink(lockPath)
+          } catch {
+            /* already released */
+          }
+        }
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e
+        try {
+          const held = await readFile(lockPath, 'utf8')
+          const ts = Number(held.split(' ')[1] ?? '0')
+          if (Date.now() - ts > STALE) {
+            await unlink(lockPath).catch(() => {})
+            continue // stale holder (crashed) → take over
+          }
+        } catch {
+          continue // lock vanished between EEXIST and read → retry immediately
+        }
+        if (Date.now() - start > TIMEOUT)
+          throw new Error(`lock timeout after ${TIMEOUT}ms`, { cause: e })
+        await sleep(15)
+      }
+    }
+  },
+}
+
 const io = {
   fs,
-  lock: { acquire: async () => async () => {} },
+  lock: fileLock,
   rand: () => randomBytes(4).toString('hex'),
   pid: () => process.pid,
 }

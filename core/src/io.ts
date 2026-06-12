@@ -10,6 +10,9 @@ export interface IoFs {
   writeFile(path: string, data: string): Promise<void>
   rename(oldPath: string, newPath: string): Promise<void>
   readFile(path: string): Promise<string>
+  /** A cheap version token of the file (mtime+size), used for compare-and-swap.
+   *  Optional: a fake fs without it simply disables CAS (single-writer tests). */
+  statVersion?(path: string): Promise<string | undefined>
 }
 export interface IoLock {
   /** Acquire an exclusive lock for `path`; resolves to a release function. */
@@ -25,7 +28,14 @@ export interface IoDeps {
 export function createIo(deps: IoDeps) {
   const { fs, lock, rand, pid } = deps
   return {
-    async atomicWrite(path: string, content: string): Promise<void> {
+    // M4 (harden-2): atomic write behind a real cross-process lock PLUS a
+    // compare-and-swap. `expectedVersion` is the file's version at the moment the
+    // caller READ it; if the on-disk file changed since (a concurrent writer in the
+    // parallel epic fan-out), we REJECT loudly (WriteContention) instead of clobbering
+    // its update — the caller re-reads + retries. Lock alone can't prevent this:
+    // temp+rename is already atomic, so the hazard is a stale read-modify-write, and
+    // CAS is what catches it.
+    async atomicWrite(path: string, content: string, expectedVersion?: string): Promise<void> {
       // 1. parent dir lazily (nested <epic>/<slug>); a flat slug adds no subdir.
       await fs.mkdir(dirname(path), { recursive: true })
       // 2. cross-process lock
@@ -39,17 +49,33 @@ export function createIo(deps: IoDeps) {
           ['another process holds the lock — retry shortly'],
         )
       }
-      // 3. write temp sibling, then atomic rename; 4. always release.
-      const tmp = `${path}.tmp.${String(pid())}.${rand()}`
       try {
+        // 3. CAS — under the lock, the current on-disk version must still equal the
+        //    version the caller read from. A mismatch = a concurrent write landed.
+        if (expectedVersion !== undefined && fs.statVersion) {
+          const current = await fs.statVersion(path)
+          if (current !== undefined && current !== expectedVersion) {
+            throw anchoredError(
+              'WriteContention',
+              `${path} changed since it was read (concurrent write) — no write performed`,
+              ['re-read the node and retry the mutation on the fresh state'],
+            )
+          }
+        }
+        // 4. write temp sibling, then atomic rename.
+        const tmp = `${path}.tmp.${String(pid())}.${rand()}`
         await fs.writeFile(tmp, content)
         await fs.rename(tmp, path)
       } finally {
+        // 5. always release.
         await release()
       }
     },
     async readFile(path: string): Promise<string> {
       return fs.readFile(path)
+    },
+    async statVersion(path: string): Promise<string | undefined> {
+      return fs.statVersion ? fs.statVersion(path) : undefined
     },
   }
 }
