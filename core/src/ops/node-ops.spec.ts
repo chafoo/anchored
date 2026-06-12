@@ -379,3 +379,53 @@ test('G2: setChildStatus rejects a phase-word on an epic stub with a clear error
   const ok = await ops.setChildStatus(validEpic(), 't1', 'active')
   expect((ok.tasks as { status: string }[])[0]?.status).toBe('active')
 })
+
+// M1 (harden-2) — a parent only completes when its children are terminal-OK.
+test('M1: epic done with a pending task-stub throws; all-done passes', async () => {
+  const { deps, writes } = makeDeps()
+  const ops = createNodeOps(epicDescriptor, deps)
+  const base = { schema_version: 2, slug: 'e', title: 'E', status: 'wrap' }
+  await expect(
+    ops.setStatus(
+      {
+        ...base,
+        tasks: [
+          { slug: 't1', status: 'done' },
+          { slug: 't2', status: 'pending' },
+        ],
+      },
+      'done',
+    ),
+  ).rejects.toThrow(/not terminal/)
+  expect(writes.length).toBe(0)
+  // all children done → completes
+  await ops.setStatus(
+    {
+      ...base,
+      tasks: [
+        { slug: 't1', status: 'done' },
+        { slug: 't2', status: 'done' },
+      ],
+    },
+    'done',
+  )
+  expect(writes.length).toBe(1)
+})
+
+// M2 (harden-2) — a child only flips to done when its OWN acceptance criteria are done.
+test('M2: setChildStatus phase done with a pending AC throws; all-done passes', async () => {
+  const { deps, writes } = makeDeps()
+  const ops = createNodeOps(taskDescriptor, deps)
+  const phase = (acStatus: string) => ({
+    name: 'P',
+    slug: 'p1',
+    status: 'in-progress',
+    acceptance_criteria: [{ id: 'a1', text: 'x', status: acStatus, evidence: ['proof'] }],
+  })
+  await expect(
+    ops.setChildStatus(taskN({ phases: [phase('pending')] }), 'p1', 'done'),
+  ).rejects.toThrow(/not done/)
+  expect(writes.length).toBe(0)
+  await ops.setChildStatus(taskN({ phases: [phase('done')] }), 'p1', 'done')
+  expect(writes.length).toBe(1)
+})

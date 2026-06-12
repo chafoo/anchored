@@ -81,21 +81,30 @@ function unionAppend(def: unknown[], user: unknown[]): unknown[] {
   return result
 }
 
-function mergeValue(key: string, defVal: unknown, userVal: unknown): unknown {
+// M5 (harden-2): a hostile/huge config can't be allowed to blow the stack. 64 is far
+// deeper than any real anchored.yml (tiers→stages→steps→… is ~5 levels).
+const MAX_DEPTH = 64
+
+function mergeValue(key: string, defVal: unknown, userVal: unknown, depth: number): unknown {
   if (key === 'each') return defVal !== undefined ? defVal : userVal // intrinsic
   if (userVal === undefined) return defVal
   if (defVal === undefined) return userVal
-  if (isRec(defVal) && isRec(userVal)) return mergeRec(defVal, userVal)
+  if (isRec(defVal) && isRec(userVal)) return mergeRec(defVal, userVal, depth + 1)
   if (Array.isArray(defVal) && Array.isArray(userVal)) {
     return key === 'steps' ? mergeSteps(defVal, userVal) : unionAppend(defVal, userVal)
   }
   return userVal // scalar: user wins
 }
 
-function mergeRec(def: Rec, user: Rec): Rec {
+function mergeRec(def: Rec, user: Rec, depth = 0): Rec {
+  if (depth > MAX_DEPTH) {
+    const e = new Error(`anchored.yml nests deeper than ${MAX_DEPTH} levels — likely malformed`)
+    e.name = 'ConfigError'
+    throw e
+  }
   const out: Rec = {}
   for (const k of new Set([...Object.keys(def), ...Object.keys(user)])) {
-    out[k] = mergeValue(k, def[k], user[k])
+    out[k] = mergeValue(k, def[k], user[k], depth)
   }
   return out
 }

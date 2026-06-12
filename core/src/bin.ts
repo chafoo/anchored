@@ -55,9 +55,22 @@ try {
     projectRoot: root,
     io,
     readDefault: () => readFileSync(defaultPath, 'utf8'),
-    readUser: (r) =>
-      existsSync(`${r}/anchored.yml`) ? readFileSync(`${r}/anchored.yml`, 'utf8') : undefined,
-    parseYaml: (raw) => parse(raw),
+    // M5 (harden-2): cap the anchored.yml size — a multi-MB config is malformed/
+    // hostile, not a real delta-file. Rejected loudly before parse.
+    readUser: (r) => {
+      const p = `${r}/anchored.yml`
+      if (!existsSync(p)) return undefined
+      const raw = readFileSync(p, 'utf8')
+      const MAX = 512 * 1024
+      if (raw.length > MAX) {
+        const e = new Error(`anchored.yml is ${raw.length} bytes (> ${MAX}) — likely malformed`)
+        e.name = 'ConfigError'
+        throw e
+      }
+      return raw
+    },
+    // M5: explicit alias cap (billion-laughs defence) on the config parse.
+    parseYaml: (raw) => parse(raw, { maxAliasCount: 100 }),
     now: () => new Date().toISOString().slice(0, 10), // YYYY-MM-DD for `created`
     version,
     out: (line) => process.stdout.write(line + '\n'),

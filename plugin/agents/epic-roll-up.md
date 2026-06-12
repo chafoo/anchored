@@ -29,8 +29,11 @@ Per resolved q7 this is **hard with a reconcile seam**:
   second code audit; a `file:line` may follow as supporting detail, but the provenance
   pointer leads: `anchored node add-phase-evidence <epic-slug> <task-stub-slug> <ac-id> "core-list/persistence a1 — delivered (app.js saveTasks)"`.
 - **Epic-level integration AC** (the node's OWN `acceptance`, H7) → validate each
-  across the composed tasks. Met → `anchored node set-acceptance-status <epic-slug>
-  <e-id> done`; a gap → the same reconcile question as a stub-AC.
+  across the composed tasks. Met → flip it done **with the provenance pointer as
+  delivery evidence** (M3: the substrate rejects a done epic-AC with no evidence —
+  you can't stamp the epic delivered on a hunch): `anchored node
+  set-acceptance-status <epic-slug> <e-id> done "<task>/<phase> — delivered (how)"`.
+  A gap → the same reconcile question as a stub-AC.
 - **Gap** (a stub outcome-AC NOT covered by the built task) → do **NOT** pass it.
   Surface it as a question so the user reconciles — (a) it IS met, here's why →
   resolve; (b) re-open the task; (c) the AC was too strict → revise:

@@ -39,6 +39,16 @@ const CHILD_STATUS: Record<string, readonly string[]> = {
   epic: stubStatusValues,
 }
 
+// M1 (harden-2): a parent only reaches `done` when every child is in a
+// terminal-OK state. `deferred` = consciously skipped (doesn't block); `blocked`/
+// pending/active/in-progress keep the parent OPEN. Phases can be deferred; loop-
+// queue stubs cannot (their enum has no `deferred`), so a stub must be `done`.
+const CHILD_TERMINAL_OK: Record<string, readonly string[]> = {
+  phase: ['done', 'deferred'],
+  task: ['done'],
+  epic: ['done'],
+}
+
 export interface TierDescriptor {
   tier: string
   statusEnum: readonly string[]
@@ -167,8 +177,25 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
 
     async setStatus(node: AnyNode, to: string): Promise<AnyNode> {
       assertTransition(tierSchema, node.status, to)
-      // completing a node requires every acceptance criterion to be evidence-backed
-      if (to === 'done') assertNodeCompletable(node)
+      if (to === 'done') {
+        // completing a node requires every acceptance criterion to be evidence-backed
+        assertNodeCompletable(node)
+        // M1: …AND every child terminal-OK (no pending/active/in-progress/blocked).
+        // task/epic have no own ACs, so without this their done was a vacuum pass —
+        // an epic could complete with a still-pending task-stub.
+        if (childField && tierSchema.childTier) {
+          const ok = CHILD_TERMINAL_OK[tierSchema.childTier] ?? ['done']
+          const open = childrenOf(node).filter((c) => !ok.includes(c.status))
+          if (open.length > 0) {
+            throw anchoredError(
+              'ChildrenIncomplete',
+              `cannot complete '${node.slug}': children not terminal — ` +
+                open.map((c) => `${c.slug}:${c.status}`).join(', '),
+              [`finish or defer them first (deferred children don't block; blocked ones do)`],
+            )
+          }
+        }
+      }
       return persist({ ...node, status: to })
     },
 
@@ -251,13 +278,33 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       })
     },
 
-    async setAcceptanceStatus(node: AnyNode, id: string, status: string): Promise<AnyNode> {
-      const items = (node.acceptance as { id: string }[] | undefined) ?? []
-      if (!items.some((a) => a.id === id))
-        throw anchoredError('UnknownAcceptance', `no acceptance item '${id}'`)
+    async setAcceptanceStatus(
+      node: AnyNode,
+      id: string,
+      status: string,
+      evidence?: string[],
+    ): Promise<AnyNode> {
+      const items = (node.acceptance as { id: string; evidence?: string[] }[] | undefined) ?? []
+      const item = items.find((a) => a.id === id)
+      if (!item) throw anchoredError('UnknownAcceptance', `no acceptance item '${id}'`)
+      // M3: an epic DoD item only flips done WITH delivery evidence (passed now or
+      // already present) — same evidence-honesty floor as a phase AC, one tier up.
+      const merged =
+        evidence && evidence.length > 0 ? [...(item.evidence ?? []), ...evidence] : item.evidence
+      if (status === 'done' && (!merged || merged.length === 0)) {
+        throw anchoredError(
+          'AcceptanceNoEvidence',
+          `acceptance item '${id}' cannot be done without delivery evidence`,
+          [
+            `pass the provenance pointer(s): set-acceptance-status <slug> ${id} done "<task>/<phase> — delivered"`,
+          ],
+        )
+      }
       return persist({
         ...node,
-        acceptance: items.map((a) => (a.id === id ? { ...a, status } : a)),
+        acceptance: items.map((a) =>
+          a.id === id ? { ...a, status, ...(merged ? { evidence: merged } : {}) } : a,
+        ),
       })
     },
 
@@ -489,6 +536,25 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
           `'${status}' is not a valid ${tierSchema.childTier} status`,
           [...allowed],
         )
+      }
+      // M2 (harden-2): flipping a child to `done` requires its OWN acceptance criteria
+      // to be complete (and the AC-evidence invariant already guarantees each done AC
+      // has evidence). Without this, the orchestrator could mark a phase/stub done
+      // with a pending AC — gate-ordering rested purely on orchestrator discipline.
+      if (status === 'done') {
+        const child = childrenOf(node).find((c) => c.slug === childSlug)
+        if (!child) throw anchoredError('UnknownChild', `no child '${childSlug}'`)
+        const acs = (child as { acceptance_criteria?: { id: string; status: string }[] })
+          .acceptance_criteria
+        const openAcs = (acs ?? []).filter((a) => a.status !== 'done')
+        if (openAcs.length > 0) {
+          throw anchoredError(
+            'ChildIncomplete',
+            `cannot mark '${childSlug}' done: acceptance criteria not done — ` +
+              openAcs.map((a) => a.id).join(', '),
+            [`evidence each AC first (add-phase-evidence flips it done atomically)`],
+          )
+        }
       }
       const children = childrenOf(node).map((c) => (c.slug === childSlug ? { ...c, status } : c))
       return persist({ ...node, [field]: children })

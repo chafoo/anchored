@@ -14,6 +14,10 @@ const AcceptanceItem = z.strictObject({
   id: z.string(),
   text: z.string(),
   status: z.enum(['pending', 'done']),
+  // M3 (harden-2): the epic DoD item carries delivery evidence (the roll-up's
+  // provenance pointers). Required to be non-empty before the item flips done —
+  // a halluc-roll-up can't stamp the whole epic delivered with no backing.
+  evidence: z.array(z.string()).optional(),
 })
 
 // Child-STUB status = the parent's loop-queue marker (NOT the child's own

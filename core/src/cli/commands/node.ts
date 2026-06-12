@@ -107,7 +107,13 @@ export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknow
       // acceptance[], NOT a child AC) — id auto-assigned e1, e2, …
       return ops.addAcceptance(need(0, 'slug'), need(1, 'text'))
     case 'set-acceptance-status':
-      return ops.setAcceptanceStatus(need(0, 'slug'), need(1, 'id'), need(2, 'status'))
+      // set-acceptance-status <slug> <id> <status> [evidence] — done needs evidence (M3)
+      return ops.setAcceptanceStatus(
+        need(0, 'slug'),
+        need(1, 'id'),
+        need(2, 'status'),
+        a[3] !== undefined ? [a[3]] : undefined,
+      )
     case 'add-phase-evidence':
       return ops.addChildEvidence(need(0, 'slug'), need(1, 'phase'), need(2, 'ac'), need(3, 'text'))
     case 'set-child-status':

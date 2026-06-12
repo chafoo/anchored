@@ -233,7 +233,17 @@ test('H7: add-acceptance + set-acceptance-status on an epic integration AC', asy
   const acc = (last().result as { acceptance?: { id: string; status: string }[] }).acceptance!
   expect(acc[0]?.id).toBe('e1')
   expect(acc[0]?.status).toBe('pending')
+  // M3: done now requires delivery evidence
   await cli.run(['node', 'set-acceptance-status', 'h7', 'e1', 'done'])
+  expect(last().ok).toBe(false) // no evidence → rejected
+  await cli.run([
+    'node',
+    'set-acceptance-status',
+    'h7',
+    'e1',
+    'done',
+    'core-list/persistence — delivered',
+  ])
   await cli.run(['node', 'read', 'h7'])
   expect((last().result as { acceptance: { status: string }[] }).acceptance[0]?.status).toBe('done')
 })
