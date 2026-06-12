@@ -50,7 +50,11 @@ task:
     steps:
       - { name: review }
       - { name: summarize }
-      # custom run-step in wrap: merge the finished task branch locally (no PR)
+      # custom run-step in wrap: merge the finished task branch locally (no PR).
+      # provenance captures the surviving --no-ff merge commit (HEAD on main after
+      # the merge) into merge_commit — the stable task-level anchor, again with no
+      # hand-wired set-field. (commit_sha pointed at a phase branch that this merge
+      # may prune; merge_commit is the durable pointer.)
       - name: merge
         after: summarize
         run: |
@@ -58,6 +62,7 @@ task:
           git add -A -- ':!.claude/tasks'
           git diff --cached --quiet || git commit -m "wrap: ${TASK_SLUG}"
           git checkout main && git merge --no-ff -X theirs "$BRANCH" -m "merge: ${TASK_SLUG}"
+        provenance: { field: merge_commit }
 
 # ─── phase ───────────────────────────────────────────────────────────
 phase:
@@ -75,13 +80,16 @@ phase:
           a test exists for it. Cite the test in the AC evidence.
       - { name: task-validate }
       - { name: code-validate }
-      # per-phase commit + record the SHA into the custom field
+      # per-phase commit — the SHA write-back is no longer hand-wired. `provenance`
+      # tells the engine: after this run-step succeeds, capture `git rev-parse HEAD`
+      # and write it into `commit_sha`. The run: only does the commit (POLICY: what's
+      # committed + which field); the capture+write is the engine MECHANISM.
       - name: commit
         after: code-validate
         run: |
           git add -A -- ':!.claude/tasks'
           git diff --cached --quiet || git commit -m "phase: ${PHASE_SLUG} — ${PHASE_NAME}"
-          anchored node set-field "${TASK_SLUG}" commit_sha "$(git rev-parse HEAD)"
+        provenance: { field: commit_sha }
 
 # ─── epic ────────────────────────────────────────────────────────────
 epic:

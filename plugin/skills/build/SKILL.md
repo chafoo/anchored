@@ -154,6 +154,21 @@ where `$STEP_RUN` is the step's `run` string verbatim. **Per-phase commits don't
 leak into chat** — narrate the phase outcome ("Phase 2 grün, committed."), not the
 git plumbing (see communication-style.md).
 
+**`provenance: { field, ref? }` on a run-step — capture the SHA, no hand-wiring.**
+When a `build.steps` run-step carries `provenance`, then *after* you run it (and it
+exited 0), capture the resulting commit and write it back yourself — this is the
+live mirror of the engine's run-step mechanism, so the user's `run:` no longer
+hand-wires the set-field:
+```bash
+SHA=$(git rev-parse "${REF:-HEAD}")   # REF = step.provenance.ref, default HEAD
+anchored node set-field "$TASK_SLUG" "$FIELD" "$SHA"   # FIELD = step.provenance.field
+```
+If `git rev-parse` fails (e.g. nothing committed / no repo), **do not fail the
+phase** — the `run:` already succeeded; just skip the write-back (note it in the
+build trail). The author thus declares `provenance: { field: commit_sha }` on the
+commit step instead of appending `anchored node set-field … "$(git rev-parse HEAD)"`
+to the `run:` themselves.
+
 > **Fan-out runs under git worktree isolation — directive, not caveat.** Every
 > fan-out worker runs in its **own git worktree** — both the per-AC **phase** fan-out
 > (workflow mode, below) and the **task-level** parallel fan-out (epic). A per-task

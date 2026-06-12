@@ -209,9 +209,38 @@ Docs bleiben intakt):
   stabile Anker auf `develop`/`main`, der nach dem Wrap-Merge bestehen bleibt
   (während der Phasen-Anchor verschwinden kann).
 
-Beide sind gewöhnliche Custom-Felder (`string`), additiv deklariert — der
-Mechanismus, der `merge_commit` füllt, ist nicht Teil dieser Deklaration (er wird
-separat verdrahtet); hier wird nur das Feld bereitgestellt + dokumentiert.
+Beide sind gewöhnliche Custom-Felder (`string`), additiv deklariert.
+
+#### `provenance: { field, ref? }` — der SHA-Anker ohne Hand-Wiring
+
+Ein **Run-Step** kann `provenance` tragen. Nachdem der Step erfolgreich gelaufen
+ist, **erfasst der Mechanismus** `git rev-parse <ref|HEAD>` und **schreibt** den
+SHA in `field` (kein Step verdrahtet den Write-Back mehr selbst):
+
+```yaml
+- name: commit
+  after: code-validate
+  run: |
+    git add -A -- ':!.claude/tasks'
+    git diff --cached --quiet || git commit -m "phase: ${PHASE_SLUG}"
+  provenance: { field: commit_sha }      # ← Mechanismus: rev-parse HEAD → commit_sha
+```
+
+- `field` (Pflicht) = welches Task-File-Feld den SHA bekommt.
+- `ref` (optional, default `HEAD`) = was `git rev-parse` auflöst (z.B. `develop`
+  für einen überlebenden Merge-Commit → `provenance: { field: merge_commit, ref: HEAD }`).
+- Nur auf **Run-Steps** gültig (er erfasst den SHA, den der `run:` erzeugt hat) —
+  auf use-/bare-Steps wird er von der Config-Validierung abgelehnt.
+
+**Mechanismus vs. Policy:** Der git-Effekt + das zuverlässige Erfassen + Schreiben
+des SHA ist **Mechanismus** (deterministischer Engine-Code hinter der injizierten
+`run`-Naht). WAS committet wird und WELCHES Feld den SHA bekommt ist **Policy**
+(deine Config). Schlägt das `rev-parse` fehl (z.B. kein git-Repo), bricht der Step
+**nicht** ab — der `run:` war ja schon erfolgreich; der Miss landet im Audit-Trail.
+
+Damit entfällt die frühere Hand-Verdrahtung
+`anchored node set-field … "$(git rev-parse HEAD)"` — siehe
+[`anchored.example-comprehensive.yml`](anchored.example-comprehensive.yml).
 
 ## `_lib` — wiederverwendbare Steps (nur `anchored.yml`)
 

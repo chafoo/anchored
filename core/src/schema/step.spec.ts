@@ -38,6 +38,35 @@ test('step: loop step parses recursive body; loop+run rejected', () => {
   ).toBe(false)
 })
 
+// provenance — only on a run-step; { field, ref? } shape; field required
+test('step: provenance is run-step-only and shaped { field, ref? }', () => {
+  // provenance on a run-step parses (field only, and field+ref)
+  expect(
+    StepSchema.safeParse({ name: 'commit', run: 'git commit', provenance: { field: 'commit_sha' } })
+      .success,
+  ).toBe(true)
+  const withRef = parseStep({
+    name: 'commit',
+    run: 'git commit',
+    provenance: { field: 'commit_sha', ref: 'HEAD' },
+  })
+  expect(withRef.provenance?.field).toBe('commit_sha')
+  expect(withRef.provenance?.ref).toBe('HEAD')
+  // provenance on a use-step is rejected (not a run-step)
+  expect(
+    StepSchema.safeParse({ name: 'x', use: 'agent', provenance: { field: 'f' } }).success,
+  ).toBe(false)
+  // provenance on a bare built-in reference is rejected (no run)
+  expect(StepSchema.safeParse({ name: 'implement', provenance: { field: 'f' } }).success).toBe(
+    false,
+  )
+  // provenance.field is required + non-empty
+  expect(StepSchema.safeParse({ name: 'c', run: 'git commit', provenance: {} }).success).toBe(false)
+  expect(
+    StepSchema.safeParse({ name: 'c', run: 'git commit', provenance: { field: '' } }).success,
+  ).toBe(false)
+})
+
 // a4 — parseStep throws; safeParseStep returns a discriminated union
 test('step: parseStep throws, safeParseStep returns union', () => {
   expect(() => parseStep({ name: 'x', run: 'a', use: 'b' })).toThrow()

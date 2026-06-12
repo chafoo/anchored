@@ -66,6 +66,14 @@ task:
     steps:
       - { name: review }
       - { name: summarize }
+      # POLICY (überschreibbar): der Framework-Default committet den Audit-Trail
+      # (die Task-Files) als SEPARATEN Commit — getrennt vom Code-Diff. No-op
+      # außerhalb eines git-Repos oder wenn nichts zu committen ist (bulletproof).
+      - name: commit-audit-trail
+        run: |
+          git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
+          git add .claude/tasks >/dev/null 2>&1 || exit 0
+          git diff --cached --quiet || git commit -q -m "chore(${TASK_SLUG}): audit trail"
 
   fields:                             # Daten-Modell einer Task (das Task-File)
     schema_version:  int

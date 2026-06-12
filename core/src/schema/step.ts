@@ -29,6 +29,7 @@ export interface Step {
   after?: string
   each?: TierName
   steps?: Step[]
+  provenance?: { field: string; ref?: string }
 }
 
 // A step is one of: a bare built-in reference (name only), a run step, a use
@@ -48,6 +49,12 @@ export const StepSchema: z.ZodType<Step> = z.lazy(() =>
       after: z.string().optional(),
       each: TierName.optional(),
       steps: z.array(StepSchema).optional(),
+      // provenance: after a run-step succeeds the engine captures `git rev-parse
+      // <ref|HEAD>` and writes the SHA into `field` (mechanism). field = which
+      // task-file field receives it; ref optional, defaults to HEAD at use-site.
+      provenance: z
+        .strictObject({ field: z.string().min(1), ref: z.string().optional() })
+        .optional(),
     })
     .refine(
       (s) =>
@@ -68,6 +75,9 @@ export const StepSchema: z.ZodType<Step> = z.lazy(() =>
     })
     .refine((s) => !(s.before !== undefined && s.after !== undefined), {
       error: 'a step sets at most one of before | after',
+    })
+    .refine((s) => s.provenance === undefined || s.run !== undefined, {
+      error: 'provenance is only valid on a run-step (it captures the SHA the run produced)',
     }),
 )
 
