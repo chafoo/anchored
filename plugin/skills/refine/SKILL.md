@@ -111,6 +111,17 @@ styles; its build-time decisions are already covered by the stop-conditions).
   **AI-resolved** question, the `reasoning` you record names the implications the
   choice settled.
 
+## Custom run/use steps (the config's own steps)
+
+`anchored steps <tier> refine` returns the FULL plan — a user can add their own
+refine steps beyond the gates. Dispatch them in declaration order at their plan
+position: **`kind: 'run'`** → execute via Bash with the variable contract as real
+env vars (`TASK_SLUG` = the node, `EPIC_SLUG` = parent epic or empty); a non-zero
+run-step is a real failure → surface it, stay `drafted`. **`kind: 'use'`** → spawn
+the named subagent / skill with its `instructions`; a worker writes results to a
+declared custom field via `anchored node set-field <slug> <field> "<value>"`. Keep
+the plumbing out of chat — narrate the outcome, not the command.
+
 ## Failure-handling
 
 If a gate agent errors, surface it and stay at `drafted` (do not flip). If the

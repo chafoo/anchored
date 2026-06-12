@@ -57,10 +57,12 @@ question; suggest at most a one-liner. No salesmanship, no funnel.
      `${PHASE_NAME}` (phase.build only), `${EPIC_SLUG}` — passed as real env vars.
      There is **no `$SLUG`**; `git commit -am "$SLUG"` commits an empty message.
 4. **Validate + check order**, then **show the changed region** so the user sees what
-   landed. There is no separate validate command — run any `anchored steps <tier>
-   <stage>` (it parses + merges + validates) and confirm the new step sits where the
-   request meant it to, then surface any parse/schema error plainly. Never leave the
-   file invalid.
+   landed. Run **`anchored validate`** as the final check — it parses + merges +
+   validates the WHOLE yml and reports the resolved shape across every tier×stage
+   plus the declared custom fields (an invalid yml comes back as a clean error
+   envelope, not a crash). Confirm the new step/field actually appears where the
+   request meant it to (the report lists each stage's steps in order — a mis-anchored
+   step shows up at the wrong position). Never leave the file invalid.
 
 ## Onboarding (no anchored.yml yet)
 

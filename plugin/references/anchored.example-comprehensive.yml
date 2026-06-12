@@ -1,0 +1,93 @@
+# anchored.example-comprehensive.yml — a deliberately LARGE example proving anchored
+# is extended purely via config (custom steps in every stage, custom fields, a global
+# build methodology) with ZERO framework-code changes. This file is a reference +
+# test fixture (validated by extensibility-matrix.spec). It is NOT auto-loaded.
+#
+# Demonstrates:
+#   • custom field `research` filled by a web-research step in PLAN
+#   • custom field `commit_sha` filled by a per-phase commit step in BUILD
+#   • a global TDD methodology instruction on the implement worker (the "architecture")
+#   • custom steps across plan / refine / build / wrap (all four stages fire)
+#
+# Variables in run:-steps: ${TASK_SLUG} ${PHASE_SLUG} ${PHASE_NAME} (phase.build) ${EPIC_SLUG}.
+
+# ─── task ────────────────────────────────────────────────────────────
+task:
+  # custom data-model fields on the task-file (additive — defaults stay)
+  fields:
+    research: string        # web-research findings, written by the plan research step
+    commit_sha: string      # SHA of the task's last phase commit
+
+  plan:
+    steps:
+      - { name: discover }                                  # built-in, kept
+      # custom use-step: a researcher worker does web research and writes its
+      # findings into the `research` field via the CLI. `after: discover` lands it
+      # before decompose so the findings inform the decomposition. The orchestrator
+      # dispatches it as a subagent and threads `instructions` to it.
+      - name: research
+        use: researcher
+        type: agent
+        after: discover
+        instructions: >-
+          Web-research the problem domain + prior art. Write a tight findings
+          summary into the research field:
+          `anchored node set-field <task-slug> research "<findings>"`.
+      - { name: rules-scan }
+      - { name: decompose }
+
+  refine:
+    steps:
+      - { name: plan-check }
+      - { name: rules-check }
+      # a custom run-step in refine (e.g. a dependency/security audit gate)
+      - { name: audit, after: rules-check, run: "echo 'dependency audit clean'" }
+      - { name: walk, involve: high-only }
+
+  wrap:
+    steps:
+      - { name: review }
+      - { name: summarize }
+      # custom run-step in wrap: merge the finished task branch locally (no PR)
+      - name: merge
+        after: summarize
+        run: |
+          BRANCH="task/$(echo "${TASK_SLUG}" | tr '/' '-')"
+          git add -A -- ':!.claude/tasks'
+          git diff --cached --quiet || git commit -m "wrap: ${TASK_SLUG}"
+          git checkout main && git merge --no-ff -X theirs "$BRANCH" -m "merge: ${TASK_SLUG}"
+
+# ─── phase ───────────────────────────────────────────────────────────
+phase:
+  fields:
+    coverage_pct: number     # custom phase field: test coverage after the phase
+
+  build:
+    steps:
+      # THE ARCHITECTURE INSTRUCTION: TDD. Appended to the implement worker so every
+      # phase is built test-first. A known built-in name → instructions merge in place.
+      - name: implement
+        instructions: >-
+          TDD is mandatory: write the FAILING test first (red), then the minimal
+          code to pass it (green), then refactor. Never write production code before
+          a test exists for it. Cite the test in the AC evidence.
+      - { name: task-validate }
+      - { name: code-validate }
+      # per-phase commit + record the SHA into the custom field
+      - name: commit
+        after: code-validate
+        run: |
+          git add -A -- ':!.claude/tasks'
+          git diff --cached --quiet || git commit -m "phase: ${PHASE_SLUG} — ${PHASE_NAME}"
+          anchored node set-field "${TASK_SLUG}" commit_sha "$(git rev-parse HEAD)"
+
+# ─── epic ────────────────────────────────────────────────────────────
+epic:
+  plan:
+    steps:
+      - { name: discover }
+      # research also at the epic level → epic-wide research field
+      - { name: research, use: researcher, type: agent, after: discover, instructions: "Survey the whole-epic domain." }
+      - { name: scaffold }
+  fields:
+    research: string

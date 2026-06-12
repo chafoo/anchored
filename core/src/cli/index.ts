@@ -55,6 +55,8 @@ export interface CliDeps {
   tierFor: (node: unknown) => string
   classify?: (input: string) => Promise<{ tier: string; reasoning?: string }>
   steps?: (tier: string, stage: string) => StepPlan
+  // D1: `anchored validate` — report the resolved shape across every tier×stage.
+  validate?: () => unknown
   out: (line: string) => void
   // F5: the real package version, injected from bin.ts (the only fs-touching site).
   // Falls back to the constant when not wired (tests).
@@ -94,6 +96,7 @@ Stage commands (return the orchestration plan for the in-session skill):
   build  <slug>                          build-stage plan (loop / implement + gates)
   wrap   <slug>                          wrap-stage plan (review/summarize | roll-up)
   steps  <tier> <stage>                  resolved step plan for a tier/stage
+  validate                               check the merged anchored.yml: resolves every tier×stage + lists custom fields
 
 Node ops (agents self-write via these):
   node read <slug>
@@ -145,11 +148,18 @@ export function createCli(deps: CliDeps) {
           case 'steps':
             result = await stepsCommand(rest, deps)
             break
+          case 'validate':
+            // the merged yml already parsed (createAnchored would have thrown
+            // otherwise); report the resolved shape across every tier×stage.
+            if (!deps.validate)
+              throw cliError('Unsupported', 'validate is not wired in this CLI build')
+            result = deps.validate()
+            break
           default:
             return emit(deps, false, verb, undefined, {
               name: 'UnknownCommand',
               message: `unknown command '${verb}'`,
-              suggestions: ['plan', 'refine', 'build', 'wrap', 'steps', 'node'],
+              suggestions: ['plan', 'refine', 'build', 'wrap', 'validate', 'steps', 'node'],
             })
         }
         return emit(deps, true, verb, result)

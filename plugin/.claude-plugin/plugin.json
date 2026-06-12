@@ -1,7 +1,7 @@
 {
   "name": "a",
   "description": "Fractal task lifecycle — plan→refine→build→wrap on every tier (phase/task/epic). CLI-only transport via the `anchored` binary over Bash, no MCP. Slash commands: /a:plan /a:refine /a:build /a:wrap.",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "author": {
     "name": "chafoo"
   }

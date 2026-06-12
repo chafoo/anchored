@@ -510,3 +510,17 @@ test('B5: the task-file-CLI hook covers Bash writes too, not just Edit tools', (
   expect(hook).toContain('bashWritesTaskFile') // the Bash-write detector exists
   expect(hook).toMatch(/tee|sed|writeFileSync/) // covers the common write shapes
 })
+
+// D2 — custom run/use steps must fire in ALL four stage skills (plan + refine were
+// missing it, so a "web research in plan → research field" step would never run).
+test('D2: plan + refine SKILLs dispatch custom run/use steps', () => {
+  for (const skill of ['plan', 'refine']) {
+    const md = readFileSync(
+      new URL(`../../../plugin/skills/${skill}/SKILL.md`, import.meta.url),
+      'utf8',
+    )
+    expect(md).toContain('Custom run/use steps')
+    expect(md).toMatch(/kind:\s*'run'/)
+    expect(md).toContain('TASK_SLUG') // the variable contract reaches the step
+  }
+})

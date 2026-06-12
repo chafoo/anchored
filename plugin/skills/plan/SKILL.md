@@ -69,6 +69,34 @@ instructions }`:
 - **scaffold → epic-scaffold** (epic) — coarse task stubs:
   `anchored node add-child <slug> <task-stub-slug>` (DAG via depends_on).
 
+## Custom run/use steps (the config's own steps — research, scaffolding, …)
+
+`anchored steps <tier> plan` returns the FULL config-driven plan, not just the
+known workers. A user can extend the plan stage with their own steps (e.g. a
+web-research step that writes its result into a custom field) — dispatch them in
+declaration order, at the position they sit in the plan:
+
+- **`kind: 'run'`** — a shell command from `anchored.yml`. **YOU execute it via
+  Bash**, with the variable contract below as real environment variables (never
+  hand-substitute). A run-step that fails (non-zero) is a real failure — surface it
+  and stop, don't flip to drafted.
+- **`kind: 'use'`** — spawn the named subagent (or, with `type: skill`, invoke the
+  skill) with the step's `instructions`. A research worker, for example, writes its
+  result back into a declared custom field via the CLI:
+  `anchored node set-field <slug> research "<findings>"` (the field must be declared
+  under that tier's `fields` — a custom field validates since the custom-field fix).
+
+**Variable contract (every plan run-step gets these as env vars):**
+
+| Variable | Value |
+|---|---|
+| `TASK_SLUG` | the node being planned (its slug) |
+| `EPIC_SLUG` | the parent epic slug, or empty when not in an epic |
+
+Run a `run`-step as e.g. `TASK_SLUG='<slug>' EPIC_SLUG='' bash -c "$STEP_RUN"`.
+Keep the plumbing out of chat — narrate the outcome ("Research steht — Ergebnis im
+research-Feld."), not the command.
+
 Surface generously: any ambiguity the decompose agent hits becomes an open
 question (`anchored node add-question <slug> "<q>" high`), NOT a silent decision —
 `/a:refine` walks them. Every question carries a worked-out recommendation + 1–3

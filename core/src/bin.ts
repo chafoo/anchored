@@ -46,17 +46,37 @@ const io = {
 // lazy-init: seed a minimal anchored.yml + the Bash(anchored *) allowlist
 await createInit({ io: createIo(io) }).ensure(root)
 
-const anchored = createAnchored({
-  projectRoot: root,
-  io,
-  readDefault: () => readFileSync(defaultPath, 'utf8'),
-  readUser: (r) =>
-    existsSync(`${r}/anchored.yml`) ? readFileSync(`${r}/anchored.yml`, 'utf8') : undefined,
-  parseYaml: (raw) => parse(raw),
-  now: () => new Date().toISOString().slice(0, 10), // YYYY-MM-DD for `created`
-  version,
-  out: (line) => process.stdout.write(line + '\n'),
-})
+// createAnchored validates the merged anchored.yml at bootstrap — a ConfigError
+// here means the user's yml is invalid. Emit it as a clean JSON envelope (so
+// `anchored validate` and every other command report a malformed yml precisely
+// instead of crashing with a stack trace).
+try {
+  const anchored = createAnchored({
+    projectRoot: root,
+    io,
+    readDefault: () => readFileSync(defaultPath, 'utf8'),
+    readUser: (r) =>
+      existsSync(`${r}/anchored.yml`) ? readFileSync(`${r}/anchored.yml`, 'utf8') : undefined,
+    parseYaml: (raw) => parse(raw),
+    now: () => new Date().toISOString().slice(0, 10), // YYYY-MM-DD for `created`
+    version,
+    out: (line) => process.stdout.write(line + '\n'),
+  })
 
-const code = await anchored.cli.run(process.argv.slice(2))
-process.exit(code)
+  const code = await anchored.cli.run(process.argv.slice(2))
+  process.exit(code)
+} catch (err) {
+  const e = err as { name?: string; message?: string; issues?: unknown }
+  process.stdout.write(
+    JSON.stringify({
+      ok: false,
+      command: process.argv[2] ?? '',
+      error: {
+        name: e.name || 'Error',
+        message: e.message || String(err),
+        ...(e.issues !== undefined ? { issues: e.issues } : {}),
+      },
+    }) + '\n',
+  )
+  process.exit(1)
+}

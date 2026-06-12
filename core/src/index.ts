@@ -13,6 +13,7 @@ import { createSlugFacade, type TierOps } from './ops/facade.js'
 import { createEngineOps, tierOfNode } from './ops/engine-ops.js'
 import { makeTierFor } from './ops/tier-derive.js'
 import { createStepsPlanner } from './ops/steps-planner.js'
+import { createValidator } from './ops/validate.js'
 import { createParser } from './parser/parse.js'
 import { createRenderer, defaultSchemaUrl } from './parser/render.js'
 import { createIo, type IoDeps } from './io.js'
@@ -200,12 +201,17 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
   // The steps planner gives the in-session skills their config-driven orchestration
   // menu (which agent to spawn per step) without the CLI spawning anything itself.
   const planner = createStepsPlanner(config as unknown as Record<string, unknown>)
+  const validator = createValidator(
+    config as unknown as Record<string, { fields?: Record<string, unknown> } | undefined>,
+    planner.plan,
+  )
   const cli = createCliFn({
     nodeOps: facade,
     engine,
     tierFor: tierOfNode,
     classify: deps.classify,
     steps: planner.plan,
+    validate: validator.validate,
     out: deps.out,
     ...(deps.version !== undefined ? { version: deps.version } : {}),
   })
