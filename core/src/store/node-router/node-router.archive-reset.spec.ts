@@ -1,8 +1,8 @@
-// facade.archive-reset.spec.ts — archive(slug) MOVES the task-file into archive/,
+// node-router.archive-reset.spec.ts — archive(slug) MOVES the task-file into archive/,
 // reset(slug) REMOVES it. Both touch the substrate only (io + pathFor) — NO git
 // (that's the command's job). A missing file throws a typed UnknownNode.
 import { test, expect } from 'bun:test'
-import { createSlugFacade, type TierOps } from './facade.js'
+import { createSlugFacade, type TierOps } from './node-router.js'
 
 // a minimal TierOps stub — archive/reset don't route through the tier-ops at all,
 // so these are never called; present only to satisfy the facade wiring.
