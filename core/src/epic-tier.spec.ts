@@ -9,7 +9,7 @@ import { createResolveSteps } from './engine/scope/resolve-steps/resolve-steps.j
 import { EpicNodeSchema } from './schema/tiers/epic.js'
 import { TaskNodeSchema } from './schema/tiers/task.js'
 import { nextChild as realNextChild } from './ops/scope/children/children.js'
-import type { AnyNode, OpsLike } from './engine/step-runner.js'
+import type { AnyNode, OpsLike } from './engine/step-runner/step-runner.js'
 
 // nested-slugs a1 — a nested slug task-file round-trips losslessly
 test('nested slug task-file round-trips losslessly', () => {

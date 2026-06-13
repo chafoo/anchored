@@ -1,11 +1,11 @@
-// engine/step-runner.ts — the fractal foundation. createStepRunner(cfg, deps) →
+// engine/step-runner/step-runner.ts — the fractal foundation. createStepRunner(cfg, deps) →
 // { run(step, node, ctx) }. Dispatch by step FORM (not name): run → bash seam,
 // use|bare-name → worker (spawn seam), each → loop. No hardcoded domain step
 // names; the runner only knows the step shape. Shared engine types live here.
-import type { Step } from '../schema/step/step.js'
-import { runStep } from './scope/run-step/run-step.js'
-import { workerStep } from './scope/worker-step.js'
-import { loopStep } from './scope/loop-step/loop-step.js'
+import type { Step } from '../../schema/step/step.js'
+import { runStep } from '../scope/run-step/run-step.js'
+import { workerStep } from '../scope/worker-step.js'
+import { loopStep } from '../scope/loop-step/loop-step.js'
 
 export interface AnyNode {
   slug: string

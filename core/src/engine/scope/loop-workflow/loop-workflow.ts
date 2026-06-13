@@ -16,8 +16,13 @@
 // children retry to retry_limit, and the hard invariant (no ac→done without evidence)
 // stays in the substrate. The seam is injected, so the whole path is fakeable.
 import { stopCheck } from '../loop-step/loop-step.js'
-import type { AnyNode, MergedResult, StepResult, WorkflowUnit } from '../../step-runner.js'
-import type { WorkflowSeam } from '../../step-runner.js'
+import type {
+  AnyNode,
+  MergedResult,
+  StepResult,
+  WorkflowUnit,
+} from '../../step-runner/step-runner.js'
+import type { WorkflowSeam } from '../../step-runner/step-runner.js'
 
 export const WORKFLOW_CAP = 16
 const CHILD_FIELD: Record<string, string> = { phase: 'phases', task: 'tasks', epic: 'epics' }

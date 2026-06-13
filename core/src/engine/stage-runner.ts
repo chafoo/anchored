@@ -2,8 +2,8 @@
 // of ONE stage in order, reusing createStepRunner per step. A failed step short-
 // circuits the stage.
 import type { Step } from '../schema/step/step.js'
-import { createStepRunner } from './step-runner.js'
-import type { AnyNode, RunCtx, RunnerDeps, StepResult, TierCfg } from './step-runner.js'
+import { createStepRunner } from './step-runner/step-runner.js'
+import type { AnyNode, RunCtx, RunnerDeps, StepResult, TierCfg } from './step-runner/step-runner.js'
 
 export function createStageRunner(cfg: TierCfg, deps: RunnerDeps) {
   const stepRunner = createStepRunner(cfg, deps)

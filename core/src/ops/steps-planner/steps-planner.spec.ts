@@ -4,7 +4,7 @@ import { parse } from 'yaml'
 import { createStepsPlanner } from './steps-planner.js'
 
 const defaultCfg = parse(
-  readFileSync(new URL('../../default-template/anchored.default.yml', import.meta.url), 'utf8'),
+  readFileSync(new URL('../../../default-template/anchored.default.yml', import.meta.url), 'utf8'),
 ) as Record<string, unknown>
 
 // the planner turns task.plan into worker steps mapped to plugin agents

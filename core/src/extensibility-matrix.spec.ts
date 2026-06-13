@@ -7,7 +7,7 @@
 import { describe, test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
-import { createStepsPlanner } from './ops/steps-planner.js'
+import { createStepsPlanner } from './ops/steps-planner/steps-planner.js'
 import { merge } from './config/merge.js'
 import { ConfigSchema } from './schema/config/config.js'
 import { extendSchemaWithFields } from './schema/custom-fields/custom-fields.js'

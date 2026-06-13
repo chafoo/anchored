@@ -1,13 +1,13 @@
-// ops/steps-planner.ts — turns the resolved, config-driven steps for a tier/stage
+// ops/steps-planner/steps-planner.ts — turns the resolved, config-driven steps for a tier/stage
 // into a PLAN the in-session skills execute: per step, is it a worker (→ which
 // plugin agent to spawn), a bash run, or the loop edge (→ child tier + stop/retry).
 // Pure + deterministic; reuses resolve-steps (the each-shorthand + order) and
 // worker-dispatch (the step-name → agent mapping). The skill is the orchestrator;
 // this is only the menu it reads.
-import { createResolveSteps } from '../engine/scope/resolve-steps/resolve-steps.js'
-import { createWorkerDispatch } from '../engine/scope/worker-dispatch.js'
-import type { Step } from '../schema/step/step.js'
-import type { PlanStep, StepPlan } from '../cli/commands/steps.js'
+import { createResolveSteps } from '../../engine/scope/resolve-steps/resolve-steps.js'
+import { createWorkerDispatch } from '../../engine/scope/worker-dispatch.js'
+import type { Step } from '../../schema/step/step.js'
+import type { PlanStep, StepPlan } from '../../cli/commands/steps.js'
 
 interface BuildCfg {
   stop?: string[]

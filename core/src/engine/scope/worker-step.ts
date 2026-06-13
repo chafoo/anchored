@@ -2,7 +2,7 @@
 // the injected spawn seam (Task spawn). The worker id is step.use ?? step.name;
 // the engine never hardcodes a domain step name. No direct spawn import.
 import type { Step } from '../../schema/step/step.js'
-import type { AnyNode, StepResult, RunCtx, RunnerDeps } from '../step-runner.js'
+import type { AnyNode, StepResult, RunCtx, RunnerDeps } from '../step-runner/step-runner.js'
 
 export async function workerStep(
   step: Step,

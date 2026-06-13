@@ -100,7 +100,7 @@ phases:
           - "Zero behavior change: pure git-mv + import-specifier retarget, no logic edits."
   - name: Colocate leaf subject+spec pairs
     slug: leaf-folders
-    status: in-progress
+    status: done
     context: Every leaf module with a companion spec moves into its own folder, and mis-placed specs are
       pulled to their subject's folder. These have localized churn (mostly intra-package), so they
       go before the high-fan-in central modules.
@@ -141,22 +141,69 @@ phases:
             '../invariants/invariants.js'."
       - text: "schema/: `config`, `step`, `custom-fields` each (subject+spec) to own folder; `tiers/*` stay
           flat; `tiers.spec.ts` stays at `schema/tiers/` (collective spec)."
-        status: pending
+        status: done
+        evidence:
+          - "git mv: config.ts+spec → schema/config/, step.ts+spec → schema/step/,
+            custom-fields.ts+spec → schema/custom-fields/ (6 renames)."
+          - tiers/*.ts STAY FLAT; tiers/tiers.spec.ts STAYS (no rename entries for schema/tiers/*).
+          - "config importers retargeted (schema/config/config.js): index.ts:27, config/merge.ts:10,
+            config/bootstrap.ts:6, parser/parse/parse.spec.ts:6,
+            engine/scope/resolve-steps/resolve-injection.spec.ts:6, + the config/*.spec.ts +
+            extensibility/index specs."
+          - "step importers retargeted (schema/step/step.js): ops/steps-planner.ts:9,
+            engine/step-runner.ts:5, engine/stage-runner.ts:4, schema/config/config.ts:6,
+            worker-step.ts:4 + the engine/scope subfolder modules. custom-fields: index.ts:28 +
+            extensibility spec. config.spec.ts:9 readFileSync fixture-URL depth +1 fixed."
       - text: "ops/scope/: `children.ts`+spec to `children/`; `questions.ts` to `questions/` with
           `questions-log.spec.ts` moved beside it; `log.ts` handled per the open question."
-        status: pending
+        status: done
+        evidence:
+          - "git mv: children.ts+spec → ops/scope/children/; questions.ts →
+            ops/scope/questions/questions.ts AND questions-log.spec.ts →
+            ops/scope/questions/questions-log.spec.ts (4 renames)."
+          - log.ts STAYS FLAT at ops/scope/log.ts (resolved q3) — node-ops.ts:28 still imports
+            './scope/log.js'; moved questions-log.spec.ts:3 retargeted to '../log.js'.
+          - "children importers retargeted (ops/scope/children/children.js): node-ops.ts:20,
+            epic-tier.spec.ts:11, workflow-smoke.spec.ts:6, integration.spec.ts:3,
+            loop-workflow.spec, loop-step.spec."
+          - "questions importer retargeted: node-ops.ts:27 → './scope/questions/questions.js';
+            questions-log.spec internal imports depth-fixed ('../../node-ops.js',
+            '../../../schema/tiers/task.js')."
       - text: "engine/scope/: `loop-step`, `loop-workflow`, `resolve-steps`, `run-step` each to own folder;
           `resolve-injection.spec.ts` to `resolve-steps/`; `engine/loop-workflow.spec.ts` moved down
           to `engine/scope/loop-workflow/`. NOTE: `worker-dispatch` is deliberately EXCLUDED here —
           its final placement is owned by architecture-cleanup A6 (move out to ops/scope/ + colocate
           there), to avoid touching it twice."
-        status: pending
+        status: done
+        evidence:
+          - "git mv into own folders: engine/scope/{loop-step,loop-workflow,resolve-steps,run-step}/
+            (9 renames incl. resolve-injection.spec.ts → resolve-steps/ and
+            engine/loop-workflow.spec.ts moved DOWN 2 levels to
+            engine/scope/loop-workflow/loop-workflow.spec.ts)."
+          - "CRITICAL EXCLUSION honored: worker-dispatch.ts + worker-dispatch.spec.ts +
+            worker-step.ts NOT moved (still flat at engine/scope/; only their import lines edited —
+            worker-dispatch.spec.ts:5 retargeted to './resolve-steps/resolve-steps.js')."
+          - "External importers retargeted: step-runner.ts:6,8 (run-step+loop-step),
+            tier-runner.ts:5 (resolve-steps), steps-planner.ts:7, epic-tier.spec.ts:8."
+          - "Fixture-path depth fixed after move: resolve-steps/resolve-injection.spec.ts new
+            URL('../../../../default-template/anchored.default.yml') (+1 level; test-gate ENOENT
+            caught it)."
       - text: Gates green after each module group; full `bun test` + eslint + prettier + tsc clean at phase
           end; zero behavior change.
-        status: pending
+        status: done
+        evidence:
+          - "typecheck GREEN: `bun run typecheck` (tsc --noEmit) → exit 0."
+          - "lint GREEN: `bun run lint` (eslint .) → exit 0."
+          - "test GREEN: `bun test` → 274 pass, 2 skip, 0 fail across 47 files (915 expect() calls)
+            — identical to HEAD, zero behavior change."
+          - "format GREEN: `bun run format` (prettier --check .) → 'All matched files use Prettier
+            code style!'."
+          - Committed as c0a02bb. Pure 27-file git-mv refactor; 3 pure-move misses (1 forgotten
+            '/invariants' segment, 2 readFileSync fixture-URL depths) caught + fixed by the test
+            gate before commit.
   - name: Colocate high-fan-in central modules
     slug: central-modules
-    status: pending
+    status: in-progress
     context: The widely-imported central modules and their cross-named specs. Done after the leaves so
       their import churn lands on an already-settled tree.
     rules:

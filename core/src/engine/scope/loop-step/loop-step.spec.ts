@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test'
 import { loopStep, stopCheck, routeStopVerdict } from './loop-step.js'
 import { nextChild as realNextChild } from '../../../ops/scope/children/children.js'
-import type { AnyNode, OpsLike, RunnerDeps, StepResult } from '../../step-runner.js'
+import type { AnyNode, OpsLike, RunnerDeps, StepResult } from '../../step-runner/step-runner.js'
 
 const ctx = { tier: 'task', stage: 'build' }
 

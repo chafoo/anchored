@@ -2,7 +2,7 @@ import { test, expect } from 'bun:test'
 import { createStageRunner } from './stage-runner.js'
 import { createTierRunner } from './tier-runner.js'
 import { createEngine } from './engine.js'
-import type { RunnerDeps, AnyNode, OpsLike, TierCfg } from './step-runner.js'
+import type { RunnerDeps, AnyNode, OpsLike, TierCfg } from './step-runner/step-runner.js'
 
 const noopOps: OpsLike = {
   setStatus: async (n) => n,

@@ -1,10 +1,10 @@
 import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { createEngine } from './engine.js'
-import { createNodeOps, type NodeOpsDeps } from '../ops/node-ops.js'
+import { createNodeOps, type NodeOpsDeps } from '../ops/node-ops/node-ops.js'
 import { taskDescriptor } from '../schema/tiers/task.js'
 import { nextChild as realNextChild } from '../ops/scope/children/children.js'
-import type { AnyNode, OpsLike, WorkflowSeam } from './step-runner.js'
+import type { AnyNode, OpsLike, WorkflowSeam } from './step-runner/step-runner.js'
 
 // in-memory nodeOps (JSON substrate) — enough to exercise setExecutor + setStatus
 function memOps() {

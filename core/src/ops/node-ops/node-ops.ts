@@ -1,33 +1,33 @@
-// ops/node-ops.ts — createNodeOps(tierSchema, deps): ONE tier-generic op kernel,
+// ops/node-ops/node-ops.ts — createNodeOps(tierSchema, deps): ONE tier-generic op kernel,
 // parametrised over the tier descriptor (no per-tier duplication). Every mutation
 // is read-modify-write through the injected io.atomicWrite seam (no partial state).
 // The hard invariant (no ac→done without evidence) and forward-only transitions
 // are enforced HERE, at the writing op. Pure substrate functions (assert*) are
 // imported directly; the only effect (io) is injected.
-import { assertTransition } from '../state/transitions/transitions.js'
+import { assertTransition } from '../../state/transitions/transitions.js'
 import {
   assertAcDoneHasEvidence,
   assertNodeCompletable,
   anchoredError,
   type AnchoredError,
-} from '../state/invariants/invariants.js'
+} from '../../state/invariants/invariants.js'
 import {
   nextChild as nextChildOf,
   readyChildren as readyChildrenOf,
   addChild as addChildOf,
   moveChild as moveChildOf,
   type ChildLike,
-} from './scope/children/children.js'
+} from '../scope/children/children.js'
 import {
   addQuestion as addQuestionOf,
   resolveQuestion as resolveQuestionOf,
   type QuestionInit,
   type QuestionResolution,
   type Question,
-} from './scope/questions/questions.js'
-import { appendLog as appendLogOf, type LogEntry } from './scope/log.js'
-import { phaseExecutorValues, phaseStatusValues } from '../schema/tiers/phase.js'
-import { stubStatusValues } from '../schema/tiers/epic.js'
+} from '../scope/questions/questions.js'
+import { appendLog as appendLogOf, type LogEntry } from '../scope/log.js'
+import { phaseExecutorValues, phaseStatusValues } from '../../schema/tiers/phase.js'
+import { stubStatusValues } from '../../schema/tiers/epic.js'
 
 // G2: valid status values for a CHILD, keyed by the child tier. A phase child uses
 // the phase status enum; a task/epic STUB uses the loop-queue marker enum (NOT the

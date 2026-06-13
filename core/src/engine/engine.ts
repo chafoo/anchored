@@ -10,7 +10,7 @@ import type {
   StepResult,
   TierCfg,
   WorkflowSeam,
-} from './step-runner.js'
+} from './step-runner/step-runner.js'
 
 export interface EngineDeps {
   config: Record<string, TierCfg>

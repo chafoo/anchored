@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test'
 import { createEngine } from './engine.js'
 import { nextChild as realNextChild } from '../ops/scope/children/children.js'
-import type { AnyNode, OpsLike } from './step-runner.js'
+import type { AnyNode, OpsLike } from './step-runner/step-runner.js'
 
 function makeOps(): OpsLike {
   return {

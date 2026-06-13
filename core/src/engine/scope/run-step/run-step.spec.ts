@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
 import { runStep } from './run-step.js'
-import type { AnyNode, OpsLike, RunnerDeps, ExecOut } from '../../step-runner.js'
+import type { AnyNode, OpsLike, RunnerDeps, ExecOut } from '../../step-runner/step-runner.js'
 import type { Step } from '../../../schema/step/step.js'
 
 const node: AnyNode = { slug: 'n', status: 'build' }

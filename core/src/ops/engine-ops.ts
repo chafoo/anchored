@@ -4,8 +4,8 @@
 // before its own write so it never clobbers a worker's evidence). A node without
 // its own file (a leaf phase) falls back to the in-memory node. This is the only
 // await-bearing wiring glue — it lives here so index.ts stays a pure factory.
-import type { AnyNode, OpsLike } from '../engine/step-runner.js'
-import type { TierOps } from './facade.js'
+import type { AnyNode, OpsLike } from '../engine/step-runner/step-runner.js'
+import type { TierOps } from './facade/facade.js'
 
 interface AnyRec {
   slug: string
