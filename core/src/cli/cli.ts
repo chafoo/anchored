@@ -4,63 +4,20 @@
 // machine-parseable for skills + agents (cli-only-transport). Errors are caught
 // centrally and serialised (no stacktrace leak, no crash).
 import { nodeCommand } from './commands/node/node.js'
-import { planCommand } from './commands/plan/plan.js'
-import { refineCommand } from './commands/refine.js'
-import { buildCommand } from './commands/build.js'
-import { wrapCommand } from './commands/wrap.js'
-import { stepsCommand } from './commands/steps.js'
+import { planCommand } from './commands/stage/plan.js'
+import { refineCommand } from './commands/stage/refine.js'
+import { buildCommand } from './commands/stage/build.js'
+import { wrapCommand } from './commands/stage/wrap.js'
+import { stepsCommand } from './commands/stage/steps.js'
 import type { StepPlan } from '../domain/steps/plan.js'
-import { archiveCommand } from './commands/archive.js'
-import { resetCommand } from './commands/reset.js'
+import { archiveCommand } from './commands/lifecycle/archive.js'
+import { resetCommand } from './commands/lifecycle/reset.js'
+// The slug-based facade surface the CLI drives — defined in the store where
+// createSlugFacade produces it, imported downward here (cli → store). Re-exported so
+// the public package surface (src/index.ts) keeps `NodeOpsFacade` available from cli.
+import type { NodeOpsFacade } from '../store/node-router/node-router.js'
 
-export interface NodeOpsFacade {
-  create(slug: string, init: Record<string, unknown>): Promise<unknown>
-  read(slug: string): Promise<unknown>
-  setStatus(slug: string, status: string): Promise<unknown>
-  addChild(
-    slug: string,
-    child: { slug: string; goal?: string; depends_on?: string[] },
-  ): Promise<unknown>
-  setChildField(slug: string, childSlug: string, field: string, value: unknown): Promise<unknown>
-  nextChild(slug: string): Promise<unknown>
-  readyChildren(slug: string): Promise<unknown>
-  addQuestion(slug: string, q: { text: string; priority: string }): Promise<unknown>
-  resolveQuestion(
-    slug: string,
-    id: string,
-    r: { answer: string; source: string; reasoning?: string },
-  ): Promise<unknown>
-  addConcern(slug: string, q: { text: string; priority: string }): Promise<unknown>
-  resolveConcern(
-    slug: string,
-    id: string,
-    r: { answer: string; source: string; reasoning?: string },
-  ): Promise<unknown>
-  appendLog(slug: string, e: { at: string; kind: string; note: string }): Promise<unknown>
-  setField(slug: string, field: string, value: string): Promise<unknown>
-  setExecutor(slug: string, phase: string, value: string): Promise<unknown>
-  addEvidence(slug: string, acId: string, text: string): Promise<unknown>
-  addPhase(slug: string, phase: { slug: string; name?: string }): Promise<unknown>
-  addAc(slug: string, phase: string, ac: { id?: string; text: string }): Promise<unknown>
-  addAcceptance(slug: string, text: string): Promise<unknown>
-  setAcceptanceStatus(
-    slug: string,
-    id: string,
-    status: string,
-    evidence?: string[],
-  ): Promise<unknown>
-  addChildEvidence(slug: string, phase: string, acId: string, text: string): Promise<unknown>
-  setChildFailures(slug: string, phase: string, acId: string, text: string): Promise<unknown>
-  setChildAcStatus(slug: string, phase: string, acId: string, status: string): Promise<unknown>
-  clearChildFailures(slug: string, phase: string, acId: string): Promise<unknown>
-  setPhaseRules(slug: string, phase: string, path: string, why: string): Promise<unknown>
-  setChildStatus(slug: string, childSlug: string, status: string): Promise<unknown>
-  // Lifecycle ops: archive MOVES the task-file into archive/ (freeze it out of the
-  // active set), reset REMOVES it (back to before the task existed). File-only — the
-  // archive/reset CLI commands write exclusively to the task-files (no git).
-  archive(slug: string): Promise<unknown>
-  reset(slug: string): Promise<unknown>
-}
+export type { NodeOpsFacade }
 
 export interface CliDeps {
   nodeOps: NodeOpsFacade

@@ -98,6 +98,29 @@ context:
       store-layer); resolved source='ai' — relocate NodeOpsFacade in the cli-restructure phase,
       leave the pure `import type` for now (q10's resolution explicitly permits not forcing a
       layer-flip beyond the refactor goal; not a build.stop architecture-flip).
+
+      - orchestration-and-dissolve-ops (attempt 1) — verdict: PASS. task-validate: 4/4 ACs accepted,
+      gates re-run independently (lint 0, prettier clean, tsc 0, bun test 210 pass/0 fail [146 unit
+      + 4 e2e + 60 int == baseline], build 0); git renames confirmed in f427c73 (R100 for specs,
+      R089-R094 for the .ts files reflecting the import rewrites). code-validate: PASS (5/5 rules
+      clean), no build.stop architecture-flip. Two non-blocking WARNs (cosmetic stale path-comments
+      in files NOT touched by this phase, deferred to docs-and-final-verification sweep alongside
+      the domain/invariants/invariants.ts:1 one): domain/steps/resolve-steps/resolve-steps.ts:1 `//
+      engine/scope/resolve-steps.ts` and bin.ts:54 prose mentioning core/engine/config/ops.
+    Implement: "- orchestration-and-dissolve-ops / Orchestration Layer + Dissolve ops/: pure move +
+      import-path-rewrite migration, no behavior change. ops/steps-planner →
+      orchestration/steps-planner and ops/scope/worker-dispatch → orchestration/worker-dispatch via
+      git mv (R100 renames). ops/ and engine/ folders deleted (engine/ already empty since
+      domain-layer). Import-path rewrites: index.ts:18, steps-planner.ts:8 (../scope/worker-dispatch
+      → ../worker-dispatch), worker-dispatch.spec.ts:5-6. One depth-sensitive decision:
+      worker-dispatch.spec.ts:48 default-template test-data URL went `../../../../` → `../../../`
+      because the spec moved one level shallower (dropped scope/) — caught as ENOENT on first run,
+      fixed, re-ran green. Cosmetic file-banner path comments in steps-planner.ts +
+      worker-dispatch.ts updated to new paths. Factory signatures byte-identical
+      (createStepsPlanner, createWorkerDispatch with config-driven DEFAULT_WORKERS spread-merged).
+      No barrel/index.ts under orchestration/. No architecture deviation; no build.stop match. Gates
+      green: lint 0, prettier clean, tsc 0, build 0, bun test 210 pass/0 fail (146 unit + 4 e2e + 60
+      int == baseline)."
 phases:
   - name: Domain Layer + Unified Tier Derivation
     slug: domain-layer
@@ -287,7 +310,7 @@ phases:
           - "`bun run build` (tsc -p tsconfig.build.json) → compiles without errors."
   - name: Orchestration Layer + Dissolve ops/
     slug: orchestration-and-dissolve-ops
-    status: in-progress
+    status: done
     context: "Build orchestration/ via pure moves (plan §6 step 5):
       ops/steps-planner→orchestration/steps-planner,
       ops/scope/worker-dispatch→orchestration/worker-dispatch (name→agent-ref, DEFAULT_WORKERS).
@@ -362,7 +385,7 @@ phases:
             matches the 146+4+60 pre-migration baseline exactly (no test fell out of discovery)."
   - name: CLI Restructure + Classify Out of Transport
     slug: cli-restructure
-    status: pending
+    status: in-progress
     context: "Restructure cli/ (plan §6 step 6) into commands/{stage,node,lifecycle}. Pull the domain
       logic classifyTier + slugFromInput (cli/commands/plan/plan.ts:10-29, both exported) OUT of the
       transport into cli/commands/stage/classify.ts so cli.ts stays pure JSON dispatch. Group
@@ -390,19 +413,70 @@ phases:
     acceptance_criteria:
       - text: cli/commands/ is organized into stage/, node/ and lifecycle/ subfolders, populated only by
           moved code.
-        status: pending
+        status: done
+        evidence:
+          - "`find core/src/cli` shows three groups: commands/stage/ (plan.ts, refine.ts, build.ts,
+            wrap.ts, steps.ts, classify.ts, classify.spec.ts), commands/node/ (node.ts,
+            node.spec.ts), commands/lifecycle/ (archive.ts, reset.ts, require-node.ts) — old flat
+            commands/*.ts and commands/{plan,scope}/ are gone."
+          - "git status --short reports every relocation as a rename:
+            commands/refine.ts→stage/refine.ts, build.ts→stage/, wrap.ts→stage/, steps.ts→stage/,
+            plan/plan.ts→stage/plan.ts, archive.ts→lifecycle/, reset.ts→lifecycle/,
+            scope/lifecycle.ts→lifecycle/require-node.ts (git mv, history preserved) — populated
+            only by moved code."
+          - "q11 applied (per intent): steps.ts → stage/ (stage mechanics); the shared
+            runStage-helper stays grouped with the stage verbs in stage/refine.ts (build/wrap import
+            it via ./refine.js); the node-lifecycle requireNode guard → lifecycle/require-node.ts
+            (renamed from the old scope/lifecycle.ts to avoid a folder-name collision)."
       - text: classifyTier and slugFromInput live in cli/commands/stage/classify.ts and are no longer
           defined inside the transport file; cli.ts contains only dispatch + JSON-envelope logic.
-        status: pending
+        status: done
+        evidence:
+          - cli/commands/stage/classify.ts:8 defines slugFromInput and :23 defines classifyTier —
+            the two pure domain helpers, now living outside the transport.
+          - "`grep -rn 'classifyTier\\|slugFromInput' core/src` shows NO definition in any transport
+            file (cli.ts / plan.ts): plan.ts:9 only imports { slugFromInput } from './classify.js'
+            (used :53); classify.spec.ts imports classifyTier from './classify.js'."
+          - cli/cli.ts contains only dispatch + JSON-envelope logic (emit(), cliError(), the
+            createCli verb switch, HELP/VERSION) — grep returns zero classify/slug hits in cli.ts.
+          - Full suite green incl. classify.spec.ts (tripwire + grey-zone +
+            plan-routes-through-classify) at its new commands/stage/ home.
       - text: "The public surface is unchanged: index.ts still exports createAnchored and re-exports
           tierOfNode (now from domain/tiers), and bin.ts still resolves; package.json exports/bin
           point at the same dist artifacts."
-        status: pending
+        status: done
+        evidence:
+          - index.ts:10 still `import { createCli, type CliDeps, type NodeOpsFacade } from
+            './cli/cli.js'`; :30 still `export { tierOfNode }` (re-exported from
+            domain/tiers/tiers.js); createAnchored exported — public surface unchanged.
+          - bin.ts unchanged (imports createAnchored from './index.js'); `bun run build` exits 0 and
+            emits dist/bin.js, dist/index.js, dist/index.d.ts.
+          - package.json bin (./dist/bin.js) and exports (./dist/index.{d.ts,js}) untouched — same
+            dist artifacts.
+          - NodeOpsFacade still importable from cli.js (cli.ts:20 `export type { NodeOpsFacade }`,
+            re-exported downward from store/node-router) so index.ts + specs resolve byte-stable.
       - text: No index.ts (except the package-root entry) and no re-export-only barrel was introduced.
-        status: pending
+        status: done
+        evidence:
+          - "`find core/src/cli -name index.ts` → no results; the only index.ts in the package is
+            the package-root core/src/index.ts (allowed public entry), NOT under cli/."
+          - "No re-export-only barrel introduced: cli.ts re-exports NodeOpsFacade but is a real
+            wiring/dispatch factory (createCli), not a pass-through; stage/steps.ts keeps its
+            pre-existing `export type { PlanStep, StepPlan }` (byte-stable, not new); classify.ts
+            exports its own definitions."
+          - "`grep -rn 'export \\* from' core/src/cli` → zero hits; every group file is a real
+            command factory-fn or pure helper."
       - text: "Quality gates are green after the phase: lint, format --check, tsc --noEmit, bun test (unit +
           e2e + int), bun build."
-        status: pending
+        status: done
+        evidence:
+          - "`bun run lint` (eslint .) → clean, exit 0."
+          - "`bun run format` (prettier --check .) → 'All matched files use Prettier code style!'."
+          - "`bun run typecheck` (tsc --noEmit) → no output, exit 0."
+          - "`bun run test` → 146 unit + 4 e2e + 60 int = 210 pass / 0 fail — identical to
+            pre-change baseline (no count drift, no behavior change)."
+          - "`bun run build` (tsc -p tsconfig.build.json) → exit 0; dist/bin.js + dist/index.js +
+            dist/index.d.ts present."
   - name: Docs Sync + Final Verification
     slug: docs-and-final-verification
     status: pending

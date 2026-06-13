@@ -2,13 +2,66 @@
 // tier-generic node-store (read-modify-write through the io seam) behind a flat
 // slug→verb surface: read the node, apply the verb, persist. All the await-bearing
 // glue lives HERE (not in index.ts, which stays a pure, await-free wiring factory).
-import type { NodeOpsFacade } from '../../cli/cli.js'
 import { anchoredError } from '../../domain/invariants/invariants.js'
 
 interface AnyRec {
   slug: string
   status: string
   [k: string]: unknown
+}
+
+// The slug-based facade surface the CLI drives — every verb takes a slug (+ args)
+// and returns the persisted node. Defined HERE, where createSlugFacade produces it,
+// so the dependency runs the correct way (cli → store, downward); cli/cli.ts imports
+// this type FROM the store. (Previously this lived in cli/cli.ts and node-router
+// imported it UPWARD — a store→cli type dependency; relocated by q15, type-only.)
+export interface NodeOpsFacade {
+  create(slug: string, init: Record<string, unknown>): Promise<unknown>
+  read(slug: string): Promise<unknown>
+  setStatus(slug: string, status: string): Promise<unknown>
+  addChild(
+    slug: string,
+    child: { slug: string; goal?: string; depends_on?: string[] },
+  ): Promise<unknown>
+  setChildField(slug: string, childSlug: string, field: string, value: unknown): Promise<unknown>
+  nextChild(slug: string): Promise<unknown>
+  readyChildren(slug: string): Promise<unknown>
+  addQuestion(slug: string, q: { text: string; priority: string }): Promise<unknown>
+  resolveQuestion(
+    slug: string,
+    id: string,
+    r: { answer: string; source: string; reasoning?: string },
+  ): Promise<unknown>
+  addConcern(slug: string, q: { text: string; priority: string }): Promise<unknown>
+  resolveConcern(
+    slug: string,
+    id: string,
+    r: { answer: string; source: string; reasoning?: string },
+  ): Promise<unknown>
+  appendLog(slug: string, e: { at: string; kind: string; note: string }): Promise<unknown>
+  setField(slug: string, field: string, value: string): Promise<unknown>
+  setExecutor(slug: string, phase: string, value: string): Promise<unknown>
+  addEvidence(slug: string, acId: string, text: string): Promise<unknown>
+  addPhase(slug: string, phase: { slug: string; name?: string }): Promise<unknown>
+  addAc(slug: string, phase: string, ac: { id?: string; text: string }): Promise<unknown>
+  addAcceptance(slug: string, text: string): Promise<unknown>
+  setAcceptanceStatus(
+    slug: string,
+    id: string,
+    status: string,
+    evidence?: string[],
+  ): Promise<unknown>
+  addChildEvidence(slug: string, phase: string, acId: string, text: string): Promise<unknown>
+  setChildFailures(slug: string, phase: string, acId: string, text: string): Promise<unknown>
+  setChildAcStatus(slug: string, phase: string, acId: string, status: string): Promise<unknown>
+  clearChildFailures(slug: string, phase: string, acId: string): Promise<unknown>
+  setPhaseRules(slug: string, phase: string, path: string, why: string): Promise<unknown>
+  setChildStatus(slug: string, childSlug: string, status: string): Promise<unknown>
+  // Lifecycle ops: archive MOVES the task-file into archive/ (freeze it out of the
+  // active set), reset REMOVES it (back to before the task existed). File-only — the
+  // archive/reset CLI commands write exclusively to the task-files (no git).
+  archive(slug: string): Promise<unknown>
+  reset(slug: string): Promise<unknown>
 }
 
 /** Next free `a<N>` acceptance-criterion id for a phase (a1, a2, …). */

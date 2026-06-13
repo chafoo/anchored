@@ -1,4 +1,4 @@
-// cli/commands/scope/lifecycle.ts — pure helper shared by the archive + reset
+// cli/commands/lifecycle/require-node.ts — pure helper shared by the archive + reset
 // lifecycle commands. Both verbs are FILE-ONLY (they write exclusively to the
 // task-files); deleting git branches is the user's own concern, not a framework
 // side-effect. The only shared concern left is proving the node exists before any

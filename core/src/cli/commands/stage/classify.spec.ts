@@ -1,5 +1,6 @@
 import { test, expect } from 'bun:test'
-import { classifyTier, planCommand } from './plan.js'
+import { classifyTier } from './classify.js'
+import { planCommand } from './plan.js'
 import type { CliDeps } from '../../cli.js'
 import { fakeFacade } from '../../cli.spec.js'
 

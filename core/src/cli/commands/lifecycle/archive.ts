@@ -1,9 +1,9 @@
-// cli/commands/archive.ts — `anchored archive <slug>`. Freezes a finished task OUT of
-// the active set by MOVING its task-file into archive/ (substrate op, via the facade).
-// FILE-ONLY: it never touches git — deleting any feature branch is the user's own
-// concern, not a framework side-effect.
-import { cliError, type CliDeps } from '../cli.js'
-import { requireNode } from './scope/lifecycle.js'
+// cli/commands/lifecycle/archive.ts — `anchored archive <slug>`. Freezes a finished
+// task OUT of the active set by MOVING its task-file into archive/ (substrate op, via
+// the facade). FILE-ONLY: it never touches git — deleting any feature branch is the
+// user's own concern, not a framework side-effect.
+import { cliError, type CliDeps } from '../../cli.js'
+import { requireNode } from './require-node.js'
 
 export async function archiveCommand(args: string[], deps: CliDeps): Promise<unknown> {
   const slug = args[0]

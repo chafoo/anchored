@@ -1,11 +1,11 @@
-// cli/commands/steps.ts — `anchored steps <tier> <stage>`. Returns the resolved,
+// cli/commands/stage/steps.ts — `anchored steps <tier> <stage>`. Returns the resolved,
 // config-driven step PLAN for a tier/stage as JSON — the orchestration menu the
 // skills consult: which workers (→ which plugin agent) to spawn in-session, in
 // what order, plus the loop edge + stop/retry for a looping build. The skill is
 // the orchestrator (it has the plugin + agents loaded); the CLI stays the
 // deterministic planner + ops. No spawning happens here.
-import { cliError, type CliDeps } from '../cli.js'
-import type { PlanStep, StepPlan } from '../../domain/steps/plan.js'
+import { cliError, type CliDeps } from '../../cli.js'
+import type { PlanStep, StepPlan } from '../../../domain/steps/plan.js'
 
 export type { PlanStep, StepPlan }
 
