@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
 schema_version: 2
 slug: test-file-naming-convention
-status: build
+status: wrap
 created: 2026-06-13
 title: Unified Test-File Naming Convention (.spec / .e2e / .int)
 context:
@@ -582,6 +582,7 @@ phases:
           - Both checks run from /Users/jack/Dev/anchored-v2 after the edits landed; confirms the
             only surviving e2e tokens in docs are the legitimate *.e2e.ts filename suffixes in the
             reworked tree (dogfood.e2e.ts, cli.e2e.ts)
+    commit: 6b7e87c
 questions:
   - id: q1
     text: Should the three-suffix convention be a standalone new rule file in .claude/rules/, or an
