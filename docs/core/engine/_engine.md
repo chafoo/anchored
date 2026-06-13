@@ -2,27 +2,24 @@
 
 # engine
 
-The **fractal factory engine** — the deterministic core that drives a node
-through `plan → refine → build → wrap`. Each layer is a factory
-`createX(cfg, deps) → { run(input) → output }`; the `loop` step closes the
-recursion (calling the `tier-runner` of the child tier). AI is only an effect
-behind `deps.spawn`.
+The **step-resolution logic** the [steps-planner](../ops/_ops.md) consumes. After
+the headless engine-run chain was removed (a headless `claude -p` subprocess can
+not reach the session's Task tool), the in-session skill is the orchestrator: it
+drives `plan → refine → build → wrap` through `anchored <stage>` + `anchored node`.
+What survives here is the pure, deterministic config logic that turns a stage's
+declared `steps` into the canonical, ordered effective step plan the skill walks.
 
 ```mermaid
-flowchart TB
-    E["engine · run(tier, node)"] --> T["tier-runner · plan/refine/build/wrap"]
-    T --> S["stage-runner · steps in order"]
-    S --> P["step-runner · run | use | each"]
-    P -->|run| RS["scope/run-step"]
-    P -->|use| WS["scope/worker-step"]
-    P -->|each| LS["scope/loop-step"]
-    LS -. "recurses" .-> T
+flowchart LR
+    cfg["stage steps (config) + default template"] --> rs["scope/resolve-steps"]
+    rs --> plan["effective ordered step plan → steps-planner → CLI"]
 ```
 
 | Unit | Responsibility |
 |---|---|
-| [engine](engine.md) | Top-level orchestrator: `createEngine(deps) → run(tier, node)`. |
-| [tier-runner](tier-runner.md) | Drives the four stages of a node. One function for all tiers. |
-| [stage-runner](stage-runner.md) | Drives a stage's `steps` in declaration order; stops on error. |
-| [step-runner](step-runner.md) | Dispatch of a step: `run` → Bash, `use` → Worker, `each` → Loop. |
-| scope/ | Helpers: [run-step](scope/run-step.md), [worker-step](scope/worker-step.md), [loop-step](scope/loop-step.md), [loop-workflow](scope/loop-workflow.md), [worker-dispatch](scope/worker-dispatch.md), [resolve-steps](scope/resolve-steps.md). |
+| scope/ | [resolve-steps](scope/resolve-steps.md) — inserts the built-in defaults, enforces their canonical order, merges `instructions`. The only piece of the old engine folder that outlived the headless run chain. |
+
+> The former orchestrator (`engine.run`), the tier/stage/step runners, the
+> `loop`/`worker-step` recursion, and the `spawn` effect were removed with the
+> headless path. The orchestration now lives in the in-session skill; the CLI
+> stage verbs only hand it the resolved plan (see [cli/commands](../cli/commands.md)).

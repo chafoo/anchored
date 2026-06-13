@@ -4,8 +4,7 @@
 
 The **tier descriptors** — what makes up a tier (phase/task/epic/project).
 Each descriptor = **field shape** (config-driven) + **mechanics** (code-fixed).
-[node-ops](../ops/node-ops.md) and the [tier-runner](../engine/tier-runner.md)
-are parametrized with them.
+[node-ops](../ops/node-ops.md) is parametrized with them.
 
 ## What
 
@@ -29,7 +28,7 @@ are parametrized with them.
 flowchart LR
     desc["tierSchema"] --> shape["field shape · config"]
     desc --> mech["mechanics · status-enum · transitions · kind"]
-    desc --> ops["→ node-ops / tier-runner"]
+    desc --> ops["→ node-ops"]
 ```
 
 > The exhaustive field lists per tier are micro — deliberately not duplicated

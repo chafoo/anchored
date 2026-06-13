@@ -2,9 +2,10 @@
 
 # commands
 
-The verb surface of the `anchored` command. **Stage verbs** drive the lifecycle via
-the [engine](../engine/_engine.md), **node verbs** are direct ops (used mainly by
-agents), plus **inspect** and **lifecycle verbs**.
+The verb surface of the `anchored` command. **Stage verbs** load the node, derive
+its tier, and return the **orchestration plan** (node + resolved steps) for the
+in-session skill to drive — the CLI never runs the lifecycle itself. **Node verbs**
+are direct ops (used mainly by agents), plus **inspect** and **lifecycle verbs**.
 
 ## What
 
@@ -12,7 +13,8 @@ agents), plus **inspect** and **lifecycle verbs**.
   - `anchored plan <epic|task|phase>? <prose|path>` — structured; without a tier →
     discover + classify.
   - `anchored refine <slug>` · `anchored build <slug>` · `anchored wrap <slug>` —
-    the tier is derived from the node.
+    the tier is derived from the node; each returns the resolved step plan, the
+    in-session skill orchestrates it.
 - **Inspect verbs:**
   - `anchored steps <tier> <stage>` — outputs the resolved, config-driven
     step plan of a tier×stage (what the skill orchestrates).
@@ -31,7 +33,7 @@ agents), plus **inspect** and **lifecycle verbs**.
 
 ```mermaid
 flowchart TB
-    v{"verb"} -->|plan/refine/build/wrap| eng["engine.run(...)"]
+    v{"verb"} -->|plan/refine/build/wrap| eng["load node + resolve steps → orchestration plan"]
     v -->|task/epic/phase <op>| ops["node-ops(...)"]
     v -->|steps/validate| insp["resolved plan / config check"]
     v -->|archive/reset| fs["task-file move/remove (no git)"]

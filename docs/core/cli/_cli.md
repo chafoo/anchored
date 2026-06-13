@@ -8,7 +8,7 @@ the main session *and* from subagents/headless; output as **JSON**.
 ```mermaid
 flowchart TB
     bash["Bash · anchored <verb>"] --> disp["cli/index · dispatch"]
-    disp --> stage["plan · refine · build · wrap → engine"]
+    disp --> stage["plan · refine · build · wrap → resolved orchestration plan"]
     disp --> node["node verbs → ops (for agents)"]
     disp --> json["JSON to stdout"]
 ```

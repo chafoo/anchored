@@ -10,14 +10,16 @@ Node effects into `createAnchored` and drives the CLI — that is precisely what
 
 ## What
 
-- **`index.ts` — `createAnchored(deps) → { cli, engine, ops, config }`:** bootstraps
+- **`index.ts` — `createAnchored(deps) → { cli, ops, config }`:** bootstraps
   the merged config **exactly once** (base dependency) and wires the substrate
-  in **deps-graph order**: `parser/render/io → ops → engine → cli`. No
-  top-level side effect, no classes, no runtime access. Every effect (fs, yaml,
-  spawn, merge) comes through an injected seam → the whole graph is fakeable
-  (wiring tests inject spy sub-factories via `deps.wiring`).
+  in **deps-graph order**: `parser/render/io → ops → cli`. No top-level side
+  effect, no classes, no runtime access. Every effect (fs, yaml, merge) comes
+  through an injected seam → the whole graph is fakeable (wiring tests inject
+  spy sub-factories via `deps.wiring`). There is no engine in the graph: the
+  headless engine-run chain was removed, the in-session skill orchestrates
+  through the CLI.
 - **`buildCli(WireDeps)`:** the leaner slug facade + cli wiring for the
-  e2e harness (engine optionally stubbed).
+  e2e harness.
 - **`bin.ts`:** builds the real `io`/`fs`/`lock`/`rand`/`pid` effects, calls
   [`createInit(...).ensure(root)`](config/init.md) (lazy-init) **before**
   `createAnchored`, then `anchored.cli.run(process.argv.slice(2))` → `process.exit`.
@@ -33,21 +35,20 @@ flowchart TB
     end
     subgraph idx["index.ts · pure factory"]
         boot["bootstrap.load → config (1×)"] --> ops["buildSubstrate → node-ops + facade"]
-        ops --> eng["createEngine (ops injected)"]
-        eng --> cli["createCli (engine + ops injected)"]
+        ops --> cli["createCli (ops + steps-planner injected)"]
     end
     ca --> boot
     cli --> run["cli.run(argv) → exit-code"]
 ```
 
-Order is a contract: config first, then substrate → ops → engine → cli; each
-stage is fed the previous one as a dep. `createAnchoredFn` overrides
-(`merge`/`createNodeOps`/`createEngine`/`createCli`) allow spy injection.
+Order is a contract: config first, then substrate → ops → cli; each stage is
+fed the previous one as a dep. `createAnchoredFn` overrides
+(`merge`/`createNodeOps`/`createCli`) allow spy injection.
 
 ## Why
 
 Makes the top-level architecture principle concrete: [Factory-Functions](../../.claude/rules/factory-functions.md)
 everywhere, effects behind seams. By isolating **all** `process.*`/`fs`/top-level-await in
 `bin.ts`, `index.ts` stays a deterministic, fully
-fakeable graph — the foundation that lets [engine-ops](ops/engine-ops.md) and
-[facade](ops/facade.md) carry their await glue, while `index.ts` may not.
+fakeable graph — the foundation that lets the [facade](ops/facade.md) carry its
+await glue, while `index.ts` may not.

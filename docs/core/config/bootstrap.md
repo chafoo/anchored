@@ -11,8 +11,8 @@ wins) is the helper behind it — described here too, since it's trivial.
   [deltas])`, then validated against [schema/config](../schema/config.md).
 - The default template is **not** copied into the user project — the base comes
   from the bundled `default-template/`. That's why the minimal user file suffices.
-- The resulting `deps` (`config`, `ops`, `spawn`, …) are injected into
-  `createEngine` / `createNodeOps`.
+- The resulting `deps` (`config`, `ops`, …) are injected into the substrate
+  factories (`createNodeOps`, the steps-planner, the CLI).
 
 ## How
 
@@ -21,7 +21,7 @@ flowchart LR
     boot["bootstrap(projectRoot)"] --> load["load default + user"]
     load --> mg["merge (user wins)"]
     mg --> val["validate"]
-    val --> deps["deps { config, ops, spawn, … }"]
+    val --> deps["deps { config, ops, … }"]
 ```
 
 ## Why

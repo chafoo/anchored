@@ -24,7 +24,7 @@ where the built-in semantics live.
 flowchart LR
     u["user steps (possibly empty)"] --> m["merge with default template"]
     m --> n["add built-ins + enforce order"]
-    n --> e["effective steps → stage-runner"]
+    n --> e["effective steps → steps-planner → in-session skill"]
 ```
 
 ## Why

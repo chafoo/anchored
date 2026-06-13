@@ -18,7 +18,7 @@ flowchart LR
 |---|---|
 | [node-ops](node-ops.md) | The op surface: create/read/status/children/questions/log/evidence — generic over `tierSchema`. |
 | [facade](facade.md) | The slug-based `NodeOpsFacade` of the **CLI**: `slug→verb`, read→apply→persist. Holds the await glue. |
-| [engine-ops](engine-ops.md) | The `OpsLike` of the **engine**: re-read-before-write, so that worker evidence is never overwritten. |
+| [engine-ops](engine-ops.md) | `tierOfNode` — derive a node's tier from its child collection (the freshen-before-write adapter was removed with the headless engine). |
 | [children](scope/children.md) | add/move/**next-child** (dependency-order selection of the next child). |
 | [questions](scope/questions.md) | add/resolve question (shared acceptance-criterion/question form). |
 | [log](scope/log.md) | append-only log. |
