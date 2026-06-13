@@ -12,8 +12,9 @@ lebt in [resolve-steps](scope/resolve-steps.md), nicht hier.
 - `createStepRunner(cfg, deps) → { run(step, node) → output }`.
 - Genau eines greift: `run:` (Shell), `use:` (`agent|skill`-Worker), `each:`
   (Loop über die Kind-Etage). `run` XOR `use` ist strukturell erzwungen.
-- `instructions` werden an Worker/Built-in durchgereicht; `involve` nur am
-  `walk`.
+- `instructions` sind uniform an **jedem** Step-Typ erlaubt (run/use/worker) — der
+  Planner reicht sie durch, der Skill befolgt sie beim Ausführen/Dispatchen;
+  `involve` nur am `walk`.
 
 ## Wie
 
