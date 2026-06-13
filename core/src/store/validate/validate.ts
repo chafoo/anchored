@@ -1,11 +1,11 @@
-// ops/validate/validate.ts — `anchored validate`: confirm the merged anchored.yml resolves
+// store/validate/validate.ts — `anchored validate`: confirm the merged anchored.yml resolves
 // across every tier×stage and report the resolved shape + declared custom fields.
 // Bootstrap already parsed the Config schema, so an INVALID yml never reaches here
 // (bin.ts catches the ConfigError and reports it). This command proves every step
 // plan resolves and gives the user / setup-skill a readable summary of what their
 // (possibly very large) yml actually expands to — the verifier the setup-skill runs
 // as its final check.
-import type { StepPlan } from '../../cli/commands/steps.js'
+import type { StepPlan } from '../../domain/steps/plan.js'
 import { STAGES } from '../../domain/lifecycle/stages.js'
 
 const TIERS = ['phase', 'task', 'epic'] as const
