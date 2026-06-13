@@ -21,7 +21,6 @@ test('classify grey zone 5–9 routes by independence', () => {
 test('plan without a tier routes through classify and returns a tier', async () => {
   const deps: CliDeps = {
     nodeOps: fakeFacade(),
-    engine: { run: async (_t: string, node: unknown) => ({ node, status: 'ok' }) },
     tierFor: () => 'task',
     classify: async () => ({ tier: 'epic', reasoning: 'independent units' }),
     out: () => {},

@@ -9,25 +9,6 @@ import { createNodeOps } from '../ops/node-ops/node-ops.js'
 import { createIo } from '../io/io.js'
 import { phaseDescriptor } from '../schema/tiers/phase.js'
 
-// Local fake-spawn contract (the spawn module was deleted with the headless
-// engine-run path; this spec only needs the shape its harness produces/consumes).
-interface SpawnInput {
-  tier: string
-  slug: string
-  stage: string
-  instructions: string
-  cwd?: string
-  context?: string
-  executor?: string
-}
-interface SpawnResult {
-  ok: boolean
-  kind: string
-  evidence?: string[]
-  stdout?: string
-  error?: string
-}
-
 const DEFAULT_YML = readFileSync(
   new URL('../../default-template/anchored.default.yml', import.meta.url),
   'utf8',
@@ -61,32 +42,6 @@ async function harness() {
   }
   const pathFor = (slug: string) => join(root, '.claude', 'tasks', `${slug}.yml`)
 
-  // fakeSpawn = the deterministic AI seam. For a phase build-step it self-writes
-  // evidence via the REAL facade (the worker's cli-only self-write), exactly as a
-  // spawned worker would. No real `claude -p`.
-  const calls: SpawnInput[] = []
-  const ref: { ops?: ReturnType<typeof createAnchored>['ops'] } = {}
-  const fakeSpawn = {
-    run: async (input: SpawnInput): Promise<SpawnResult> => {
-      calls.push(input)
-      if (input.stage === 'build' && input.tier === 'phase' && ref.ops) {
-        const task = (await ref.ops.read('trivial')) as TaskRec
-        const phase = task.phases.find((p) => p.slug === input.slug)
-        for (const ac of phase?.acceptance_criteria ?? []) {
-          if (ac.status !== 'done') {
-            await ref.ops.addChildEvidence(
-              'trivial',
-              input.slug,
-              ac.id,
-              `${input.slug}.ts:1 — built`,
-            )
-          }
-        }
-      }
-      return { ok: true, kind: 'fake', evidence: ['ev'] }
-    },
-  }
-
   const anchored = createAnchored({
     projectRoot: root,
     io: rawIo,
@@ -96,18 +51,18 @@ async function harness() {
     readUser: () => undefined,
     parseYaml: (raw) => parse(raw),
     out: () => {},
-    spawn: fakeSpawn,
   })
-  ref.ops = anchored.ops
 
-  return { root, anchored, calls, realIo: createIo(rawIo), pathFor }
+  return { root, anchored, realIo: createIo(rawIo), pathFor }
 }
 
-// e2e a1 + a4 — a trivial task runs plan→refine→build against a REAL substrate
-// (tmp root, real atomic-writes, only fakeSpawn), ending terminal with per-phase
-// evidence persisted; a read-roundtrip reads the persisted end-state back
-test('a1/a4: trivial task runs end-to-end through the real substrate to a terminal state', async () => {
-  const { anchored, calls } = await harness()
+// e2e a1 — a trivial task runs its forward lifecycle plan→refine→build→wrap
+// against a REAL substrate (tmp root, real atomic-writes). The build worker's
+// cli-only self-write (addChildEvidence per phase AC, exactly what a spawned
+// worker does — no engine.run, no spawn) flips each phase AC to done; a
+// read-roundtrip reads the persisted end-state back with evidence per phase.
+test('a1: trivial task runs end-to-end through the real substrate to a terminal state', async () => {
+  const { anchored } = await harness()
 
   // seed a trivial 2-phase task (status plan)
   await anchored.ops.create('trivial', {
@@ -133,10 +88,22 @@ test('a1/a4: trivial task runs end-to-end through the real substrate to a termin
   await anchored.ops.setStatus('trivial', 'refined')
   await anchored.ops.setStatus('trivial', 'build')
 
-  // run the engine: build loops the phases; fakeSpawn self-writes evidence per phase
-  const node = (await anchored.ops.read('trivial')) as unknown as TaskRec
-  const r = await anchored.engine.run('task', node as never)
-  expect(r.status).toBe('ok')
+  // build: the worker self-writes evidence per phase AC via the REAL facade
+  // (cli-only self-write — the same path a spawned worker takes), which flips
+  // each phase AC to done through the substrate invariant.
+  const built = (await anchored.ops.read('trivial')) as unknown as TaskRec
+  for (const phase of built.phases) {
+    for (const ac of phase.acceptance_criteria ?? []) {
+      await anchored.ops.addChildEvidence(
+        'trivial',
+        phase.slug,
+        ac.id,
+        `${phase.slug}.ts:1 — built`,
+      )
+    }
+    // every AC satisfied → the phase advances to done through the substrate
+    await anchored.ops.setChildStatus('trivial', phase.slug, 'done')
+  }
 
   // build → wrap (terminal-ish): legal forward transition through the substrate
   const wrapped = (await anchored.ops.setStatus('trivial', 'wrap')) as unknown as TaskRec
@@ -150,12 +117,6 @@ test('a1/a4: trivial task runs end-to-end through the real substrate to a termin
     expect(p.acceptance_criteria?.[0]?.status).toBe('done')
     expect(p.acceptance_criteria?.[0]?.evidence?.length).toBeGreaterThan(0)
   }
-
-  // a4 — build looped each phase: fakeSpawn fired a build-step per phase
-  const phaseBuilds = new Set(
-    calls.filter((c) => c.stage === 'build' && c.tier === 'phase').map((c) => c.slug),
-  )
-  expect([...phaseBuilds].sort()).toEqual(['p1', 'p2'])
 })
 
 // e2e a2 — status transitions are forward-only: a backward jump throws at the substrate

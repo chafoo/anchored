@@ -12,12 +12,6 @@ import { stepsCommand, type StepPlan } from './commands/steps.js'
 import { archiveCommand } from './commands/archive.js'
 import { resetCommand } from './commands/reset.js'
 
-export interface EngineResult {
-  node: unknown
-  status: string
-  evidence?: string[]
-}
-
 export interface NodeOpsFacade {
   create(slug: string, init: Record<string, unknown>): Promise<unknown>
   read(slug: string): Promise<unknown>
@@ -69,7 +63,6 @@ export interface NodeOpsFacade {
 
 export interface CliDeps {
   nodeOps: NodeOpsFacade
-  engine: { run(tier: string, node: unknown): Promise<EngineResult> }
   tierFor: (node: unknown) => string
   classify?: (input: string) => Promise<{ tier: string; reasoning?: string }>
   steps?: (tier: string, stage: string) => StepPlan

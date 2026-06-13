@@ -12,7 +12,6 @@ function setup(over: Partial<CliDeps> = {}) {
   const out: string[] = []
   const deps: CliDeps = {
     nodeOps: fakeFacade(),
-    engine: { run: async (_t: string, node: unknown) => ({ node, status: 'ok' }) },
     tierFor: () => 'task',
     steps: fakeSteps,
     out: (l) => out.push(l),
@@ -25,7 +24,6 @@ function setup(over: Partial<CliDeps> = {}) {
 // (node + resolved steps) — NO engine spawn (the skill orchestrates in-session)
 test('stage verb loads node, derives tier, returns the plan (no engine spawn)', async () => {
   let reads = 0
-  let engineRan = false
   const node = { slug: 's', status: 'drafted' }
   const { deps, out } = setup({
     nodeOps: fakeFacade({
@@ -35,17 +33,11 @@ test('stage verb loads node, derives tier, returns the plan (no engine spawn)', 
       },
     }),
     tierFor: () => 'task',
-    engine: {
-      run: async (n: unknown) => {
-        engineRan = true
-        return { node: n, status: 'ok' }
-      },
-    },
   })
   const code = await createCli(deps).run(['build', 's'])
   expect(code).toBe(0)
   expect(reads).toBe(1)
-  expect(engineRan).toBe(false) // the CLI does NOT spawn; the skill does
+  // the CLI returns the orchestration plan only — there is no engine to spawn
   const env = JSON.parse(out[0]!) as {
     ok: boolean
     result: { stage: string; tier: string; node: unknown; steps: unknown[] }

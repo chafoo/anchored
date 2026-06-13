@@ -4,12 +4,10 @@ import { parse, stringify } from 'yaml'
 import { createParser } from '../parser/parse/parse.js'
 import { createRenderer, defaultSchemaUrl } from '../parser/render/render.js'
 import { createIo, type IoDeps } from '../io/io.js'
-import { createEngine } from '../engine/engine.js'
 import { createResolveSteps } from '../engine/scope/resolve-steps/resolve-steps.js'
 import { EpicNodeSchema } from '../schema/tiers/epic.js'
 import { TaskNodeSchema } from '../schema/tiers/task.js'
 import { nextChild as realNextChild } from '../ops/scope/children/children.js'
-import type { AnyNode, OpsLike } from '../engine/step-runner/step-runner.js'
 
 // nested-slugs a1 — a nested slug task-file round-trips losslessly
 test('nested slug task-file round-trips losslessly', () => {
@@ -107,60 +105,4 @@ test('epic stages resolve to [discover,scaffold] / each:task / [roll-up]', () =>
   expect(r.resolve('epic', 'plan').map((s) => s.name)).toEqual(['discover', 'scaffold'])
   expect(r.resolve('epic', 'build')[0]?.each).toBe('task')
   expect(r.resolve('epic', 'wrap').map((s) => s.name)).toEqual(['roll-up'])
-})
-
-// e2e-loop a1/a2 — a mini-epic loops its stubs in DAG order, epic→task→phase
-function makeOps(): OpsLike {
-  return {
-    setStatus: async (n) => n,
-    nextChild: (n) =>
-      realNextChild((n.tasks ?? n.phases ?? []) as { slug: string; status: string }[]),
-    setChildStatus: async (n, slug, status) => {
-      const field = n.tasks ? 'tasks' : 'phases'
-      const children = ((n[field] as { slug: string }[]) ?? []).map((c) =>
-        c.slug === slug ? { ...c, status } : c,
-      )
-      return { ...n, [field]: children }
-    },
-    addQuestion: async (n) => n,
-    resolveQuestion: async (n) => n,
-    appendLog: async (n) => n,
-  }
-}
-
-test('e2e: mini-epic loops 2 stubs in DAG order through epic→task→phase', async () => {
-  const spawnCalls: string[] = []
-  const engine = createEngine({
-    config: {
-      epic: { build: { each: 'task' } },
-      task: { build: { each: 'phase' } },
-      phase: { build: { steps: [{ name: 'implement', use: 'impl' }] } },
-    },
-    run: async () => ({ code: 0, stdout: '', stderr: '' }),
-    spawn: {
-      run: async (i) => {
-        spawnCalls.push(`${i.tier}/${i.slug}`)
-        return { ok: true, kind: 'impl', evidence: ['ev'] }
-      },
-    },
-    ops: makeOps(),
-    descriptorFor: () => ({ childTier: undefined }),
-  })
-  const epicNode: AnyNode = {
-    slug: 'mini-epic',
-    status: 'build',
-    tasks: [
-      { slug: 't1', status: 'pending', phases: [{ slug: 'p1', status: 'pending' }] },
-      {
-        slug: 't2',
-        status: 'pending',
-        depends_on: ['t1'],
-        phases: [{ slug: 'p2', status: 'pending' }],
-      },
-    ],
-  }
-  const r = await engine.run('epic', epicNode)
-  expect(r.status).toBe('ok')
-  // both loop edges ran; DAG order t1 before t2 (t2 depends_on t1)
-  expect(spawnCalls).toEqual(['phase/p1', 'phase/p2'])
 })

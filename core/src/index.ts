@@ -1,16 +1,16 @@
 // src/index.ts — the public entry of the core package: a PURE wiring factory.
 // createAnchored(deps) bootstraps the merged config ONCE and wires the substrate
-// in deps-graph order (parser/render/io → ops → engine → cli), returning the live
-// object graph { cli, engine, ops, config }. No top-level side-effect, no classes,
-// no runtime/bin access — all of that lives only in src/bin.ts. Every effect (fs,
-// yaml, spawn, merge) arrives through an injected seam, so the whole graph is
-// fakeable (wiring tests inject spy sub-factories).
+// in deps-graph order (parser/render/io → ops → cli), returning the live object
+// graph { cli, ops, config }. No top-level side-effect, no classes, no
+// runtime/bin access — all of that lives only in src/bin.ts. Every effect (fs,
+// yaml, merge) arrives through an injected seam, so the whole graph is fakeable
+// (wiring tests inject spy sub-factories).
 import { z } from 'zod'
 import { parse, stringify } from 'yaml'
 import { createCli, type CliDeps, type NodeOpsFacade } from './cli/cli.js'
 import { createNodeOps, type TierDescriptor, type NodeOpsDeps } from './ops/node-ops/node-ops.js'
 import { createSlugFacade, type TierOps } from './ops/facade/facade.js'
-import { createEngineOps, tierOfNode } from './ops/engine-ops.js'
+import { tierOfNode } from './ops/engine-ops.js'
 import { makeTierFor } from './ops/tier-derive.js'
 import { createStepsPlanner } from './ops/steps-planner/steps-planner.js'
 import { createValidator } from './ops/validate/validate.js'
@@ -18,8 +18,6 @@ import { createParser } from './parser/parse/parse.js'
 import { createRenderer, defaultSchemaUrl } from './parser/render/render.js'
 import { createIo, type IoDeps } from './io/io.js'
 import { createBootstrap } from './config/bootstrap.js'
-import { createEngine } from './engine/engine.js'
-import type { AnyNode, SpawnLike, RunnerDeps, TierCfg } from './engine/step-runner/step-runner.js'
 import { phaseDescriptor, PhaseNodeSchema } from './schema/tiers/phase.js'
 import { taskDescriptor, TaskNodeSchema } from './schema/tiers/task.js'
 import { epicDescriptor, EpicNodeSchema } from './schema/tiers/epic.js'
@@ -91,7 +89,6 @@ export interface WireDeps {
   pathFor: (slug: string) => string
   out: (line: string) => void
   tierForSlug?: (slug: string) => string
-  engine?: CliDeps['engine']
   classify?: CliDeps['classify']
   now?: () => string
   // optional shell runner — lifecycle ops (archive/reset) issue git branch -D through it.
@@ -109,12 +106,8 @@ export function buildCli(w: WireDeps) {
     pathFor: w.pathFor,
     io,
   })
-  const engine: CliDeps['engine'] = w.engine ?? {
-    run: (_tier, node) => Promise.resolve({ node, status: 'ok' }),
-  }
   return createCli({
     nodeOps: facade,
-    engine,
     tierFor: tierOfNode,
     classify: w.classify,
     ...(w.run !== undefined ? { run: w.run } : {}),
@@ -122,11 +115,10 @@ export function buildCli(w: WireDeps) {
   })
 }
 
-// ── createAnchored: the full object graph (config + ops + engine + cli) ──
+// ── createAnchored: the full object graph (config + ops + cli) ──
 export interface AnchoredWiring {
   merge?: (defaultCfg: Config, userCfg: Config) => Config
   createNodeOps?: typeof createNodeOps
-  createEngine?: typeof createEngine
   createCli?: typeof createCli
 }
 
@@ -139,8 +131,7 @@ export interface AnchoredDeps {
   out: (line: string) => void
   pathFor?: (slug: string) => string
   tierForSlug?: (slug: string) => string
-  run?: RunnerDeps['run']
-  spawn?: SpawnLike
+  run?: (cmd: string) => Promise<{ code: number; stdout: string; stderr: string }>
   classify?: CliDeps['classify']
   now?: () => string
   version?: string
@@ -149,7 +140,6 @@ export interface AnchoredDeps {
 
 export interface Anchored {
   cli: ReturnType<typeof createCli>
-  engine: { run(tier: string, node: AnyNode): Promise<{ node: AnyNode; status: string }> }
   ops: NodeOpsFacade
   config: Config
 }
@@ -157,7 +147,6 @@ export interface Anchored {
 export function createAnchored(deps: AnchoredDeps): Anchored {
   const wiring = deps.wiring ?? {}
   const createNodeOpsFn = wiring.createNodeOps ?? createNodeOps
-  const createEngineFn = wiring.createEngine ?? createEngine
   const createCliFn = wiring.createCli ?? createCli
 
   // substrate seams
@@ -183,7 +172,7 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
     epic: cfgRec.epic?.fields,
     phase: cfgRec.phase?.fields,
   }
-  const { opsByTier, opsFor } = buildSubstrate(io, pathFor, createNodeOpsFn, fieldsByTier)
+  const { opsFor } = buildSubstrate(io, pathFor, createNodeOpsFn, fieldsByTier)
   const facade = createSlugFacade({
     opsFor,
     tierFor: makeTierFor(io, pathFor),
@@ -193,26 +182,9 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
     io,
   })
 
-  // engine — built BEFORE the cli, fed the ops from the previous stage. The spawn
-  // seam is injection-only now: the headless `createSpawn` default is gone (the
-  // engine-run path is dead — every live command routes through the steps-planner,
-  // never engine.run). The fallback is an inert seam that satisfies the type; it is
-  // never invoked because engine.run has no live call-site (removed wholesale in the
-  // engine-chain phase along with this wiring).
-  const spawn: SpawnLike = deps.spawn ?? {
-    run: async () => ({ ok: false, kind: 'no-spawn', error: 'engine-run path removed' }),
-  }
-  const engine = createEngineFn({
-    config: config as unknown as Record<string, TierCfg>,
-    run: deps.run ?? (() => Promise.resolve({ code: 0, stdout: '', stderr: '' })),
-    spawn,
-    ops: createEngineOps(opsByTier),
-    descriptorFor: (tier) => ({ childTier: DESCRIPTORS[tier]?.childTier }),
-  })
-
-  // cli — the single transport, fed the engine + ops from the previous stages.
-  // The steps planner gives the in-session skills their config-driven orchestration
-  // menu (which agent to spawn per step) without the CLI spawning anything itself.
+  // cli — the single transport, fed the ops from the previous stage. The steps
+  // planner gives the in-session skills their config-driven orchestration menu
+  // (which agent to spawn per step) without the CLI spawning anything itself.
   const planner = createStepsPlanner(config as unknown as Record<string, unknown>)
   const validator = createValidator(
     config as unknown as Record<string, { fields?: Record<string, unknown> } | undefined>,
@@ -220,7 +192,6 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
   )
   const cli = createCliFn({
     nodeOps: facade,
-    engine,
     tierFor: tierOfNode,
     classify: deps.classify,
     steps: planner.plan,
@@ -230,5 +201,5 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
     ...(deps.version !== undefined ? { version: deps.version } : {}),
   })
 
-  return { cli, engine, ops: facade, config }
+  return { cli, ops: facade, config }
 }

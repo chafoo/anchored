@@ -38,7 +38,6 @@ function deps(nodeOps: NodeOpsFacade): { deps: CliDeps; out: string[] } {
   return {
     deps: {
       nodeOps,
-      engine: { run: async (_t: string, node: unknown) => ({ node, status: 'ok' }) },
       tierFor: () => 'task',
       out: (l) => out.push(l),
     },

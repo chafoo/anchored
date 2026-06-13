@@ -38,7 +38,6 @@ function makeDeps(over: Partial<CliDeps> = {}): { deps: CliDeps; out: string[] }
   const out: string[] = []
   const deps: CliDeps = {
     nodeOps: fakeFacade(),
-    engine: { run: async (_t: string, node: unknown) => ({ node, status: 'ok' }) },
     tierFor: () => 'task',
     out: (line) => out.push(line),
     ...over,
@@ -56,17 +55,10 @@ test('success dispatch emits ok:true envelope and exit 0', async () => {
   expect(env.command).toBe('node')
 })
 
-// a3 — unknown verb → ok:false, exit 1, no engine/ops call
-test('unknown verb → ok:false, exit 1, no engine/ops call', async () => {
-  let engineCalled = false
+// a3 — unknown verb → ok:false, exit 1, no ops call
+test('unknown verb → ok:false, exit 1, no ops call', async () => {
   let opsCalled = false
   const { deps, out } = makeDeps({
-    engine: {
-      run: async (_t: string, n: unknown) => {
-        engineCalled = true
-        return { node: n, status: 'ok' }
-      },
-    },
     nodeOps: fakeFacade({
       read: async (s) => {
         opsCalled = true
@@ -77,7 +69,6 @@ test('unknown verb → ok:false, exit 1, no engine/ops call', async () => {
   const code = await createCli(deps).run(['bogus'])
   expect(code).toBe(1)
   expect((JSON.parse(out[0]!) as { ok: boolean }).ok).toBe(false)
-  expect(engineCalled).toBe(false)
   expect(opsCalled).toBe(false)
 })
 

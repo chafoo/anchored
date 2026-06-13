@@ -28,13 +28,12 @@ function baseDeps(over: Partial<AnchoredDeps> = {}): AnchoredDeps {
   }
 }
 
-// public-wiring a1 — createAnchored returns { cli, engine, ops, config } and
+// public-wiring a1 — createAnchored returns { cli, ops, config } and
 // index.ts has no top-level side-effect / class / process access
 test('a1: createAnchored returns the object graph; index.ts is a pure factory', () => {
   const a = createAnchored(baseDeps())
-  expect(Object.keys(a).sort()).toEqual(['cli', 'config', 'engine', 'ops'])
+  expect(Object.keys(a).sort()).toEqual(['cli', 'config', 'ops'])
   expect(typeof a.cli.run).toBe('function')
-  expect(typeof a.engine.run).toBe('function')
   expect(typeof a.ops.read).toBe('function')
 
   // grep parity: `grep -nE 'class |process\.|^[^/]*await ' src/index.ts` is empty
@@ -45,12 +44,11 @@ test('a1: createAnchored returns the object graph; index.ts is a pure factory', 
   expect(offenders).toEqual([])
 })
 
-// public-wiring a2 — bootstrap runs once: merge is called exactly once and both
-// createEngine + createCli receive the same config-bearing deps
-test('a2: merge runs once; engine + cli both get the merged config', () => {
+// public-wiring a2 — bootstrap runs once: merge is called exactly once and the
+// cli receives the merged config-bearing deps
+test('a2: merge runs once; the cli gets the merged config', () => {
   let mergeCalls = 0
-  let engineConfig: unknown
-  let cliEngine: unknown
+  let cliConfig: unknown
   const merged = { task: {} } as Config
 
   createAnchored(
@@ -60,12 +58,8 @@ test('a2: merge runs once; engine + cli both get the merged config', () => {
           mergeCalls++
           return { ...d, ...merged }
         },
-        createEngine: (deps) => {
-          engineConfig = (deps as { config: unknown }).config
-          return { run: async (_t, n) => ({ node: n, status: 'ok' }) }
-        },
         createCli: (deps) => {
-          cliEngine = (deps as { engine: unknown }).engine
+          cliConfig = (deps as { steps: unknown }).steps
           return { run: async () => 0 }
         },
       },
@@ -73,15 +67,12 @@ test('a2: merge runs once; engine + cli both get the merged config', () => {
   )
 
   expect(mergeCalls).toBe(1)
-  expect(engineConfig).toBeDefined()
-  expect((engineConfig as { task?: unknown }).task).toBeDefined()
-  // cli got the engine produced by the previous stage
-  expect(cliEngine).toBeDefined()
-  expect(typeof (cliEngine as { run?: unknown }).run).toBe('function')
+  // the cli got the steps planner built from the merged config (previous stage)
+  expect(typeof cliConfig).toBe('function')
 })
 
-// public-wiring a3 — deps-graph order: createNodeOps BEFORE createEngine BEFORE createCli
-test('a3: wiring order is ops → engine → cli', () => {
+// public-wiring a3 — deps-graph order: createNodeOps BEFORE createCli
+test('a3: wiring order is ops → cli', () => {
   const order: string[] = []
   createAnchored(
     baseDeps({
@@ -89,10 +80,6 @@ test('a3: wiring order is ops → engine → cli', () => {
         createNodeOps: (() => {
           order.push('ops')
           return {}
-        }) as never,
-        createEngine: (() => {
-          order.push('engine')
-          return { run: async (_t: string, n: unknown) => ({ node: n, status: 'ok' }) }
         }) as never,
         createCli: (() => {
           order.push('cli')
@@ -102,11 +89,9 @@ test('a3: wiring order is ops → engine → cli', () => {
     }),
   )
   const firstOps = order.indexOf('ops')
-  const engineAt = order.indexOf('engine')
   const cliAt = order.indexOf('cli')
   expect(firstOps).toBeGreaterThanOrEqual(0)
-  expect(firstOps).toBeLessThan(engineAt)
-  expect(engineAt).toBeLessThan(cliAt)
+  expect(firstOps).toBeLessThan(cliAt)
 })
 
 // tierOfNode is the shared tier-derivation used by the engine adapter + cli
