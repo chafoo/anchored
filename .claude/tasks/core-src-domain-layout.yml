@@ -1,0 +1,583 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
+schema_version: 2
+slug: core-src-domain-layout
+status: build
+created: 2026-06-13
+title: Domain-Oriented Layout for core/src
+context:
+  intro: 'core/src is today a technical layer-cake (config/io/cli/parser/ops/engine/schema/state)
+    where the domain is invisible in the folder structure and each core concept is scattered across
+    many folders: a "Tier" lives in schema/tiers, ops/tier-derive.ts, ops/engine-ops.ts,
+    state/transitions and cli/commands/plan; "Stage" is hardcoded in ops/validate (const STAGES)
+    with no central home; the ops/ folder bundles eight unrelated responsibilities under a name that
+    signals none of them, and cli/ mixes pure JSON transport with real domain logic
+    (classifyTier/slugFromInput in cli/commands/plan). The full target — three domain-oriented
+    layers domain/ (definitions+rules), store/ (the persist+mutate mechanism heart) and
+    orchestration/ (steps→plan), plus separate config/ and a transport-only cli/ — is fully worked
+    out in .claude/temp/codebase-refactor-plan.md (§4 target, §6 migration order). This is a PURE
+    move-+-rename migration with NO behavior change: factory signatures, deps-injection, the hard
+    invariant in invariants.ts, and the public package surface (index.ts exports createAnchored +
+    re-exports tierOfNode; bin.ts) all stay intact — only file locations and internal import paths
+    move. The migration presupposes the parallel test-file-naming migration (Phase 0, owned by
+    another instance) is complete and the suite is green; that green, path-independent suite is the
+    safety net that makes the moves verifiable. After migration the ops/, engine/, parser/, schema/
+    and state/ folders no longer exist (fully dissolved).'
+  plan: >-
+    - Discovery confirmed all source paths exist as planned, with no material deviation from the §4
+    target.
+
+    - Tier-derivation duplication is real and verified: ops/engine-ops.ts:13-18 tierOfNode(node)
+    (sync, from children, epic|task) AND ops/tier-derive.ts:12-31 makeTierFor(io,pathFor) (async,
+    reads file, also detects phase). Both unite into domain/tiers/tiers.ts; both export names must
+    be preserved (tierOfNode is re-exported from index.ts).
+
+    - Test-discovery is structurally move-safe: bunfig.toml uses root='src' + bun's built-in .spec
+    matcher; package.json test:e2e/test:int collect via `find src -name '*.e2e.ts'` (recursive,
+    name-based); tsconfig.build.json excludes via src/**/*.{spec,e2e,int}.ts globs. All three are
+    path-agnostic for moves WITHIN src/ — so no glob editing is needed, only verification that every
+    suffix is still collected after the moves.
+
+    - The parallel test-file-naming instance is renaming specs concurrently (.spec/.int/.e2e).
+    Phases therefore bind to behavior + green gates, never to exact spec filenames — each spec moves
+    with its subject regardless of kind-suffix.
+
+    - Per-phase evidence source is uniform: each step is its own commit and the quality-gates (lint,
+    format, tsc --noEmit, bun test incl. e2e/int, bun build) are green afterwards. That green-gate
+    run IS the proof of no-behavior-change.
+
+    - Migration order follows §6 (domain → store → orchestration+delete-ops → cli → docs/verify) so
+    each step keeps the tree green and individually reviewable.
+
+    - plan-check (2026-06-13, all confirmed against code): every source path resolves. Tier
+    duplication real — ops/engine-ops.ts:13 tierOfNode (sync, from children) + ops/tier-derive.ts:12
+    makeTierFor (async, reads file, detects phase); index.ts:13 imports + re-exports tierOfNode
+    (`export { tierOfNode }`), index.ts:14 imports makeTierFor — both must survive the merge into
+    domain/tiers/tiers.ts. STAGES hardcoded at ops/validate/validate.ts:11 (TIERS at :10).
+    classifyTier (plan.ts:25, exported) + slugFromInput (plan.ts:10, module-local) in
+    cli/commands/plan/plan.ts. engine/ contains only scope/resolve-steps/ (+
+    resolve-injection.spec.ts) → dissolves cleanly. state/ = transitions + invariants. parser/ =
+    parse/ + render/ + a parser-root roundtrip.spec.ts.
+
+    - plan-check (parallelism): domain → store → orchestration touch progressively dependent paths
+    (store imports domain/lifecycle/stages; orchestration's ops/ deletion depends on store having
+    vacated it) → correctly serialized, NOT parallelizable. cli-restructure depends on index.ts's
+    re-export source having moved to domain/tiers first. Serial §6 order is right.
+  build:
+    plan-check: "verdict: needs-attention (additive only — no drift). All source paths verified against
+      code (tier-duplication engine-ops+tier-derive, STAGES@validate:11, classify/slug@plan.ts,
+      empty engine/). No hidden architecture defaults — §5 cut-depth stays open as q1/q2.
+      Auto-fixes: 0 path_patches, 0 rule_additions, 2 info_notes (folded into plan-trail). 5
+      clarifying questions added (2 medium: store/validate→cli StepPlan upward-dep [q10], cli
+      steps.ts + scope/lifecycle placement [q11]; 3 low: project.ts/tiers.spec move [q8],
+      ops/scope/log flat-vs-folder [q9], parser-root roundtrip.spec home [q12]). ACs are path-robust
+      (bound to green gates, not exact spec filenames)."
+    rules-check: "verdict: needs-attention (additive coverage fixes). Systematic gap:
+      tooling-quality-gates was attached only to phase 5 though every phase carries the verbatim
+      green-gate AC → added to phases 1-4. test-file-naming (new orthogonal kind-suffix rule) was
+      attached nowhere → added to all 5 phases (each relocates specs; the green proof runs bun test
+      over the bare .int/.e2e suffixes whose discovery hinges on the bunfig.toml glob). 0 orphaned
+      rule refs (all 6 paths exist), 0 cross-phase conflicts (the four base rules are mutually
+      reinforcing; test-file-naming declares itself orthogonal to colocation). 2 low scoping
+      questions added (test-file-naming.md in the cross-ref sweep [q13]; whether suffix-integrity is
+      in scope here or owned by the parallel instance [q14])."
+phases:
+  - name: Domain Layer + Unified Tier Derivation
+    slug: domain-layer
+    status: in-progress
+    context: "Build domain/ via pure moves (plan §6 steps 1-3): schema/tiers→domain/tiers,
+      schema/step→domain/steps, schema/config+schema/custom-fields→domain/config-schema,
+      state/transitions→domain/lifecycle/transitions, state/invariants→domain/invariants,
+      engine/scope/resolve-steps→domain/steps/resolve-steps. Then UNITE the two tier derivations:
+      ops/engine-ops.ts (tierOfNode, sync) + ops/tier-derive.ts (makeTierFor, async, detects phase)
+      → domain/tiers/tiers.ts, preserving BOTH export names (tierOfNode is re-exported in index.ts).
+      Centralize the hardcoded STAGES (ops/validate/validate.ts:11) into domain/lifecycle/stages.ts;
+      consumers import from there. Folder main files are named after the folder (tiers/tiers.ts); no
+      index.ts, no barrels — imports point at the source module. Specs move with their subjects.
+      invariants.ts stays a data-model invariant — do NOT turn it into a step. Codemod rewrites
+      relative import paths only; .js suffixes stay."
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: new domain/ folders each get a folder-named main file (tiers/tiers.ts, stages.ts), no index.ts,
+          no layer-aggregator barrel (domain/domain.ts forbidden); specs colocate with their moved
+          subjects
+      - path: .claude/rules/factory-functions.md
+        why: uniting engine-ops + tier-derive must keep both as injected/pure helpers with unchanged
+          signatures — no new singleton, no createX→free-function drift
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: this phase moves invariants.ts (the hard ac→done evidence rule) and dissolves part of the
+          mechanism layer; the invariant must stay in the data model, not migrate into a step, and
+          no mechanism may drift to policy
+      - path: .claude/rules/cli-only-transport.md
+        why: STAGES centralization touches what cli/commands consume; the stages constant is domain, not
+          transport
+      - path: .claude/rules/tooling-quality-gates.md
+        why: this phase's no-behavior-change proof IS the green gate set (lint, format --check, tsc
+          --noEmit, bun test incl. e2e/int, bun build) on the Bun/Node-compatible toolchain
+      - path: .claude/rules/test-file-naming.md
+        why: specs move with their subjects here; the green-gate proof runs bun test including the bare
+          .int/.e2e suffixes, whose discovery depends on the bunfig.toml glob — moved specs must
+          keep their kind-suffix and stay discoverable
+    acceptance_criteria:
+      - text: domain/ exists with tiers/, lifecycle/ (stages.ts + transitions/), steps/ (step.ts +
+          resolve-steps/), invariants/ and config-schema/, each populated only by moved code (no
+          behavior change).
+        status: done
+        evidence:
+          - "`find core/src/domain -type f` → 20 files: tiers/ (epic.ts, task.ts, phase.ts,
+            project.ts, tiers.spec.ts, tiers.ts), lifecycle/ (stages.ts +
+            transitions/transitions.ts+.spec), steps/ (step.ts+.spec +
+            resolve-steps/resolve-steps.ts+.spec+resolve-injection.spec), invariants/
+            (invariants.ts+.spec), config-schema/ (config.ts+.spec + custom-fields.ts+.spec) — all
+            moved code, no behavior change."
+          - Moves done via git mv (commits d099eff/16ce221/6924cb9 show R-renames); emptied parents
+            schema/, state/, engine/ removed.
+          - "bun test green after moves: 146 unit + 4 e2e + 60 int = 210 pass / 0 fail — proves no
+            behavior change."
+      - text: ops/engine-ops.ts and ops/tier-derive.ts no longer exist; both their export names (tierOfNode
+          and the makeTierFor surface) are exported from domain/tiers/tiers.ts.
+        status: done
+        evidence:
+          - "`ls core/src/ops/engine-ops.ts core/src/ops/tier-derive.ts` → both 'No such file or
+            directory' (git rm'd in d099eff)."
+          - "core/src/domain/tiers/tiers.ts:16 `export function tierOfNode(node: unknown): string`
+            and :32 `export function makeTierFor(io, pathFor)` — both names + signatures preserved
+            verbatim."
+          - index.ts:13 `import { tierOfNode, makeTierFor } from './domain/tiers/tiers.js'`;
+            index.ts:26 `export { tierOfNode }` (public re-export repointed); makeTierFor wired at
+            index.ts:102,177; cli/epic-tier.int.ts:4 imports makeTierFor from
+            '../domain/tiers/tiers.js'.
+      - text: STAGES is defined once in domain/lifecycle/stages.ts and imported by every prior consumer; no
+          remaining hardcoded plan/refine/build/wrap stage-array literal in src/.
+        status: done
+        evidence:
+          - core/src/domain/lifecycle/stages.ts:6 `export const STAGES = ['plan', 'refine', 'build',
+            'wrap'] as const` — single canonical definition (+ Stage type).
+          - validate.ts imports STAGES from '../../domain/lifecycle/stages.js'; also imported by
+            extensibility-matrix.int.ts, validate.spec.ts, worker-dispatch.spec.ts (their inline
+            literals removed).
+          - "`grep -rnE \"\\['plan','refine','build','wrap'\\]\" core/src` → only hit is stages.ts:6
+            (the definition); zero other literals remain."
+      - text: No index.ts exists under domain/ and no re-export-only barrel file was introduced; folder main
+          files are named after their folder.
+        status: done
+        evidence:
+          - "`find core/src/domain -name 'index.ts'` → empty (no output) — no index.ts anywhere
+            under domain/."
+          - "Folder-main-file naming honored: domain/tiers/tiers.ts,
+            domain/lifecycle/transitions/transitions.ts, domain/invariants/invariants.ts;
+            relocated-as-is files keep their own names (config.ts + custom-fields.ts in
+            config-schema/, step.ts in steps/, stages.ts in lifecycle/, resolve-steps/ subfolder).
+            No re-export-only barrel (no domain/domain.ts) introduced."
+      - text: "Quality gates are green after the phase: lint, format --check, tsc --noEmit, bun test (unit +
+          e2e + int), bun build."
+        status: done
+        evidence:
+          - "`bun run lint` (eslint .) → exit 0, clean."
+          - "`bun run format` (prettier --check .) → 'All matched files use Prettier code style!',
+            exit 0."
+          - "`bun run typecheck` (tsc --noEmit) → exit 0, no errors."
+          - "`bun run test` → unit 146/0 (31 files), e2e 4/0 (2 files), int 60/0 (6 files) — all
+            green."
+          - "`bun run build` (tsc -p tsconfig.build.json) → exit 0;
+            dist/domain/{tiers,lifecycle,steps,invariants,config-schema} + dist/index.js +
+            dist/index.d.ts emitted."
+  - name: Store Layer (Persist + Mutate Mechanism)
+    slug: store-layer
+    status: pending
+    context: "Build store/ via pure moves (plan §6 step 4): ops/node-ops→store/node-store,
+      ops/facade→store/node-router,
+      ops/scope/{children,questions,log}→store/{children,questions,log},
+      ops/validate→store/validate, parser/→store/codec (parse/ + render/ together = the YAML↔Node
+      codec), io/→store/io. node-store is THE business-logic / read-modify-write kernel — its
+      factory signature and deps injection stay identical. node-router stays a slug→tier→op router.
+      validate now imports STAGES from domain/lifecycle/stages.ts (centralized in the prior phase).
+      Folder main files named after folder (node-store/node-store.ts, codec/codec.ts,
+      node-router/node-router.ts); scope/ helpers keep their scope/ nesting + own specs. Codemod
+      rewrites import paths only."
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: store/ folders get folder-named main files (node-store/node-store.ts,
+          node-router/node-router.ts, codec/codec.ts), no index.ts, no store/store.ts barrel; scope/
+          helpers (children/questions/log) keep their nesting and colocated specs
+      - path: .claude/rules/factory-functions.md
+        why: node-store is the mechanism heart — its createX(cfg,deps) factory + deps injection must survive
+          the move byte-for-byte at the signature level
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: store/ IS the mechanism layer (atomic-write io, validate surface, the read-modify-write kernel)
+          — moving it must not let any guarantee drift to policy
+      - path: .claude/rules/tooling-quality-gates.md
+        why: the phase's no-behavior-change evidence is the full green gate set (lint, format --check, tsc
+          --noEmit, bun test incl. e2e/int, bun build)
+      - path: .claude/rules/test-file-naming.md
+        why: parser/io specs move into store/codec + store/io; the green-gate bun test run covers the bare
+          .int/.e2e suffixes whose discovery hinges on the bunfig.toml glob — moved specs keep their
+          kind-suffix and stay discoverable under the new paths
+    acceptance_criteria:
+      - text: store/ exists with node-store/, node-router/, children/, questions/, log/, validate/, codec/
+          and io/, populated only by moved code with unchanged factory signatures.
+        status: pending
+      - text: parser/ and io/ no longer exist as top-level folders; their content lives under store/codec
+          and store/io respectively.
+        status: pending
+      - text: store/validate imports STAGES from domain/lifecycle/stages.ts (no re-hardcoded stages
+          literal).
+        status: pending
+      - text: No index.ts and no re-export-only barrel was introduced under store/; folder main files are
+          named after their folder.
+        status: pending
+      - text: "Quality gates are green after the phase: lint, format --check, tsc --noEmit, bun test (unit +
+          e2e + int), bun build."
+        status: pending
+  - name: Orchestration Layer + Dissolve ops/
+    slug: orchestration-and-dissolve-ops
+    status: pending
+    context: "Build orchestration/ via pure moves (plan §6 step 5):
+      ops/steps-planner→orchestration/steps-planner,
+      ops/scope/worker-dispatch→orchestration/worker-dispatch (name→agent-ref, DEFAULT_WORKERS).
+      After these moves the ops/ folder is empty and must be DELETED — together with the
+      already-emptied engine/ folder (its sole content, scope/resolve-steps, moved in domain-layer).
+      Confirm no orphaned imports reference ops/ or engine/ anywhere in src/. Factory signatures
+      unchanged; codemod rewrites paths only."
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: orchestration/ folders get folder-named main files (steps-planner/steps-planner.ts,
+          worker-dispatch/worker-dispatch.ts), no barrel; specs colocate
+      - path: .claude/rules/factory-functions.md
+        why: steps-planner and worker-dispatch keep their factory signatures + injected deps;
+          worker-dispatch's DEFAULT_WORKERS stays config-driven, not hardwired
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: dissolving engine/ + ops/ must not move any mechanism behavior into policy; the empty engine/
+          folder removal closes the P1 mis-naming without touching the template
+      - path: .claude/rules/tooling-quality-gates.md
+        why: this phase's green-gate AC (lint, format --check, tsc --noEmit, bun test incl. e2e/int, bun
+          build) is the proof that dissolving ops/ + engine/ left behavior unchanged
+      - path: .claude/rules/test-file-naming.md
+        why: worker-dispatch/steps-planner specs move out of ops/scope; the green-gate bun test run covers
+          the bare .int/.e2e suffixes whose discovery depends on the bunfig.toml glob — moved specs
+          keep their kind-suffix and stay discoverable
+    acceptance_criteria:
+      - text: orchestration/ exists with steps-planner/ and worker-dispatch/, populated only by moved code
+          with unchanged factory signatures.
+        status: pending
+      - text: The ops/ folder no longer exists and the engine/ folder no longer exists; no import in src/
+          references an ops/ or engine/ path.
+        status: pending
+      - text: No index.ts and no re-export-only barrel was introduced under orchestration/.
+        status: pending
+      - text: "Quality gates are green after the phase: lint, format --check, tsc --noEmit, bun test (unit +
+          e2e + int), bun build."
+        status: pending
+  - name: CLI Restructure + Classify Out of Transport
+    slug: cli-restructure
+    status: pending
+    context: "Restructure cli/ (plan §6 step 6) into commands/{stage,node,lifecycle}. Pull the domain
+      logic classifyTier + slugFromInput (cli/commands/plan/plan.ts:10-29, both exported) OUT of the
+      transport into cli/commands/stage/classify.ts so cli.ts stays pure JSON dispatch. Group
+      plan/refine/build/wrap under commands/stage/, generic node-verbs under commands/node/,
+      archive/reset + shared helpers under commands/lifecycle/. cli-only-transport rule: transport
+      stays transport, classify is now domain-shaped logic invoked by the stage commands. Folder
+      main files named after folder; no barrels. The public bin.ts surface stays intact."
+    rules:
+      - path: .claude/rules/cli-only-transport.md
+        why: the whole point of this phase — cli.ts stays pure JSON transport, classifyTier moves out of the
+          transport boundary into commands/stage/classify.ts; all ops still flow through the CLI
+      - path: .claude/rules/colocation-and-naming.md
+        why: commands/{stage,node,lifecycle} get folder-named main files, no index.ts, no barrel;
+          classify.ts colocates with the stage commands and its spec
+      - path: .claude/rules/factory-functions.md
+        why: command factories keep their createX(cfg,deps) shape; classify becomes a relocated pure helper,
+          not a new stateful singleton
+      - path: .claude/rules/tooling-quality-gates.md
+        why: the phase's no-behavior-change proof is the green gate set (lint, format --check, tsc --noEmit,
+          bun test incl. e2e/int, bun build) after pulling classify out of transport
+      - path: .claude/rules/test-file-naming.md
+        why: cli command specs move into commands/{stage,node,lifecycle}; the green-gate bun test run covers
+          the bare .int/.e2e suffixes (cli e2e suites) whose discovery hinges on the bunfig.toml
+          glob — moved specs keep their kind-suffix and stay discoverable
+    acceptance_criteria:
+      - text: cli/commands/ is organized into stage/, node/ and lifecycle/ subfolders, populated only by
+          moved code.
+        status: pending
+      - text: classifyTier and slugFromInput live in cli/commands/stage/classify.ts and are no longer
+          defined inside the transport file; cli.ts contains only dispatch + JSON-envelope logic.
+        status: pending
+      - text: "The public surface is unchanged: index.ts still exports createAnchored and re-exports
+          tierOfNode (now from domain/tiers), and bin.ts still resolves; package.json exports/bin
+          point at the same dist artifacts."
+        status: pending
+      - text: No index.ts (except the package-root entry) and no re-export-only barrel was introduced.
+        status: pending
+      - text: "Quality gates are green after the phase: lint, format --check, tsc --noEmit, bun test (unit +
+          e2e + int), bun build."
+        status: pending
+  - name: Docs Sync + Final Verification
+    slug: docs-and-final-verification
+    status: pending
+    context: "Bring docs/design/file-structure.md (authoritative, describes today's structure) in line
+      with the new §4 layout, and update rule cross-references that name old paths (e.g.
+      colocation-and-naming.md's examples referencing engine/scope, ops/, parser/;
+      factory-functions.md path examples; CLAUDE.md path mentions if any). Then run the full
+      verification: all quality gates green PLUS the e2e behavior net (e2e.dogfood, lifecycle-e2e,
+      extensibility-matrix, epic-tier.e2e, archive-reset.e2e) proving no-behavior-change end to end.
+      Also verify that test-discovery still collects every suffix after the moves — bun's spec
+      matcher, the `find src -name` collectors for e2e/int, and the tsconfig.build.json excludes —
+      so no test fell silently out of the run."
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: file-structure.md and the colocation rule's own path examples must reflect the new layout — the
+          rule references the structure it governs
+      - path: .claude/rules/tooling-quality-gates.md
+        why: this phase's success criterion is the full green gate set on the Bun toolchain, Node-compatible
+          — the closing evidence of no-behavior-change
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: file-structure.md is the authoritative structure spec; leaving it stale would drift the spec
+          from the mechanism it documents
+    acceptance_criteria:
+      - text: docs/design/file-structure.md describes the new domain/store/orchestration/config/cli layout,
+          with no remaining reference to dissolved folders (ops/, engine/, parser/, schema/, state/)
+          as live source paths.
+        status: pending
+      - text: Rule files and CLAUDE.md no longer reference dissolved source paths in their examples
+          (cross-references point at the new locations).
+        status: pending
+      - text: "Test-discovery is verified intact: bun unit specs, the find-based e2e/int collectors, and the
+          tsconfig.build.json excludes each still capture their files under the new paths (suffix
+          counts match pre-migration)."
+        status: pending
+      - text: "Full verification is green: lint, format --check, tsc --noEmit, bun build, and bun test
+          including the e2e behavior suites (dogfood, lifecycle-e2e, extensibility-matrix,
+          epic-tier, archive-reset)."
+        status: pending
+questions:
+  - id: q1
+    text: Sammelschicht domain/ einführen ODER die fünf Konzepte flach auf src/ Top-Level (tiers/,
+      lifecycle/, steps/, invariants/, config-schema/)? (Plan §5.2 offene Entscheidung; lean domain/
+      — klarere Drei-Schichten-Story, deckt sich mit der trader lib/modules/orchestrators-Vorlage.
+      Betrifft jede Import-Pfad-Codemod, also vor Phase 1 zu klären.)
+    priority: high
+    origin: plan-agent
+    phase: domain-layer
+    status: resolved
+    answer: domain/ als Sammelschicht einführen
+      (domain/{tiers,lifecycle,steps,invariants,config-schema}). Drei-Schichten-Story
+      domain/store/orchestration, analog trader lib/modules/orchestrators.
+    source: user
+    created_at: 2026-06-13T18:16:32.443Z
+    resolved_at: 2026-06-13T18:32:30.349Z
+  - id: q2
+    text: "Volle 3-Schichten-Neuordnung (§4) ODER minimal-invasiv (nur parser→codec, engine auflösen,
+      engine-ops+tier-derive vereinen, ops/ in 2-3 Ordner teilen, ohne domain/)? (Plan §5.1;
+      RAW_PLAN bestellt die volle Variante — Frage nur stellen, weil §5 sie als offen listet und die
+      Diff-/Review-Last massiv unterschiedlich ist. lean: voll, wie im RAW_PLAN beauftragt.)"
+    priority: high
+    origin: plan-agent
+    status: resolved
+    answer: Volle 3-Schichten-Neuordnung wie in §4 — kein minimal-invasiver Cut.
+    source: user
+    created_at: 2026-06-13T18:16:40.632Z
+    resolved_at: 2026-06-13T18:32:32.203Z
+  - id: q3
+    text: config/ getrennt von domain/config-schema/ lassen (Laden = I/O-nah vs. Schema = reine
+      Definition), oder beides zusammenlegen? (Plan §5.4; lean getrennt, wie §4/RAW_PLAN —
+      beeinflusst, ob config/ in Phase 1 oder eigenständig behandelt wird.)
+    priority: medium
+    origin: plan-agent
+    phase: domain-layer
+    status: resolved
+    answer: "Getrennt lassen: config/ bleibt eigenständig (bootstrap/merge/init = I/O-naher Lade-Layer),
+      das ConfigSchema + custom-fields gehen nach domain/config-schema/ (reine Definition). config/
+      wird also NICHT Teil von domain/."
+    source: ai
+    reasoning: "Folgt der Mechanism/Policy- und Definition/Wiring-Trennung des §4-Plans: Laden ist
+      I/O-nah, Schema ist reine Domänendefinition. Deckt sich mit der gewählten
+      domain/-Sammelschicht-Linie aus q1."
+    created_at: 2026-06-13T18:16:49.221Z
+    resolved_at: 2026-06-13T18:32:40.626Z
+  - id: q4
+    text: "Commit-Granularität: ein-Schritt-pro-Commit (Plan §6: feiner, jeder §6-Schritt einzeln
+      reviewbar) ODER eine-Phase-pro-Commit (gröber, eine Phase = ein Commit)? (lean
+      ein-Schritt-pro-Commit innerhalb der Phase — maximiert Bisect-/Review-Granularität; betrifft,
+      wie Evidenz pro Phase erfasst wird.)"
+    priority: medium
+    origin: plan-agent
+    status: resolved
+    answer: Ein-Schritt-pro-Commit innerhalb jeder Phase (jeder §6-Move ein eigener Commit), nicht
+      ein-Commit-pro-Phase.
+    source: ai
+    reasoning: Maximiert Bisect-/Review-Granularität bei einer reinen Move-Migration, wo jeder einzelne
+      Move für sich grün bleiben soll. Die anchored.yml build.steps commit-Stufe feuert ohnehin pro
+      Phase; feinere Zwischen-Commits sind additiv und brechen nichts.
+    created_at: 2026-06-13T18:16:56.692Z
+    resolved_at: 2026-06-13T18:32:43.074Z
+  - id: q5
+    text: "Reihenfolge-Kopplung zur parallelen Test-Instanz: Soll dieser Task hart blockieren, bis die
+      test-file-naming-Instanz vollständig gewrappt + grün ist, oder darf Phase 1 starten, sobald
+      die Suite lokal grün ist (auch wenn der andere Task formal noch im wrap steht)? (lean: hart
+      blockieren bis grün+gewrappt — die stabile Suite ist das einzige Sicherheitsnetz für die
+      Moves; Vorbedingung, kein Arbeitsschritt.)"
+    priority: high
+    origin: plan-agent
+    status: resolved
+    answer: Keine Blockade nötig — die parallele test-file-naming-Instanz ist laut User bereits fertig.
+      Vorbedingung (grüne, pfad-unabhängige Suite) ist erfüllt; Phase 1 kann sofort starten. Vor
+      Phase 1 nur einmal bun test grün verifizieren.
+    source: user
+    created_at: 2026-06-13T18:17:02.652Z
+    resolved_at: 2026-06-13T18:32:35.146Z
+  - id: q6
+    text: "Sollen die Phasen-Commits dem Conventional-Commits-Schema folgen (wie die jüngsten
+      Repo-Commits, z.B. 'refactor(domain-layout): ...'), oder gibt es ein bevorzugtes Scope-Label
+      für dieses Refactor? (lean Conventional Commits mit scope am Task-Slug, konsistent mit der
+      Repo-Historie; rein kosmetisch.)"
+    priority: low
+    origin: plan-agent
+    status: resolved
+    answer: "Conventional Commits mit Scope am Task-Slug, z.B. refactor(core-src-domain-layout):
+      <schritt>."
+    source: ai
+    reasoning: "Konsistent mit der jüngsten Repo-Historie (refactor(colocation): ...,
+      feat(remove-headless-engine-path): ...) und der anchored.yml build.commit-Konvention
+      feat(${TASK_SLUG}): ${PHASE_SLUG}. Rein kosmetisch, kein Architektureffekt."
+    created_at: 2026-06-13T18:17:08.085Z
+    resolved_at: 2026-06-13T18:32:45.910Z
+  - id: q7
+    text: "Phase-Reihenfolge ops löschen: orchestration/worker-dispatch + steps-planner kommen aus
+      ops/scope bzw. ops/ — soll ops/ erst NACH dem store-Move (Phase 2) gelöscht werden (aktueller
+      Plan: Löschung in Phase 3), oder ops/ schrittweise pro Move ausdünnen? (lean: Löschung
+      gebündelt in Phase 3, sobald ops/ leer ist — sauberer Endzustand pro Phase. Rein
+      organisatorisch.)"
+    priority: low
+    origin: plan-agent
+    phase: orchestration-and-dissolve-ops
+    status: resolved
+    answer: Löschung von ops/ und engine/ gebündelt in Phase 3 (orchestration-and-dissolve-ops), sobald
+      die letzten Inhalte (steps-planner, worker-dispatch) verschoben sind und ops/ leer ist.
+    source: ai
+    reasoning: "Sauberer Endzustand pro Phase: Phase 2 leert ops/ bis auf steps-planner/worker-dispatch,
+      Phase 3 verschiebt diese und löscht den dann leeren ops/-Ordner plus das in Phase 1 geleerte
+      engine/. Rein organisatorisch, kein Verhaltenseffekt."
+    created_at: 2026-06-13T18:17:14.176Z
+    resolved_at: 2026-06-13T18:32:50.257Z
+  - id: q8
+    text: schema/tiers/ enthält auch project.ts (reserved projectDescriptor) + tiers.spec.ts, im
+      domain-layer-Kontext nicht namentlich genannt — beide mit phase/task/epic nach domain/tiers/
+      mitverschieben? (Die AC 'only moved code' deckt sie ab; der Kontext erwähnt sie nur nicht.)
+    priority: low
+    origin: plan-check
+    phase: domain-layer
+    status: resolved
+    answer: Ja — project.ts und tiers.spec.ts ziehen mit phase/task/epic nach domain/tiers/. Alle
+      Tier-Schema-Dateien bleiben beieinander.
+    source: ai
+    reasoning: Die AC 'only moved code' deckt sie ab; schema/tiers/ wird vollständig nach domain/tiers/
+      überführt, sonst bliebe ein verwaister Rest-Ordner. project.ts (reserved) und tiers.spec.ts
+      gehören semantisch zu den Tier-Definitionen.
+    created_at: 2026-06-13T18:28:35.531Z
+    resolved_at: 2026-06-13T18:32:54.096Z
+  - id: q9
+    text: "ops/scope/log.ts ist eine einzelne flache Datei (kein log/-Ordner wie children/ und
+      questions/) — beim Move nach store/: store/log/log.ts oder flach store/log.ts? (Colocation:
+      eine einzelne Datei braucht keinen Ordner, bis ein Begleiter dazukommt.)"
+    priority: low
+    origin: plan-check
+    phase: store-layer
+    status: resolved
+    answer: Flach als store/log.ts (kein log/-Ordner), solange es keine Begleitdatei hat.
+    source: ai
+    reasoning: "colocation-and-naming: eine einzelne Datei ohne Companion braucht keinen eigenen Ordner
+      — der Ordner entsteht erst, wenn eine zweite zugehörige Datei (z.B. log.spec.ts) dazukommt.
+      log.ts hat heute keine Spec, bleibt also flach."
+    created_at: 2026-06-13T18:28:37.970Z
+    resolved_at: 2026-06-13T18:32:57.314Z
+  - id: q10
+    text: store/validate importiert aktuell den StepPlan-Typ aus cli/commands/steps.ts (validate.ts:8) —
+      nach dem Move wird das eine store→cli Aufwärts-Abhängigkeit; soll der StepPlan-Typ umziehen
+      (z.B. nach orchestration/ oder domain/steps), damit store/ nicht in die Transport-Schicht
+      greift, oder ist der type-only-Import akzeptabel?
+    priority: medium
+    origin: plan-check
+    phase: store-layer
+    status: resolved
+    answer: Den StepPlan-Typ nach domain/steps/ verschieben (zur Step-Grammar), damit store/validate ihn
+      von dort statt aus cli/commands/steps importiert. Beseitigt die store→cli
+      Aufwärts-Abhängigkeit. Reiner Typ-Move ohne Laufzeitverhalten; falls die Typdefinition in cli
+      enger verwoben ist, als reines `import type` belassen und im Build-Log vermerken — kein
+      Schicht-Flip erzwingen, der über das Refactor-Ziel hinausginge.
+    source: ai
+    reasoning: Das Refactor-Ziel ist saubere Schichtung; ein store→cli-Import widerspräche ihr direkt.
+      StepPlan ist konzeptuell ein Step-Domänentyp, gehört also nach domain/steps. Das stellt die
+      Schichtgrenze her statt sie zu flippen (kein anchored.yml-stop-Fall). Als Typ-only-Move
+      verhaltensneutral.
+    created_at: 2026-06-13T18:28:54.348Z
+    resolved_at: 2026-06-13T18:33:04.038Z
+  - id: q11
+    text: Phase cli-restructure sagt nicht, wo die flache commands/steps.ts landet (stage? node?) noch
+      dass der bestehende commands/scope/lifecycle.ts-Helper in commands/lifecycle/ aufgeht —
+      Platzierung von steps.ts + scope/lifecycle.ts bestätigen?
+    priority: medium
+    origin: plan-check
+    phase: cli-restructure
+    status: resolved
+    answer: commands/steps.ts → commands/stage/ (es inspiziert die aufgelöste Step-Sequenz pro
+      tier/stage, gehört zur Stage-Gruppe). commands/scope/lifecycle.ts (shared runStage-Helper) →
+      commands/stage/ als geteilter Stage-Helper. Die Node-Lebenszyklus-Verben archive/reset bilden
+      commands/lifecycle/.
+    source: ai
+    reasoning: steps.ts und der runStage-Helper bedienen die Stage-Verben (plan/refine/build/wrap),
+      gehören also fachlich zu commands/stage/. commands/lifecycle/ bündelt den Node-Lebenszyklus
+      (archive/reset) — Namensgleichheit mit dem alten scope/lifecycle-Helper ist zufällig; der
+      Helper ist Stage-Mechanik, nicht Node-Lifecycle.
+    created_at: 2026-06-13T18:29:05.951Z
+    resolved_at: 2026-06-13T18:33:09.767Z
+  - id: q12
+    text: "Die parser-root roundtrip.spec.ts ist ein cross-cutting Codec-Spec ohne einzelnes
+      Subjekt-Modul — beim parser→store/codec: landet sie als store/codec/codec.spec oder bleibt sie
+      ein codec-root roundtrip-Spec?"
+    priority: low
+    origin: plan-check
+    phase: store-layer
+    status: resolved
+    answer: "Bleibt ein codec-root cross-cutting Spec: store/codec/roundtrip.spec.ts (parallel zu parse/
+      und render/ unter codec/), nicht in eines der Subjekt-Module gezwängt."
+    source: ai
+    reasoning: roundtrip testet parse+render zusammen (den Codec als Ganzes), hat also kein einzelnes
+      Subjekt-Modul. Es spiegelt seinen heutigen Sitz (parser-root) 1:1 nach codec-root — konsistent
+      mit der reinen Move-Natur und der Colocation-Regel (Spec beim Subjekt = hier der ganze Codec).
+    created_at: 2026-06-13T18:29:08.116Z
+    resolved_at: 2026-06-13T18:33:13.846Z
+  - id: q13
+    text: Phase docs-and-final aktualisiert Rule-Cross-Refs mit alten Pfaden (colocation-and-naming.md,
+      factory-functions.md) — soll test-file-naming.md, das ebenfalls docs/design/file-structure.md
+      referenziert und Alt-Pfade listet, im selben Cross-Ref-Sweep sein?
+    priority: low
+    origin: rules-check
+    phase: docs-and-final-verification
+    status: resolved
+    answer: Ja — test-file-naming.md in denselben Cross-Ref-Sweep der docs-and-final-Phase aufnehmen.
+    source: ai
+    reasoning: test-file-naming.md referenziert ebenfalls docs/design/file-structure.md und nennt
+      Alt-Pfade (engine/scope, ops/scope) in seinen Beispielen; lässt man es aus, driftet eine
+      Rule-Datei gegen die neue Struktur. Gehört in denselben Sweep wie colocation-and-naming.md +
+      factory-functions.md.
+    created_at: 2026-06-13T18:29:10.948Z
+    resolved_at: 2026-06-13T18:33:17.651Z
+  - id: q14
+    text: Ist die test-file-naming-Discovery-Glob/kind-suffix-Sorge im Scope dieser Move-Migration
+      (Phasen 1-4), oder vollständig der parallelen test-file-naming-Instanz überlassen — d.h.
+      sollen die Move-Phasen nur grüne Gates prüfen und die Suffix-Integrität der parallelen Task
+      überlassen?
+    priority: low
+    origin: rules-check
+    phase: domain-layer
+    status: resolved
+    answer: Move-Phasen (1-4) assertieren nur grüne Gates inkl. bun test (e2e/int); die
+      kind-Suffix-Vergabe/Discovery-Glob-Pflege gehört der (bereits fertigen)
+      test-file-naming-Instanz. Phase 5 verifiziert einmalig, dass die Discovery nach allen Moves
+      noch alle Suffixe erfasst (Suffix-Counts == pre-migration).
+    source: ai
+    reasoning: Discovery ist für Moves innerhalb src/ pfad-agnostisch (bunfig root=src, find-basierte
+      e2e/int-Collector, tsconfig.build-Excludes). Die Suffix-Konvention selbst ist Eigentum der
+      test-file-naming-Instanz; dieser Task muss nur sicherstellen, dass nichts lautlos aus der
+      Discovery fällt — das prüft die explizite Phase-5-AC.
+    created_at: 2026-06-13T18:29:13.820Z
+    resolved_at: 2026-06-13T18:33:22.914Z
