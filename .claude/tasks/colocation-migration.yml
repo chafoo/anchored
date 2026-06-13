@@ -44,11 +44,19 @@ context:
     the rule wasn't linked). factory-functions.md deemed already covered by colocation-and-naming.md
     (which extends it) — not separately attached for a pure move/rename.
   build:
-    Validation: "- central-modules (commit 91d5d57): task-validate PASS (5/5 ACs honest — folders+specs
-      exist, depth-fixes verified, 5 stay-flat files flat, tsc clean = no stale imports, bun test
-      274 pass). code-validate PASS (folder-named mains not index.ts, specs colocated, no barrels,
-      gates green). 1 non-blocking warn: cli/index.ts is a bare non-root index.ts but pre-existing
-      (commit 3503a86, untouched this phase) — resolved by phase 4 cli-and-naming."
+    Validation: >-
+      - central-modules (commit 91d5d57): task-validate PASS (5/5 ACs honest — folders+specs exist,
+      depth-fixes verified, 5 stay-flat files flat, tsc clean = no stale imports, bun test 274
+      pass). code-validate PASS (folder-named mains not index.ts, specs colocated, no barrels, gates
+      green). 1 non-blocking warn: cli/index.ts is a bare non-root index.ts but pre-existing (commit
+      3503a86, untouched this phase) — resolved by phase 4 cli-and-naming.
+
+      - cli-and-naming (commit c6307d2): task-validate PASS (5/5 ACs honest — cli/cli.ts+node/+plan/
+      exist, old paths gone, retargets resolve, src/cli/epic-tier.spec.ts untouched, gates green).
+      code-validate PASS (cli/cli.ts is real createCli wiring not a barrel, folder-mains correct, no
+      barrels; `find core/src -name index.ts` → ONLY src/index.ts, so the central-modules warn is
+      now RESOLVED). 2 non-blocking cosmetic warns for phase-5 sweep: stale header-path comments in
+      node/node.ts:1 ("cli/commands/node.ts") + plan/plan.ts:1 ("cli/commands/plan.ts").
 phases:
   - name: Root effect-modules into own folders
     slug: root-modules
@@ -279,7 +287,7 @@ phases:
             grew over print-width."
   - name: CLI naming + duplicate-spec resolution
     slug: cli-and-naming
-    status: in-progress
+    status: done
     context: The naming mandate hits the cli last because cli/index.ts is the highest-churn rename (~10
       importers). Also resolves the confusing duplicate epic-tier.spec.ts.
     rules:
@@ -291,21 +299,61 @@ phases:
       - text: "`cli/index.ts` to `cli/cli.ts` and `cli/index.spec.ts` to `cli/cli.spec.ts`; all ~10
           importers retargeted (`cli/commands/*` via `../index.js`, `src/index.ts`,
           `config/override.spec.ts`, cli e2e specs)."
-        status: pending
+        status: done
+        evidence:
+          - git mv src/cli/index.ts → src/cli/cli.ts AND index.spec.ts → cli.spec.ts — rename-detect
+            R100 (history preserved). cli.ts is a legit folder-main (builds createCli), not a
+            barrel.
+          - "Production importers retargeted: src/index.ts:10 './cli/cli.js'; ops/facade/facade.ts:5
+            '../../cli/cli.js' (facade lives in ops/facade/ since phase 3)."
+          - "Same-folder + commands importers: cli.spec.ts:2 './cli.js';
+            commands/{archive,build,reset,refine,steps,wrap,stage.spec}.ts '../cli.js';
+            scope/lifecycle.ts:6 '../../cli.js'."
+          - "Zero stale refs: grep 'cli/index.js' + 'index.spec.js' under src → empty."
+          - "PLAN CORRECTION: config/override.spec.ts + the 3 e2e-specs directly in cli/ use
+            '../index.js' = PACKAGE-ROOT src/index.ts, not cli — correctly left untouched."
       - text: "`cli/commands/node.ts`+spec to `cli/commands/node/`."
-        status: pending
+        status: done
+        evidence:
+          - git mv src/cli/commands/node.ts + node.spec.ts → src/cli/commands/node/ — R100
+            rename-detect for both.
+          - "node/node.ts:6 own import +1 depth: '../../cli.js' (combines AC0 index→cli rename with
+            +1 depth from the new folder)."
+          - "node/node.spec.ts:2 '../../cli.js', line 3 fakeFacade '../../cli.spec.js' (q4: node
+            moved one level down)."
+          - Importer cli.ts:6 retargeted './commands/node/node.js' (was './commands/node.js').
       - text: "`cli/commands/plan.ts` to `cli/commands/plan/`; `classify.spec.ts` moved to
           `cli/commands/plan/classify.spec.ts` (its subject is plan.ts)."
-        status: pending
+        status: done
+        evidence:
+          - git mv src/cli/commands/plan.ts → plan/plan.ts AND classify.spec.ts (subject=plan.ts) →
+            plan/classify.spec.ts — both R100.
+          - "plan/plan.ts:6 own import +1 depth: '../../cli.js'."
+          - "plan/classify.spec.ts: line 2 './plan.js' (sibling, unchanged), line 3 '../../cli.js',
+            line 4 fakeFacade '../../cli.spec.js' (q4)."
+          - Importer cli.ts:7 retargeted './commands/plan/plan.js'.
       - text: "Duplicate `epic-tier.spec.ts` (root vs `cli/`) disambiguated per the open question (default:
           root one renamed to `epic-tier.e2e.spec.ts`)."
-        status: pending
+        status: done
+        evidence:
+          - git mv src/epic-tier.spec.ts → src/epic-tier.e2e.spec.ts (same-folder rename only, R100
+            — NO move into e2e/; that's phase 5).
+          - src/cli/epic-tier.spec.ts left UNCHANGED — still present, not in this commit's modified
+            set (genuine cli subject spec for buildCli/makeTierFor).
       - text: Gates green; grep confirms no `index.ts` remains under `core/src` except the package-root
           entry; zero behavior change.
-        status: pending
+        status: done
+        evidence:
+          - "Gates GREEN: typecheck (tsc --noEmit) clean; lint (eslint .) clean; bun test 274 pass /
+            2 skip / 0 fail (915 expect(), 47 files) — exactly the baseline, proving zero behavior
+            change; format (prettier --check .) 'All matched files use Prettier code style!'."
+          - find src -name index.ts → only src/index.ts (package-root npm-entry exception);
+            src/bin.ts sibling bin entry present; src/cli/index.ts confirmed gone (ENOENT).
+          - Committed as c6307d2. All 5 ACs green on first pass — no new URL fixture paths in any
+            moved file, so the depth-+1 runtime hazard didn't apply; no prettier reflow this phase.
   - name: E2E bundle + design-spec sync
     slug: e2e-bundle-and-docs
-    status: pending
+    status: in-progress
     context: "Final tidy: gather the cross-cutting suites that have no single subject, and pull the
       authoritative file-structure design doc onto the new convention so the map matches the tree."
     rules:

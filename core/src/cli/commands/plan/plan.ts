@@ -1,4 +1,4 @@
-// cli/commands/plan.ts — `anchored plan <tier?> <input>`. With an explicit tier
+// cli/commands/plan/plan.ts — `anchored plan <tier?> <input>`. With an explicit tier
 // → engine.run(tier, ...) directly. WITHOUT a tier → classify-routing via the
 // injected classify seam (NOT a content heuristic in the CLI), then proceed with
 // the recommended tier. The TIER_KEYWORDS set only RECOGNISES an explicit tier

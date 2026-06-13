@@ -1,11 +1,11 @@
-// lifecycle-e2e.spec.ts — G11. Drive the FULL lifecycle of BOTH tiers through the
+// e2e/lifecycle-e2e.spec.ts — G11. Drive the FULL lifecycle of BOTH tiers through the
 // real CLI argv path (parse → facade → validating substrate → atomic-write), and
 // re-read after EVERY step. This is the regression net the unit tests lacked: the
 // old e2e never re-read after a mutation, never drove the epic each:task loop, and
 // never asserted that an invalid write is REJECTED at the op (the G1/G2 hole).
 import { test, expect } from 'bun:test'
-import { buildCli } from './index.js'
-import type { IoDeps } from './io/io.js'
+import { buildCli } from '../index.js'
+import type { IoDeps } from '../io/io.js'
 
 function harness() {
   const files = new Map<string, string>()

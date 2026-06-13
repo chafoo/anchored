@@ -1,4 +1,4 @@
-// cli/commands/node.ts — generic, tier-generic node verbs agents drive via Bash.
+// cli/commands/node/node.ts — generic, tier-generic node verbs agents drive via Bash.
 // Each verb maps to exactly one nodeOps facade call (no direct FS/parser here).
 // The hard invariant lives in the substrate: a nodeOps error (e.g. done without
 // evidence) is caught upstream and rendered as an error envelope — never re-checked
