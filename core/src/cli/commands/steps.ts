@@ -5,23 +5,9 @@
 // the orchestrator (it has the plugin + agents loaded); the CLI stays the
 // deterministic planner + ops. No spawning happens here.
 import { cliError, type CliDeps } from '../cli.js'
+import type { PlanStep, StepPlan } from '../../domain/steps/plan.js'
 
-export interface PlanStep {
-  name: string
-  kind: 'worker' | 'run' | 'loop'
-  agent?: string // worker: the plugin agent to spawn (build-implement, …)
-  run?: string // run: the bash command
-  instructions?: string // prose guidance for the SKILL — uniform across run/use/worker
-  each?: string // loop: the child tier to iterate
-  stop?: string[]
-  retry_limit?: number
-}
-
-export interface StepPlan {
-  tier: string
-  stage: string
-  steps: PlanStep[]
-}
+export type { PlanStep, StepPlan }
 
 export async function stepsCommand(args: string[], deps: CliDeps): Promise<unknown> {
   const tier = args[0]

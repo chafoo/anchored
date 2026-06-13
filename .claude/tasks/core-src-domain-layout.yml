@@ -80,10 +80,18 @@ context:
       reinforcing; test-file-naming declares itself orthogonal to colocation). 2 low scoping
       questions added (test-file-naming.md in the cross-ref sweep [q13]; whether suffix-integrity is
       in scope here or owned by the parallel instance [q14])."
+    task-validate: "- domain-layer (attempt 1) — verdict: PASS. task-validate: 5/5 ACs accepted, re-ran
+      gates independently (lint 0, prettier clean, tsc 0, bun test 210 pass/0 fail, build 0).
+      code-validate: PASS, all 6 phase rules clean (no index.ts/barrel under domain/, tiers.ts keeps
+      pure injected helpers tierOfNode+makeTierFor unchanged, invariants.ts intact as data-model
+      invariant, STAGES centralized, .js suffixes + spec-colocation preserved). One non-blocking
+      warn (deferred to phase 5): stale header comment `// state/invariants.ts` in
+      domain/invariants/invariants.ts:1 (cosmetic path label). No emergent decision matched a
+      build.stop rule; no questions raised."
 phases:
   - name: Domain Layer + Unified Tier Derivation
     slug: domain-layer
-    status: in-progress
+    status: done
     context: "Build domain/ via pure moves (plan §6 steps 1-3): schema/tiers→domain/tiers,
       schema/step→domain/steps, schema/config+schema/custom-fields→domain/config-schema,
       state/transitions→domain/lifecycle/transitions, state/invariants→domain/invariants,
@@ -183,7 +191,7 @@ phases:
             dist/index.d.ts emitted."
   - name: Store Layer (Persist + Mutate Mechanism)
     slug: store-layer
-    status: pending
+    status: in-progress
     context: "Build store/ via pure moves (plan §6 step 4): ops/node-ops→store/node-store,
       ops/facade→store/node-router,
       ops/scope/{children,questions,log}→store/{children,questions,log},
