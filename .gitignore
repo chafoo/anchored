@@ -19,3 +19,5 @@ dist-schemas/
 # local working notes (not shipped)
 .claude/temp/
 anchored.yml
+# web-inspector MCP local browser profile/cache — never commit
+.mcp-web-inspector/
