@@ -1,6 +1,6 @@
 // src/index.ts — the public entry of the core package: a PURE wiring factory.
 // createAnchored(deps) bootstraps the merged config ONCE and wires the substrate
-// in deps-graph order (parser/render/io → ops → cli), returning the live object
+// in deps-graph order (codec/render/io → store → cli), returning the live object
 // graph { cli, ops, config }. No top-level side-effect, no classes, no
 // runtime/bin access — all of that lives only in src/bin.ts. Every effect (fs,
 // yaml, merge) arrives through an injected seam, so the whole graph is fakeable
@@ -8,14 +8,18 @@
 import { z } from 'zod'
 import { parse, stringify } from 'yaml'
 import { createCli, type CliDeps, type NodeOpsFacade } from './cli/cli.js'
-import { createNodeOps, type TierDescriptor, type NodeOpsDeps } from './ops/node-ops/node-ops.js'
-import { createSlugFacade, type TierOps } from './ops/facade/facade.js'
+import {
+  createNodeOps,
+  type TierDescriptor,
+  type NodeOpsDeps,
+} from './store/node-store/node-store.js'
+import { createSlugFacade, type TierOps } from './store/node-router/node-router.js'
 import { tierOfNode, makeTierFor } from './domain/tiers/tiers.js'
 import { createStepsPlanner } from './ops/steps-planner/steps-planner.js'
-import { createValidator } from './ops/validate/validate.js'
-import { createParser } from './parser/parse/parse.js'
-import { createRenderer, defaultSchemaUrl } from './parser/render/render.js'
-import { createIo, type IoDeps } from './io/io.js'
+import { createValidator } from './store/validate/validate.js'
+import { createParser } from './store/codec/parse/parse.js'
+import { createRenderer, defaultSchemaUrl } from './store/codec/render/render.js'
+import { createIo, type IoDeps } from './store/io/io.js'
 import { createBootstrap } from './config/bootstrap.js'
 import { phaseDescriptor, PhaseNodeSchema } from './domain/tiers/phase.js'
 import { taskDescriptor, TaskNodeSchema } from './domain/tiers/task.js'
