@@ -110,10 +110,16 @@ context:
       NOT bound; zero orphans, zero cross-phase conflicts. q4→only reconcile doc entries already
       named (worker-dispatch clause is a no-op, not in the tree). q5→119-122 span is fine, agent
       matches by content."
+    Validation: "- worker-dispatch-relocate / A6 (commit 35f61c5): task-validate PASS (4/4 ACs honest —
+      files at ops/scope/worker-dispatch/, old engine path gone, steps-planner import resolves, NOTE
+      comment removed + rules-scan mapping kept, bun test 274 pass). code-validate PASS (0 block / 0
+      warn — mechanism/policy separation satisfied: DEFAULT_WORKERS roster out of engine/, foldered
+      correctly per colocation, no barrel, no bare index.ts, lint+typecheck clean). Pure rename +
+      1-line import retarget, zero behavior change."
 phases:
   - name: "A6: move worker-dispatch out of engine/ into ops/scope/"
     slug: worker-dispatch-relocate
-    status: in-progress
+    status: done
     context: worker-dispatch.ts hardcodes the full default-template step roster (DEFAULT_WORKERS) but
       sits under engine/scope/. The engine control-flow never reads it; its only consumer is
       ops/steps-planner. It is policy/data and must not live in the mechanism tree.
@@ -127,20 +133,59 @@ phases:
       - text: "`engine/scope/worker-dispatch.ts` (+ its spec) moved to `ops/scope/` (its consumer
           `ops/steps-planner.ts` lives in ops); all importers retargeted; `engine/` no longer
           contains the step-name roster."
-        status: pending
+        status: done
+        evidence:
+          - git mv src/engine/scope/worker-dispatch.{ts,spec.ts} →
+            src/ops/scope/worker-dispatch/worker-dispatch.{ts,spec.ts} (RM renames 87%/92%) — landed
+            in its own folder per colocation-and-naming.md (spec companion ⇒ owns a folder).
+          - worker-dispatch.ts has ZERO relative imports (pure DEFAULT_WORKERS data module) — only
+            its header-comment path label updated, no depth retarget needed.
+          - "Consumer retargeted: steps-planner.ts:8 '../../engine/scope/worker-dispatch.js' →
+            '../scope/worker-dispatch/worker-dispatch.js' (ops/steps-planner/ →
+            ops/scope/worker-dispatch/)."
+          - "Moved spec fixed for +1 depth: worker-dispatch.spec.ts:4 './worker-dispatch.js'
+            (sibling, kept); :5 resolve-steps retargeted
+            '../../../engine/scope/resolve-steps/resolve-steps.js' (resolve-steps STAYS in engine);
+            :47 new URL fixture depth 3→4 dots '../../../../default-template/anchored.default.yml'."
+          - "Tree-wide grep 'worker-dispatch': only the 2 moved files + the steps-planner consumer
+            reference it — no stray importers."
       - text: Confirm the engine control-flow still references no concrete step names after the move (grep
           engine/ for the DEFAULT_WORKERS keys); behavior identical.
-        status: pending
+        status: done
+        evidence:
+          - "grep -rnE 'DEFAULT_WORKERS|build-implement|plan-decompose|epic-roll-up' src/engine/
+            --include='*.ts' (excl .spec) → exit 1, NO matches: the roster + its step-name→ref keys
+            are gone from all engine/ control-flow source."
+          - Remaining engine/ matches are exclusively in test fixtures (workflow-smoke.spec.ts,
+            step-runner.spec.ts) asserting against the plugin agent roster / .md files — not the
+            DEFAULT_WORKERS map.
+          - "Behavior identical: bun test 274 pass / 2 skip / 0 fail, unchanged from baseline."
       - text: 'Delete the STALE NOTE comment at worker-dispatch.ts:12-14. (Correction: the `rules-scan →
           plan-rules-scan` mapping is NOT dangling — `plugin/agents/plan-rules-scan.md` already
           exists; the comment claiming the agent "must be added" is simply out of date. No agent
           work, just remove the stale comment.)'
-        status: pending
+        status: done
+        evidence:
+          - "Stale NOTE removed from worker-dispatch.ts: the 3-line comment (orig lines 12-14)
+            claiming the agent roster 'must add' plan-rules-scan / 'currently lists
+            refine-rules-check only' is deleted."
+          - "The actual `'rules-scan': { type: 'agent', ref: 'plan-rules-scan' }` mapping
+            (worker-dispatch.ts:20) left UNTOUCHED — only the out-of-date comment lines removed
+            (plugin/agents/plan-rules-scan.md already exists)."
       - text: "Gates green: `bun test` + eslint + `tsc --noEmit`."
-        status: pending
+        status: done
+        evidence:
+          - "typecheck GREEN: `bun run typecheck` (tsc --noEmit) → clean, no errors."
+          - "lint GREEN: `bun run lint` (eslint .) → clean."
+          - "test GREEN: `bun test` → 274 pass / 2 skip / 0 fail (915 expect, 276 tests / 47 files)
+            — exact baseline, zero behavior change."
+          - "format GREEN: `bun run format` (prettier --check .) → 'All matched files use Prettier
+            code style!' — no import-line reflow."
+          - Committed as 35f61c5. (git add -A also swept 3 pre-existing dirty task-yml files — audit
+            state, not part of the source refactor.)
   - name: "A7: centralize the epic-DoD evidence check into state/invariants.ts"
     slug: invariant-centralize
-    status: pending
+    status: in-progress
     context: "ops/node-ops/node-ops.ts:327 inlines the epic-DoD evidence check (status done requires
       non-empty merged evidence) instead of routing through the invariants module. Same
       evidence-honesty floor one tier up — it should live in one place. (Path corrected

@@ -7,6 +7,7 @@
 import { assertTransition } from '../../state/transitions/transitions.js'
 import {
   assertAcDoneHasEvidence,
+  assertEpicAcHasEvidence,
   assertNodeCompletable,
   anchoredError,
   type AnchoredError,
@@ -324,15 +325,7 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       // already present) — same evidence-honesty floor as a phase AC, one tier up.
       const merged =
         evidence && evidence.length > 0 ? [...(item.evidence ?? []), ...evidence] : item.evidence
-      if (status === 'done' && (!merged || merged.length === 0)) {
-        throw anchoredError(
-          'AcceptanceNoEvidence',
-          `acceptance item '${id}' cannot be done without delivery evidence`,
-          [
-            `pass the provenance pointer(s): set-acceptance-status <slug> ${id} done "<task>/<phase> — delivered"`,
-          ],
-        )
-      }
+      assertEpicAcHasEvidence(id, status, merged)
       return persist({
         ...node,
         acceptance: items.map((a) =>

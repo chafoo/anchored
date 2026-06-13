@@ -2,6 +2,7 @@ import { test, expect } from 'bun:test'
 import {
   isEvidenceFilled,
   assertAcDoneHasEvidence,
+  assertEpicAcHasEvidence,
   assertNodeCompletable,
   type AnchoredError,
 } from './invariants.js'
@@ -42,6 +43,27 @@ test('AcceptanceCriterion schema rejects done without evidence', () => {
   ).toBe(true)
   expect(AcceptanceCriterion.safeParse({ id: 'a1', text: 't', status: 'pending' }).success).toBe(
     true,
+  )
+})
+
+// a5 — assertEpicAcHasEvidence is the epic-tier sibling: done needs merged evidence
+test('assertEpicAcHasEvidence enforces delivery evidence for a done epic item', () => {
+  expect(() => assertEpicAcHasEvidence('e1', 'done', [])).toThrow()
+  expect(() => assertEpicAcHasEvidence('e1', 'done', undefined)).toThrow()
+  expect(() => assertEpicAcHasEvidence('e1', 'done', ['task/phase — delivered'])).not.toThrow()
+  expect(() => assertEpicAcHasEvidence('e1', 'pending', undefined)).not.toThrow()
+  let err: unknown
+  try {
+    assertEpicAcHasEvidence('e1', 'done', [])
+  } catch (e) {
+    err = e
+  }
+  expect((err as AnchoredError).name).toBe('AcceptanceNoEvidence')
+  expect((err as AnchoredError).message).toBe(
+    "acceptance item 'e1' cannot be done without delivery evidence",
+  )
+  expect((err as AnchoredError).suggestions?.[0]).toBe(
+    'pass the provenance pointer(s): set-acceptance-status <slug> e1 done "<task>/<phase> — delivered"',
   )
 })
 

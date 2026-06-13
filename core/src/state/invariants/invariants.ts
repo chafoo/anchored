@@ -43,6 +43,29 @@ export function assertAcDoneHasEvidence(ac: AcLike): void {
   }
 }
 
+/**
+ * The epic-tier sibling of {@link assertAcDoneHasEvidence}: an epic DoD
+ * acceptance ITEM only flips `done` WITH delivery evidence — the same
+ * evidence-honesty floor as a phase AC, one tier up. The caller passes the
+ * already-merged evidence (existing + newly-passed); we reject a `done` flip
+ * when that merged set is empty.
+ */
+export function assertEpicAcHasEvidence(
+  id: string,
+  status: string,
+  merged: string[] | undefined,
+): void {
+  if (status === 'done' && (!merged || merged.length === 0)) {
+    throw anchoredError(
+      'AcceptanceNoEvidence',
+      `acceptance item '${id}' cannot be done without delivery evidence`,
+      [
+        `pass the provenance pointer(s): set-acceptance-status <slug> ${id} done "<task>/<phase> — delivered"`,
+      ],
+    )
+  }
+}
+
 export interface NodeLike {
   acceptance_criteria?: AcLike[]
 }
