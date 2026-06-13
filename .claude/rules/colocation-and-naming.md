@@ -26,8 +26,8 @@ directory.
   (`*.spec.ts`/`*.int.ts`/`*.e2e.ts`) is the orthogonal concern of
   [[test-file-naming]].
 - **Local helpers in `scope/`** — a factory's deeper helpers continue to live in
-  their `scope/` subfolder (existing convention, see `engine/scope/`,
-  `ops/scope/`). `scope/` files follow the same naming + colocate their own
+  their `scope/` subfolder (existing convention, see `store/codec/`,
+  `domain/steps/resolve-steps/`). `scope/` files follow the same naming + colocate their own
   specs.
 - **A single file without companions** needs no folder — only once a second
   related file appears is the folder created.
@@ -35,7 +35,7 @@ directory.
 ## Naming — the folder file is named after the folder
 
 **Instead of `index.ts`, the main file of a folder is always named after the folder:**
-`foo/foo.ts`, `cli/cli.ts`, `engine/engine.ts`, `io/io.ts`. No `index.ts` as the
+`foo/foo.ts`, `cli/cli.ts`, `node-store/node-store.ts`, `io/io.ts`. No `index.ts` as the
 entry point of a subfolder.
 
 - Import paths thereby become explicit + greppable: `from './io/io.js'`, not
@@ -50,8 +50,8 @@ entry point of a subfolder.
 **No re-export-only file** whose sole purpose is to bundle and pass through symbols
 from sibling modules (`export * from './a'`).
 
-- **Import directly from the source module** — `from './ops/node-ops.js'`, not
-  from an aggregating `ops/ops.ts` that re-exports everything.
+- **Import directly from the source module** — `from './store/node-store/node-store.js'`, not
+  from an aggregating `store/store.ts` that re-exports everything.
 - A factory file that contains real wiring logic (e.g. `cli/cli.ts` builds
   `createCli`) is **not** a barrel — it does work, it doesn't just pass through.
   Forbidden is only the pure aggregation/pass-through file.
@@ -65,7 +65,7 @@ fake-ability of individual seams ([[factory-functions]]).
 
 ## Reference
 
-`docs/design/file-structure.md` (the structure map — being brought in line with this
-convention; the `index.ts` entries there are the old state).
+`docs/design/file-structure.md` (the structure map — in line with this
+convention; the single `index.ts` there is the package-root entry).
 [[factory-functions]], [[fractal-substrate-integrity]], [[test-file-naming]]
 (the orthogonal kind-suffix rule — placement here, test-kind there).

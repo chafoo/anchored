@@ -1,4 +1,4 @@
-// engine/scope/resolve-steps.ts — insert built-in defaults + normalise order,
+// domain/steps/resolve-steps/resolve-steps.ts — insert built-in defaults + normalise order,
 // config-driven (no hardcoded DOMAIN step names; 'loop'/'run' are structural
 // built-ins). The build:{each} shorthand expands to a positioned loop step with
 // the implicit body [run] (Item 5a).

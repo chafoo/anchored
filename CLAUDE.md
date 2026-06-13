@@ -18,7 +18,7 @@ binding spec — **read `docs/design/` first**, before you touch code or docs:
 2. **No built-ins** — everything is a step. The opinionated behaviour lives in the
    default template (`anchored.default.yml`), active by default, overridable.
 3. **Integrity in the substrate**: no `ac` to `done` without `evidence`. Enforced
-   in the data model (`state/invariants.ts`), NOT in a step.
+   in the data model (`domain/invariants/invariants.ts`), NOT in a step.
 4. **CLI-only transport**: all ops through the `anchored` CLI via Bash. **No MCP.**
    Works in the main session AND subagents/headless. The CLI emits JSON.
 5. **Factory functions**: `createX(cfg, deps) → { run(input) → output }`,
@@ -39,7 +39,7 @@ binding spec — **read `docs/design/` first**, before you touch code or docs:
 
 ## Build order
 
-1. **pure-engine** — factory engine + substrate (state/parser/io/ops) + config
+1. **pure-engine** — factory engine + substrate (domain/store/orchestration) + config
    bootstrap + CLI skeleton.
 2. **default-template** — `anchored.default.yml` as the merged base; all default
    steps as template workers.

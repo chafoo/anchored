@@ -107,7 +107,21 @@ context:
       in files NOT touched by this phase, deferred to docs-and-final-verification sweep alongside
       the domain/invariants/invariants.ts:1 one): domain/steps/resolve-steps/resolve-steps.ts:1 `//
       engine/scope/resolve-steps.ts` and bin.ts:54 prose mentioning core/engine/config/ops.
-    Implement: "- orchestration-and-dissolve-ops / Orchestration Layer + Dissolve ops/: pure move +
+
+      - cli-restructure (attempt 1) — verdict: PASS. task-validate: 5/5 ACs accepted, gates re-run
+      independently (lint 0, prettier clean, tsc 0, bun test 210 pass/0 fail [146 unit + 4 e2e + 60
+      int], build 0 with dist/bin.js+index.js+index.d.ts); git renames confirmed in b29d408
+      (reset.ts shows A+D but is genuinely moved code). code-validate: PASS (5/5 rules clean, 0
+      WARN, no build.stop architecture-flip). q15 confirmed: NodeOpsFacade now DEFINED in
+      store/node-router/node-router.ts:18; grep shows store has zero cli imports (upward store→cli
+      dep removed); cli.ts:18 imports it downward from store and re-exports for the package surface
+      — direction correctly inverted. q11 nuance assessed as a clean local colocation decision
+      (runStage stays in stage/refine.ts shared by build/wrap;
+      requireNode→lifecycle/require-node.ts), not an architecture concern. One non-blocking
+      stylistic note (no action): runStage is exported from refine.ts rather than a neutral
+      commands/stage/run-stage.ts — defensible, optional future tidy.
+    Implement: >-
+      - orchestration-and-dissolve-ops / Orchestration Layer + Dissolve ops/: pure move +
       import-path-rewrite migration, no behavior change. ops/steps-planner →
       orchestration/steps-planner and ops/scope/worker-dispatch → orchestration/worker-dispatch via
       git mv (R100 renames). ops/ and engine/ folders deleted (engine/ already empty since
@@ -120,7 +134,24 @@ context:
       (createStepsPlanner, createWorkerDispatch with config-driven DEFAULT_WORKERS spread-merged).
       No barrel/index.ts under orchestration/. No architecture deviation; no build.stop match. Gates
       green: lint 0, prettier clean, tsc 0, build 0, bun test 210 pass/0 fail (146 unit + 4 e2e + 60
-      int == baseline)."
+      int == baseline).
+
+      - cli-restructure / CLI Restructure + Classify Out of Transport: pure move/extract migration,
+      no behavior change. cli/commands grouped into stage/ (plan,refine,build,wrap,steps,classify),
+      node/ (node), lifecycle/ (archive,reset,require-node) via git mv (renames).
+      classifyTier+slugFromInput extracted out of transport into commands/stage/classify.ts (pure
+      helpers); cli.ts is now dispatch+JSON-envelope only. q15: NodeOpsFacade type DEFINITION moved
+      down to store/node-router/node-router.ts:18 (beside createSlugFacade + sibling
+      TierOps/FacadeDeps types); store/node-router no longer imports up from cli; cli.ts imports it
+      DOWNWARD from store and re-exports it so index.ts:10 + specs stay byte-stable — upward
+      store→cli type dep eliminated, dependency now flows cli→store. q11 nuance documented: decision
+      text mismatched reality (old scope/lifecycle.ts held requireNode, not runStage); resolved by
+      intent — runStage stays with stage verbs (stage/refine.ts),
+      requireNode→lifecycle/require-node.ts (renamed to avoid folder-name collision). Public surface
+      byte-stable (createAnchored + tierOfNode re-export, bin.ts, package.json exports/bin). No
+      index.ts under cli/, no barrels. No architecture deviation; no build.stop match. Gates green:
+      lint 0, prettier clean, tsc 0, build 0 (dist/bin.js+index.js+index.d.ts), bun test 210 pass/0
+      fail (146 unit + 4 e2e + 60 int == baseline).
 phases:
   - name: Domain Layer + Unified Tier Derivation
     slug: domain-layer
@@ -385,7 +416,7 @@ phases:
             matches the 146+4+60 pre-migration baseline exactly (no test fell out of discovery)."
   - name: CLI Restructure + Classify Out of Transport
     slug: cli-restructure
-    status: in-progress
+    status: done
     context: "Restructure cli/ (plan §6 step 6) into commands/{stage,node,lifecycle}. Pull the domain
       logic classifyTier + slugFromInput (cli/commands/plan/plan.ts:10-29, both exported) OUT of the
       transport into cli/commands/stage/classify.ts so cli.ts stays pure JSON dispatch. Group
@@ -479,7 +510,7 @@ phases:
             dist/index.d.ts present."
   - name: Docs Sync + Final Verification
     slug: docs-and-final-verification
-    status: pending
+    status: in-progress
     context: "Bring docs/design/file-structure.md (authoritative, describes today's structure) in line
       with the new §4 layout, and update rule cross-references that name old paths (e.g.
       colocation-and-naming.md's examples referencing engine/scope, ops/, parser/;
@@ -503,18 +534,75 @@ phases:
       - text: docs/design/file-structure.md describes the new domain/store/orchestration/config/cli layout,
           with no remaining reference to dissolved folders (ops/, engine/, parser/, schema/, state/)
           as live source paths.
-        status: pending
+        status: done
+        evidence:
+          - "docs/design/file-structure.md:37-126 — core/ tree rewritten to the new layout:
+            src/{domain/,store/,orchestration/,config/,cli/}; domain/ has
+            tiers/lifecycle/steps/invariants/config-schema, store/ has
+            node-store/node-router/children/questions/log.ts/validate/codec/io, orchestration/ has
+            steps-planner+worker-dispatch."
+          - "file-structure.md:159-166 Mechanism-vs-Policy section repointed: dissolved
+            ops/state/parser/schema/engine → domain/store/orchestration, domain/invariants/,
+            store/codec/, store/io/io.ts, domain/tiers/*."
+          - "`grep -nE '(^|[^a-z-])(ops|engine|parser|schema|state)/' docs/design/file-structure.md`
+            → single hit at line 20: the explicit past-tense note that those folders were dissolved
+            and no longer exist as live source paths — no live source path to a dissolved folder
+            remains."
+          - Map grounded against disk via `find core/src -type d` + `find core/src -type f` — every
+            folder/file in the map exists (domain/config-schema/config.ts,
+            store/codec/roundtrip.spec.ts, cli/commands/{stage,node,lifecycle}/, bin.ts, index.ts).
       - text: Rule files and CLAUDE.md no longer reference dissolved source paths in their examples
           (cross-references point at the new locations).
-        status: pending
+        status: done
+        evidence:
+          - "q13 sweep covered all six rule files; four carried stale path examples and were fixed:
+            colocation-and-naming.md (line 29-30 engine/scope+ops/scope → store/codec +
+            domain/steps/resolve-steps; :38 engine/engine.ts → node-store/node-store.ts; :53-54
+            ops/node-ops + ops/ops.ts → store/node-store + store/store.ts), factory-functions.md:32
+            (engine/scope/loop-step.ts → domain/steps/resolve-steps/resolve-steps.ts),
+            fractal-substrate-integrity.md:9-10+28 (mechanism list + state/invariants.ts →
+            domain/store/orchestration + domain/invariants/invariants.ts), test-file-naming.md:53
+            (engine/ → orchestration/)."
+          - CLAUDE.md:21 state/invariants.ts → domain/invariants/invariants.ts; CLAUDE.md:42
+            pure-engine substrate (state/parser/io/ops) → (domain/store/orchestration).
+          - cli-only-transport.md + tooling-quality-gates.md were already clean (no stale
+            source-path examples).
+          - "`grep -nE '`[^`]*\\b(ops|engine|parser|schema|state)/[a-z][a-z-]*' .claude/rules/*.md
+            CLAUDE.md` → 0 hits; remaining mentions are slash-separated concept lists in prose
+            ('engine/substrate/transitions'), not source-path examples."
       - text: "Test-discovery is verified intact: bun unit specs, the find-based e2e/int collectors, and the
           tsconfig.build.json excludes each still capture their files under the new paths (suffix
           counts match pre-migration)."
-        status: pending
+        status: done
+        evidence:
+          - "`cd core && find src -name '*.spec.ts' | wc -l` → 31 (baseline 31); `*.int.ts` → 6
+            (baseline 6); `*.e2e.ts` → 2 (baseline 2) — all match pre-migration baseline; nothing
+            fell out of discovery."
+          - bunfig.toml [test] root='src' is a depth-agnostic path-root (unchanged per q14 — no edit
+            here).
+          - tsconfig.build.json exclude =
+            ['src/**/*.spec.ts','src/**/*.test.ts','src/**/*.e2e.ts','src/**/*.int.ts'] — src/**
+            globs capture all three suffixes at any new depth (e.g. store/codec/roundtrip.spec.ts,
+            orchestration/steps-planner/extensibility-matrix.int.ts).
+          - package.json test:e2e/test:int use `find src -name '*.{e2e,int}.ts'` (path-agnostic
+            collectors); all 2 e2e + 6 int resolve under the new paths.
       - text: "Full verification is green: lint, format --check, tsc --noEmit, bun build, and bun test
           including the e2e behavior suites (dogfood, lifecycle-e2e, extensibility-matrix,
           epic-tier, archive-reset)."
-        status: pending
+        status: done
+        evidence:
+          - "`cd core && bun run lint` (eslint .) → exit 0 clean; `bun run format` (prettier --check
+            .) → 'All matched files use Prettier code style!'; `bun run typecheck` (tsc --noEmit) →
+            no errors; `bun run build` (tsc -p tsconfig.build.json) → no errors."
+          - "`bun run test` → unit 146 pass/0 fail (31 files), e2e 4 pass/0 fail (2 files), int 60
+            pass/0 fail (6 files) = 210 total green (bun 1.3.14)."
+          - "Named behavior suites run+pass individually under new paths: dogfood
+            (src/dogfood.e2e.ts) 3 pass; lifecycle-e2e (src/cli/cli.e2e.ts) 1 pass;
+            extensibility-matrix (src/orchestration/steps-planner/extensibility-matrix.int.ts) 29
+            pass; epic-tier (src/epic-tier.int.ts 5 + src/cli/epic-tier.int.ts 16) pass;
+            archive-reset (src/cli/archive-reset.int.ts) 5 pass — all 0 fail."
+          - "Stale path-comments fixed (behavior-neutral): domain/invariants/invariants.ts:1,
+            domain/steps/resolve-steps/resolve-steps.ts:1, bin.ts:54 — all repointed to new layout."
 questions:
   - id: q1
     text: Sammelschicht domain/ einführen ODER die fünf Konzepte flach auf src/ Top-Level (tiers/,

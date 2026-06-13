@@ -1,4 +1,4 @@
-// state/invariants.ts — the hard substrate invariant: no ac→done without evidence.
+// domain/invariants/invariants.ts — the hard substrate invariant: no ac→done without evidence.
 // Enforced at the DATA MODEL, never in a (skippable) step. Pure predicates +
 // throwing asserts with typed errors; no hidden effects, no classes.
 

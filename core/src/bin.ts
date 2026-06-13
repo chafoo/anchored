@@ -51,7 +51,7 @@ const fs = {
 // M4: a real cross-process file lock (replaces the no-op). An O_EXCL lockfile holds
 // the PID + acquire-time; a holder older than STALE is taken over (crash recovery);
 // acquisition gives up after TIMEOUT. bin.ts is the effectful entry, so wall-clock +
-// setTimeout are allowed here (the determinism ban is on core/engine/config/ops).
+// setTimeout are allowed here (the determinism ban is on core/src domain/store/orchestration).
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const fileLock = {
   async acquire(path: string): Promise<() => Promise<void>> {

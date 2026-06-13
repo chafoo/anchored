@@ -6,8 +6,9 @@
 
 - **Mechanism = deterministic code**: the tier form, state machine +
   transitions (forward-only), the hard invariant, atomic-writes, audit-trail,
-  the tier mechanics (status enum, child relationship). Lives in `engine/`, `state/`,
-  `ops/`, `parser/`, `io.ts`, the mechanics half of `schema/tiers/*`.
+  the tier mechanics (status enum, child relationship). Lives in `domain/`,
+  `store/`, `orchestration/`, `store/codec/`, `store/io/io.ts`, the mechanics half of
+  `domain/tiers/*`.
 - **Policy = Config/Template, swappable**: WHAT happens in each stage (the
   step sequences) + the `fields` (data-model shape). Lives in the default template
   (`anchored.default.yml`) + the user deltas in `anchored.yml`.
@@ -25,7 +26,7 @@ No step is hardcoded in the engine code. The engine dispatches config-driven
 ## Hard invariant (in the data model, not in a step)
 
 **An `ac` only goes to `status: done` when `evidence` is present.** Enforced in
-`state/invariants.ts` at the writing op — NOT in a step that could be omitted.
+`domain/invariants/invariants.ts` at the writing op — NOT in a step that could be omitted.
 "Everything configurable" holds, WITHOUT losing the core value.
 
 ## Engine = deterministic, AI = effect behind `spawn`
