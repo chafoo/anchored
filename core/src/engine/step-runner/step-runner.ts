@@ -4,7 +4,6 @@
 // names; the runner only knows the step shape. Shared engine types live here.
 import type { Step } from '../../schema/step/step.js'
 import { runStep } from '../scope/run-step/run-step.js'
-import { workerStep } from '../scope/worker-step.js'
 import { loopStep } from '../scope/loop-step/loop-step.js'
 
 export interface AnyNode {
@@ -96,6 +95,27 @@ export interface RunnerDeps {
   descriptorFor: (tier: string) => { childTier?: string | undefined }
   runChildTier: (tier: string, node: AnyNode) => Promise<StepResult>
   workflow?: WorkflowSeam
+}
+
+// The use|bare-name dispatch leaf: an AI effect through the injected spawn seam.
+// (Was engine/scope/worker-step.ts — that module is deleted with the headless
+// engine-run path; the spawn-free body is inlined here until step-runner itself is
+// removed wholesale in the engine-chain phase.)
+async function workerStep(
+  step: Step,
+  node: AnyNode,
+  ctx: RunCtx,
+  deps: RunnerDeps,
+): Promise<StepResult> {
+  const r = await deps.spawn.run({
+    tier: ctx.tier,
+    slug: node.slug,
+    stage: ctx.stage,
+    instructions: step.instructions ?? '',
+    executor: node.executor,
+  })
+  if (!r.ok) return { node, status: 'failed', error: r.error }
+  return { node, status: 'ok', evidence: r.evidence ?? [] }
 }
 
 export function createStepRunner(cfg: TierCfg, deps: RunnerDeps) {

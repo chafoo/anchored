@@ -18,7 +18,6 @@ import { createParser } from './parser/parse/parse.js'
 import { createRenderer, defaultSchemaUrl } from './parser/render/render.js'
 import { createIo, type IoDeps } from './io/io.js'
 import { createBootstrap } from './config/bootstrap.js'
-import { createSpawn } from './spawn/spawn.js'
 import { createEngine } from './engine/engine.js'
 import type { AnyNode, SpawnLike, RunnerDeps, TierCfg } from './engine/step-runner/step-runner.js'
 import { phaseDescriptor, PhaseNodeSchema } from './schema/tiers/phase.js'
@@ -194,8 +193,15 @@ export function createAnchored(deps: AnchoredDeps): Anchored {
     io,
   })
 
-  // engine — built BEFORE the cli, fed the ops from the previous stage
-  const spawn = deps.spawn ?? createSpawn(config as unknown as { spawn?: { mode?: string } }, {})
+  // engine — built BEFORE the cli, fed the ops from the previous stage. The spawn
+  // seam is injection-only now: the headless `createSpawn` default is gone (the
+  // engine-run path is dead — every live command routes through the steps-planner,
+  // never engine.run). The fallback is an inert seam that satisfies the type; it is
+  // never invoked because engine.run has no live call-site (removed wholesale in the
+  // engine-chain phase along with this wiring).
+  const spawn: SpawnLike = deps.spawn ?? {
+    run: async () => ({ ok: false, kind: 'no-spawn', error: 'engine-run path removed' }),
+  }
   const engine = createEngineFn({
     config: config as unknown as Record<string, TierCfg>,
     run: deps.run ?? (() => Promise.resolve({ code: 0, stdout: '', stderr: '' })),

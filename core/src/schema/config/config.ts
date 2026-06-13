@@ -36,18 +36,11 @@ const TierBlock = z.strictObject({
 // Top-level: only the tier blocks + the `_lib` alias bucket. `.strict` rejects
 // any other top-level key. (_lib is where YAML anchors live in the anchored.yml
 // profile — alias expansion itself is the parser's job.)
-// Global execution settings (not tier-scoped): the spawn seam's mode + model.
-const SpawnSettings = z.strictObject({
-  mode: z.enum(['headless', 'subagent']).optional(),
-  model: z.string().optional(),
-})
-
 export const ConfigSchema = z.strictObject({
   phase: TierBlock.optional(),
   task: TierBlock.optional(),
   epic: TierBlock.optional(),
   project: TierBlock.optional(),
-  spawn: SpawnSettings.optional(),
   _lib: z.unknown().optional(),
 })
 

@@ -8,7 +8,25 @@ import { createAnchored } from '../index.js'
 import { createNodeOps } from '../ops/node-ops/node-ops.js'
 import { createIo } from '../io/io.js'
 import { phaseDescriptor } from '../schema/tiers/phase.js'
-import type { SpawnInput, SpawnResult } from '../spawn/spawn.js'
+
+// Local fake-spawn contract (the spawn module was deleted with the headless
+// engine-run path; this spec only needs the shape its harness produces/consumes).
+interface SpawnInput {
+  tier: string
+  slug: string
+  stage: string
+  instructions: string
+  cwd?: string
+  context?: string
+  executor?: string
+}
+interface SpawnResult {
+  ok: boolean
+  kind: string
+  evidence?: string[]
+  stdout?: string
+  error?: string
+}
 
 const DEFAULT_YML = readFileSync(
   new URL('../../default-template/anchored.default.yml', import.meta.url),

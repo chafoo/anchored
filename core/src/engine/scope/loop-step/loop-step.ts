@@ -6,7 +6,6 @@
 // routeStopVerdict routes it to ops.
 import type { Step } from '../../../schema/step/step.js'
 import { runStep } from '../run-step/run-step.js'
-import { workerStep } from '../worker-step.js'
 import { workflowLoop } from '../loop-workflow/loop-workflow.js'
 import type {
   AnyNode,
@@ -76,6 +75,26 @@ function isRunBuiltin(step: Step): boolean {
     step.use === undefined &&
     step.each === undefined
   )
+}
+
+// The use|bare-name leaf: an AI effect through the injected spawn seam. Inlined
+// from the deleted engine/scope/worker-step.ts (headless engine-run path removed);
+// the spawn-free loop body is removed wholesale in the engine-chain phase.
+async function workerStep(
+  step: Step,
+  node: AnyNode,
+  ctx: RunCtx,
+  deps: RunnerDeps,
+): Promise<StepResult> {
+  const r = await deps.spawn.run({
+    tier: ctx.tier,
+    slug: node.slug,
+    stage: ctx.stage,
+    instructions: step.instructions ?? '',
+    executor: node.executor,
+  })
+  if (!r.ok) return { node, status: 'failed', error: r.error }
+  return { node, status: 'ok', evidence: r.evidence ?? [] }
 }
 
 async function runBody(
