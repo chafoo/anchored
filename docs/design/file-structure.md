@@ -28,8 +28,11 @@ anchored-v2/
 ## core/ — Engine + Substrate + CLI
 
 > Convention: a module with companions lives in its own folder named after it
-> (`io/io.ts`); each `*.ts` has its `*.spec.ts` next to it (omitted below for
-> brevity). `index.ts` appears exactly once — the package-root entry.
+> (`io/io.ts`); each test sits next to its subject under one of three kind-suffixes
+> — `*.spec.ts` (unit), `*.int.ts` (integration), `*.e2e.ts` (end-to-end) — mostly
+> omitted below for brevity. The suffix names the test kind; see
+> `.claude/rules/test-file-naming.md`. `index.ts` appears exactly once — the
+> package-root entry.
 
 ```
 core/
@@ -38,6 +41,9 @@ core/
 ├── src/
 │   ├── index.ts                 # public entry (the ONLY index.ts): createAnchored(deps) → { cli, ops, config }
 │   ├── bin.ts                   # #!/usr/bin/env node shebang entry → cli/cli.ts
+│   ├── dogfood.e2e.ts           # drive a real task-file lifecycle against a real fs (end-to-end, cross-cutting)
+│   ├── epic-tier.int.ts         # epic-tier scaffold/walk/loop/roll-up, in-memory (integration, cross-cutting)
+│   ├── skeleton.spec.ts         # package skeleton / wiring smoke (unit, cross-cutting)
 │   │
 │   ├── config/                  # ── anchored.yml as base dependency ──
 │   │   ├── bootstrap.ts         # effectiveConfig = merge(anchored.default.yml, user anchored.yml); once at startup
@@ -54,6 +60,7 @@ core/
 │   │   ├── engine-ops.ts               # ops surface the CLI/stages drive (createEngineOps adapter removed with the headless path)
 │   │   ├── facade/facade.ts            # the combined ops facade handed to the CLI
 │   │   ├── steps-planner/steps-planner.ts  # resolve the concrete step sequence + worker per step for a stage
+│   │   │                                    # (+ extensibility-matrix.int.ts: extend anchored without touching substrate)
 │   │   ├── tier-derive.ts              # derive tier/slug relationships
 │   │   ├── validate/validate.ts        # node validation surface
 │   │   └── scope/
@@ -87,7 +94,12 @@ core/
 │   │
 │   ├── cli/                     # ── `anchored` CLI (the only transport, no MCP) ──
 │   │   ├── cli.ts               # entry + dispatch; JSON output (folder-named, not index.ts)
+│   │   ├── cli.e2e.ts           # full CLI argv path against a real filesystem (end-to-end)
 │   │   ├── stage.spec.ts        # spec for the stage verbs on the cli surface (beside cli.ts)
+│   │   ├── lifecycle.int.ts     # full lifecycle of both tiers through the CLI, in-memory (integration)
+│   │   ├── archive-reset.int.ts # archive/reset through the CLI argv path, in-memory (integration)
+│   │   ├── epic-tier.int.ts     # epic-tier scaffold/walk/loop/roll-up through the CLI (integration)
+│   │   ├── custom-field.int.ts  # user-declared fields through the CLI, in-memory (integration)
 │   │   └── commands/
 │   │       ├── plan/plan.ts     # `anchored plan <tier?> <input>`  (classify when tier is missing)
 │   │       ├── refine.ts        # `anchored refine <slug>`
@@ -99,22 +111,21 @@ core/
 │   │       ├── node/node.ts     # generic node verbs (read/set-status/add-evidence/log …) for agents
 │   │       └── scope/lifecycle.ts  # shared stage-lifecycle helper for the stage commands
 │   │
-│   └── e2e/                     # ── cross-cutting suites (no single subject) ──
-│       ├── e2e.dogfood.spec.ts          # drive a real task-file lifecycle end-to-end
-│       ├── lifecycle-e2e.spec.ts        # full lifecycle of both tiers through the real CLI argv path
-│       ├── archive-reset.e2e.spec.ts    # archive/reset through the real CLI argv path (cross-cutting)
-│       ├── extensibility-matrix.spec.ts # extend anchored without touching substrate code
-│       ├── epic-tier.e2e.spec.ts        # epic-tier scaffold/walk/loop/roll-up
-│       └── skeleton.spec.ts             # package skeleton / wiring smoke
+│   │                            # cross-cutting suites with no single subject sit at the package
+│   │                            # root next to index.ts: dogfood.e2e.ts, epic-tier.int.ts,
+│   │                            # skeleton.spec.ts (see top of src/); the remaining cross-cutting
+│   │                            # tests colocated into cli/ (above) and ops/steps-planner/
 │
 └── default-template/
     └── anchored.default.yml     # the shipped default config (reference, not copied into the user project)
 ```
 
-> Specs colocate with their subject (`io/io.ts` + `io/io.spec.ts`). The
-> **only** specs not next to a single subject are the cross-cutting suites in
-> `e2e/`; `index.spec.ts` stays beside `index.ts` as the package-entry
-> companion.
+> Tests colocate with their subject under three kind-suffixes — `*.spec.ts`
+> (unit), `*.int.ts` (integration), `*.e2e.ts` (end-to-end); see
+> `.claude/rules/test-file-naming.md`. The **only** tests not next to a single
+> subject are the cross-cutting suites, which sit at the package root next to
+> `index.ts` (`dogfood.e2e.ts`, `epic-tier.int.ts`, `skeleton.spec.ts`);
+> `index.spec.ts` stays beside `index.ts` as the package-entry companion.
 
 ## plugin/ — Claude Code Plugin (namespace `a`)
 

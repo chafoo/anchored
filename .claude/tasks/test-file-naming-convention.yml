@@ -195,6 +195,36 @@ context:
       name-set 1:1, 210 tests across 39 files. Import re-pointing for files that changed depth (root
       + ops/steps-planner relocations) fixed via Edit and verified green by typecheck+tests; cli/
       relocations needed no import change (same depth as old e2e/). All 5 gates green.
+
+      - update-references / Update In-Repo References + Docs
+
+
+      Docs-only rework reflecting the dissolved core/src/e2e/ folder + the three-suffix convention.
+      No source/config touched (gates unaffected, re-verified green).
+
+
+      file-structure.md: deleted the e2e/ subtree (folder gone, not renamed-in-place); surfaced the
+      3 cross-cutting suites at the src/ package root next to index.ts (dogfood.e2e.ts end-to-end,
+      epic-tier.int.ts integration, skeleton.spec.ts unit); added the cli/-colocated suites
+      (cli.e2e.ts, lifecycle.int.ts, archive-reset.int.ts, epic-tier.int.ts, custom-field.int.ts) +
+      the ops/steps-planner/ extensibility-matrix.int.ts annotation; broadened the convention
+      blockquote (top) + closing prose to all three suffixes with a cross-ref to
+      test-file-naming.md.
+
+
+      colocation-and-naming.md: spec-placement bullet + Reference section now cross-ref
+      [[test-file-naming]] as the orthogonal kind-suffix rule (placement here, kind there).
+
+
+      Autonomous decision (wording): placed the 3 root-level cross-cutting tests directly under src/
+      root rather than inventing an e2e/-replacement folder; narrated where the rest landed via a
+      trailing comment under cli/. One stale "dissolved e2e/ folder" phrasing was caught by the
+      agent's own broadened grep and rewritten out.
+
+
+      Orchestrator independently re-verified both grep gates empty (rc 1) + Read-confirmed all four
+      edit sites. Gates green (no source touched): 210 tests / 39 files, lint/format/typecheck/build
+      rc 0.
     task-validate: >-
       - author-naming-rule (attempt 1): **pass** — 4/4 ACs accepted, 0 rejected. Evidence verified
       against the real .claude/rules/test-file-naming.md. Two cited line-refs off by 1 (ladder at
@@ -207,6 +237,20 @@ context:
       '*.spec.ts'` (zero drift); test 210 pass/39 files, build rc0, typecheck rc0 (match claims);
       e2e/int scripts skip cleanly. The 47->39 concurrent-deletion re-grounding is honestly
       documented, not a defect.
+
+      - migrate-and-classify (attempt 1): **pass** — 6/6 ACs accepted. Live-verified vs real tree:
+      spec=31, e2e=2, int=6, test=0, total=39; src/e2e GONE. 9 git renames confirmed R100 (8
+      suffix-changers + relocated skeleton.spec). Tests reproduce claims: unit 146/31, e2e 4/2, int
+      60/6 = 210/39, 0 fail. 5 gates green, name-set 1:1 exact. Reclassification deviation 31/2/6
+      (vs projected 31/4/4) verified content-honest, documented, green — not a defect.
+
+      - update-references (attempt 1): **pass** — 4/4 ACs accepted, 0 rejected. All 9 test filenames
+      listed in file-structure.md (src/ root 44-46, cli/ 97-102, ops/steps-planner 63) cross-checked
+      1:1 against `find src` on disk — exact names, no phantom/misnamed file, no e2e/ subtree
+      remains. Blockquote 30-35 + closing prose 123-128 reflect the three-suffix convention with
+      test-file-naming.md cross-ref. colocation-and-naming.md [[test-file-naming]] present at :27 +
+      :70-71. Both stale-ref greps re-run empty (rc 1). git status confirms docs-only (no core/src/
+      touched) — gate honesty intact.
     code-validate: >-
       - author-naming-rule (attempt 1): **pass** — 0 blocking findings, 1 fyi warn.
       test-file-naming.md does NOT contradict colocation-and-naming.md — reconciles orthogonally
@@ -224,6 +268,24 @@ context:
       (fyi, non-blocking): unquoted `$files` in the find-script is space-fragile, but kebab-case
       paths carry no risk today; the empty-set guard correctly averts a bare `bun test` that would
       scan all specs.
+
+      - migrate-and-classify (attempt 1): **pass** — 4/4 ACs accepted, 0 findings. CLASSIFICATION
+      confirmed independently: custom-field.int.ts + src/epic-tier.int.ts both use in-memory Map
+      fake-io (readFileSync = fixture only, no fs-under-test/spawn) => .int correct; cli.e2e.ts +
+      dogfood.e2e.ts use real mkdtemp/node:fs/promises => .e2e correct. SWEEP grep
+      mkdtemp|node:fs/promises across all *.int.ts + *.spec.ts => NONE (no real-fs leak into a
+      non-e2e suffix). Colocation clean (cli-subjects in cli/, cross-cutting at root, steps-planner
+      test in ops/steps-planner/, src/e2e dissolved). Imports on depth-changed files resolve
+      (typecheck rc0). 210 tests green.
+
+      - update-references (attempt 1): **pass** — 0 blocking, 0 fyi findings. file-structure.md +
+      colocation-and-naming.md reconcile with each other, with test-file-naming.md
+      (placement-vs-kind-suffix orthogonal split, bidirectional wikilinks), and with on-disk reality
+      (all 8 int/e2e tree entries exist; every disk *.int.ts/*.e2e.ts appears in the tree — no
+      absence/mismatch). No bare 'e2e'/'int' in prose (only the *.e2e.ts/*.int.ts code-token
+      suffixes + spelled-out 'end-to-end'/'integration'). House voice/box-drawing/rule format
+      preserved. factory-functions / cli-only-transport / fractal-substrate-integrity all correctly
+      N/A for a markdown-only change. 4/4 ACs accepted.
 phases:
   - name: Author the Three-Suffix Naming Rule
     slug: author-naming-rule
@@ -370,7 +432,7 @@ phases:
     commit: 82739b6
   - name: Migrate + Classify Test Files via git mv
     slug: migrate-and-classify
-    status: in-progress
+    status: done
     context: "Apply the rule's classification criteria by reading, then git mv each non-conforming file.
       Confirmed targets from discovery: cli/cli.e2e.spec.ts, cli/commands/lifecycle.e2e.spec.ts,
       e2e/epic-tier.e2e.spec.ts, e2e/e2e.dogfood.spec.ts, cli/custom-field-e2e.spec.ts -> *.e2e.ts.
@@ -454,9 +516,10 @@ phases:
             Prettier code style!'
           - "No test leaked into dist/: find dist -name '*.spec.*' -o -name '*.e2e.*' -o -name
             '*.int.*' empty"
+    commit: d9bf70c
   - name: Update In-Repo References + Docs
     slug: update-references
-    status: pending
+    status: done
     context: "Bring docs in line with the corrected filenames and the three-suffix convention.
       docs/design/file-structure.md: the e2e/ file list (lines ~108-113) uses OLD names, and the
       colocation prose (lines ~119-122) and the earlier \"each *.ts has its *.spec.ts next to it\"
@@ -470,16 +533,55 @@ phases:
     acceptance_criteria:
       - text: "docs/design/file-structure.md e2e/ file list updated to corrected filenames matching what
           landed in migration (evidence: file:line diff)"
-        status: pending
+        status: done
+        evidence:
+          - docs/design/file-structure.md:102-117 (old state) e2e/ subtree removed entirely — folder
+            dissolved, not renamed-in-place
+          - "docs/design/file-structure.md:44-46 — cross-cutting tests now shown at package root
+            next to index.ts: dogfood.e2e.ts (end-to-end), epic-tier.int.ts (integration,
+            in-memory), skeleton.spec.ts (unit), box-drawing + aligned-comment style preserved"
+          - "docs/design/file-structure.md:97-102 — cli/-colocated suites listed: cli.e2e.ts,
+            lifecycle.int.ts, archive-reset.int.ts, epic-tier.int.ts, custom-field.int.ts (reflects
+            the .e2e->.int reclassifications)"
+          - "docs/design/file-structure.md:63 — extensibility-matrix.int.ts annotated under
+            ops/steps-planner/; closing comment 114-117 narrates the dissolution without naming a
+            live e2e/ folder. Verified: matches the real on-disk 31 spec / 2 e2e / 6 int landing"
       - text: "docs/design/file-structure.md colocation prose (the *.spec.ts mentions ~lines 30-31 and
           119-122) updated to describe the three-suffix convention (evidence: file:line)"
-        status: pending
+        status: done
+        evidence:
+          - docs/design/file-structure.md:30-35 — convention blockquote broadened from single
+            *.spec.ts to all three suffixes (*.spec.ts unit, *.int.ts integration, *.e2e.ts
+            end-to-end), each next to its subject, with cross-ref to
+            .claude/rules/test-file-naming.md
+          - "docs/design/file-structure.md:123-128 — closing prose rewritten: dropped the dissolved
+            e2e/ folder reference; cross-cutting suites now described as sitting at the package root
+            next to index.ts (dogfood.e2e.ts, epic-tier.int.ts, skeleton.spec.ts), index.spec.ts
+            stays beside index.ts. Verified by Read: both blocks present and consistent"
       - text: "colocation-and-naming.md spec-placement section cross-references the new naming rule
           (evidence: file:line)"
-        status: pending
+        status: done
+        evidence:
+          - ".claude/rules/colocation-and-naming.md:23-27 — 'Spec always next to its subject' bullet
+            gained an orthogonality cross-ref: 'This rule governs where a test lives; which
+            kind-suffix it carries (*.spec.ts/*.int.ts/*.e2e.ts) is the orthogonal concern of
+            [[test-file-naming]].'"
+          - ".claude/rules/colocation-and-naming.md:70 — Reference section now lists
+            [[test-file-naming]] alongside [[factory-functions]], [[fractal-substrate-integrity]].
+            Verified by Read: both cross-refs present, house voice preserved"
       - text: "No remaining stale references to old test filenames in docs/ (evidence: grep for old names
           returns empty)"
-        status: pending
+        status: done
+        evidence:
+          - "Orchestrator independently re-verified: `grep -rnE
+            'e2e\\.spec|lifecycle-e2e|extensibility-matrix\\.spec|epic-tier\\.e2e|e2e\\.dogfood|cus\
+            tom-field-e2e|archive-reset\\.e2e|src/e2e|core/src/e2e' docs/` -> empty output, rc=1 (no
+            stale old-name refs)"
+          - "Broadened sweep `grep -rnE 'e2e/' docs/` -> empty, rc=1: no past-tense
+            dissolved-e2e/-folder narrative remains anywhere in docs/"
+          - Both checks run from /Users/jack/Dev/anchored-v2 after the edits landed; confirms the
+            only surviving e2e tokens in docs are the legitimate *.e2e.ts filename suffixes in the
+            reworked tree (dogfood.e2e.ts, cli.e2e.ts)
 questions:
   - id: q1
     text: Should the three-suffix convention be a standalone new rule file in .claude/rules/, or an

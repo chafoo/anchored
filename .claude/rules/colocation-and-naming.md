@@ -21,7 +21,10 @@ implementation, test, local helpers — in one place, instead of scattered acros
 directory.
 
 - **Spec always next to its subject** — `foo.spec.ts` lives in the same folder as
-  `foo.ts`. No specs that have their subject in a different directory.
+  `foo.ts`. No specs that have their subject in a different directory. This rule
+  governs *where* a test lives; *which* kind-suffix it carries
+  (`*.spec.ts`/`*.int.ts`/`*.e2e.ts`) is the orthogonal concern of
+  [[test-file-naming]].
 - **Local helpers in `scope/`** — a factory's deeper helpers continue to live in
   their `scope/` subfolder (existing convention, see `engine/scope/`,
   `ops/scope/`). `scope/` files follow the same naming + colocate their own
@@ -64,4 +67,5 @@ fake-ability of individual seams ([[factory-functions]]).
 
 `docs/design/file-structure.md` (the structure map — being brought in line with this
 convention; the `index.ts` entries there are the old state).
-[[factory-functions]], [[fractal-substrate-integrity]].
+[[factory-functions]], [[fractal-substrate-integrity]], [[test-file-naming]]
+(the orthogonal kind-suffix rule — placement here, test-kind there).
