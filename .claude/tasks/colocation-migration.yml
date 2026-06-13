@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
 schema_version: 2
 slug: colocation-migration
-status: refined
+status: build
 created: 2026-06-13
 title: Colocation + file-naming migration (core/src)
 context:
@@ -46,7 +46,7 @@ context:
 phases:
   - name: Root effect-modules into own folders
     slug: root-modules
-    status: pending
+    status: in-progress
     context: The two flat root-level effect modules each get their own folder per the rule's own example
       (io/io.ts). Smallest blast radius but high fan-in, so do it first to settle the
       most-referenced import paths early.
@@ -60,14 +60,44 @@ phases:
       - text: "`core/src/io.ts` + `io.spec.ts` moved to `core/src/io/io.ts` + `core/src/io/io.spec.ts`;
           every importer retargeted to `./io/io.js` (bin.ts, index.ts, parser/roundtrip.spec.ts, cli
           e2e specs)."
-        status: pending
+        status: done
+        evidence:
+          - git mv src/io.ts→src/io/io.ts and src/io.spec.ts→src/io/io.spec.ts — git status shows
+            `R` renames (history preserved).
+          - "io.ts internal import depth-fixed: src/io/io.ts:6 now `from '../state/invariants.js'`
+            (was './state/invariants.js')."
+          - "9 io importers retargeted (grep-verified, not the AC's hardcoded list): index.ts:19,
+            bin.ts:14, epic-tier.spec.ts:6, lifecycle-e2e.spec.ts:8, e2e.dogfood.spec.ts:9 →
+            './io/io.js'; parser/roundtrip.spec.ts:6, cli/epic-tier.spec.ts:5,
+            cli/custom-field-e2e.spec.ts:12 → '../io/io.js'; cli/commands/lifecycle.e2e.spec.ts:9 →
+            '../../io/io.js'."
+          - Moved spec keeps its same-folder `from './io.js'` (now resolves to the sibling io.ts) —
+            intentionally unchanged. Final grep confirms zero stale flat io.js refs.
       - text: "`core/src/spawn.ts` + `spawn.spec.ts` moved to `core/src/spawn/spawn.ts` +
           `core/src/spawn/spawn.spec.ts`; importers retargeted (index.ts + the spec's own relative
           import)."
-        status: pending
+        status: done
+        evidence:
+          - git mv src/spawn.ts→src/spawn/spawn.ts and src/spawn.spec.ts→src/spawn/spawn.spec.ts —
+            git status shows `R` renames.
+          - spawn.ts has zero internal imports (no `from` lines) — no depth fix needed.
+          - "3 spawn importers retargeted: index.ts:21 and e2e.dogfood.spec.ts:11 →
+            './spawn/spawn.js'; moved spawn.spec.ts:2 keeps `from './spawn.js'` (same-folder
+            sibling). Final grep: zero stale flat spawn.js refs."
+          - Moved spec runs from the new folder (part of the green bun test run).
       - text: "Gates green after the moves: `bun test`, eslint, `prettier --check`, `tsc --noEmit` all pass;
           zero behavior change (pure move + import retarget)."
-        status: pending
+        status: done
+        evidence:
+          - "typecheck GREEN: `bun run typecheck` (tsc --noEmit) → exit 0, zero errors."
+          - "lint GREEN: `bun run lint` (eslint .) → exit 0."
+          - "test GREEN: `bun test` → 274 pass, 2 skip, 0 fail across 47 files (915 expect() calls);
+            io+spawn specs run from their new folders."
+          - "format GREEN: `bun run format` (prettier --check .) → 'All matched files use Prettier
+            code style!' exit 0. (Orchestrator normalized one PRE-EXISTING unrelated prettier
+            violation in src/ops/node-ops.spec.ts that predated this phase — not introduced by the
+            io/spawn move; all 13 files this phase touched were already prettier-clean.)"
+          - "Zero behavior change: pure git-mv + import-specifier retarget, no logic edits."
   - name: Colocate leaf subject+spec pairs
     slug: leaf-folders
     status: pending

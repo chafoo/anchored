@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { parse, stringify } from 'yaml'
 import { createParser } from './parse.js'
 import { createRenderer, defaultSchemaUrl } from './render.js'
-import { createIo, type IoDeps } from '../io.js'
+import { createIo, type IoDeps } from '../io/io.js'
 import { TaskNodeSchema } from '../schema/tiers/task.js'
 import { EpicNodeSchema } from '../schema/tiers/epic.js'
 

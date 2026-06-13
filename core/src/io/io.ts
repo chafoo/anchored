@@ -3,7 +3,7 @@
 // write logic touches no node:fs directly (fakeable in tests). node:path is a
 // pure utility (no effect), so importing dirname is fine.
 import { dirname } from 'node:path'
-import { anchoredError } from './state/invariants.js'
+import { anchoredError } from '../state/invariants.js'
 
 export interface IoFs {
   mkdir(dir: string, opts: { recursive: true }): Promise<unknown>

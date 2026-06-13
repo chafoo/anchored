@@ -9,7 +9,7 @@ import { test, expect } from 'bun:test'
 import { parse } from 'yaml'
 import { readFileSync } from 'node:fs'
 import { createAnchored } from '../index.js'
-import type { IoDeps } from '../io.js'
+import type { IoDeps } from '../io/io.js'
 
 const DEFAULT_YML = readFileSync(
   new URL('../../default-template/anchored.default.yml', import.meta.url),

@@ -5,7 +5,7 @@
 // never asserted that an invalid write is REJECTED at the op (the G1/G2 hole).
 import { test, expect } from 'bun:test'
 import { buildCli } from './index.js'
-import type { IoDeps } from './io.js'
+import type { IoDeps } from './io/io.js'
 
 function harness() {
   const files = new Map<string, string>()

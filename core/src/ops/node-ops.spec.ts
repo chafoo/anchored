@@ -203,9 +203,7 @@ test('setChildFailures rejects a child AC (pending + failures, evidence kept)', 
       },
     ],
   })
-  const next = (await ops.setChildFailures(node, 'p1', 'a1', [
-    'gate: not met',
-  ])) as unknown as {
+  const next = (await ops.setChildFailures(node, 'p1', 'a1', ['gate: not met'])) as unknown as {
     phases: { acceptance_criteria: { status: string; failures: string[]; evidence: string[] }[] }[]
   }
   const ac = next.phases[0]!.acceptance_criteria[0]!

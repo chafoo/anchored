@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
 schema_version: 2
 slug: remove-headless-engine-path
-status: drafted
+status: refined
 created: 2026-06-13
 title: Remove the headless / engine-drives-AI execution path
 context:
@@ -36,6 +36,49 @@ context:
 
     - Coordinate: run AFTER colocation-migration + architecture-cleanup land (they move/rename some
     of these files); re-derive paths against the then-current tree.
+
+    --- refine (2026-06-13) ---
+
+    plan-check (empirical footprint, verified vs code):
+
+    - ENGINE-RUN IS PROVABLY SKILL-UNUSED: every CLI command
+    (plan/refine/build/wrap/steps/node/validate/archive/reset) routes through deps.steps
+    (steps-planner) + deps.nodeOps only; NONE call deps.engine.run. `engine` is wired into CliDeps
+    but has zero live call-sites. Premise confirmed.
+
+    - q1 EXECUTOR — KEEP executor + set-executor. The live build SKILL uses executor=workflow for
+    its OWN workflow fan-out (refine/SKILL.md:137-172 writes via `anchored node set-executor`;
+    build/SKILL.md:248-279 reads it + fans out via the build-workflow plugin agent + Workflow tool,
+    NO engine import). SURVIVORS: executor field (schema/tiers/phase.ts:47), setExecutor op
+    (node-ops.ts:478), facade (:235), set-executor verb (cli/commands/node.ts:113), cli help. DELETE
+    only the dead consumers: loop-workflow.ts selectWorker, worker-step, step-runner executor refs,
+    spawn.ts. loop-workflow.ts is a headless reference only — deleting it loses nothing the SKILL
+    needs.
+
+    - q2 STEP-SCHEMA — the surviving Step zod schema is schema/step.ts (NOT step-runner).
+    steps-planner imports Step from there + resolve-steps + worker-dispatch from engine/scope (BOTH
+    survivors, pure config logic). PlanStep/StepPlan live in cli/commands/steps.ts (survivor). So
+    CARVE OUT of the delete-list: schema/step.ts, engine/scope/resolve-steps.ts,
+    engine/scope/worker-dispatch.ts. Only the runtime executors (createStepRunner +
+    scope/{run-step,loop-step,worker-step}) die.
+
+    - COUPLING (phase 2/4 must handle): (a) engine-ops.ts is a SPLIT module — tierOfNode SURVIVES
+    (deps.tierFor at index.ts:119/:218, re-exported :30), createEngineOps DIES; sever its
+    type-import from engine/step-runner.js (type-only; tierOfNode is pure string logic). (b)
+    index.ts:23 type-imports AnyNode/SpawnLike/RunnerDeps/TierCfg from step-runner, used in the
+    public AnchoredDeps/Anchored surface (:143/:144/:153/:200) — remove/inline them in the same
+    change-set or tsc breaks.
+
+    - All candidate paths/line-refs verified correct (index.ts:198 spawn wiring,
+    schema/config.ts:40-43/:50 SpawnSettings, all engine files exist; spawn.ts is at
+    core/src/spawn.ts not under engine/).
+
+    rules-check: phase clean-wiring-tests-docs gains factory-functions.md (it rips the spawn/engine
+    injection seam out of the index.ts wiring factories) + colocation-and-naming.md (it edits the
+    bare index.ts wiring files). fractal-substrate-integrity on phase 3 is a GUARDRAIL not a
+    conflict (the deleted mechanism is the dead engine-run path; the substrate invariant survives).
+    Low open: whether cli-only-transport attaches thematically to the delete phases (it reinforces
+    CLI-only but doesn't constrain HOW to delete) — left off.
 phases:
   - name: Map the exact dead surface (verify before deleting)
     slug: map-dead-surface
@@ -115,6 +158,12 @@ phases:
       - path: CLAUDE.md
         why: design docs (docs/design) are the source of truth — must reflect skill-orchestrated-only
           reality
+      - path: .claude/rules/factory-functions.md
+        why: this phase rips the createSpawn/createEngine injection seam out of the index.ts wiring
+          factories — a direct edit to the dep-injection graph
+      - path: .claude/rules/colocation-and-naming.md
+        why: edits the bare index.ts wiring files (core/src/index.ts is the package-root exception;
+          cli/index.ts → cli/cli.ts under colocation)
     acceptance_criteria:
       - text: "`index.ts` (createAnchored/buildCli) no longer constructs or wires the engine-run path; the
           returned object graph drops `engine` (or keeps only what the CLI genuinely uses). Remove
@@ -141,8 +190,17 @@ questions:
     priority: high
     origin: plan-agent
     phase: remove-engine-run-chain
-    status: open
+    status: resolved
+    answer: "KEEP the executor surface: the `executor` field (schema/tiers/phase.ts:47), the setExecutor
+      op (node-ops.ts:478) + facade (:235), the `set-executor` CLI verb (cli/commands/node.ts:113) +
+      cli help all stay — the live build SKILL uses executor=workflow for its own skill-side
+      workflow fan-out (build/SKILL.md:248-279 via the build-workflow agent + Workflow tool;
+      refine/SKILL.md:137-172 writes it). Delete ONLY the dead engine consumer: loop-workflow.ts
+      (selectWorker/workflowLoop) + the step-runner/worker-step executor refs. Phase-3's delete-list
+      excludes the entire executor surface."
+    source: user
     created_at: 2026-06-13T11:45:01.580Z
+    resolved_at: 2026-06-13T12:03:05.728Z
   - id: q2
     text: "Surviving step DATA vs deleted step EXECUTOR: the CLI/steps-planner returns `run:`/`use:`
       step specs that the in-session SKILL executes itself (Bash for run, Task/Workflow for use). So
@@ -153,5 +211,19 @@ questions:
     priority: medium
     origin: plan-agent
     phase: map-dead-surface
-    status: open
+    status: resolved
+    answer: "The step grammar SURVIVES; only the runtime executors are deleted. Carve OUT of the
+      delete-list: schema/step.ts (the Step zod schema, imported by steps-planner),
+      engine/scope/resolve-steps.ts + engine/scope/worker-dispatch.ts (pure config logic the
+      steps-planner uses), and cli/commands/steps.ts's PlanStep/StepPlan types. Delete only the
+      runtime executors: createStepRunner (step-runner.ts) +
+      engine/scope/{run-step,loop-step,worker-step}.ts. step-runner.ts holds no Step zod schema
+      (only runtime types), so it goes."
+    source: ai
+    reasoning: "plan-check traced the imports: steps-planner imports Step from schema/step.ts and
+      resolve-steps/worker-dispatch from engine/scope (all config logic, no runtime-executor
+      dependency), and PlanStep/StepPlan live in cli/commands/steps.ts — so the SKILL's run:/use:
+      execution depends only on surviving modules; step-runner.ts only defines runtime types +
+      createStepRunner, which die with the executors."
     created_at: 2026-06-13T11:45:18.999Z
+    resolved_at: 2026-06-13T12:03:16.707Z
