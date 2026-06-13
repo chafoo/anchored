@@ -1,0 +1,253 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
+schema_version: 2
+slug: colocation-migration
+status: refined
+created: 2026-06-13
+title: Colocation + file-naming migration (core/src)
+context:
+  intro: "Apply the new `.claude/rules/colocation-and-naming.md` convention across `core/src`: every
+    module that has companion files moves into its own folder (subject + spec colocated, spec
+    directly beside subject), folder-main files are renamed to match the folder (no bare `index.ts`
+    except the package-root entry), and no barrel files are introduced. Grounded in the full
+    migration table in `.claude/temp/repo-analysis.md` section 3. Pure structural refactor — no
+    behavior change; `bun test` + lint/format/typecheck stay green as the per-phase checkpoint. The
+    main cost is import-path churn, so the work is phased bottom-up (leaf modules first, central
+    modules next, cli last) to keep each step small and reversible."
+  plan: >-
+    - Source of truth: `.claude/temp/repo-analysis.md` section 3 (full migration table) +
+    `.claude/rules/colocation-and-naming.md`.
+
+    - Bottom-up order to minimize import-path churn per step: root modules → leaf folders → central
+    modules → cli + naming → e2e bundle + docs.
+
+    - Invariant per phase: `bun test` + eslint + `prettier --check` + `tsc --noEmit` all green
+    before the phase commit. Pure refactor — zero behavior change.
+
+    - Package-root `core/src/index.ts` stays `index.ts` (the npm-entry exception). No barrels exist
+    today (verified) — keep it that way.
+
+    - Every module move also updates its `.js` import specifiers across the tree.
+
+    --- refine (2026-06-13) ---
+
+    plan-check (verified against the real core/src tree): every path the plan names resolves — zero
+    stale/moved paths. Notes: (1) phase-1's io/spawn importer list is non-exhaustive — real set is
+    ≥8 files (adds e2e.dogfood, lifecycle-e2e, both epic-tier specs, two cli e2e specs); treat the
+    AC as "grep-retarget ALL importers, gates green", not the enumerated subset. (2) cli/index.ts →
+    cli/cli.ts has only 2 production importers (index.ts:10, ops/facade.ts:5), not ~10 — the rest of
+    the §3.2 estimate was the fakeFacade re-export surface; phase 4 is lighter than implied. (3)
+    bin.ts is a second package-entry file (package.json bin → dist/bin.js) — it stays flat (no
+    spec), so no move, but the "no bare index.ts except the package-root entry" framing has bin.ts
+    as a sibling entry.
+
+    rules-check: tooling-quality-gates.md attached to all 5 phases (each has a "Gates green" AC but
+    the rule wasn't linked). factory-functions.md deemed already covered by colocation-and-naming.md
+    (which extends it) — not separately attached for a pure move/rename.
+phases:
+  - name: Root effect-modules into own folders
+    slug: root-modules
+    status: pending
+    context: The two flat root-level effect modules each get their own folder per the rule's own example
+      (io/io.ts). Smallest blast radius but high fan-in, so do it first to settle the
+      most-referenced import paths early.
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: defines the folder + folder-name convention this whole task applies
+      - path: .claude/rules/tooling-quality-gates.md
+        why: phase requires bun test + eslint + prettier --check + tsc --noEmit all green before the move
+          lands; this rule is the authoritative green-gate checklist for core/
+    acceptance_criteria:
+      - text: "`core/src/io.ts` + `io.spec.ts` moved to `core/src/io/io.ts` + `core/src/io/io.spec.ts`;
+          every importer retargeted to `./io/io.js` (bin.ts, index.ts, parser/roundtrip.spec.ts, cli
+          e2e specs)."
+        status: pending
+      - text: "`core/src/spawn.ts` + `spawn.spec.ts` moved to `core/src/spawn/spawn.ts` +
+          `core/src/spawn/spawn.spec.ts`; importers retargeted (index.ts + the spec's own relative
+          import)."
+        status: pending
+      - text: "Gates green after the moves: `bun test`, eslint, `prettier --check`, `tsc --noEmit` all pass;
+          zero behavior change (pure move + import retarget)."
+        status: pending
+  - name: Colocate leaf subject+spec pairs
+    slug: leaf-folders
+    status: pending
+    context: Every leaf module with a companion spec moves into its own folder, and mis-placed specs are
+      pulled to their subject's folder. These have localized churn (mostly intra-package), so they
+      go before the high-fan-in central modules.
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: the colocation + folder-name mandate applied per leaf module
+      - path: .claude/rules/tooling-quality-gates.md
+        why: phase demands gates green after each module group + a clean full bun test/eslint/prettier/tsc
+          at phase end
+    acceptance_criteria:
+      - text: "parser/: `parse.ts`+spec to `parser/parse/`, `render.ts`+spec to `parser/render/`;
+          `roundtrip.spec.ts` stays at `parser/` (cross-cutting, no single subject). Imports
+          retargeted."
+        status: pending
+      - text: "state/: `invariants.ts`+spec to `state/invariants/`, `transitions.ts`+spec to
+          `state/transitions/`. Heavy importers retargeted (step-runner, node-ops,
+          schema/tiers/phase.ts all import invariants)."
+        status: pending
+      - text: "schema/: `config`, `step`, `custom-fields` each (subject+spec) to own folder; `tiers/*` stay
+          flat; `tiers.spec.ts` stays at `schema/tiers/` (collective spec)."
+        status: pending
+      - text: "ops/scope/: `children.ts`+spec to `children/`; `questions.ts` to `questions/` with
+          `questions-log.spec.ts` moved beside it; `log.ts` handled per the open question."
+        status: pending
+      - text: "engine/scope/: `loop-step`, `loop-workflow`, `resolve-steps`, `run-step` each to own folder;
+          `resolve-injection.spec.ts` to `resolve-steps/`; `engine/loop-workflow.spec.ts` moved down
+          to `engine/scope/loop-workflow/`. NOTE: `worker-dispatch` is deliberately EXCLUDED here —
+          its final placement is owned by architecture-cleanup A6 (move out to ops/scope/ + colocate
+          there), to avoid touching it twice."
+        status: pending
+      - text: Gates green after each module group; full `bun test` + eslint + prettier + tsc clean at phase
+          end; zero behavior change.
+        status: pending
+  - name: Colocate high-fan-in central modules
+    slug: central-modules
+    status: pending
+    context: The widely-imported central modules and their cross-named specs. Done after the leaves so
+      their import churn lands on an already-settled tree.
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: colocation + folder-name mandate for the central modules
+      - path: .claude/rules/tooling-quality-gates.md
+        why: phase requires gates green after retargeting high-fan-in importers
+    acceptance_criteria:
+      - text: "`engine/step-runner.ts`+spec to `engine/step-runner/`; central type supplier, retarget all
+          importers (engine.ts, runners.spec, loop-workflow.spec, integration.spec, index.ts)."
+        status: pending
+      - text: "`ops/node-ops.ts`+spec to `ops/node-ops/`; `tier-generic.spec.ts` moved into
+          `ops/node-ops/`."
+        status: pending
+      - text: "`ops/facade.ts` to `ops/facade/`; `facade.archive-reset.spec.ts` moved into `ops/facade/`."
+        status: pending
+      - text: "`ops/steps-planner.ts`+spec to `ops/steps-planner/`; `ops/validate.ts`+spec to
+          `ops/validate/`."
+        status: pending
+      - text: Confirm `engine/engine.ts` stays (already folder-named); `stage-runner.ts` + `tier-runner.ts`
+          + `ops/engine-ops.ts` + `ops/tier-derive.ts` stay flat (no companion spec). Gates green;
+          zero behavior change.
+        status: pending
+  - name: CLI naming + duplicate-spec resolution
+    slug: cli-and-naming
+    status: pending
+    context: The naming mandate hits the cli last because cli/index.ts is the highest-churn rename (~10
+      importers). Also resolves the confusing duplicate epic-tier.spec.ts.
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: the index.ts naming mandate + colocation, applied to cli
+      - path: .claude/rules/tooling-quality-gates.md
+        why: phase requires gates green plus a grep proving no stray index.ts
+    acceptance_criteria:
+      - text: "`cli/index.ts` to `cli/cli.ts` and `cli/index.spec.ts` to `cli/cli.spec.ts`; all ~10
+          importers retargeted (`cli/commands/*` via `../index.js`, `src/index.ts`,
+          `config/override.spec.ts`, cli e2e specs)."
+        status: pending
+      - text: "`cli/commands/node.ts`+spec to `cli/commands/node/`."
+        status: pending
+      - text: "`cli/commands/plan.ts` to `cli/commands/plan/`; `classify.spec.ts` moved to
+          `cli/commands/plan/classify.spec.ts` (its subject is plan.ts)."
+        status: pending
+      - text: "Duplicate `epic-tier.spec.ts` (root vs `cli/`) disambiguated per the open question (default:
+          root one renamed to `epic-tier.e2e.spec.ts`)."
+        status: pending
+      - text: Gates green; grep confirms no `index.ts` remains under `core/src` except the package-root
+          entry; zero behavior change.
+        status: pending
+  - name: E2E bundle + design-spec sync
+    slug: e2e-bundle-and-docs
+    status: pending
+    context: "Final tidy: gather the cross-cutting suites that have no single subject, and pull the
+      authoritative file-structure design doc onto the new convention so the map matches the tree."
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: the convention the design spec must be updated to reflect
+      - path: .claude/rules/tooling-quality-gates.md
+        why: phase is the final full green (bun test + eslint + prettier --check + tsc --noEmit) end-to-end
+    acceptance_criteria:
+      - text: "Per the open question: cross-cutting suites (`e2e.dogfood`, `lifecycle-e2e`,
+          `extensibility-matrix`, `skeleton`, root `epic-tier`) bundled under `core/src/e2e/` (or
+          left at root if declined); `index.spec.ts` stays beside `index.ts`. Imports retargeted."
+        status: pending
+      - text: "`docs/design/file-structure.md` updated to the colocation + folder-name convention (replace
+          the stale `index.ts` / flat `io.ts`/`spawn.ts` entries) and cross-reference
+          `colocation-and-naming.md`."
+        status: pending
+      - text: "Final full green: `bun test` + eslint + `prettier --check` + `tsc --noEmit`; grep proves zero
+          non-root `index.ts` and zero barrels under `core/src`; zero behavior change end-to-end."
+        status: pending
+questions:
+  - id: q1
+    text: Should the cross-cutting suites that have no single subject (e2e.dogfood, lifecycle-e2e,
+      extensibility-matrix, skeleton, and the root epic-tier spec) be bundled under a new
+      `core/src/e2e/` directory, or left flat at the `core/src/` root? The analysis recommends
+      bundling for clarity; the rule does not require it (it only mandates colocation for a
+      subject's own companion spec).
+    priority: medium
+    origin: plan-agent
+    phase: e2e-bundle-and-docs
+    status: resolved
+    answer: Yes — bundle the cross-cutting suites (e2e.dogfood, lifecycle-e2e, extensibility-matrix,
+      skeleton, root epic-tier) under a new core/src/e2e/ directory. index.spec.ts stays beside
+      index.ts.
+    source: ai
+    reasoning: These suites have no single subject so the colocation mandate doesn't apply; a dedicated
+      e2e/ dir reduces src-root clutter and signals their cross-cutting nature, matching the rule's
+      "clearer-layout" goal (analysis §3.4b recommended it).
+    created_at: 2026-06-13T10:01:02.311Z
+    resolved_at: 2026-06-13T10:38:25.114Z
+  - id: q2
+    text: "`epic-tier.spec.ts` exists twice with different content — at `core/src/` (cross-cutting
+      parser/render/io/schema/engine) and at `core/src/cli/` (buildCli/makeTierFor). Default plan:
+      rename the root one to `epic-tier.e2e.spec.ts` and keep the cli one as-is. Confirm the
+      disambiguation naming, or propose another."
+    priority: medium
+    origin: plan-agent
+    phase: cli-and-naming
+    status: resolved
+    answer: Rename the root core/src/epic-tier.spec.ts to epic-tier.e2e.spec.ts and move it into the new
+      core/src/e2e/ bundle; keep core/src/cli/epic-tier.spec.ts as the cli subject spec (unchanged).
+    source: ai
+    reasoning: The root variant is cross-cutting (parser/render/io/schema/engine); the .e2e suffix
+      disambiguates it from the cli one and aligns with the e2e/ bundle decision in q1. The cli
+      variant is a genuine subject spec for buildCli/makeTierFor, so it stays.
+    created_at: 2026-06-13T10:01:08.977Z
+    resolved_at: 2026-06-13T10:38:40.587Z
+  - id: q3
+    text: "`ops/scope/log.ts` has no own spec (it is exercised via `questions-log.spec.ts`). Give it its
+      own folder `ops/scope/log/log.ts`, or leave it flat at `ops/scope/log.ts` and only fold
+      `questions-log.spec.ts` into the `questions/` folder? Default: leave log.ts flat (no companion
+      of its own)."
+    priority: low
+    origin: plan-agent
+    phase: leaf-folders
+    status: resolved
+    answer: Leave ops/scope/log.ts flat (no own folder); fold questions-log.spec.ts into
+      ops/scope/questions/ alongside questions.ts.
+    source: ai
+    reasoning: log.ts has no companion spec of its own, and the rule says a single file without
+      companions stays flat. questions-log.spec.ts exercises questions+log together, so it colocates
+      with its primary subject (questions).
+    created_at: 2026-06-13T10:01:17.188Z
+    resolved_at: 2026-06-13T10:38:53.092Z
+  - id: q4
+    text: "`cli/index.spec.ts` exports the `fakeFacade` test helper, imported by 3 command specs (node,
+      stage, classify). When it becomes `cli/cli.spec.ts`, do we just retarget those imports to
+      `./cli.spec.js`, or extract `fakeFacade` into a dedicated shared fixture (e.g.
+      `cli/scope/fake-facade.ts`)? A test helper living in a `.spec` file is a separate smell;
+      extracting is cleaner but slightly beyond this rule's scope."
+    priority: medium
+    origin: plan-agent
+    phase: cli-and-naming
+    status: resolved
+    answer: For this task, just retarget the 3 importers (node, stage, classify specs) to the new
+      ./cli.spec.js path — behavior-preserving. Flag extracting fakeFacade into a shared fixture
+      (e.g. cli/scope/fake-facade.ts) as a separate follow-up, out of this rule's scope.
+    source: ai
+    reasoning: Keeps the rename minimal and zero-behavior-change, which is this task's contract. The
+      test-helper-living-in-a-spec smell is real but orthogonal to colocation/naming — surface it,
+      don't bundle the fix into a structural move.
+    created_at: 2026-06-13T10:01:25.760Z
+    resolved_at: 2026-06-13T10:39:05.898Z

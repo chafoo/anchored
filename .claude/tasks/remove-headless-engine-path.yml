@@ -1,0 +1,157 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
+schema_version: 2
+slug: remove-headless-engine-path
+status: drafted
+created: 2026-06-13
+title: Remove the headless / engine-drives-AI execution path
+context:
+  intro: "Rip out the deterministic engine-drives-AI execution path that the skill-orchestrated pivot
+    made redundant. RATIONALE (valid + documented): a headless `claude -p` subprocess can't reach
+    the session's Task tool (refine.ts:3-6, dogfood-findings F11), so the in-session SKILL became
+    the orchestrator — it drives plan/refine/build/wrap via `anchored <stage>` (orchestration plans
+    from steps-planner) + `anchored node` (ops), and runs the loop/spawn itself. The engine's own
+    `engine.run → tier-runner → stage-runner → step-runner → worker-step → spawn` chain plus
+    `loop-step`/`loop-workflow` therefore NEVER run live (only fakeSpawn unit tests). This task
+    removes that dead surface and cleans the wiring so the codebase honestly reflects how anchored
+    actually runs. What SURVIVES: the substrate (parser/io/state/schema), `ops/*` (node-ops, facade,
+    steps-planner, validate, scope helpers — incl. worker-dispatch's DEFAULT_WORKERS roster), and
+    the `anchored` CLI commands. The exact delete-boundary is verified in phase 1 before anything is
+    removed."
+  plan: >-
+    - Decision source: architecture-cleanup A8 / q1 (user, 2026-06-13) — rip out, own task.
+
+    - Footprint (to verify in phase 1): spawn.ts(+spec), engine/scope/worker-step.ts,
+    engine/engine.ts, engine/tier-runner.ts, engine/stage-runner.ts, engine/step-runner.ts,
+    engine/scope/{run-step,loop-step,loop-workflow}(+specs), the spawn wiring in
+    index.ts:144/198/202 + engine.ts + schema/config.ts (SpawnSettings); dead tests (runners.spec,
+    integration.spec, loop-workflow.spec, step-runner.spec, spawn.spec, the engine half of
+    workflow-smoke.spec).
+
+    - SURVIVES: parser/io/state/schema substrate, ops/* (incl. worker-dispatch DEFAULT_WORKERS
+    roster used by steps-planner), all cli/ commands.
+
+    - Safety: phase 1 produces the exact delete-list (grep every symbol; prove no skill-path/CLI
+    consumer) BEFORE any deletion. Gates green after each phase; the deletion must not red the suite
+    or break `anchored <verb>`.
+
+    - Coordinate: run AFTER colocation-migration + architecture-cleanup land (they move/rename some
+    of these files); re-derive paths against the then-current tree.
+phases:
+  - name: Map the exact dead surface (verify before deleting)
+    slug: map-dead-surface
+    status: pending
+    context: The safety phase. Before any deletion, prove which modules are reachable ONLY from
+      engine.run/spawn (dead on the skill path) vs still consumed by the CLI commands /
+      steps-planner / substrate.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: must know the dep-injection graph to cut the spawn/engine seam without breaking surviving
+          factories
+    acceptance_criteria:
+      - text: "Produce a concrete delete-list: for each candidate (spawn.ts, worker-step, engine.ts,
+          tier-/stage-/step-runner, run-step, loop-step, loop-workflow + specs + spawn wiring +
+          SpawnSettings), grep every exported symbol and prove zero consumer outside the engine-run
+          path (cli/ commands, steps-planner, node-ops, substrate must not depend on it)."
+        status: pending
+      - text: "Flag any boundary surprises: types/contracts that survive (e.g. StepPlan, Step schema) even
+          though their runtime is deleted; the `executor` field + `set-executor` verb +
+          workflow-mode (decide keep-vs-remove per the open question)."
+        status: pending
+      - text: "Confirm `anchored plan|refine|build|wrap|node|steps|validate|archive|reset` all still resolve
+          WITHOUT the engine-run path (the CLI returns plans + does ops; it never calls engine.run).
+          Evidence: trace each command's call graph."
+        status: pending
+  - name: Delete the spawn seam + worker-step
+    slug: remove-spawn-and-worker
+    status: pending
+    context: "The AI-effect leaf of the dead path: spawn.ts and the single call-site worker-step.ts.
+      Done first because it's the narrowest cut."
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: removing an injected seam must keep the surviving dep graph valid
+      - path: .claude/rules/tooling-quality-gates.md
+        why: gates green after the deletion
+    acceptance_criteria:
+      - text: Delete `spawn.ts` (+spec) and `engine/scope/worker-step.ts`; remove `SpawnSettings`/`spawn`
+          from `schema/config.ts` and the `spawn` field from `AnchoredDeps`/wiring in `index.ts`
+          (:144/:198/:202).
+        status: pending
+      - text: Remove `SpawnLike` + the `spawn` dep from `step-runner.ts` + `engine.ts` (or fold per the
+          engine-chain phase if removed wholesale).
+        status: pending
+      - text: "Gates green: `bun test` + eslint + `tsc --noEmit` + build; `anchored` CLI still works
+          end-to-end (smoke a `plan`/`node read`)."
+        status: pending
+  - name: Delete the engine.run execution chain
+    slug: remove-engine-run-chain
+    status: pending
+    context: "The control-flow chain that only the headless path used: engine + the three runners + the
+      step-scope executors. Removed only for the parts phase-1 proved skill-unused."
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: this chain WAS the engine half of mechanism; removing it must leave the substrate + ops intact
+      - path: .claude/rules/tooling-quality-gates.md
+        why: gates green after each deletion
+    acceptance_criteria:
+      - text: Delete (per the verified delete-list) `engine/engine.ts`, `engine/tier-runner.ts`,
+          `engine/stage-runner.ts`, `engine/step-runner.ts`,
+          `engine/scope/{run-step,loop-step,loop-workflow}.ts` + their specs — keeping anything
+          phase 1 proved the skill path still needs.
+        status: pending
+      - text: Resolve the `executor`/workflow-mode question per the open question (remove the engine
+          workflowLoop; keep or drop the executor field + set-executor verb depending on whether the
+          build SKILL still uses them).
+        status: pending
+      - text: "Gates green: `bun test` + eslint + `tsc --noEmit` + build; CLI smoke still green."
+        status: pending
+  - name: Clean the wiring, dead tests + design docs
+    slug: clean-wiring-tests-docs
+    status: pending
+    context: "Final sweep: index.ts no longer wires createEngine; the dead engine tests are gone; the
+      design docs stop advertising a headless engine-run path that doesn't exist."
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: final full-green gate
+      - path: CLAUDE.md
+        why: design docs (docs/design) are the source of truth — must reflect skill-orchestrated-only
+          reality
+    acceptance_criteria:
+      - text: "`index.ts` (createAnchored/buildCli) no longer constructs or wires the engine-run path; the
+          returned object graph drops `engine` (or keeps only what the CLI genuinely uses). Remove
+          now-dead tests: runners.spec, integration.spec, loop-workflow.spec, step-runner.spec,
+          spawn.spec, the engine-run portions of workflow-smoke.spec/epic-tier.spec."
+        status: pending
+      - text: Update docs/design (engine-architecture.md, fractal-redesign-notes.md, file-structure.md,
+          agenda.md) to describe the skill-orchestrated runtime as the real path and drop the
+          headless `claude -p`/engine-run claims (or mark them explicitly as abandoned with the
+          rationale).
+        status: pending
+      - text: "Final full green: `bun test` + eslint + `prettier --check` + `tsc --noEmit` + build; grep
+          proves zero references to deleted symbols (createEngine/createSpawn/SpawnLike/workerStep)
+          remain."
+        status: pending
+questions:
+  - id: q1
+    text: "Workflow-mode scope: removing the engine path kills the engine `workflowLoop` (dogfood F11
+      flagged it as a dead track). But the `executor` field, the `set-executor` CLI verb, and the
+      build SKILL's workflow fan-out (via the Workflow tool) may still want to live on the SKILL
+      side. Decide: does this rip-out also remove the executor field + set-executor verb, or keep
+      them because the skill-orchestrated build still uses executor=workflow to fan out units
+      itself?"
+    priority: high
+    origin: plan-agent
+    phase: remove-engine-run-chain
+    status: open
+    created_at: 2026-06-13T11:45:01.580Z
+  - id: q2
+    text: "Surviving step DATA vs deleted step EXECUTOR: the CLI/steps-planner returns `run:`/`use:`
+      step specs that the in-session SKILL executes itself (Bash for run, Task/Workflow for use). So
+      the Step schema + StepPlan types likely SURVIVE even though
+      engine/scope/{run-step,worker-step} (the executors) are deleted. Confirm in phase 1 which step
+      types/schemas the CLI still needs, so the deletion removes only the executors, not the step
+      grammar."
+    priority: medium
+    origin: plan-agent
+    phase: map-dead-surface
+    status: open
+    created_at: 2026-06-13T11:45:18.999Z

@@ -1,0 +1,223 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
+schema_version: 2
+slug: test-suite-green-p0-specs
+status: refined
+created: 2026-06-13
+title: Test-suite green + substrate coverage hardening (core/src)
+context:
+  intro: "Bring `core/src`'s test suite back to green and close the coverage gaps from
+    `.claude/temp/repo-analysis.md` section 2. The suite is currently RED — 4 doc-drift assertions
+    in `engine/workflow-smoke.spec.ts` assert stale (German) doc wording that has since changed. Per
+    the tooling-quality-gates rule a red `bun test` blocks every `ac → done`, so making the suite
+    green is phase 1 and unblocks all later work. Then add the missing focused specs, prioritized by
+    substrate relevance: the non-disableable hard invariant (`state/invariants.ts`) and the
+    forward-only transition matrix (`state/transitions.ts`) first (P0), then tier dispatch + config
+    validation (P1), the engine runners + slug facade (P2), and the process entry + CLI arg
+    edge-cases (P3). Pure test additions + assertion fixes — zero production behavior change."
+  plan: >-
+    - Source of truth: `.claude/temp/repo-analysis.md` section 2 (coverage table + thin-flags +
+    prioritization).
+
+    - Phase order = the analysis priority ladder: green-suite (unblock) → P0 substrate (invariants +
+    transitions) → P1 (engine-ops dispatch + validate) → P2 (runners + facade) → P3 (bin entry + cli
+    arg edges).
+
+    - Pure test work: assertion fixes + new `*.spec.ts`. No production code changes (if a test
+    reveals a real bug, surface it — do not silently patch under cover of "coverage").
+
+    - Gate per phase: `bun test` green + the new specs actually exercise the documented branches
+    (cite file:line of the branch each spec covers).
+
+    - Cross-task note: new spec files' final location depends on whether `colocation-migration` runs
+    first — see the open question.
+
+    --- refine (2026-06-13) ---
+
+    GROUND TRUTH (ran `cd core && bun test`): 274 pass, 2 skip, 0 fail — the suite is ALREADY GREEN.
+    The 4 doc-drift failures the analysis (§2.1) reported were fixed between the analysis and now;
+    workflow-smoke.spec.ts already asserts the English wording. So the `green-suite` phase is NOT a
+    blocker-fix — it reduces to (a) verify-green and (b) the q1 doc-snapshot decoupling (proactive,
+    low-risk now that all is green). The intro's "currently RED" line is historical.
+
+    plan-check (verified vs current code): every path + line-ref accurate — invariants.ts
+    isEvidenceFilled :25, unbacked.length :54-55, suggestions :19; transitions.ts unknown-from :48;
+    engine-ops.ts tierOfNode :17 + createEngineOps :24 (confirmed NO referencing spec); bin.ts
+    genuinely uncovered. Note: invariants.spec.ts:31-32 already covers isEvidenceFilled(null) +
+    (undefined), so the p0-substrate AC should target the genuinely-missing case (a non-array,
+    non-nullish value). Phases p0→p3 touch disjoint modules (state/ vs ops/ vs engine/ vs bin+cli) —
+    parallelizable once green-suite lands. colocation-migration has NOT run (paths still flat) → q2
+    sequencing is low-stakes.
+
+    rules-check: colocation-and-naming.md should attach to the four spec-CREATING phases
+    (p0-substrate, p1-dispatch-validate, p2-runners-facade, p3-entry-edges) — they author new
+    *.spec.ts that must sit beside their subject; fractal-substrate-integrity already on p0;
+    factory-functions already on p2 (fakes). (Captured here rather than re-writing each phase's
+    rules array, to keep the refine lean — the build worker should treat colocation-and-naming as
+    binding on any new spec file.)
+phases:
+  - name: Fix the red doc-drift assertions → suite green
+    slug: green-suite
+    status: pending
+    context: The 4 failures in engine/workflow-smoke.spec.ts assert old German doc phrasing that the
+      docs no longer use. Must go first — a red bun test blocks every ac→done per the quality-gates
+      rule.
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: bun test must be green before any ac can reach done; this phase restores that floor
+    acceptance_criteria:
+      - text: 'Suite confirmed green (bun test: 274 pass, 2 skip, 0 fail — the analysis-era doc-drift
+          failures were already fixed). Per q1, extract the doc/template-snapshot assertions out of
+          `engine/workflow-smoke.spec.ts` into a separate, clearly-labelled doc-snapshot suite so
+          future doc edits never red the code gate again. (Reframed from "fix 4 failing assertions"
+          — that premise is stale.)'
+        status: pending
+      - text: "`cd core && bun test` is fully green (0 fail); the 2 pre-existing skips are reviewed and
+          either justified in-place or unskipped."
+        status: pending
+      - text: "No production code touched; the fix is assertion-text only. Evidence: full `bun test` summary
+          line showing pass count + 0 failures."
+        status: pending
+  - name: "P0: invariant + transition branch coverage"
+    slug: p0-substrate
+    status: pending
+    context: The two USP-bearing guarantees. These deserve exhaustive, not sampled, coverage — every
+      untested branch here is a potential hole in "no done without evidence" and "forward-only".
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: the hard invariant + forward-only transitions are the substrate guarantees these specs lock
+          down
+      - path: .claude/rules/tooling-quality-gates.md
+        why: specs must run green under bun test
+    acceptance_criteria:
+      - text: "`state/invariants.ts` branch specs added: `isEvidenceFilled` with `evidence === undefined`
+          and non-array (`:25`); the multi-AC `unbacked.length` listing in the error message
+          (`:54-55`); the `suggestions` enrichment (`:19`)."
+        status: pending
+      - text: "`state/transitions.ts` table-driven spec added: every `tier × from → to` cell of the
+          `TRANSITIONS` matrix and its complement (illegal edges) asserted, including unknown-`from`
+          (`:48` → empty allowed array) per tier (phase/task/epic/project)."
+        status: pending
+      - text: Each new spec cites the exact source branch it covers (file:line); `bun test` green; if a
+          branch turns out unreachable/dead, flag it rather than writing a vacuous test.
+        status: pending
+  - name: "P1: tier dispatch + config validation"
+    slug: p1-dispatch-validate
+    status: pending
+    context: The fractal tier-dispatch and the config validator currently have no focused spec
+      (engine-ops) or only a happy-path one (validate). Both are central to correct config-driven
+      behavior.
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: new specs run under bun test
+    acceptance_criteria:
+      - text: "`ops/engine-ops.ts` spec added covering `tierOfNode` (`:17`) across phase/task/epic + the
+          `createEngineOps` dispatch (`:24`) — currently referenced by NO spec."
+        status: pending
+      - text: "`ops/validate.ts` error-path specs added beyond the 2 happy-path tests: missing/malformed
+          custom-field types, empty stages, unknown step names."
+        status: pending
+      - text: "`bun test` green; each spec cites the covered branch (file:line)."
+        status: pending
+  - name: "P2: engine runners + slug facade"
+    slug: p2-runners-facade
+    status: pending
+    context: stage-runner/tier-runner control-flow (retry/stop/abort) currently hangs off the broad
+      integration test; ops/facade has focused coverage only for archive/reset. Add focused branch
+      specs.
+    rules:
+      - path: .claude/rules/factory-functions.md
+        why: runners are factories tested via injected fakes (fakeSpawn/fakeOps) per the rule
+      - path: .claude/rules/tooling-quality-gates.md
+        why: new specs run under bun test
+    acceptance_criteria:
+      - text: Focused specs for `engine/stage-runner.ts` + `engine/tier-runner.ts` covering the retry / stop
+          / abort control-flow paths via injected fake deps (not only the broad
+          runners.spec/integration.spec).
+        status: pending
+      - text: "`ops/facade.ts` specs beyond archive/reset: the remaining slug-facade verbs + error paths
+          (unknown slug, nested-slug resolution)."
+        status: pending
+      - text: "`bun test` green; specs cite the covered branches (file:line); fakes used per
+          factory-functions rule (no real fs/CC)."
+        status: pending
+  - name: "P3: process entry + CLI arg edge-cases"
+    slug: p3-entry-edges
+    status: pending
+    context: bin.ts is the only fully-uncovered production module; the stage commands' arg parsing is
+      only exercised via broad e2e. Lowest priority but closes the last gaps.
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: new specs run under bun test
+    acceptance_criteria:
+      - text: "`bin.ts` entry smoke spec added: exit-code mapping, error-output format, the
+          `--version`/`--help` short-circuits — the one module currently with zero coverage."
+        status: pending
+      - text: "`cli/commands/plan.ts` arg edge-case specs: missing tier (classify path), missing slug,
+          malformed args — currently only via buildCli e2e."
+        status: pending
+      - text: "Final: full `bun test` green; a short coverage delta noted in the build log (which
+          previously-uncovered modules now have a focused spec)."
+        status: pending
+questions:
+  - id: q1
+    text: "For the 4 red assertions: just realign them to the new doc wording (keeps the doc-snapshot
+      tests coupled to the code gate), OR extract all doc-snapshot assertions out of
+      `workflow-smoke.spec.ts` into a separate, clearly-labelled doc-snapshot suite so doc churn
+      never reds the code gate again? The analysis flags this recurring coupling as the root cause."
+    priority: medium
+    origin: plan-agent
+    phase: green-suite
+    status: resolved
+    answer: "Decouple: extract the doc/template-snapshot assertions out of workflow-smoke.spec.ts into a
+      separate, clearly-labelled doc-snapshot suite, so future doc edits never red the code gate.
+      The suite is already green, so this is a low-risk proactive cleanup (the reframed green-suite
+      deliverable)."
+    source: ai
+    reasoning: The analysis flagged the doc-snapshot/code-gate coupling as the recurring root cause of
+      these reds; with the suite currently green it is the safe moment to separate them so doc churn
+      can never block ac→done again.
+    created_at: 2026-06-13T10:06:10.754Z
+    resolved_at: 2026-06-13T10:44:04.268Z
+  - id: q2
+    text: "Cross-task ordering with `colocation-migration`: this task creates several new `*.spec.ts`
+      files, whose correct location depends on whether the colocation refactor has already run (e.g.
+      `state/invariants/invariants.spec.ts` vs `state/invariants.spec.ts`). Should we sequence
+      `colocation-migration` first and create the new specs at the NEW folder paths, or run this
+      task first (specs at current paths) and let the colocation task move them? Default: run
+      colocation first to avoid double work."
+    priority: medium
+    origin: plan-agent
+    phase: p0-substrate
+    status: resolved
+    answer: Run colocation-migration FIRST, then create the new specs at the new colocated folder paths
+      (state/invariants/invariants.spec.ts etc.). colocation-migration is already refined and its
+      leaf/central phases colocate exactly these subjects' specs, so building specs at the old flat
+      paths would only create churn for colocation to undo. If for some reason this task runs first,
+      create at the current flat paths and let colocation move them.
+    source: ai
+    reasoning: colocation-migration is refined and ready, and it explicitly colocates the
+      invariants/transitions/engine-ops/facade specs these phases touch; sequencing it first avoids
+      double work. The dependency is one-directional and low-stakes (plan-check confirmed paths are
+      currently flat), so the fallback order still works.
+    created_at: 2026-06-13T10:06:20.749Z
+    resolved_at: 2026-06-13T10:44:20.151Z
+  - id: q3
+    text: "Scope of this single task: keep all of P0–P3 (green + invariants + transitions +
+      dispatch/validate + runners/facade + entry edges) in one task as drafted, or trim to
+      green-suite + P0 only and spin P1–P3 into a separate follow-up? Default per the no-MVP
+      preference: keep all phases here; P2/P3 can still be deferred at build time if the task gets
+      too large."
+    priority: low
+    origin: plan-agent
+    phase: p2-runners-facade
+    status: resolved
+    answer: Keep all phases (green-suite + P0–P3) in this one task. green-suite is now light (suite
+      already green → verify + doc-snapshot decouple), so the task is smaller than drafted anyway.
+      The phases touch disjoint modules and can be deferred or even parallelized at build time if
+      needed.
+    source: ai
+    reasoning: Matches the no-MVP preference, and plan-check confirmed the phases are independent
+      (disjoint modules) so keeping them together costs nothing — P2/P3 stay deferrable at build
+      time if scope feels large.
+    created_at: 2026-06-13T10:06:30.445Z
+    resolved_at: 2026-06-13T10:44:32.537Z

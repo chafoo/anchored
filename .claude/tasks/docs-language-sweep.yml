@@ -1,0 +1,218 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
+schema_version: 2
+slug: docs-language-sweep
+status: refined
+created: 2026-06-13
+title: English-only sweep — docs/, shipped config + plugin chat voice
+context:
+  intro: "Bring all shipped artifacts to English per CLAUDE.md's language policy
+    (`.claude/temp/repo-analysis.md` section 1). Production `core/src` code is already clean; the
+    gaps are prose: the entire `docs/` tree outside `docs/design/` (48 files), the shipped
+    default-template + 3 plugin `.yml` references, and the plugin's hardcoded-German chat examples.
+    NOTE: the root `anchored.yml` was already translated to English earlier this session (rebuilt to
+    v1 format), so that A2 item is done. The updated CLAUDE.md sharpens the plugin-voice rule:
+    runtime plugin-chat must MIRROR the plugin-user's language and must NOT be hardcoded to German —
+    so the German example strings in the skills + style-refs are now a policy item, not just a
+    translation. The scope of `docs/design/` under the new policy is an open question."
+  plan: >-
+    - Source of truth: `.claude/temp/repo-analysis.md` section 1 (per-scope tables) + the updated
+    CLAUDE.md "Sprachen" section.
+
+    - Largest item is the `docs/` tree (48 files) — its own phase; pure prose translation, no
+    structural change, diagrams + code identifiers untouched.
+
+    - Shipped YAML (default-template + 3 plugin refs) is comment/instruction prose only; the
+    `instructions:` fields are runtime prompts → functionally shipped, in scope.
+
+    - Plugin chat voice is a POLICY change, not translation: per updated CLAUDE.md the runtime voice
+    mirrors the plugin-user's language and must not hardcode German. The German example strings
+    become language-neutral / clearly illustrative.
+
+    - Cross-task: translating plugin/template content shifts the strings that
+    `engine/workflow-smoke.spec.ts` asserts — coordinate with `test-suite-green-p0-specs` (see open
+    questions). Already done: root `anchored.yml` (English).
+
+    --- refine (2026-06-13) ---
+
+    RE-SCOPE: the parallel translation effort has already completed nearly all substantive work;
+    plan-check re-checked the CURRENT tree:
+
+    - docs/ INCLUDING docs/design/ scans clean (zero German tells) → phase docs-tree is now
+    VERIFY-ONLY; the "48 files German" + the docs/design carve-out are stale → q2 moot.
+
+    - core/default-template/anchored.default.yml + all plugin/references/*.yml scan clean → phase
+    shipped-yml is VERIFY-ONLY. PATH FIX: there is no plugin/references/default.yml — the real files
+    are anchored.default.yml + anchored.example-comprehensive.yml (+ task.example.yml,
+    epic.example.yml).
+
+    - workflow-smoke.spec.ts asserts only English literals, suite green → phase test-assertion-sync
+    has no German to re-sync NOW; keep it only as the green-gate guard for any plugin-prose edits
+    made in phase plugin-chat-dehardcode (see memory Plugin-Prose-Test-Coupling: plugin prose edits
+    can break guard-prose.sh + workflow-smoke assertions on exact strings).
+
+    - q1 (chat-voice de-hardcode depth) is effectively ANSWERED on disk: communication-style.md
+    already does the illustrative approach ("examples are English; mirror whatever language the user
+    speaks"). So phase plugin-chat-dehardcode reduces to: verify the 5 SKILL.md voice tables
+    reference that central instruction + carry no hardcoded-German requirement. DROP the
+    guard-prose.sh sub-item (that script enforces only jargon/question-discipline/fanout — no
+    language guard).
+
+    rules-check: aligned — CLAUDE.md is the correct language-policy reference for phases 1-3;
+    tooling-quality-gates on phase 4 (spec edit). No additions, no orphans, no conflicts.
+phases:
+  - name: Translate docs/ (outside docs/design/) to English
+    slug: docs-tree
+    status: pending
+    context: All 48 doc files outside docs/design/ are German prose — a wholesale violation of "Doku =
+      English". Largest single item; pure translation, no restructuring.
+    rules:
+      - path: CLAUDE.md
+        why: "the Sprachen policy: shipped docs are English"
+    acceptance_criteria:
+      - text: "Every `.md` under `docs/` except `docs/design/*` translated to English: prose, headings,
+          diagram labels, breadcrumbs. Code identifiers + file paths unchanged."
+        status: pending
+      - text: No structural change — same files, same headings hierarchy, same diagrams (only their text
+          labels translated); links/anchors still resolve.
+        status: pending
+      - text: "Verification: grep for German tells (äöüß + common German words) across `docs/` excluding
+          `docs/design/` returns zero hits in the translated set (the by-design list per the open
+          question excepted)."
+        status: pending
+  - name: Translate shipped config + plugin YAML references
+    slug: shipped-yml
+    status: pending
+    context: "The default-template (the merged base of every project) and 3 plugin reference YAMLs carry
+      German comments + instruction prose. instructions: fields are runtime prompts, so they are
+      shipped content. Root anchored.yml is already English (done this session)."
+    rules:
+      - path: CLAUDE.md
+        why: shipped config comments + instruction prose are English
+    acceptance_criteria:
+      - text: "`core/default-template/anchored.default.yml` fully translated to English (all ~34 German
+          comment/prose lines incl. :3, :14, :28, :89, :104); the lean `core/anchored.yml` is the
+          English reference to match."
+        status: pending
+      - text: "`plugin/references/{default.yml, task.example.yml, epic.example.yml}` comment + example prose
+          translated (default.yml :11/:32/:85, task.example.yml :17/:20, epic.example.yml :11/:20)."
+        status: pending
+      - text: Schema directives + YAML keys/values unchanged (only comments/prose); the files still parse
+          under their schema; grep shows zero German in these files.
+        status: pending
+  - name: De-hardcode the plugin's German chat voice
+    slug: plugin-chat-dehardcode
+    status: pending
+    context: Per the updated CLAUDE.md, runtime plugin-chat must mirror the plugin-user's language;
+      German is NOT privileged and must not be hardcoded. The skills' Avoid|Prefer tables +
+      communication-style.md + question-style.md currently bake in German example strings.
+    rules:
+      - path: CLAUDE.md
+        why: Plugin-Chat = the plugin-user's language; never hardcode a fixed language; German not
+          privileged
+    acceptance_criteria:
+      - text: The framing prose + the Avoid (machinery) column across all 5 `plugin/skills/*/SKILL.md` is
+          English; the Prefer examples are relabeled as language-illustrative (not prescriptively
+          German) and the instruction states the voice mirrors the plugin-user's language.
+        status: pending
+      - text: "`plugin/references/communication-style.md` + `question-style.md` reframed: guide prose in
+          English, the mapping table + example sentences presented as illustrative-in-one-language,
+          with an explicit \"mirror the project's prevailing language\" directive (no
+          hardcoded-German requirement)."
+        status: pending
+      - text: "`plugin/scripts/guard-prose.sh` reviewed: if it asserts on hardcoded German phrases, update
+          it to match the new language-agnostic policy (or document why the literals stay)."
+        status: pending
+      - text: Decision recorded per the open question; no skill/agent hardcodes German as the required chat
+          language.
+        status: pending
+  - name: Re-sync doc-snapshot assertions after translation
+    slug: test-assertion-sync
+    status: pending
+    context: engine/workflow-smoke.spec.ts asserts against German strings in the plugin/template files
+      (e.g. :238 Abhängigkeits-Reihenfolge, :490). Translating phases 2+3 will break these. Must end
+      green. Overlaps with the test-suite task's green-suite phase.
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: the suite must end green; translated content must not leave red assertions
+    acceptance_criteria:
+      - text: Every assertion in `engine/workflow-smoke.spec.ts` that pins German plugin/template content
+          (`:238`, `:251`, `:252`, `:272`, `:274`, `:460`, `:490`) updated to the new English
+          wording (or moved to the decoupled doc-snapshot suite if that route was chosen in the
+          test-suite task).
+        status: pending
+      - text: "German test-fixture strings that are pure test data (`ops/node-ops.spec.ts:207/213`,
+          `cli/commands/node.spec.ts:120/123` 'gate: nicht erfüllt') reviewed — keep (harmless data)
+          or anglicize for consistency, decided explicitly."
+        status: pending
+      - text: Full `bun test` green after the translation; coordinated with `test-suite-green-p0-specs` so
+          the two tasks don't fight over the same assertions.
+        status: pending
+questions:
+  - id: q1
+    text: "Plugin chat-voice direction (product decision): the updated CLAUDE.md says runtime
+      plugin-chat mirrors the plugin-user's language and must not hardcode German. How far do we go
+      now — (a) fully de-hardcode: replace the German Prefer/example strings with language-neutral
+      illustrations or English-with-a-note, and make the instruction say 'mirror the user's
+      language'; or (b) keep concrete example sentences but clearly relabel them as 'illustrative,
+      in one language' while adding the mirror-user-language directive? (a) is more invasive but
+      fully matches the new policy."
+    priority: high
+    origin: plan-agent
+    phase: plugin-chat-dehardcode
+    status: resolved
+    answer: "Approach (b), illustrative — and it's already implemented on disk: communication-style.md
+      states \"examples are English; mirror whatever language the user speaks\" + \"use the language
+      the user wrote in this session\". So the policy is already de-hardcoded centrally.
+      plugin-chat-dehardcode reduces to verifying the 5 SKILL.md voice tables defer to that central
+      instruction and carry no hardcoded-German requirement; the guard-prose.sh sub-item is dropped
+      (it has no language guard)."
+    source: ai
+    reasoning: plan-check confirmed communication-style.md already implements the illustrative +
+      mirror-user-language approach, so the direction is settled by the user's own parallel
+      translation; the residual is verification, not a fresh product decision.
+    created_at: 2026-06-13T10:14:04.141Z
+    resolved_at: 2026-06-13T11:48:54.842Z
+  - id: q2
+    text: 'Scope of `docs/design/`: the analysis treated those 5 files as intentionally German design
+      notes (out of scope). But the updated CLAUDE.md states "Doku = English (docs/, ...)" without
+      carving out design/. Do we (a) keep docs/design/ German as living design notes for our own dev
+      use, or (b) also translate them now since they ship in the repo? Default: keep German (they
+      are working design records, not user-facing docs), but confirm.'
+    priority: medium
+    origin: plan-agent
+    phase: docs-tree
+    status: resolved
+    answer: Moot — docs/design/ is already English. The parallel translation translated the whole docs/
+      tree including docs/design/, and the updated CLAUDE.md dropped the design/ carve-out anyway.
+      So design notes are English too; no separate keep-German decision needed. docs-tree becomes a
+      verification grep.
+    source: ai
+    reasoning: plan-check re-grep showed docs/ including docs/design/ has zero German tells, and the
+      updated CLAUDE.md no longer carves out design/, so the question is resolved by the current
+      state of the tree.
+    created_at: 2026-06-13T10:14:14.697Z
+    resolved_at: 2026-06-13T11:49:04.952Z
+  - id: q3
+    text: "Ownership of the workflow-smoke.spec.ts German assertions: both this task
+      (test-assertion-sync) and `test-suite-green-p0-specs` (green-suite) touch them. Who owns the
+      final fix? Default: `test-suite-green-p0-specs` runs FIRST and makes them green against
+      CURRENT (untranslated) docs; this task then re-syncs them to the English wording after
+      translation. Alternative: translate first, then fix the assertions once here. Pick the
+      sequence to avoid one task re-reddening the other."
+    priority: medium
+    origin: plan-agent
+    phase: test-assertion-sync
+    status: resolved
+    answer: No conflict to resolve right now — workflow-smoke.spec.ts already asserts English literals
+      and the suite is green, so there are no German assertions for either task to fix.
+      test-suite-green-p0-specs owns the doc-snapshot decoupling; this task's test-assertion-sync
+      phase stays only as a green-gate guard for any plugin-prose edits made in
+      plugin-chat-dehardcode (per memory Plugin-Prose-Test-Coupling, those edits can break
+      exact-string assertions / guard-prose.sh) — run bun test after phase 3 and fix only what
+      breaks.
+    source: ai
+    reasoning: plan-check confirmed the assertions are already English and green, so the ownership
+      conflict is empty; the residual risk is only that phase-3 plugin-prose edits could re-break
+      exact-string assertions, which the assertion-sync phase guards.
+    created_at: 2026-06-13T10:14:22.098Z
+    resolved_at: 2026-06-13T11:49:21.244Z

@@ -1,0 +1,190 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
+schema_version: 2
+slug: architecture-cleanup
+status: refined
+created: 2026-06-13
+title: Architecture cleanup — mechanism/policy placement + invariant centralization
+context:
+  intro: 'Close the architecture gaps from `.claude/temp/repo-analysis.md` section 4 — all
+    low-severity, targeted changes that tighten the mechanism-vs-policy line and keep the evidence
+    guarantee in one place. Three of the four core rules already PASS; these are the cleanups the
+    audit surfaced: (A6) move the default-step roster `worker-dispatch.ts` out of the `engine/`
+    mechanism tree into `ops/scope/`, where its only real consumer (`steps-planner`) lives — it is
+    policy/data, not control-flow; (A7) centralize the epic-DoD evidence check (currently inlined at
+    `ops/node-ops.ts:329`) into `state/invariants.ts` so "no done without evidence" lives in exactly
+    one place; (A8) decide + act on the half-wired headless `spawn` seam (currently built with empty
+    deps in index.ts, never fed by bin.ts); (A10) stop `tsconfig.build.json` from pulling Bun
+    ambient types into the published `.d.ts`. No behavior change except the explicit A8 decision.'
+  plan: >-
+    - Source of truth: `.claude/temp/repo-analysis.md` section 4 (per-rule audit + the three
+    concrete actions in its summary).
+
+    - Independent, small changes — each its own phase, each green (`bun test` + lint + tsc) before
+    the next.
+
+    - A6 + A7 are pure placement/centralization refactors (zero behavior change, identical errors
+    thrown). A10 is build-config only. A8 is the one decision (wire vs. document-inert) — gated on
+    the high-priority question.
+
+    - Cross-task note: A6 moves `worker-dispatch.ts` to a new directory; `colocation-migration` also
+    touches it — coordinate ordering (see open question).
+
+    --- refine (2026-06-13) ---
+
+    plan-check (verified vs current code):
+
+    - A6/q3 CORRECTION: the rules-scan→plan-rules-scan ref is NOT dangling —
+    plugin/agents/plan-rules-scan.md already exists (so does refine-rules-check.md). The NOTE at
+    worker-dispatch.ts:12-14 ("roster lists refine-rules-check only / plan-rules-scan must be
+    added") is stale. So phase-1's "resolve dangling ref" AC narrows to: DELETE the stale NOTE
+    comment. q3 is effectively moot.
+
+    - Sole-consumer CONFIRMED: src/ops/steps-planner.ts is the only non-test consumer of
+    worker-dispatch (import :8, createWorkerDispatch() :19, resolveWorker :45). A6 move is safe.
+
+    - PATH PREFIX: every path in this plan omits src/. Real layout:
+    core/src/engine/scope/worker-dispatch.ts, core/src/ops/node-ops.ts,
+    core/src/state/invariants.ts, core/src/{index,spawn,bin}.ts; tsconfigs at core/tsconfig.json +
+    core/tsconfig.build.json.
+
+    - A7: the inline epic-DoD guard is at node-ops.ts:327 (status==='done' &&
+    (!merged||merged.length===0)), error name at :328-334 — not :329. Preserve the
+    AcceptanceNoEvidence error + the provenance-pointer hint (:332).
+
+    - A8: index.ts:198 createSpawn(config,{}) confirmed; spawn.ts:70 returns kind:'config-error'
+    'headless mode needs deps.exec'; refine.ts:4-7 documents the deliberate-future-headless intent.
+
+    - A10 CORRECTION: tsconfig.build.json ALREADY EXISTS (extends ./tsconfig.json, only adds
+    *.spec/*.test exclude) and inherits types:["bun"] without overriding it. So the fix is to
+    OVERRIDE `types` in tsconfig.build.json (e.g. types:[]), NOT create a new test-only file — keep
+    bun types in the base/test config. Verify the published .d.ts emits via tsconfig.build.json
+    first.
+
+    - Phases 1/2/4 touch disjoint paths → parallelizable; spawn-seam (3) gates on q1 → sequential.
+
+    rules-check: colocation-and-naming.md added to worker-dispatch-relocate (the move lands a
+    .ts+.spec pair into a new ops/scope/ folder → must colocate). tooling-quality-gates is task-wide
+    (every phase keeps gates green); factory-functions does not bind a pure relocate.
+phases:
+  - name: "A6: move worker-dispatch out of engine/ into ops/scope/"
+    slug: worker-dispatch-relocate
+    status: pending
+    context: worker-dispatch.ts hardcodes the full default-template step roster (DEFAULT_WORKERS) but
+      sits under engine/scope/. The engine control-flow never reads it; its only consumer is
+      ops/steps-planner. It is policy/data and must not live in the mechanism tree.
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: mechanism (engine) vs policy (steps) — the step roster is policy and belongs out of engine/
+      - path: .claude/rules/colocation-and-naming.md
+        why: the move lands worker-dispatch.ts + its spec into a new ops/scope/ folder — they must colocate
+          per the folder + folder-name convention
+    acceptance_criteria:
+      - text: "`engine/scope/worker-dispatch.ts` (+ its spec) moved to `ops/scope/` (its consumer
+          `ops/steps-planner.ts` lives in ops); all importers retargeted; `engine/` no longer
+          contains the step-name roster."
+        status: pending
+      - text: Confirm the engine control-flow still references no concrete step names after the move (grep
+          engine/ for the DEFAULT_WORKERS keys); behavior identical.
+        status: pending
+      - text: 'Delete the STALE NOTE comment at worker-dispatch.ts:12-14. (Correction: the `rules-scan →
+          plan-rules-scan` mapping is NOT dangling — `plugin/agents/plan-rules-scan.md` already
+          exists; the comment claiming the agent "must be added" is simply out of date. No agent
+          work, just remove the stale comment.)'
+        status: pending
+      - text: "Gates green: `bun test` + eslint + `tsc --noEmit`."
+        status: pending
+  - name: "A7: centralize the epic-DoD evidence check into state/invariants.ts"
+    slug: invariant-centralize
+    status: pending
+    context: ops/node-ops.ts:329 inlines the epic-DoD evidence check (status done requires non-empty
+      merged evidence) instead of routing through the invariants module. Same evidence-honesty floor
+      one tier up — it should live in one place.
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: the hard invariant must live in state/invariants.ts, not be re-implemented inline at the write
+          site
+    acceptance_criteria:
+      - text: "`assertAcceptanceItemHasEvidence` (or similar) added to `state/invariants.ts` capturing the
+          epic-DoD rule; `ops/node-ops.ts:329` calls it instead of the inline `status === 'done' &&
+          (!merged || merged.length === 0)` check."
+        status: pending
+      - text: "Behavior identical: the same `AcceptanceNoEvidence` error (name + message + suggestions) is
+          thrown for the same inputs. Verified by the existing/updated specs."
+        status: pending
+      - text: "Gates green: `bun test` (incl. the invariants spec exercising the new helper) + eslint + `tsc
+          --noEmit`."
+        status: pending
+  - name: "A10: keep Bun ambient types out of the published build"
+    slug: build-tsconfig-types
+    status: pending
+    context: tsconfig.json:7 sets types:["bun"], which pulls Bun ambient types into the build
+      compilation and thus the published .d.ts. Runtime code is verified Bun-free; only the type
+      config leaks. Move bun types to a test-only tsconfig.
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: "Node-compat publish condition: the published artifact + its .d.ts must not depend on Bun"
+    acceptance_criteria:
+      - text: '`tsconfig.build.json` no longer references `types:["bun"]`; Bun ambient types are carried
+          only in a test-scoped tsconfig (specs still typecheck under it).'
+        status: pending
+      - text: The emitted `dist/**/*.d.ts` no longer reference Bun ambient types; `tsc -p
+          tsconfig.build.json` emits cleanly.
+        status: pending
+      - text: "Gates green: `bun test` + eslint + full `tsc --noEmit` (both build + test configs)."
+        status: pending
+questions:
+  - id: q1
+    text: "A8 direction (product decision): do we COMMIT to the headless spawn path now — bin.ts feeds
+      real exec/agent deps so `anchored build` can run autonomously headless — or keep it
+      deliberately INERT and just document it (the skill path drives spawning in-session; headless
+      is future work)? This decides whether v2 invests in the headless engine path at this stage."
+    priority: high
+    origin: plan-agent
+    phase: spawn-seam
+    status: resolved
+    answer: "Rip the whole headless / engine-drives-AI path OUT — as its own dedicated task
+      (remove-headless-engine-path), not part of architecture-cleanup. The reason is valid +
+      documented (refine.ts:3-6, dogfood F11): a headless `claude -p` subprocess can't reach the
+      session's Task tool, so the skill-orchestrated runtime won and the engine.run + spawn path
+      never runs live. The spawn-seam phase is therefore removed from this task."
+    source: user
+    created_at: 2026-06-13T10:09:42.956Z
+    resolved_at: 2026-06-13T11:41:56.198Z
+  - id: q2
+    text: "Cross-task ordering: A6 moves `worker-dispatch.ts` from `engine/scope/` to `ops/scope/`,
+      while `colocation-migration` also relocates/colocates it within engine/scope. To avoid one
+      undoing the other, do A6 FIRST (establishes the correct ops/scope/ home) and let colocation
+      then colocate it there — or fold A6 into the colocation task entirely? Default: A6 first (it
+      is a mechanism/policy correctness move, not just cosmetic)."
+    priority: medium
+    origin: plan-agent
+    phase: worker-dispatch-relocate
+    status: resolved
+    answer: "A6 owns worker-dispatch: this task moves it out to ops/scope/ AND colocates it there;
+      colocation-migration deliberately excludes it (already decided in the colocation refine). A6
+      runs first / independently. Note: worker-dispatch survives the upcoming headless-path rip-out
+      — it's the DEFAULT_WORKERS roster consumed by ops/steps-planner (skill path), so moving it to
+      ops/ is even more clearly correct."
+    source: user
+    created_at: 2026-06-13T10:09:50.284Z
+    resolved_at: 2026-06-13T11:42:08.448Z
+  - id: q3
+    text: "`worker-dispatch.ts:12-14` maps `rules-scan` to a `plan-rules-scan` agent that the plugin
+      roster does not yet have (it only lists `refine-rules-check`). Add the missing
+      `plan-rules-scan` agent to `plugin/agents/`, or drop the dangling mapping until that agent
+      exists? Default: drop the reference now, add the agent when the plan-stage rules-scan step is
+      actually built."
+    priority: low
+    origin: plan-agent
+    phase: worker-dispatch-relocate
+    status: resolved
+    answer: Neither add nor drop a mapping — the reference is NOT dangling.
+      plugin/agents/plan-rules-scan.md already exists; worker-dispatch.ts:20 maps
+      rules-scan→plan-rules-scan correctly. The only work is deleting the stale NOTE comment at
+      :12-14 that wrongly claims the agent must still be added (already reflected in the AC).
+    source: ai
+    reasoning: plan-check confirmed plugin/agents/plan-rules-scan.md (and refine-rules-check.md) exist
+      on disk, so the premise of q3 (a missing agent) is false — the residual is just a stale
+      comment.
+    created_at: 2026-06-13T10:09:57.763Z
+    resolved_at: 2026-06-13T11:42:18.048Z
