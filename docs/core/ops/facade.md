@@ -2,29 +2,29 @@
 
 # facade
 
-Die **slug-basierte `NodeOpsFacade`, die die CLI fährt** — eine flache
-`slug → verb`-Fläche über den tier-generischen [node-ops](node-ops.md). Jedes Verb
-ist *read the node, apply the verb, persist*. Die ganze `await`-tragende Glue lebt
-**hier** (nicht in [index.ts](../wiring.md), das eine reine, await-freie
-Wiring-Factory bleibt).
+The **slug-based `NodeOpsFacade` that drives the CLI** — a flat
+`slug → verb` surface over the tier-generic [node-ops](node-ops.md). Every verb
+is *read the node, apply the verb, persist*. All the `await`-carrying glue lives
+**here** (not in [index.ts](../wiring.md), which stays a pure, await-free
+wiring factory).
 
-## Was
+## What
 
 - `createSlugFacade(deps) → NodeOpsFacade`: `create`/`read`/`setStatus`/`addChild`/
   `nextChild`/`addQuestion`/`resolveQuestion`/`appendLog`/`setField`/`setExecutor`/
-  `addEvidence`/`addPhase`/`addAc`/`addChildEvidence` — alle slug-keyed.
-- **Tier-Auflösung pro Verb:** `tierForSlug(slug)` → der Tier, `opsFor(tier)` → die
-  tier-gebundenen `TierOps`. Verb liest den Node, mutiert, persistiert.
-- **`create`-Eigenheiten:** Default-Status pro Tier (`defaultStatus`); task/epic
-  tragen `schema_version: 2` + `title`, phase-Nodes nicht.
-- `setField` routet bewusst durch `node-ops.setField`, damit der Reserved-Field-Guard
-  greift.
+  `addEvidence`/`addPhase`/`addAc`/`addChildEvidence` — all slug-keyed.
+- **Tier resolution per verb:** `tierForSlug(slug)` → the tier, `opsFor(tier)` → the
+  tier-bound `TierOps`. The verb reads the node, mutates, persists.
+- **`create` specifics:** default status per tier (`defaultStatus`); task/epic
+  carry `schema_version: 2` + `title`, phase nodes do not.
+- `setField` deliberately routes through `node-ops.setField` so the reserved-field guard
+  applies.
 
-## Wie
+## How
 
-`FacadeDeps`: `{ opsFor(tier), tierForSlug(slug), defaultStatus }`. Die Facade hält
-**keinen** State — sie ist die dünne Verb-Schicht; die Mutations-Mechanik (validate →
-mutate → re-validate → atomic-write) sitzt in [node-ops](node-ops.md).
+`FacadeDeps`: `{ opsFor(tier), tierForSlug(slug), defaultStatus }`. The facade holds
+**no** state — it is the thin verb layer; the mutation mechanism (validate →
+mutate → re-validate → atomic-write) sits in [node-ops](node-ops.md).
 
 ```mermaid
 sequenceDiagram
@@ -40,9 +40,9 @@ sequenceDiagram
     F-->>CLI: node
 ```
 
-## Warum
+## Why
 
-Die CLI denkt in **Slugs**, der Op-Kern in **Tiers + Nodes**. Diese Facade ist die
-Übersetzungsschicht dazwischen — und konzentriert die `await`-Glue an einer Stelle,
-damit die Composition-Root ([index.ts](../wiring.md)) rein und fakebar bleibt.
-Gegenstück für die Engine-Seite: [engine-ops](engine-ops.md).
+The CLI thinks in **slugs**, the op core in **tiers + nodes**. This facade is the
+translation layer between them — and concentrates the `await` glue in one place,
+so the composition root ([index.ts](../wiring.md)) stays pure and fakeable.
+Counterpart on the engine side: [engine-ops](engine-ops.md).

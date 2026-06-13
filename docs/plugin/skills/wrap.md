@@ -2,15 +2,15 @@
 
 # /a:wrap
 
-Schließt einen Node ab. `/a:wrap <slug>` — Tier aus dem Node.
+Completes a node. `/a:wrap <slug>` — tier from the node.
 
-## Was
+## What
 
 - **task/phase**: `review` → `summarize`.
-- **epic**: `roll-up` — Definition-of-Done gegen `epic.acceptance` + Retro ins `log`.
-- Ruft `anchored wrap <slug>`; Transition auf `done`.
+- **epic**: `roll-up` — definition of done against `epic.acceptance` + retro into the `log`.
+- Calls `anchored wrap <slug>`; transition to `done`.
 
-## Wie
+## How
 
 ```mermaid
 flowchart LR

@@ -35,7 +35,7 @@ actionable finding goes onto the node via the CLI:
 - **A missing acceptance criterion the plan needs** (e.g. an enforcement the code
   demands) → add it to the right phase:
   ```bash
-  anchored node add-ac <slug> <phase-slug> "<observable AC text>"
+  anchored node add-ac <slug> <phase-slug> "<observable acceptance criterion text>"
   ```
 - **The rollup** (what you checked + verdict) is the audit summary, NOT where
   findings hide:
@@ -44,4 +44,4 @@ actionable finding goes onto the node via the CLI:
   ```
 
 If a finding needs a human/AI call, it MUST be a question; if it's a concrete gap
-in coverage, it MUST be an AC. Returning it as prose only is a contract violation.
+in coverage, it MUST be an acceptance criterion. Returning it as prose only is a contract violation.

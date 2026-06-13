@@ -14,14 +14,15 @@ Partner voice in chat, machinery only in the audit trail — see
 
 | Avoid (machinery) | Prefer (partner) |
 |---|---|
-| "Spawne wrap-review + summarize…" | "Letzter durchgang — ich review das ganze nochmal." |
-| "set-field context.wrap geschrieben" | (nothing — the TL;DR IS the receipt) |
-| "Status-flip wrap → done" | "Fertig. Alles grün — hier das TL;DR." |
+| "Spawning wrap-review + summarize…" | "One last pass — I'll review the whole thing again." |
+| "set-field context.wrap written" | (nothing — the summary IS the receipt) |
+| "status flip wrap → done" | "Done. All green — here's the summary." |
 
-**Vor jeder user-facing Zeile** das Jargon-Mapping aus `communication-style.md`
-anwenden — Framework-Begriffe (scaffold, stub, seam, grounding, roll-up,
-outcome-AC, executor, der each-Loop, drafted/refined, concern, DAG/JIT) gehören
-nie in den Chat, nur ihr Klartext.
+**Before every user-facing line**, apply the jargon mapping from
+`communication-style.md` — framework terms (scaffold, stub, seam, grounding,
+roll-up, outcome acceptance criteria, executor, the each-loop, drafted/refined,
+concern, dependency graph, just-in-time) never belong in chat, only their plain
+words.
 
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns the wrap agents itself via the **Task tool**
@@ -39,17 +40,17 @@ step-plan + node ops and spawns the wrap agents itself via the **Task tool**
 
 - **review → wrap-review** — final review pass over the built node; self-writes
   findings: `anchored node append-log <slug> wrap learning "<review findings>"`.
-- **summarize → wrap-summarize** — writes a tight TL;DR (what was built + the
+- **summarize → wrap-summarize** — writes a tight summary (what was built + the
   source='ai' decisions) into the node's own context:
-  `anchored node set-field <slug> context.wrap "<TL;DR>"` (dotted-path → nested).
-- **roll-up → epic-roll-up** (epic) — Definition-of-Done against `epic.acceptance`
+  `anchored node set-field <slug> context.wrap "<summary>"` (dotted-path → nested).
+- **roll-up → epic-roll-up** (epic) — definition of done against `epic.acceptance`
   + a retro; self-writes via `append-log`, then advances the epic.
 
 ## Custom run/use steps (the config's own steps — merge, tag, push …)
 
 The wrap plan can carry custom steps beyond the workers — e.g. a task-tier `merge`
-that lands the finished `task/<slug>` branch on `develop` (a branch-per-task VCS
-strategy). A `kind: 'run'` step is **yours to execute via Bash**, in declaration
+that lands the finished `task/<slug>` branch on `develop` (a branch-per-task
+version-control strategy). A `kind: 'run'` step is **yours to execute via Bash**, in declaration
 order, at its position in the plan. A `kind: 'use'` step spawns the named
 subagent/skill.
 
@@ -84,10 +85,10 @@ So before you finish, run a **concern-walk** — the SAME shape as the refine Q&
 1. List the open ones: `anchored node concern-list <slug> open`. If none, skip
    silently.
 2. **Pick the walk-style** (ephemeral, never persisted) via `AskUserQuestion`,
-   exactly like refine: *"N offene Punkte — X wichtige … Wie gehen wir die durch?"*
-   - **Nur die wichtigen gemeinsam — Rest entscheide ich** (high-together, default)
-   - **Alle gemeinsam durchgehen** (all-together)
-   - **Du entscheidest alles** (AI-all)
+   exactly like refine: *"N open points — X important … How do we go through them?"*
+   - **Just the important ones together — I'll decide the rest** (high-together, default)
+   - **Go through all of them together** (all-together)
+   - **You decide everything** (AI-all)
    Each `AskUserQuestion` follows `question-style.md` (recommended option first,
    implications named).
 3. **Resolve each open concern** by that style — the user answers, or you decide
@@ -121,5 +122,5 @@ action.
   transition on every tier** (D1: the epic mirrors the task lifecycle, no
   tier-special casing).
 
-Then tell the user: *"Wrap durch — TL;DR im context.wrap. Status: done."* No MCP, no
+Then tell the user: *"Wrap's done — summary's in context.wrap. Status: done."* No MCP, no
 raw node-file edit.

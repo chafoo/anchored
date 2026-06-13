@@ -2,46 +2,46 @@
 
 # init
 
-Das **lazy First-Run-Scaffolding** — beim ersten `anchored`-Aufruf in einem Projekt
-legt es zwei Dinge an, beide idempotent und über die injizierte `io`-Naht (kein
-direktes `node:fs` in der Logik, fakebar):
+The **lazy first-run scaffolding** — on the first `anchored` call in a project it
+creates two things, both idempotent and via the injected `io` seam (no direct
+`node:fs` in the logic, fakeable):
 
-1. eine **minimale `anchored.yml`** — Schema-Directive + ein Pointer-Kommentar auf
-   die Referenz-Default, **kein** Copy der Default-Config (Defaults sind immutable;
-   ein Copy würde driften).
-2. den **`Bash(anchored *)`-Allowlist-Eintrag** in `.claude/settings.local.json` —
-   damit alle CLI-Aufrufe (auch Hintergrund-Workflows) ohne Permission-Prompt laufen.
+1. a **minimal `anchored.yml`** — schema directive + a pointer comment to the
+   reference default, **not** a copy of the default config (defaults are immutable;
+   a copy would drift).
+2. the **`Bash(anchored *)` allowlist entry** in `.claude/settings.local.json` —
+   so that all CLI calls (including background workflows) run without a permission prompt.
 
-## Was
+## What
 
 - `createInit({ io }).ensure(projectRoot)` → `{ wroteYml, wroteAllowlist }`.
-- **Nie clobbern:** eine existierende `anchored.yml` wird nicht überschrieben; der
-  Allow-Eintrag nie dupliziert (Merge in vorhandene `settings.local.json`, alles
-  andere bleibt erhalten).
-- Ungültiges JSON in `settings.local.json` → `anchoredError('SettingsParse', …)`
-  (kein stilles Überschreiben).
+- **Never clobber:** an existing `anchored.yml` is not overwritten; the allow
+  entry is never duplicated (merge into the existing `settings.local.json`,
+  everything else is preserved).
+- Invalid JSON in `settings.local.json` → `anchoredError('SettingsParse', …)`
+  (no silent overwrite).
 
-## Wie
+## How
 
-`io`-Naht: `{ atomicWrite, readFile }`. `exists` wird über einen `readFile`-try/catch
-abgeleitet. In [bin.ts](../wiring.md) verdrahtet (`createInit({ io }).ensure(root)`
-**vor** `createAnchored`).
+`io` seam: `{ atomicWrite, readFile }`. `exists` is derived via a `readFile`
+try/catch. Wired in [bin.ts](../wiring.md) (`createInit({ io }).ensure(root)`
+**before** `createAnchored`).
 
 ```mermaid
 flowchart TB
-    ens["ensure(projectRoot)"] --> y{"anchored.yml<br/>existiert?"}
-    y -->|nein| wy["atomicWrite MINIMAL_YML"]
-    y -->|ja| skip1["überspringen (nie clobbern)"]
+    ens["ensure(projectRoot)"] --> y{"anchored.yml<br/>exists?"}
+    y -->|no| wy["atomicWrite MINIMAL_YML"]
+    y -->|yes| skip1["skip (never clobber)"]
     ens --> a["ensureAllowlist(settings.local.json)"]
-    a --> p{"valides JSON?"}
-    p -->|nein| err["throw SettingsParse"]
-    p -->|ja| has{"Bash(anchored *)<br/>schon drin?"}
-    has -->|ja| skip2["return false (idempotent)"]
-    has -->|nein| push["allow.push + atomicWrite"]
+    a --> p{"valid JSON?"}
+    p -->|no| err["throw SettingsParse"]
+    p -->|yes| has{"Bash(anchored *)<br/>already there?"}
+    has -->|yes| skip2["return false (idempotent)"]
+    has -->|no| push["allow.push + atomicWrite"]
 ```
 
-## Wann
+## When
 
-Genau einmal effektiv pro Projekt, getriggert beim allerersten CLI-Aufruf
-([bin.ts](../wiring.md)) — danach idempotent ein No-op. Spiegelt die
-[cli-only-transport](../cli/_cli.md)-Regel (lazy-init des Allowlist-Eintrags).
+Effectively exactly once per project, triggered on the very first CLI call
+([bin.ts](../wiring.md)) — idempotent a no-op thereafter. Mirrors the
+[cli-only-transport](../cli/_cli.md) rule (lazy-init of the allowlist entry).

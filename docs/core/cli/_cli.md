@@ -2,20 +2,20 @@
 
 # cli
 
-Der `anchored`-Befehl — der **einzige Transport** (kein MCP). Über Bash aus der
-Main-Session *und* aus Subagents/headless aufrufbar; Output als **JSON**.
+The `anchored` command — the **only transport** (no MCP). Callable via Bash from
+the main session *and* from subagents/headless; output as **JSON**.
 
 ```mermaid
 flowchart TB
     bash["Bash · anchored <verb>"] --> disp["cli/index · dispatch"]
     disp --> stage["plan · refine · build · wrap → engine"]
-    disp --> node["node-Verben → ops (für Agents)"]
-    disp --> json["JSON nach stdout"]
+    disp --> node["node verbs → ops (for agents)"]
+    disp --> json["JSON to stdout"]
 ```
 
-| Unit | Verantwortung |
+| Unit | Responsibility |
 |---|---|
-| [commands](commands.md) | Die Verb-Fläche: Stage-Verben (`plan/refine/build/wrap`) + generische Node-Verben. |
+| [commands](commands.md) | The verb surface: stage verbs (`plan/refine/build/wrap`) + generic node verbs. |
 
-> Lazy-init legt einen `Bash(anchored *)`-Allowlist-Eintrag in
-> `.claude/settings.local.json` → keine Permission-Prompts pro Aufruf.
+> Lazy-init adds a `Bash(anchored *)` allowlist entry in
+> `.claude/settings.local.json` → no permission prompts per call.

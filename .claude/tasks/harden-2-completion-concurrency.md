@@ -1,59 +1,59 @@
-# Ticket: Harden-2 — Deterministische Completion + echte Concurrency (M-Tier)
+# Ticket: Harden-2 — Deterministic completion + real concurrency (M-tier)
 
-**STATUS: ERLEDIGT ✅** (251 Tests grün) — M1 kind-aware Completion (done|deferred-
-Policy), M2 Kind-done verlangt evidenzierte ACs, M3 epic-acceptance[]-Evidenz-Pflicht,
-M4 echter File-Lock (O_EXCL + Stale-Takeover) + Compare-and-Swap (mtime/size-Version
-reist als Symbol vom Read zum Write, lehnt stale Lost-Updates laut ab statt still),
-M5 mergeRec-Tiefenguard(64) + anchored.yml-Size-Cap(512KB) + maxAliasCount. blocked
-hält den Parent offen, deferred nicht.
+**STATUS: DONE ✅** (251 tests green) — M1 kind-aware completion (done|deferred
+policy), M2 kind-done requires evidence-backed ACs, M3 epic-acceptance[] evidence
+requirement, M4 real file lock (O_EXCL + stale takeover) + compare-and-swap (mtime/size
+version travels as a symbol from the read to the write, loudly rejects stale lost
+updates instead of silently), M5 mergeRec depth guard (64) + anchored.yml size cap (512KB)
++ maxAliasCount. blocked keeps the parent open, deferred does not.
 
 
-**Quelle:** Härtungs-Review. Diese Gruppe berührt den Substrat-Kern (Completion-
-Garantien + Schreib-Serialisierung) — braucht mehr Tests, ändert aber NICHT den
-Agent-Contract. M-Aufwand.
+**Source:** hardening review. This group touches the substrate core (completion
+guarantees + write serialization) — needs more tests, but does NOT change the
+agent contract. M effort.
 
-## Findings + Fix
+## Findings + fix
 
-### M1 — Task/Epic erreicht `done` mit pending/blocked Kindern (Completability vakuum)
-`assertNodeCompletable` (`invariants.ts:51`) prüft `node.acceptance_criteria` —
-aber task/epic haben keine *eigenen* ACs → `[]` → trivial pass. Der einzige
-Wächter ist die forward-only-Transition, die die Kinder NIE ansieht
-(`node-ops.ts:150`). Heißt: ein Epic kann `done` werden, während ein Task-Stub
-noch `pending` ist.
-**Fix:** `setStatus` kind-aware machen — bei `→wrap`/`→done` mit `childField` jedes
-Kind als terminal-erfolgreich asserten (Epic: jeder Stub `done`; Task: jede Phase
-`done`), sonst typisierter `ChildrenIncomplete`-Fehler. Implikation siehe Chat.
+### M1 — task/epic reaches `done` with pending/blocked children (completability vacuum)
+`assertNodeCompletable` (`invariants.ts:51`) checks `node.acceptance_criteria` —
+but task/epic have no *own* ACs → `[]` → trivial pass. The only
+guard is the forward-only transition, which NEVER looks at the children
+(`node-ops.ts:150`). Meaning: an epic can become `done` while a task stub
+is still `pending`.
+**Fix:** make `setStatus` kind-aware — on `→wrap`/`→done` with `childField`, assert every
+child as terminal-successful (epic: every stub `done`; task: every phase
+`done`), otherwise a typed `ChildrenIncomplete` error. See chat for implication.
 
-### M2 — Child-Stub/Phase erreicht `done` mit evidenzlosen eigenen ACs
-`setChildStatus`/`setChildField` (`node-ops.ts:430-466`) validieren nur den
-Loop-Queue-Enum, prüfen aber nie, dass die eigenen ACs des Stubs/der Phase
-evidence-backed sind — dieselbe Lücke eine Etage tiefer.
-**Fix:** beim Flip auf done-Marker ein `assertNodeCompletable`-Äquivalent über die
-Kind-ACs laufen lassen; child-`status` aus `setChildField` denylisten.
+### M2 — child stub/phase reaches `done` with evidence-less own ACs
+`setChildStatus`/`setChildField` (`node-ops.ts:430-466`) only validate the
+loop-queue enum, but never check that the stub's/phase's own ACs are
+evidence-backed — the same gap one tier deeper.
+**Fix:** on the flip to the done marker, run an `assertNodeCompletable` equivalent over the
+child ACs; denylist child `status` from `setChildField`.
 
-### M3 — Epic-`acceptance[]` (der Vertrag) ohne harte Invariante
-`setAcceptanceStatus` (`node-ops.ts:236`) flippt ein Epic-DoD-Item ohne Anlage auf
-done; ein halluzinierender roll-up stempelt das ganze Epic geliefert.
-**Fix:** die harte Invariante auf epic-`acceptance[]` ausdehnen (Generalisierung
-von `assertAcDoneHasEvidence`, minimaler Contract-Pointer), kombiniert mit M1.
+### M3 — epic `acceptance[]` (the contract) without a hard invariant
+`setAcceptanceStatus` (`node-ops.ts:236`) flips an epic definition-of-done item to
+done without backing; a hallucinating roll-up stamps the whole epic delivered.
+**Fix:** extend the hard invariant to epic `acceptance[]` (generalization
+of `assertAcDoneHasEvidence`, minimal contract pointer), combined with M1.
 
-### M4 — Production-Write-Lock ist No-op → Lost-Update
-`bin.ts:41` verdrahtet `lock: { acquire: async () => async () => {} }` — der
-cross-process-Lock, um den `io.ts:30-49` gebaut ist, ist wirkungslos. Zwei parallele
-`anchored`-Prozesse auf derselben `_epic.yml` (genau das parallele Epic-Fan-out-
-Modell) read-modify-write last-writer-wins, Evidenz still verloren.
-**Fix:** echten File-Lock (O_EXCL/`wx`-Lockfile mit PID + Stale-Takeover, oder
-`proper-lockfile`) hinter der bestehenden `IoLock`-Naht in `bin.ts` verdrahten;
-plus Compare-and-Swap (mtime/hash im Lock), da whole-node read-modify-write auch
-mit Lock inhärent verlieren kann. Test: stateful Fake-Lock + Concurrency-Szenario.
+### M4 — production write lock is a no-op → lost update
+`bin.ts:41` wires `lock: { acquire: async () => async () => {} }` — the
+cross-process lock that `io.ts:30-49` is built around is ineffective. Two parallel
+`anchored` processes on the same `_epic.yml` (exactly the parallel epic fan-out
+model) read-modify-write last-writer-wins, evidence silently lost.
+**Fix:** wire a real file lock (O_EXCL/`wx` lockfile with PID + stale takeover, or
+`proper-lockfile`) behind the existing `IoLock` seam in `bin.ts`;
+plus compare-and-swap (mtime/hash in the lock), since whole-node read-modify-write can
+inherently lose even with a lock. Test: stateful fake lock + concurrency scenario.
 
-### M5 — `mergeRec` ohne Tiefenschranke + kein SIZE_CAP auf anchored.yml
-`mergeRec` (`merge.ts:66-83`) hat keine Tiefenschranke; der anchored.yml-Parse-Pfad
-(`bin.ts:60`) hat kein SIZE_CAP/`maxAliasCount` (anders als Task-Files). Hostile/
-riesige Config → Stack-Overflow/Blow-up.
-**Fix:** Tiefenguard (~64) in `mergeRec`; SIZE_CAP + konservatives `maxAliasCount`
-auf den anchored.yml-Parse.
+### M5 — `mergeRec` without depth bound + no SIZE_CAP on anchored.yml
+`mergeRec` (`merge.ts:66-83`) has no depth bound; the anchored.yml parse path
+(`bin.ts:60`) has no SIZE_CAP/`maxAliasCount` (unlike task files). Hostile/
+huge config → stack overflow/blow-up.
+**Fix:** depth guard (~64) in `mergeRec`; SIZE_CAP + conservative `maxAliasCount`
+on the anchored.yml parse.
 
-## Test-Schulden (parallel)
-- `assertNodeCompletable` end-to-end für task/epic.
-- Concurrency-Test mit statefulem Fake-Lock (beweist Serialisierung).
+## Test debt (parallel)
+- `assertNodeCompletable` end-to-end for task/epic.
+- Concurrency test with a stateful fake lock (proves serialization).

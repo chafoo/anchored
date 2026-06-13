@@ -2,16 +2,16 @@
 
 # /a:refine
 
-Verfeinert einen bestehenden Node gegen den aktuellen Stand. `/a:refine <slug>` —
-der Tier wird aus dem Node abgeleitet.
+Refines an existing node against the current state. `/a:refine <slug>` —
+the tier is derived from the node.
 
-## Was
+## What
 
-- Fährt die `refine`-Stage: `plan-check` → `rules-check` → `walk`.
-- `walk` klärt offene Fragen priority-aware (`involve: all|high-only|none`).
-- Ruft `anchored refine <slug>`.
+- Runs the `refine` stage: `plan-check` → `rules-check` → `walk`.
+- `walk` resolves open questions priority-aware (`involve: all|high-only|none`).
+- Calls `anchored refine <slug>`.
 
-## Wie
+## How
 
 ```mermaid
 flowchart LR

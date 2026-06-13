@@ -2,25 +2,25 @@
 
 # step
 
-Die **Step-Grammatik** — bewusst strukturell. Ein Step ist die kleinste Einheit
-einer Stage; das Schema erzwingt nur die Form, nicht die Built-in-Bedeutung.
+The **step grammar** — deliberately structural. A step is the smallest unit of a
+stage; the schema enforces only the form, not the built-in meaning.
 
-## Was
+## What
 
-- `name` (Pflicht) + optional `instructions` — letzteres an **jedem** Step-Typ
-  erlaubt (run/use/worker): Prosa, die der Skill beim Ausführen/Dispatchen befolgt
-  (uniform, kein Sonderfall).
-- Genau eines: `run: '<cmd>'` **XOR** `use: '<worker>'` (+ optional
-  `type: agent|skill`). Per Zod-Refinement erzwungen.
-- `involve: all|high-only|none` — nur am `walk`.
-- `each: <tier>` + optionaler `steps`-Body — am `loop`.
-- `before: '<step>'` **XOR** `after: '<step>'` — positioniert den Step relativ zu
-  einem benannten anderen Step (höchstens eins, per Refinement).
-- **Reserved-Name-Semantik** (Built-in-Dispatch, kanonische Reihenfolge,
-  Injektion) ist *nicht* hier, sondern in
+- `name` (required) + optional `instructions` — the latter allowed on **every**
+  step type (run/use/worker): prose that the skill follows when executing/dispatching
+  (uniform, no special case).
+- Exactly one: `run: '<cmd>'` **XOR** `use: '<worker>'` (+ optional
+  `type: agent|skill`). Enforced via Zod refinement.
+- `involve: all|high-only|none` — only on `walk`.
+- `each: <tier>` + optional `steps` body — on `loop`.
+- `before: '<step>'` **XOR** `after: '<step>'` — positions the step relative to
+  a named other step (at most one, via refinement).
+- **Reserved-name semantics** (built-in dispatch, canonical order, injection)
+  is *not* here, but in
   [resolve-steps](../engine/scope/resolve-steps.md).
 
-## Wie
+## How
 
 ```mermaid
 flowchart TB
@@ -33,8 +33,8 @@ flowchart TB
     s -. "ordering" .-> b["before XOR after"]
 ```
 
-## Warum
+## Why
 
-Strukturell + generisch zu halten macht das Schema wiederverwendbar; die
-registry-abhängigen Checks (Reihenfolge, Injektion) brauchen ohnehin einen
-eigenen Pass und gehören nicht ins Per-Step-Objekt.
+Keeping it structural + generic makes the schema reusable; the registry-dependent
+checks (order, injection) need their own pass anyway and don't belong in the
+per-step object.

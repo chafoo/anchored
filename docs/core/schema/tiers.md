@@ -2,35 +2,35 @@
 
 # tiers
 
-Die **Tier-Deskriptoren** — was eine Etage (phase/task/epic/project) ausmacht.
-Jeder Deskriptor = **Feld-Shape** (config-getrieben) + **Mechanik** (Code-fix).
-[node-ops](../ops/node-ops.md) und der [tier-runner](../engine/tier-runner.md)
-werden damit parametrisiert.
+The **tier descriptors** — what makes up a tier (phase/task/epic/project).
+Each descriptor = **field shape** (config-driven) + **mechanics** (code-fixed).
+[node-ops](../ops/node-ops.md) and the [tier-runner](../engine/tier-runner.md)
+are parametrized with them.
 
-## Was
+## What
 
-- **Feld-Shape** (Policy, aus `anchored.yml` + Default-Template gemerged): welche
-  Felder der Node trägt. Die vollständigen Default-Felder pro Tier stehen in
+- **Field shape** (policy, merged from `anchored.yml` + default template): which
+  fields the node carries. The complete default fields per tier are in
   [docs/design/anchored.default.yml](../../design/anchored.default.yml).
-- **Mechanik** (fix, Code): Status-Enum, [Transitions](../state/_state.md),
-  Kind-Typ (task→phase, epic→task, project→epic; phase = Leaf, kein Kind).
-- Kurzüberblick:
+- **Mechanics** (fixed, code): status enum, [transitions](../state/_state.md),
+  child type (task→phase, epic→task, project→epic; phase = leaf, no child).
+- Quick overview:
 
-| Tier | Status-Enum | Kind |
+| Tier | Status enum | Child |
 |---|---|---|
-| phase | pending · in-progress · done · blocked · deferred | — (Leaf) |
+| phase | pending · in-progress · done · blocked · deferred | — (leaf) |
 | task | plan · drafted · refined · build · wrap · done | phase |
 | epic | planning · building · done | task |
-| project | *(reserviert)* | epic |
+| project | *(reserved)* | epic |
 
-## Wie
+## How
 
 ```mermaid
 flowchart LR
-    desc["tierSchema"] --> shape["Feld-Shape · config"]
-    desc --> mech["Mechanik · status-enum · transitions · kind"]
+    desc["tierSchema"] --> shape["field shape · config"]
+    desc --> mech["mechanics · status-enum · transitions · kind"]
     desc --> ops["→ node-ops / tier-runner"]
 ```
 
-> Die erschöpfenden Feldlisten pro Tier sind micro — bewusst nicht hier
-> dupliziert, sondern in der Default-Config-Spec.
+> The exhaustive field lists per tier are micro — deliberately not duplicated
+> here, but in the default-config spec.

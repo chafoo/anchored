@@ -1,10 +1,10 @@
-# Offene Fragen — core/state ↔ docs/core/validate
+# Open questions — core/state ↔ docs/core/validate
 
-| Frage | Vorschlag | Entscheidung | Status |
+| Question | Suggestion | Decision | Status |
 |---|---|---|---|
-| **Doku-Ordner-Naming für die State-Mechanik** — *Code liegt in `core/src/state/` (invariants.ts, transitions.ts), die Doku spiegelt ihn aber als `docs/core/validate/`. Die Mirror-Regel verlangt Ordner = Code-Ordner → `docs/core/state/`. Aber die `deps`-Naht heißt projektweit teils `validate` (factory-functions.md), teils `state` (fractal-substrate-integrity.md, CLAUDE.md). Umbenennen auf `state/` (+ 3 Inbound-Links in `_core.md`, `tiers.md`, `_validate.md`-Breadcrumbs anpassen) oder das konzeptionelle Label `validate` behalten?* | `docs/core/validate/` → `docs/core/state/` umbenennen (Mirror-Regel gewinnt; Inbound-Links + Breadcrumbs nachziehen) | **`state/`** — Ordner via `git mv` umbenannt, alle Inbound-Links + Breadcrumbs + Mermaid-Labels (`_core.md`, `_anchored.md`, `tiers.md`, `node-ops.md`, `log.md`, `tier-runner.md`) nachgezogen (2026-06-11). | entschieden |
+| **Docs-folder naming for the state mechanism** — *Code lives in `core/src/state/` (invariants.ts, transitions.ts), but the docs mirror it as `docs/core/validate/`. The mirror rule demands folder = code folder → `docs/core/state/`. But the `deps` seam is named project-wide partly `validate` (factory-functions.md), partly `state` (fractal-substrate-integrity.md, CLAUDE.md). Rename to `state/` (+ adjust 3 inbound links in `_core.md`, `tiers.md`, `_validate.md` breadcrumbs) or keep the conceptual label `validate`?* | Rename `docs/core/validate/` → `docs/core/state/` (mirror rule wins; pull through inbound links + breadcrumbs) | **`state/`** — folder renamed via `git mv`, all inbound links + breadcrumbs + mermaid labels (`_core.md`, `_anchored.md`, `tiers.md`, `node-ops.md`, `log.md`, `tier-runner.md`) pulled through (2026-06-11). | decided |
 
-> **docu-clean-Follow-up (kein User-Entscheid nötig):** `transitions.md` ist veraltet —
-> sie beschreibt die Rückwärts-Kante als „falls v2 sie übernimmt", `transitions.ts`
-> hat sie aber implementiert (`refined/build/wrap/done → drafted`, `blocked →
-> in-progress`). Beim Rename-Pass mit aktualisieren.
+> **docu-clean follow-up (no user decision needed):** `transitions.md` is outdated —
+> it describes the backward edge as "if v2 adopts it", but `transitions.ts`
+> has actually implemented it (`refined/build/wrap/done → drafted`, `blocked →
+> in-progress`). Update it along with the rename pass.

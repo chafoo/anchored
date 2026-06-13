@@ -1,44 +1,44 @@
-# Fraktal-Redesign — Agenda (eins nach dem anderen)
+# Fractal Redesign — Agenda (one thing at a time)
 
-> Offene Fragen + Ideen, die wir der Reihe nach durchgehen, BEVOR wir Architektur
-> anfassen. Ziel dieser Phase: verstehen + entscheiden, noch nicht bauen.
-> Begleit-Doks: `fractal-redesign-notes.md` (Entscheidungs-Record),
+> Open questions + ideas we walk through in order, BEFORE we touch architecture.
+> Goal of this phase: understand + decide, not yet build.
+> Companion docs: `fractal-redesign-notes.md` (decision record),
 > `docs/drafts/fractal-lifecycle.md`, `docs/drafts/anchored.default.yml`.
 
-## Scope-Leitplanke (vom User gesetzt)
+## Scope guardrail (set by the user)
 
-- **Jetzt**: das ganze Ding sauber umbauen + testen. **Später**: eigene Agenten
-  selbst bauen (custom agent SDK o.ä.) — für jetzt zu viel, geparkt.
+- **Now**: cleanly rebuild the whole thing + test it. **Later**: build our own
+  agents ourselves (custom agent SDK or similar) — too much for now, parked.
 
-## Durchzugehen
+## To walk through
 
-### 1. Plan-Entry-Signatur + Epic/Task-Klassifikation ✅ ENTSCHIEDEN
-- Details siehe `fractal-redesign-notes.md` → „Plan-Entry + Epic/Task-Klassifikation".
-- Kurz: `/impl-plan <epic|task>?` ; ohne Tier → discover → classify → confirm.
-  discover an beiden Tiers. Erkennung: <5 task / 5–9 Unabhängigkeits-Test / ≥10 epic.
-  Eskalation fraktal billig; Auto = v2.
+### 1. Plan-entry signature + epic/task classification ✅ DECIDED
+- For details see `fractal-redesign-notes.md` → "Plan-entry + epic/task classification".
+- Short: `/impl-plan <epic|task>?` ; without a tier → discover → classify → confirm.
+  discover at both tiers. Detection: <5 task / 5–9 independence test / ≥10 epic.
+  Fractal escalation is cheap; auto = v2.
 
-### 2. Ausführungs-Substrat des Loops ✅ ENTSCHIEDEN
-- Headless `claude -p` pro Task-File, Phasen in-process; `spawn` als Naht offen.
-  Record in den Notes.
+### 2. Execution substrate of the loop ✅ DECIDED
+- Headless `claude -p` per task-file, phases in-process; `spawn` left open as a seam.
+  Record in the notes.
 
-### 3. Architektur-Prinzip: fraktale Factory-Functions ✅ ENTSCHIEDEN
-- Detail + Diagramme: `docs/drafts/engine-architecture.md`; Record in den Notes.
+### 3. Architecture principle: fractal factory functions ✅ DECIDED
+- Detail + diagrams: `docs/drafts/engine-architecture.md`; record in the notes.
 
-### 4. Agent-Organisation in Buckets ✅ ENTSCHIEDEN
-- Keine Unterordner (CC scannt nur flach) → Präfix-Buckets. Roster = distinkte
-  Worker; geteilte tier-parametrisiert. Record in den Notes.
+### 4. Agent organization into buckets ✅ DECIDED
+- No subfolders (CC only scans flat) → prefix buckets. Roster = distinct
+  workers; shared ones tier-parameterized. Record in the notes.
 
-### 5. Carry-over (aus den Notes)
-- 5a. steps/each-Semantik ✅ ENTSCHIEDEN — `each` am Step; loop-Step hat
-  interleaved Body. Record in den Notes.
-- 5b. Ops-Namespace ✅ ENTSCHIEDEN — tier-generischer Kern + per-Tier-CLI;
-  Tier-Schema = Code-Mechanik + Config-Felder; anchored.yml = Base-Dep
-  (merge default+user, beim Bootstrap geladen). Record in den Notes.
+### 5. Carry-over (from the notes)
+- 5a. steps/each semantics ✅ DECIDED — `each` on the step; loop-step has an
+  interleaved body. Record in the notes.
+- 5b. Ops namespace ✅ DECIDED — tier-generic core + per-tier CLI;
+  tier schema = code mechanism + config fields; anchored.yml = base dependency
+  (merge default+user, loaded at bootstrap). Record in the notes.
 
-## Alle Items durch ✅ — nächster Schritt: „Plan forward" (impl-epic-layer neu aufsetzen)
+## All items done ✅ — next step: "Plan forward" (set up impl-epic-layer anew)
 
-## Vorgeschlagene Reihenfolge
+## Proposed order
 
-1 → 4 (UX/Verhalten klären) … dann 2 + 3 (Ausführung + Architektur, hängen
-zusammen) … dann 5 (Detail-Semantik). Reihenfolge anpassbar.
+1 → 4 (clarify UX/behavior) … then 2 + 3 (execution + architecture, they hang
+together) … then 5 (detail semantics). Order adjustable.

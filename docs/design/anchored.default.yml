@@ -1,123 +1,123 @@
-# anchored.default.yml — Draft / Design-Spec
+# anchored.default.yml — draft / design spec
 #
-# VOLLSTÄNDIGE Default-Ansicht: jede Etage (phase ▸ task ▸ epic ▸ project) mit
-# ihren Stage-Steps UND ihren `fields` (Daten-Modell). Vom Framework
-# bereitgestellt. Eine echte User-anchored.yml ist fast leer — sie enthält nur
-# Deltas; was hier steht, läuft automatisch, wenn man nichts schreibt.
+# COMPLETE default view: every tier (phase ▸ task ▸ epic ▸ project) with its
+# stage steps AND its `fields` (data model). Provided by the framework. A real
+# user anchored.yml is almost empty — it carries deltas only; what's here runs
+# automatically when you write nothing.
 #
-# Zwei Schichten:
-#   • Mechanismus (Substrat, fix): die Etagen-Form, das State-Machine-Datenmodell
-#     (`fields`), atomic-writes, der Audit-Trail. Erzwingt Integrität.
-#   • Policy (Steps, austauschbar): WAS in jeder Stage passiert. Hier als
-#     Default-Template gezeigt — voll überschreib-/ersetzbar.
+# Two layers:
+#   • Mechanism (substrate, fixed): the tier form, the state-machine data model
+#     (`fields`), atomic writes, the audit trail. Enforces integrity.
+#   • Policy (steps, swappable): WHAT happens in each stage. Shown here as the
+#     default template — fully overridable / replaceable.
 #
-# HARTE INVARIANTE (Substrat, nicht abschaltbar):
-#   Ein `ac` geht nur auf `status: done`, wenn `evidence` vorliegt. WIE die
-#   Evidence entsteht, konfigurierst du frei — aber das Substrat lässt dich
-#   nicht über „fertig" lügen. Das ist anchoreds Versprechen, im Datenmodell
-#   verankert statt in einem privilegierten Step.
+# HARD INVARIANT (substrate, not switchable off):
+#   An `ac` only goes to `status: done` when `evidence` is present. HOW the
+#   evidence is produced is yours to configure freely — but the substrate won't
+#   let you lie about being "done". That's anchored's promise, anchored in the
+#   data model rather than in a privileged step.
 
 # ─────────────────────────────────────────────────────────────────────────────
-# phase ▸ Leaf — build hat kein `each`, läuft einmal; hier entsteht echter Code
+# phase ▸ leaf — build has no `each`, runs once; this is where real code is made
 # ─────────────────────────────────────────────────────────────────────────────
 phase:
   plan:
-    steps: []                         # leer — die ACs sind die "Plan"-Daten der Phase
+    steps: []                         # empty — the acceptance criteria are the phase's "plan" data
   refine:
-    steps: []                         # leer
+    steps: []                         # empty
   build:
     steps:
-      - { name: implement }           # die Arbeit
-      - { name: task-validate }       # Evidence-Honesty: prüft, dass jedes AC echten Beweis hat
-      - { name: code-validate }       # Rule-Adherence: prüft gegen rules
+      - { name: implement }           # the work
+      - { name: task-validate }       # evidence-honesty: checks that every criterion has real proof
+      - { name: code-validate }       # rule-adherence: checks against rules
   wrap:
-    steps: []                         # leer
+    steps: []                         # empty
 
-  fields:                             # Daten-Modell einer Phase (Default — erweiterbar)
+  fields:                             # data model of a phase (default — extendable)
     name:                string
     slug:                kebab
     status:              pending | in-progress | done | blocked | deferred
     context:             markdown
     rules:               list<{ path, why }>
     acceptance_criteria: list<{ id, text, status, evidence? }>
-    evidence:            list<string>   # konkrete Beweise: datei:zeile + test-output
-    failures:            list<string>   # aus der Validierung; treibt den retry-loop
+    evidence:            list<string>   # concrete proof: file:line + test output
+    failures:            list<string>   # from validation; drives the retry loop
 
 # ─────────────────────────────────────────────────────────────────────────────
-# task ▸ build loopt phases
+# task ▸ build loops over phases
 # ─────────────────────────────────────────────────────────────────────────────
 task:
-  plan:                               # Struktur schreiben
+  plan:                               # write the structure
     steps:
-      - { name: discover }            # Codebase scannen
-      - { name: rules-scan }          # relevante rules sammeln
-      - { name: decompose }           # in Phasen + ACs zerlegen
-  refine:                             # Anforderungen prüfen: code, rules, q&a
+      - { name: discover }            # scan the codebase
+      - { name: rules-scan }          # collect the relevant rules
+      - { name: decompose }           # break into phases + acceptance criteria
+  refine:                             # check the requirements: code, rules, q&a
     steps:
-      - { name: plan-check }          # Plan gegen aktuellen Code
-      - { name: rules-check }         # Rules-Coverage pro Phase
-      - { name: walk, involve: high-only }   # Q&A-Walk · all | high-only | none
-  build:                              # Loop auf phase
-    each: phase                       # intrinsisch — pro Tier fix (task→phase), nicht konfigurierbar (nur Doku)
+      - { name: plan-check }          # plan against the current code
+      - { name: rules-check }         # rules coverage per phase
+      - { name: walk, involve: high-only }   # q&a walk · all | high-only | none
+  build:                              # loop over phase
+    each: phase                       # intrinsic — fixed per tier (task→phase), not configurable (docs only)
     stop:
       - 'a decision deviates from the plan'
-    retry_limit: 3                    # so oft wird eine fehlschlagende Phase neu gefahren
+    retry_limit: 3                    # how many times a failing phase is re-run
   wrap:
     steps:
       - { name: review }
       - { name: summarize }
 
-  fields:                             # Daten-Modell einer Task (das Task-File)
+  fields:                             # data model of a task (the task-file)
     schema_version:  int
-    slug:            kebab | nested   # <slug> oder <epic>/<slug> als Top-Level
+    slug:            kebab | nested   # <slug> or <epic>/<slug> as the top level
     title:           string
     created:         date
     status:          plan | drafted | refined | build | wrap | done
-    context:                          # Prosa-Trails — als YAML block-scalar (|) gespeichert; reiner String, kein Mix
-      plan:          markdown         # intro + Plan-Trail
-      refine:        markdown         # plan-check + rules-check Rollups
-      build:         markdown         # Build-Notizen pro Phase
-      wrap:          markdown         # Review + Summary
+    context:                          # prose trails — stored as a YAML block scalar (|); a plain string, no mix
+      plan:          markdown         # intro + plan trail
+      refine:        markdown         # plan-check + rules-check rollups
+      build:         markdown         # build notes per phase
+      wrap:          markdown         # review + summary
     questions:       list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
-    decisions:       view<questions[status=resolved, source=ai]>   # der Entscheidungs-Trail (reasoning)
-    log:             list<{ at, kind, note }>   # append-only PM-Notizbuch
-    phases:          list<phase>      # die Kinder (siehe phase oben)
+    decisions:       view<questions[status=resolved, source=ai]>   # the decision trail (reasoning)
+    log:             list<{ at, kind, note }>   # append-only project-management notebook
+    phases:          list<phase>      # the children (see phase above)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# epic ▸ build loopt tasks
+# epic ▸ build loops over tasks
 # ─────────────────────────────────────────────────────────────────────────────
 epic:
   plan:
     steps:
-      - { name: discover }            # Lage/Umfang sondieren (geteilt mit task.plan)
-      - { name: scaffold }            # goal-Prosa → coarse task-stubs
+      - { name: discover }            # probe the situation/scope (shared with task.plan)
+      - { name: scaffold }            # goal prose → coarse task-stubs
   refine:
     steps:
-      - { name: walk, involve: high-only }   # Stubs/Reihenfolge mit dir klären
-  build:                              # Loop auf task
-    each: task                        # intrinsisch — pro Tier fix (epic→task), nicht konfigurierbar (nur Doku)
+      - { name: walk, involve: high-only }   # settle stubs/order with you
+  build:                              # loop over task
+    each: task                        # intrinsic — fixed per tier (epic→task), not configurable (docs only)
     stop:
-      - 'an architectural boundary is crossed (layer, DAG, contract)'
+      - 'an architectural boundary is crossed (layer, dependency graph, contract)'
     retry_limit: 3
   wrap:
     steps:
-      - { name: roll-up }             # DoD gegen epic.acceptance + Retro
+      - { name: roll-up }             # definition of done against epic.acceptance + retro
 
-  fields:                             # Daten-Modell eines Epics (das _epic.yml)
+  fields:                             # data model of an epic (the _epic.yml)
     schema_version: int
     slug:           kebab
     title:          string
     status:         planning | building | done
-    goal:           markdown          # das große Ziel in Prosa
-    acceptance:     list<{ id, text, status }>   # Definition-of-Done (epic-Ebene, grob)
+    goal:           markdown          # the big goal in prose
+    acceptance:     list<{ id, text, status }>   # definition of done (epic level, coarse)
     questions:      list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
-    tasks:          list<{ slug, goal, status, depends_on }>   # coarse Stubs = Loop-Queue
+    tasks:          list<{ slug, goal, status, depends_on }>   # coarse stubs = loop queue
                                       #   status: pending | active | done | blocked
-                                      #   Reihenfolge = Listen-Position
+                                      #   order = list position
     log:            list<{ at, kind, note }>   # kind: decision | reorder | learning | blocker
 
 # ─────────────────────────────────────────────────────────────────────────────
-# project ▸ später — exakt dieselbe Form, build loopt epics
+# project ▸ later — exactly the same form, build loops over epics
 # ─────────────────────────────────────────────────────────────────────────────
 # project:
 #   plan:   { steps: [{ name: scope }] }      # → epics

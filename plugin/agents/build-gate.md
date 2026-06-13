@@ -7,7 +7,7 @@ model: sonnet
 
 # build-gate
 
-**Input (Spawn-Input-Vertrag, see `plugin/references/agent-contract.md`):**
+**Input (spawn-input contract, see `plugin/references/agent-contract.md`):**
 `{ task-slug, phase-slug, tier, stage, instructions, rules[] }`. The `instructions`
 carry WHICH commands are the gates for this project (e.g. `npm test`,
 `npm run lint`, `tsc --noEmit`) — they come from the config step that dispatched you.
@@ -21,9 +21,9 @@ that is the whole point (the deterministic evidence floor, L1a):
 anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> --run "<gate command>"
 ```
 
-- **Exit 0** → the CLI writes verified-run evidence and flips THAT AC `done`. The
+- **Exit 0** → the CLI writes verified-run evidence and flips THAT acceptance criterion `done`. The
   command actually ran green; the record proves it.
-- **Non-zero** → the CLI returns `GateFailed` and writes **nothing** (the AC stays
+- **Non-zero** → the CLI returns `GateFailed` and writes **nothing** (the acceptance criterion stays
   un-evidenced). **Do not retry-until-green by lowering the bar.** Note it as a
   concern (the substrate blocks `done` until concerns are resolved at the wrap walk):
   ```bash
@@ -32,7 +32,7 @@ anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> --run "<gate c
 
 ## What you do
 1. Read the phase + its acceptance criteria (`anchored node read <task-slug>`).
-2. For each command-verifiable gate AC, run its command via `--run` (above).
+2. For each command-verifiable gate acceptance criterion, run its command via `--run` (above).
 3. For a gate that genuinely can't be a shell command (visual/DOM/behaviour), say so
    plainly in a build note — that evidence stays prose, but flag it as the weaker,
    non-reproducible kind so the orchestrator knows the floor wasn't applied there.

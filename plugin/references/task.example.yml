@@ -1,61 +1,61 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
-# task-File — Beispiel · liegt unter .claude/tasks/<slug>.yml  ODER  .claude/tasks/<epic>/<slug>.yml
-# Die task-Etage. Phasen sind die Kinder; build loopt sie (each: phase). Felder =
-# task-Tier-Deskriptor (siehe config.md → Felder). Prosa als block-scalar (|).
+# task file — example · lives under .claude/tasks/<slug>.yml  OR  .claude/tasks/<epic>/<slug>.yml
+# The task tier. Phases are the children; build loops them (each: phase). Fields =
+# task-tier descriptor (see config.md → fields). Prose as block scalar (|).
 
 schema_version: 2
-slug:    history-flow-backtest/01-exit-sim    # nested unter dem Epic (oder flach: just-a-task)
-title:   "settleExits-Seam im History-Runner"
+slug:    history-flow-backtest/01-exit-sim    # nested under the epic (or flat: just-a-task)
+title:   "settleExits seam in the history runner"
 status:  build                                # plan → drafted → refined → build → wrap → done
 created: 2026-06-10
 
-context:                                       # die WWWW-Trails pro Stage (block-scalar)
+context:                                       # the WWWW trails per stage (block scalar)
   plan: |
-    Exit-Simulation als Seam in den History-Runner ziehen, live ein no-op.
-    Decompose → 2 Phasen (Seam, Verdrahtung).
+    Pull exit simulation into the history runner as a seam, a no-op live.
+    Decompose → 2 phases (seam, wiring).
   refine: |
-    plan-check: settleExits darf matchCandle nicht berühren (DAG rein).
-    rules-check: docs/runner-seams.md greift in beiden Phasen.
+    plan-check: settleExits must not touch matchCandle (pure dependency order).
+    rules-check: docs/runner-seams.md applies in both phases.
   build: |
-    Phase 1 grün; Phase 2 in Arbeit.
+    Phase 1 green; phase 2 in progress.
   wrap: |
-    (folgt)
+    (follows)
 
 questions:
   - id: q1
-    text: "Exit-Preis: close der Kerze oder intrabar-Schätzung? (lean close)"
+    text: "Exit price: candle close or intrabar estimate? (lean close)"
     priority: medium
     origin: plan-agent
     status: resolved
-    answer: "close der Kerze — deterministisch, reicht für den $0-Beweis."
+    answer: "candle close — deterministic, enough for the $0 evidence."
     source: ai
-    reasoning: "History-Modus braucht Determinismus; intrabar bringt Rauschen ohne Mehrwert."
+    reasoning: "History mode needs determinism; intrabar adds noise without added value."
 
 log:
-  - { at: seam, kind: decision, note: "settleExits hinter ein Flag, live no-op." }
+  - { at: seam, kind: decision, note: "settleExits behind a flag, no-op live." }
 
-phases:                                        # die Kinder — build loopt sie (each: phase)
-  - name: "settleExits-Seam"
+phases:                                        # the children — build loops them (each: phase)
+  - name: "settleExits seam"
     slug: seam
     status: done
     context: |
-      Reiner Seam im History-Runner; live no-op über Feature-Flag.
+      Pure seam in the history runner; no-op live via feature flag.
     rules:
-      - { path: docs/runner-seams.md, why: "Seam-Konvention: live-no-op + History-aktiv" }
+      - { path: docs/runner-seams.md, why: "Seam convention: no-op live + active in history" }
     acceptance_criteria:
       - id: a1
-        text: "settleExits wird im Replay pro Kerze aufgerufen, live nie"
+        text: "settleExits is called per candle in replay, never live"
         status: done
-        evidence:                              # kein `done` ohne evidence (harte Invariante)
-          - "src/runner/history.ts:142 — settleExits(candle) im Replay-Loop"
-          - "test: runner.history.spec.ts:88 — live-Pfad ruft settleExits NICHT (grün)"
-    # failures: []                             # von der Validierung gesetzt; treibt retry
+        evidence:                              # no `done` without evidence (hard invariant)
+          - "src/runner/history.ts:142 — settleExits(candle) in the replay loop"
+          - "test: runner.history.spec.ts:88 — live path does NOT call settleExits (green)"
+    # failures: []                             # set by validation; drives retry
 
-  - name: "Exit-Lebenszyklus verdrahten"
+  - name: "wire the exit lifecycle"
     slug: wire-lifecycle
     status: in-progress
     context: |
-      Position open→exit über die Exit-Sim schließen.
+      Close position open→exit via the exit sim.
     rules: []
     acceptance_criteria:
-      - { id: a1, text: "Position erhält exit-Event + Endzustand 'closed'", status: pending }
+      - { id: a1, text: "Position receives exit event + final state 'closed'", status: pending }

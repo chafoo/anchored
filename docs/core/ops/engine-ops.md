@@ -2,40 +2,40 @@
 
 # engine-ops
 
-Die **`OpsLike`-Fläche, die die [Engine](../engine/_engine.md) benutzt**, gebaut über
-die per-Tier [node-ops](node-ops.md). Ihr Kern-Trick: **jede Mutation liest den
-persistierten Node zuerst neu** (`freshen`), bevor sie schreibt — so klobbert die
-Engine nie die Evidence, die ein Worker selbst ins File geschrieben hat.
+The **`OpsLike` surface that the [Engine](../engine/_engine.md) uses**, built on
+top of the per-tier [node-ops](node-ops.md). Its core trick: **every mutation
+re-reads the persisted node first** (`freshen`) before it writes — so the engine
+never clobbers the evidence that a worker wrote into the file itself.
 
-## Was
+## What
 
-- `createEngineOps(opsByTier) → OpsLike` mit `setStatus`/`nextChild`/`setChildStatus`/
+- `createEngineOps(opsByTier) → OpsLike` with `setStatus`/`nextChild`/`setChildStatus`/
   `addQuestion`/`resolveQuestion`/`appendLog`.
-- **Re-Read vor jedem Write** (`freshen`): `pick(node).read(node.slug)`. Schlägt das
-  fehl (ein Leaf-`phase` hat kein eigenes File) → Fallback auf den In-Memory-Node.
-- **`tierOfNode(node)`** leitet den Tier aus der Kind-Collection ab: `tasks[]` → epic,
-  `phases[]` → task, sonst task. `pick` wählt damit die richtigen `TierOps`.
+- **Re-read before every write** (`freshen`): `pick(node).read(node.slug)`. If that
+  fails (a leaf `phase` has no file of its own) → fall back to the in-memory node.
+- **`tierOfNode(node)`** derives the tier from the child collection: `tasks[]` → epic,
+  `phases[]` → task, otherwise task. `pick` uses that to select the right `TierOps`.
 
-## Wie
+## How
 
 ```mermaid
 sequenceDiagram
     participant E as Engine
     participant EO as engineOps
     participant FS as Task-File
-    Note over E,FS: Worker hat zuvor Evidence selbst ins File geschrieben
+    Note over E,FS: Worker has previously written evidence into the file itself
     E->>EO: setStatus(node, to)
     EO->>FS: freshen → read(node.slug)
-    FS-->>EO: latest state (inkl. Worker-Evidence)
+    FS-->>EO: latest state (incl. worker evidence)
     EO->>FS: setStatus(latest, to) → atomic-write
-    Note over EO: read schlägt fehl (Leaf-phase ohne File)<br/>→ In-Memory-Node nutzen
+    Note over EO: read fails (leaf phase without file)<br/>→ use in-memory node
 ```
 
-## Warum
+## Why
 
-Direkte Folge der [cli-only-transport](../cli/_cli.md)-Regel: Worker schreiben ihre
-Evidence **selbst** via CLI ins File. Würde die Engine ihren eigenen In-Memory-Node
-schreiben, überschriebe sie diese Worker-Writes. Das Re-Read ist die Naht, die beide
-Schreiber koexistieren lässt — der Engine-Pfad zum [facade](facade.md) der CLI-Seite.
-Nur diese await-tragende Wiring-Glue lebt hier, damit [index.ts](../wiring.md) reine
-Factory bleibt.
+A direct consequence of the [cli-only-transport](../cli/_cli.md) rule: workers write
+their evidence **themselves** via the CLI into the file. If the engine wrote its own
+in-memory node, it would overwrite those worker writes. The re-read is the seam that
+lets both writers coexist — the engine path to the [facade](facade.md) of the CLI
+side. Only this await-bearing wiring glue lives here, so that [index.ts](../wiring.md)
+stays a pure factory.

@@ -1,73 +1,73 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
 slug: dogfood-fixings/context-polish
-title: Politur — context-Felder, created, list-phases, Trigger-Quirk (F2 + F3 + F4 + F6)
+title: Polish — context fields, created, list-phases, trigger quirk (F2 + F3 + F4 + F6)
 status: done
 created: 2026-06-11
 context:
   plan: |
-    Die niedrig-prioren Funde gebündelt:
-    F2: context.plan/refine/build bleiben leer (alles geht ins log). ENTSCHEIDUNG
-    (q3): context.* via set-field (dotted-path) befüllen wie v1; log[] bleibt das
-    PM-Notizbuch.
-    F3: created-Feld beim create nicht gesetzt. ENTSCHEIDUNG (q6): via injizierte
-    clock-Naht setzen (bin liefert Zeit; kein Date.now im Engine-Code).
-    F4: `node list-phases` existiert nicht — Skill fiel auf read zurück.
-    F6: `/a:refine` zeigte kurz „Unknown command" (Trigger-Quirk, nicht blockierend).
+    The low-priority findings bundled together:
+    F2: context.plan/refine/build stay empty (everything goes into the log). DECISION
+    (q3): populate context.* via set-field (dotted-path) like v1; log[] stays the
+    PM notebook.
+    F3: created field not set on create. DECISION (q6): set it via an injected
+    clock seam (the bin supplies the time; no Date.now in the engine code).
+    F4: `node list-phases` does not exist — the skill fell back to read.
+    F6: `/a:refine` briefly showed "Unknown command" (trigger quirk, not blocking).
     REF: .claude/temp/dogfood-findings.md F2/F3/F4/F6.
 questions: []
 log: []
 phases:
-  - name: context-Trails befüllen (F2)
+  - name: populate context trails (F2)
     slug: context-fill
     status: done
     context: |
-      plan/refine/build-Agents + Skills schreiben ihre Prosa-Trails nach
+      plan/refine/build agents + skills write their prose trails to
       context.plan/refine/build via set-field (dotted-path). wrap-review/summarize
-      lesen context als Trail. log[] bleibt das append-only Notizbuch.
+      read context as a trail. log[] stays the append-only notebook.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: context via set-field über die CLI
+        why: context via set-field through the CLI
     acceptance_criteria:
       - id: a1
-        text: "Nach plan + refine sind context.plan + context.refine befüllt (set-field dotted-path), nicht leer. Beweis: ein Lauf/Test → Node-Read zeigt context.plan/refine als Prosa-Trail (datei:zeile in den Skills/Agents)."
+        text: "After plan + refine, context.plan + context.refine are populated (set-field dotted-path), not empty. Evidence: a run/test → node read shows context.plan/refine as a prose trail (file:line in the skills/agents)."
         status: done
         evidence:
-          - plugin/skills/plan/SKILL.md + refine/SKILL.md schreiben context.plan/context.refine via set-field (dotted-path) am Stage-Ende; log[] bleibt PM-Notizbuch (q3)
-  - name: created-Feld via clock-Naht (F3)
+          - plugin/skills/plan/SKILL.md + refine/SKILL.md write context.plan/context.refine via set-field (dotted-path) at the stage end; log[] stays the PM notebook (q3)
+  - name: created field via clock seam (F3)
     slug: created-field
     status: done
     context: |
-      create setzt `created` (ISO-Datum) über eine injizierte now()-Naht; der bin
-      liefert die echte Zeit. Kein Date.now im Engine/Core-Code.
+      create sets `created` (ISO date) via an injected now() seam; the bin
+      supplies the real time. No Date.now in the engine/core code.
     rules:
       - path: .claude/rules/factory-functions.md
-        why: now() als injizierte Naht, fakebar; kein Top-Level-Effekt
+        why: now() as an injected seam, fakeable; no top-level effect
     acceptance_criteria:
       - id: a1
-        text: "create setzt ein created-Feld via injizierte now()-Dep; der bin verdrahtet die echte Zeit, Tests faken sie. Beweis: facade/create-Test (created gesetzt) + datei:zeile bin (now-Wiring) (grün)."
+        text: "create sets a created field via an injected now() dep; the bin wires the real time, tests fake it. Evidence: facade/create test (created set) + file:line bin (now wiring) (green)."
         status: done
         evidence:
-          - core/src/ops/facade.ts create stempelt created via injizierte now()-Naht; core/src/bin.ts now=new Date().toISOString().slice(0,10); epic.ts created-Feld ergänzt; epic-tier.spec created-Test grün; CLI-Smoke created:2026-06-11
-  - name: list-phases + Trigger-Quirk (F4 + F6)
+          - core/src/ops/facade.ts create stamps created via the injected now() seam; core/src/bin.ts now=new Date().toISOString().slice(0,10); epic.ts created field added; epic-tier.spec created test green; CLI smoke created:2026-06-11
+  - name: list-phases + trigger quirk (F4 + F6)
     slug: polish-rest
     status: done
     context: |
-      F4: entweder `node list-phases <slug>` als Convenience-Verb ergänzen, ODER die
-      Skill/Agent-Docs offiziell auf `node read` + phases[] festlegen.
-      F6: den `/a:refine`-„Unknown command"-Quirk beim nächsten Lauf beobachten;
-      ggf. Plugin-Name `a` (einzelner Buchstabe) als Ursache prüfen.
+      F4: either add `node list-phases <slug>` as a convenience verb, OR officially
+      settle the skill/agent docs on `node read` + phases[].
+      F6: observe the `/a:refine` "Unknown command" quirk on the next run;
+      if needed, check the plugin name `a` (single letter) as the cause.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: konsistente Verb-Oberfläche / klare Konvention
+        why: consistent verb surface / clear convention
     acceptance_criteria:
       - id: a1
-        text: "F4 entschieden + umgesetzt: entweder `node list-phases` existiert (CLI-Smoke ok), ODER die Docs legen read+phases[] fest (datei:zeile). "
+        text: "F4 decided + implemented: either `node list-phases` exists (CLI smoke ok), OR the docs settle on read+phases[] (file:line). "
         status: done
         evidence:
-          - core/src/cli/commands/node.ts list-phases-Verb (read+phases extract); epic-tier.spec list-phases-Test grün; CLI-Smoke list-phases ok
+          - core/src/cli/commands/node.ts list-phases verb (read+phases extract); epic-tier.spec list-phases test green; CLI smoke list-phases ok
       - id: a2
-        text: "F6 geklärt: der refine-Trigger-Quirk ist eingeordnet (beobachtet/Root-Cause) + ggf. behoben (z. B. Plugin-Name). Beweis: Notiz/Beleg."
+        text: "F6 clarified: the refine trigger quirk is classified (observed/root cause) + fixed if needed (e.g. plugin name). Evidence: note/proof."
         status: done
         evidence:
-          - 'F6 refine-Trigger-Quirk eingeordnet: "Unknown command: /a:refine" war ein transienter Display-Artefakt VOR dem Skill-Lauf (die Skill lief danach normal durch); nicht blockierend, vermutlich Plugin-Reload-Timing/einzelner-Buchstabe-Name. Low-Impact, beobachtet.'
+          - 'F6 refine trigger quirk classified: "Unknown command: /a:refine" was a transient display artefact BEFORE the skill run (the skill then ran through normally afterwards); not blocking, likely plugin reload timing/single-letter name. Low-impact, observed.'

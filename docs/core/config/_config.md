@@ -2,18 +2,18 @@
 
 # config
 
-Lädt die **Base-Dependency** `config`: die effektive Konfiguration, die in alle
-Factory-Functions injiziert wird. Einmal beim Bootstrap, dann unveränderlich.
+Loads the **base dependency** `config`: the effective configuration injected into
+all factory functions. Once at bootstrap, then immutable.
 
 ```mermaid
 flowchart LR
-    def["anchored.default.yml · Framework-Basis"] --> m["merge"]
-    usr["<project>/anchored.yml · User-Deltas"] --> m
+    def["anchored.default.yml · framework base"] --> m["merge"]
+    usr["<project>/anchored.yml · user deltas"] --> m
     m --> eff["effectiveConfig → deps.config"]
 ```
 
-| Unit | Verantwortung |
+| Unit | Responsibility |
 |---|---|
-| [bootstrap](bootstrap.md) | `effectiveConfig = merge(default, user)`, validiert; baut `deps`. |
-| merge | Deep-merge (User gewinnt) — in `bootstrap.md` mitbeschrieben. |
-| [init](init.md) | Lazy First-Run-Scaffolding: schreibt eine minimale `anchored.yml` + den `Bash(anchored *)`-Allowlist-Eintrag. Idempotent, über die io-Naht. |
+| [bootstrap](bootstrap.md) | `effectiveConfig = merge(default, user)`, validated; builds `deps`. |
+| merge | Deep-merge (user wins) — described together in `bootstrap.md`. |
+| [init](init.md) | Lazy first-run scaffolding: writes a minimal `anchored.yml` + the `Bash(anchored *)` allowlist entry. Idempotent, over the io seam. |

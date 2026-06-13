@@ -2,21 +2,21 @@
 
 # /a:build
 
-Führt die `build`-Stage eines Nodes aus. `/a:build <slug>` — Tier aus dem Node.
+Runs the `build` stage of a node. `/a:build <slug>` — tier from the node.
 
-## Was
+## What
 
-- **Non-Leaf** (task/epic): der `loop` iteriert die Kinder (`each`), fährt pro Kind
-  die Kind-Lifecycle; `stop`/`retry_limit` greifen.
+- **Non-Leaf** (task/epic): the `loop` iterates the children (`each`), runs the
+  child lifecycle per child; `stop`/`retry_limit` apply.
 - **Leaf** (phase): `implement` → `task-validate` → `code-validate`.
-- Ruft `anchored build <slug>`; läuft maximal autonom, hält nur bei `stop`-Match.
+- Calls `anchored build <slug>`; runs as autonomously as possible, only stops on a `stop` match.
 
-## Wie
+## How
 
 ```mermaid
 flowchart TB
     b["/a:build <slug>"] --> k{"Leaf?"}
-    k -->|nein| loop["loop · each child → Kind-Lifecycle"]
-    k -->|ja| impl["implement → task-validate → code-validate"]
+    k -->|no| loop["loop · each child → child lifecycle"]
+    k -->|yes| impl["implement → task-validate → code-validate"]
     loop -. "stop" .-> halt["halt"]
 ```

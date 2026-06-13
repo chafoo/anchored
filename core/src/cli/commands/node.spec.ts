@@ -117,10 +117,10 @@ test('node set-failures / set-ac-status map to one facade call each', async () =
   const { f, calls } = spyFacade()
   const { deps: d } = deps(f)
   const cli = createCli(d)
-  await cli.run(['node', 'set-failures', 'my-task', 'p1', 'a1', 'gate: nicht erfüllt'])
+  await cli.run(['node', 'set-failures', 'my-task', 'p1', 'a1', 'gate: not met'])
   await cli.run(['node', 'set-ac-status', 'my-task', 'p1', 'a1', 'pending'])
   expect(calls).toEqual([
-    { verb: 'setChildFailures', args: ['my-task', 'p1', 'a1', 'gate: nicht erfüllt'] },
+    { verb: 'setChildFailures', args: ['my-task', 'p1', 'a1', 'gate: not met'] },
     { verb: 'setChildAcStatus', args: ['my-task', 'p1', 'a1', 'pending'] },
   ])
 })

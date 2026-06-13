@@ -1,57 +1,56 @@
-# Ticket: Harden-1 — Substrat- + Security-Quick-Wins (S-Tier)
+# Ticket: Harden-1 — Substrate + Security Quick-Wins (S-Tier)
 
-**STATUS: ERLEDIGT ✅** (247 Tests grün) — Q1 `status`/Collections reserviert
-(set-field + set-child-field), Q2 Hook absolute Pfade + dd/gawk/truncate/clobber +
-opt-out nur für Edit, Q3 Built-in-Worker-run-Guard, Q4 retry_limit≤20 + pipe-union-
-Enum. Alle live bewiesen. Hook als Best-Effort dokumentiert.
+**STATUS: DONE ✅** (247 tests green) — Q1 `status`/collections reserved
+(set-field + set-child-field), Q2 hook absolute paths + dd/gawk/truncate/clobber +
+opt-out only for Edit, Q3 built-in-worker-run guard, Q4 retry_limit≤20 + pipe-union
+enum. All proven live. Hook documented as best-effort.
 
 
-**Quelle:** 5-Agent-Härtungs-Review (harden-anchored-v2). Diese Gruppe = isolierte,
-risikoarme Einzeländerungen mit höchstem Sicherheit-pro-Aufwand. Alle S.
+**Source:** 5-agent hardening review (harden-anchored-v2). This group = isolated,
+low-risk single changes with the highest security-per-effort. All S.
 
 ## Findings + Fix
 
-### Q1 — `set-field status done` umgeht Evidenz-Invariante + Transitions  🔴 KRITISCH
-`RESERVED_FIELDS` reserviert nur `executor` (`node-ops.ts:87`), also springt
-`anchored node set-field <slug> status done` einen Node plan→done OHNE Evidenz und
-OHNE Transition-Check (blankes `persist()`, `:169-184`). **Live reproduziert.**
-**Fix:** `status` (Node + Child + AC) hart reservieren bzw. jede Mutation eines
-status-typisierten Felds durch `assertTransition` + Completability routen.
-Regressionstest: `set-field status done` muss `ReservedField`/`IllegalTransition`
-werfen.
+### Q1 — `set-field status done` bypasses evidence invariant + transitions  🔴 CRITICAL
+`RESERVED_FIELDS` reserves only `executor` (`node-ops.ts:87`), so
+`anchored node set-field <slug> status done` jumps a node plan→done WITHOUT evidence and
+WITHOUT a transition check (bare `persist()`, `:169-184`). **Reproduced live.**
+**Fix:** hard-reserve `status` (node + child + AC), or route every mutation of a
+status-typed field through `assertTransition` + completability.
+Regression test: `set-field status done` must throw `ReservedField`/`IllegalTransition`.
 
-### Q2 — Bash-Hook lässt absoluten-Pfad-Redirect auf Task-File durch  🔴
-Der `.claude/tasks`-Zweig in `block-task-file-edits.js` hat keinen Leading-Path-
-Wildcard, also passiert `echo x > /abs/.../.claude/tasks/foo.yml` (die häufigste
-Pfadform) ungeblockt. **Live reproduziert.**
-**Fix:** dem `tasks`-Zweig denselben `[^\s'"|&;>]*`-Präfix geben wie dem `_epic`-
-Zweig; zusätzlich die nächst-häufigen Schreib-Shapes (`dd of=`, `truncate`,
-`gawk -i inplace`, `write_text`, `fs.writeFile`) nachziehen. Test: absoluter Pfad
+### Q2 — Bash hook lets an absolute-path redirect onto a task-file through  🔴
+The `.claude/tasks` branch in `block-task-file-edits.js` has no leading-path
+wildcard, so `echo x > /abs/.../.claude/tasks/foo.yml` (the most common
+path form) passes through unblocked. **Reproduced live.**
+**Fix:** give the `tasks` branch the same `[^\s'"|&;>]*` prefix as the `_epic`
+branch; additionally pull in the next-most-common write shapes (`dd of=`, `truncate`,
+`gawk -i inplace`, `write_text`, `fs.writeFile`). Test: absolute path
 → BLOCK.
 
-### Q3 — User-Step re-deklariert Built-in-Worker mit `run:` → Shell-Eskalation
-merge keyt Steps per Name, also wird `{name: implement, run: 'rm -rf /'}` in den
-privilegierten `implement`-Worker gemergt und von `toPlanStep` zu `kind:run`
-umklassifiziert (`merge.ts:22-37`, `steps-planner.ts:21-44`). Eine eingeschleuste
-anchored.yml kann beliebige Shell beim „implement" ausführen.
-**Fix:** in `mergeSteps` mit `ConfigError` ablehnen, wenn ein User-Step einen
-Built-in-Worker-Namen mit konfligierendem `run`/`use`/`each` trifft. Test.
+### Q3 — User step re-declares a built-in worker with `run:` → shell escalation
+merge keys steps by name, so `{name: implement, run: 'rm -rf /'}` is merged into the
+privileged `implement` worker and reclassified by `toPlanStep` to `kind:run`
+(`merge.ts:22-37`, `steps-planner.ts:21-44`). An injected
+anchored.yml can run arbitrary shell on "implement".
+**Fix:** in `mergeSteps`, reject with `ConfigError` when a user step hits a
+built-in-worker name with a conflicting `run`/`use`/`each`. Test.
 
-### Q4 — Kleine Schrauben
-- **`retry_limit` ohne Obergrenze** (`schema/config.ts:18`): `1e9` akzeptiert →
-  Loop-Hang via Config. → `.max(20)`.
-- **`ANCHORED_TASKFILE_EDIT=1` schaltet auch Bash ab** (`block-task-file-edits.js`):
-  vererbt sich in Build-Agents und macht die ganze Enforcement abschaltbar. → das
-  Flag nur für Write/Edit/MultiEdit honorieren, NIE für Bash.
-- **`zodForTypeString`-Fallback auf `z.unknown()`** (`custom-fields.ts:29-35`): ein
-  deklariertes Nicht-Skalar-Feld validiert beliebigen Müll. → unbekannte
-  Type-Strings beim Bootstrap fail-fast ablehnen (berührt Invariante nicht, nur
-  Schärfe).
+### Q4 — Small screws
+- **`retry_limit` without an upper bound** (`schema/config.ts:18`): `1e9` accepted →
+  loop hang via config. → `.max(20)`.
+- **`ANCHORED_TASKFILE_EDIT=1` also switches off Bash** (`block-task-file-edits.js`):
+  inherits into build agents and makes the whole enforcement switchable off. → honor
+  the flag only for Write/Edit/MultiEdit, NEVER for Bash.
+- **`zodForTypeString` fallback to `z.unknown()`** (`custom-fields.ts:29-35`): a
+  declared non-scalar field validates arbitrary garbage. → reject unknown
+  type strings fail-fast at bootstrap (does not touch the invariant, only
+  sharpness).
 
-### Doku
-- Hook explizit als **Best-Effort-Defence-in-Depth** dokumentieren — autoritativ ist
-  der validierende CLI/persist, nicht der Hook (Allowlist-of-Shapes ist strukturell
-  nie lückenlos).
+### Docs
+- Document the hook explicitly as **best-effort defence-in-depth** — the authoritative
+  one is the validating CLI/persist, not the hook (an allowlist-of-shapes is structurally
+  never gapless).
 
-## Nicht-Ziel
-- Kein Flow-/Contract-Change. Reine Loch-Schließung + Schärfung.
+## Non-goal
+- No flow/contract change. Pure hole-closing + sharpening.

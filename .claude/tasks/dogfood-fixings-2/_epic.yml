@@ -1,315 +1,315 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/epic.schema.json
 schema_version: 2
 slug: dogfood-fixings-2
-title: Dogfood-Fixings 2 — Epic-Lauf-Funde + Substrat-Härtung + Epic-Refine-Redesign
+title: Dogfood Fixings 2 — epic-run findings + substrate hardening + epic-refine redesign
 status: plan
 created: 2026-06-11
 goal: |
-  Der Epic-Dogfood (skill-orchestrierter Runtime gegen ~/Dev/anchored-test:
-  /a:plan epic → refine → build über die 4-Task-Fächer-App) lief fachlich durch
-  (App gebaut), deckte aber 11 reale Defekte + zwei strukturelle Lücken auf, die
-  die Unit-Tests maskiert hatten. Zwei Wurzeln:
+  The epic dogfood (skill-orchestrated runtime against ~/Dev/anchored-test:
+  /a:plan epic → refine → build over the 4-task tabs app) ran through on the
+  functional side (app built), but surfaced 11 real defects + two structural gaps
+  that the unit tests had masked. Two roots:
 
-    1. Der Schreib-Pfad validiert nicht — persist() schreibt ungeprüft, Schema
-       greift nur beim read → invalide Mutation = ok:true, brickt beim nächsten
-       Lesen (ein Epic wurde unlesbar, musste von Hand repariert werden).
-    2. Die Skills sind task-tier-codiert — die Epic-Etage bekommt Task-Vokabular
-       (context.plan, drafted/refined/wrap, in-progress), das es dort nicht gibt.
+    1. The write path does not validate — persist() writes unchecked, the schema
+       only kicks in on read → an invalid mutation = ok:true, breaks on the next
+       read (one epic became unreadable and had to be repaired by hand).
+    2. The skills are task-tier-coded — the epic tier gets task vocabulary
+       (context.plan, drafted/refined/wrap, in-progress) that does not exist there.
 
-  Dieser Epic härtet das Substrat (G1 Keystone: validate-before-write), schließt
-  die Test-Lücke (Full-Lifecycle-e2e pro Tier), und zieht zwei vom User
-  entschiedene Redesigns ein: D1 — der Epic bekommt die VOLLE Lifecycle-Symmetrie
-  (gleiche Wörter wie task: plan→drafted→refined→build→wrap→done); D2 — Epic-refine
-  wird eine ECHTE Stage mit per-Task-ACs am TaskStub (Outcome-Ebene), gegen die
-  der wrap-roll-up validiert.
+  This epic hardens the substrate (G1 keystone: validate-before-write), closes
+  the test gap (full-lifecycle e2e per tier), and pulls in two redesigns decided
+  by the user: D1 — the epic gets the FULL lifecycle symmetry (same words as task:
+  plan→drafted→refined→build→wrap→done); D2 — epic-refine becomes a REAL stage
+  with per-task acceptance criteria at the TaskStub (outcome level), against which
+  the wrap roll-up validates.
 
-  Quelle aller Funde + Root-Cause + Fix-Idee + Datei:Zeile:
-  `.claude/temp/dogfood-findings-2.md` (G1–G11, D1/D2, V1). Die volle
-  Task-Ausarbeitung (Goals, Outcome-ACs, Detail-Fragen pro Task) liegt in
-  `.claude/temp/dogfood-fixings-2-elaboration.json` — Basis fürs Ausformulieren
-  der Task-Files. Abschluss-Beweis: ein dritter Dogfood-Rerun (task + epic) läuft
-  end-to-end sauber durch die gefixte CLI.
+  Source of all findings + root cause + fix idea + file:line:
+  `.claude/temp/dogfood-findings-2.md` (G1–G11, D1/D2, V1). The full task
+  elaboration (goals, outcome acceptance criteria, detail questions per task) lives
+  in `.claude/temp/dogfood-fixings-2-elaboration.json` — the basis for fleshing out
+  the task files. Completion evidence: a third dogfood rerun (task + epic) runs
+  end-to-end cleanly through the fixed CLI.
 acceptance:
   - id: e1
-    text: "G1 Keystone: persist() schema-validiert den Node VOR dem Write (fail-closed, typed anchoredError); eine invalide Mutation wird am schreibenden Op abgelehnt (ok:false), kein Node ist mehr brickbar — Unit + Regression grün"
+    text: "G1 keystone: persist() schema-validates the node BEFORE the write (fail-closed, typed anchoredError); an invalid mutation is rejected at the writing op (ok:false), no node can be bricked anymore — unit + regression green"
     status: done
   - id: e2
-    text: "Full-Lifecycle-e2e grün für Task UND Epic durch die echten CLI-Verben, mit read-back nach JEDEM Schritt; plus invalid-write-Regression (Epic-Child in-progress / unbekanntes Feld → ok:false, Node bleibt lesbar) (G11)"
+    text: "Full-lifecycle e2e green for task AND epic through the real CLI verbs, with read-back after EVERY step; plus invalid-write regression (epic child in-progress / unknown field → ok:false, node stays readable) (G11)"
     status: done
   - id: e3
-    text: "Epic fährt die volle Lifecycle-Symmetrie (plan→drafted→refined→build→wrap→done) legal durch die CLI; transitions.ts forward-only erweitert; Epic-Schema hat context (ContextTrails) (D1)"
+    text: "Epic runs the full lifecycle symmetry (plan→drafted→refined→build→wrap→done) legally through the CLI; transitions.ts extended forward-only; epic schema has context (ContextTrails) (D1)"
     status: done
   - id: e4
-    text: "Epic-refine ist echt: TaskStub.acceptance[] (Outcome-Task-ACs) + Schreib-Verb; epic.refine.steps grounded gegen Code (epic-plan-check/decompose); JIT plan-task seedet aus den Stub-ACs (löst G8); wrap-roll-up validiert Phasen-ACs gegen Task-ACs (D2)"
+    text: "Epic-refine is real: TaskStub.acceptance[] (outcome task acceptance criteria) + write verb; epic.refine.steps grounded against code (epic-plan-check/decompose); just-in-time plan-task seeds from the stub acceptance criteria (resolves G8); wrap roll-up validates phase acceptance criteria against task acceptance criteria (D2)"
     status: done
   - id: e5
-    text: "set-child-status validiert das Child-Enum; Skills fahren uniforme tier-korrekte Stage-Transitions; expliziter Epic-each:task-Loop in der build-Skill statt python-yaml-Krücke (G2/G3/G5)"
+    text: "set-child-status validates the child enum; skills run uniform tier-correct stage transitions; explicit epic-each:task loop in the build skill instead of a python-yaml crutch (G2/G3/G5)"
     status: done
   - id: e6
-    text: "build-implement flippt NIE den Phase-Status; der done-Flip ist strukturell exklusiv der Orchestrator NACH beiden Gates — Gate-vor-done hält (G4)"
+    text: "build-implement NEVER flips the phase status; the done flip is structurally exclusive to the orchestrator AFTER both gates — gate-before-done holds (G4)"
     status: done
   - id: e7
-    text: "Skills sprechen Partner-Stimme (communication-style portiert + pro SKILL Avoid/Prefer-Tabelle); kein Framework-Leak im Chat (G10)"
+    text: "Skills speak the partner voice (communication-style ported + per-SKILL Avoid/Prefer table); no framework leak in the chat (G10)"
     status: done
   - id: e8
-    text: "User-anchored.yml-Override nachweislich wirksam durch die deployte CLI (inkl. Deep-Merge) ODER nachgebaut + Regressions-Test; CLI-DX-Lücken geschlossen (question-list, resolve-question-Fehler, intro→context) (V1/G6/G9/G7)"
+    text: "User anchored.yml override demonstrably effective through the deployed CLI (incl. deep merge) OR rebuilt + regression test; CLI DX gaps closed (question-list, resolve-question error, intro→context) (V1/G6/G9/G7)"
     status: done
   - id: e9
-    text: "Dritter Dogfood-Rerun (task + epic) grün end-to-end durch die gefixte CLI; alle 5 Quality-Gates (lint/format/typecheck/test/build) grün"
+    text: "Third dogfood rerun (task + epic) green end-to-end through the fixed CLI; all 5 quality gates (lint/format/typecheck/test/build) green"
     status: pending
   - id: e10
-    text: "Refine entscheidet pro Phase den executor (fan-out workflow vs sequenziell implement) und setzt ihn via set-executor; build fährt fan-out-Phasen parallel über den vorhandenen Workflow-Mechanismus → mehr-AC-Phasen laufen messbar schneller (G12)"
+    text: "Refine decides per phase the executor (fan-out workflow vs sequential implement) and sets it via set-executor; build runs fan-out phases in parallel over the existing workflow mechanism → multi-acceptance-criterion phases run measurably faster (G12)"
     status: done
   - id: e11
-    text: "Epic-build-Loop baut unabhängige Child-Tasks (gleiche depends_on-Ebene) PARALLEL über das Workflow-Tool — je Child der volle JIT-Lebenszyklus plan→refine→build→wrap, lock-sicher, Walk-Fragen gebuffert; der Fächer-Rerun läuft messbar schneller als seriell (q8)"
+    text: "Epic build loop builds independent child tasks (same depends_on level) IN PARALLEL over the workflow tool — for each child the full just-in-time lifecycle plan→refine→build→wrap, lock-safe, walk questions buffered; the tabs rerun runs measurably faster than serial (q8)"
     status: done
   - id: e12
-    text: "Onboarding: eine /a:-Skill ohne vorhandene anchored.yml richtet das Nötigste lazy ein (minimale anchored.yml + Bash-Allowlist) und bietet dem User an, den Prozess gemeinsam zu optimieren (setup-Skill, aus v1 portiert: config-editor-that-consults) — als Frage 'jetzt einrichten / erstmal nur das Nötigste'; Partner-Stimme, kein Funnel (G13)"
+    text: "Onboarding: a /a: skill without an existing anchored.yml lazily sets up the bare minimum (minimal anchored.yml + Bash allowlist) and offers the user to optimize the process together (setup skill, ported from v1: config-editor-that-consults) — as a question 'set up now / just the bare minimum for now'; partner voice, no funnel (G13)"
     status: done
   - id: e13
-    text: "Jede User-Frage trägt eine ausgearbeitete EMPFEHLUNG (empfohlene Option zuerst, '(Empfohlen)') + knappe IMPLIKATIONS-Stichpunkte über den Optionen; Frage-autorende Agents + alle Walk-Stellen (refine/build-pre-build/plan-classify/stop-check/onboarding) folgen question-style.md; AI-Auflösungen nennen die gelösten Implikationen. Reine Skill-Prosa, kein Schema/Code (G14)"
+    text: "Every user question carries a worked-out RECOMMENDATION (recommended option first, '(Recommended)') + terse IMPLICATION bullets above the options; question-authoring agents + all walk points (refine/build-pre-build/plan-classify/stop-check/onboarding) follow question-style.md; AI resolutions name the resolved implications. Pure skill prose, no schema/code (G14)"
     status: done
 questions:
   - id: q1
-    text: "D1 Form: bekommt der Epic die volle Lifecycle-Symmetrie mit denselben Wörtern wie task (plan→drafted→refined→build→wrap→done)?"
+    text: "D1 form: does the epic get the full lifecycle symmetry with the same words as task (plan→drafted→refined→build→wrap→done)?"
     priority: high
     origin: dogfood
     status: resolved
     source: user
-    answer: "Ja — volle Symmetrie, identische Wörter für alle Tiers. Damit fahren plan/refine/build/wrap auf jeder Etage dieselben Stage-Transitions; das Tier-Branching der Skills entfällt an der Wurzel."
+    answer: "Yes — full symmetry, identical words for all tiers. With that, plan/refine/build/wrap run the same stage transitions on every tier; the skills' tier branching falls away at the root."
   - id: q2
-    text: "D2 Heimat der per-Task-ACs: wo leben die im Epic-refine ausgearbeiteten Outcome-ACs?"
+    text: "D2 home of the per-task acceptance criteria: where do the outcome acceptance criteria worked out in epic-refine live?"
     priority: high
     origin: dogfood
     status: resolved
     source: user
-    answer: "Am TaskStub.acceptance[] im _epic.yml, aufgebaut wie die ACs im Task-File, nur auf Outcome-/Ganze-Task-Ebene. Zwei AC-Ebenen: Epic→Task-ACs (Outcome, am Stub) vs Task→Phasen-ACs (Build-Ebene, vom JIT plan-task). Der wrap-roll-up validiert Phasen-ACs gegen die Stub-Task-ACs."
+    answer: "At TaskStub.acceptance[] in the _epic.yml, built like the acceptance criteria in the task file, only at outcome / whole-task level. Two acceptance-criteria levels: epic→task acceptance criteria (outcome, at the stub) vs task→phase acceptance criteria (build level, from the just-in-time plan-task). The wrap roll-up validates phase acceptance criteria against the stub task acceptance criteria."
   - id: q3
-    text: "Stub-Status vs Epic-Eigen-Lifecycle: der TaskStub-Status (Queue-Marker) bleibt getrennt von der vollen Epic-Lifecycle (D1)?"
+    text: "Stub status vs epic's own lifecycle: does the TaskStub status (queue marker) stay separate from the full epic lifecycle (D1)?"
     priority: medium
     origin: dogfood
     status: resolved
     source: ai
-    answer: "Ja — der Stub-Status bleibt Queue-Semantik (pending|active|done|blocked), getrennt von der Epic-Eigen-Lifecycle (plan→…→done). Die build-Skill nutzt 'active' (nicht 'in-progress') zum Aktivmarkieren eines Epic-Childs — das ist die Skill-Seite von G2."
-    reasoning: "Stub-Status ist ein Loop-Queue-Marker des Parents, nicht die Lifecycle des Child-Tasks; vermischen würde G2 nur verlagern. Minimal-invasiv, vom User überstimmbar."
+    answer: "Yes — the stub status stays queue semantics (pending|active|done|blocked), separate from the epic's own lifecycle (plan→…→done). The build skill uses 'active' (not 'in-progress') to mark an epic child active — that is the skill side of G2."
+    reasoning: "Stub status is a loop-queue marker of the parent, not the lifecycle of the child task; mixing them would only shift G2. Minimally invasive, overridable by the user."
   - id: q4
-    text: "G1 Fehler-Oberfläche: bei Parse-Failure im persist() einen typed anchoredError('InvalidNode', tier+slug+Feldpfad) werfen statt rohem ZodError?"
+    text: "G1 error surface: on a parse failure in persist(), throw a typed anchoredError('InvalidNode', tier+slug+field path) instead of a raw ZodError?"
     priority: medium
     origin: dogfood
     status: resolved
     source: ai
-    answer: "Ja — typed anchoredError('InvalidNode') mit lokalisierter Ein-Zeilen-Message (tier+slug+Feldpfad+Grund), damit die CLI dieselbe JSON-Error-Envelope wie jeder andere Op emittiert. Validieren als Guard, aber den Original-Node schreiben (render(node)), nicht die geparste Projektion — Feldordnung/intendierte Keys bleiben."
-    reasoning: "Konsistente CLI-JSON-Fehler + human-lokalisiert; parse-as-guard vermeidet stilles Umschreiben der On-Disk-Form. Vom User überstimmbar (exakter kind-String)."
+    answer: "Yes — typed anchoredError('InvalidNode') with a localized one-line message (tier+slug+field path+reason), so the CLI emits the same JSON error envelope as any other op. Validate as a guard, but write the original node (render(node)), not the parsed projection — field order/intended keys stay."
+    reasoning: "Consistent CLI JSON errors + human-localized; parse-as-guard avoids silently rewriting the on-disk form. Overridable by the user (exact kind string)."
   - id: q5
-    text: "D1 Legacy-Wording-Migration: die bestehenden Epic-Status planning/building hart umbenennen (plus Einmal-Migration bestehender _epic.yml) ODER als Alias auf die neuen Wörter mappen? Betrifft alle existierenden Epic-Files (inkl. dogfood-fixings-1, dieses File)."
+    text: "D1 legacy-wording migration: hard-rename the existing epic statuses planning/building (plus a one-time migration of existing _epic.yml) OR map them as aliases onto the new words? Affects all existing epic files (incl. dogfood-fixings-1, this file)."
     priority: high
     origin: dogfood
     status: resolved
     source: user
-    answer: "Hart umbenennen — wir sind nicht live, also keine Alias-/Kompat-Schicht. planning/building verschwinden ganz; die bestehenden _epic.yml (dogfood-fixings-1, dieses File) werden direkt auf die neuen Wörter (planning→plan, building→build) angepasst. Kein Migrations-Code, nur ein sauberer Schnitt."
+    answer: "Hard rename — we are not live, so no alias/compat layer. planning/building disappear entirely; the existing _epic.yml (dogfood-fixings-1, this file) are adjusted directly to the new words (planning→plan, building→build). No migration code, just a clean cut."
   - id: q6
-    text: "Project-Tier: den project-Tier (schema/tiers/project.ts, aktuell ebenfalls planning|building|done, RESERVED/nicht ausgefahren) im selben Zug auf die volle Symmetrie ziehen, oder bewusst reserved/unangetastet lassen, bis er gebraucht wird?"
+    text: "Project tier: pull the project tier (schema/tiers/project.ts, currently also planning|building|done, RESERVED/not rolled out) onto the full symmetry in the same pass, or deliberately leave it reserved/untouched until it is needed?"
     priority: medium
     origin: dogfood
     status: resolved
     source: user
-    answer: "Project-Tier bleibt JETZT aussen vor — wir lassen projects erstmal aus der Phase raus, erst muss der Epic-Tier getestet sein. Alle Tiers sollen am Ende dieselbe Form haben, aber project NICHT in diesem Epic. Falls schon project-Symmetrie-Code reingerutscht ist: raus. Scope dieses Epics = nur epic (+ task/phase)."
+    answer: "Project tier stays out FOR NOW — we leave projects out of the phase for now, the epic tier has to be tested first. All tiers should have the same form in the end, but project NOT in this epic. If project-symmetry code has already slipped in: out. Scope of this epic = only epic (+ task/phase)."
   - id: q7
-    text: "D2 Roll-up-Strenge: blockt ein Child-Task, dessen gelieferte Phasen-ACs die Outcome-Task-ACs des Stubs NICHT voll abdecken (hart), oder meldet der roll-up die Lücke nur als Befund/Frage (weich)? Bestimmt, wie verbindlich der Epic→Task-Vertrag ist."
+    text: "D2 roll-up strictness: does a child task whose delivered phase acceptance criteria do NOT fully cover the stub's outcome task acceptance criteria block (hard), or does the roll-up only report the gap as a finding/question (soft)? Determines how binding the epic→task contract is."
     priority: medium
     origin: dogfood
     status: resolved
     source: user
-    answer: "Hart mit Reconcile-Naht: der roll-up BLOCKT bei einer Lücke (Phasen-ACs decken eine Outcome-Stub-AC nicht ein) — der Epic kann nicht done. Aber die Lücke landet als Frage im Walk, die der User auflöst: (a) AC doch erfüllt + Beleg → resolved, (b) Task re-open → nachbauen, (c) AC war zu streng → revidieren. Verbindlicher Vertrag, aber kein toter Fehl-Stopp. Erstmal hart fahren und beobachten — die Strenge ist später justierbar."
+    answer: "Hard with a reconcile seam: the roll-up BLOCKS on a gap (phase acceptance criteria do not cover an outcome stub acceptance criterion) — the epic cannot go done. But the gap lands as a question in the walk, which the user resolves: (a) acceptance criterion is met after all + evidence → resolved, (b) re-open task → rebuild, (c) acceptance criterion was too strict → revise. A binding contract, but no dead false-stop. Run it hard for now and observe — the strictness is adjustable later."
   - id: q8
-    text: "Epic-Loop-Parallelität (Task-Ebene): sollen UNABHÄNGIGE Child-Tasks (gleiche depends_on-Ebene, z.B. die drei Fächer-Features clear-completed/filter-bar/task-counter) im Epic-build-Loop PARALLEL gebaut werden statt seriell? Das ist der GRÖSSERE Zeit-Hebel — der 44-min-Lauf war v.a. serielle Tasks, nicht serielle Phasen. Phase-Fan-out (G12/e10) und Task-Fan-out sind zwei getrennte Ebenen. Empfehlung: ja, parallele Fächer-Builds als zweite Fan-out-Ebene — aber Scope-Entscheidung (eigener Task in DIESEM Epic, oder erst nach dem ersten grünen Epic-Rerun?)."
+    text: "Epic loop parallelism (task level): should INDEPENDENT child tasks (same depends_on level, e.g. the three tabs features clear-completed/filter-bar/task-counter) in the epic build loop be built IN PARALLEL instead of serially? This is the BIGGER time lever — the 44-min run was mostly serial tasks, not serial phases. Phase fan-out (G12/e10) and task fan-out are two separate levels. Recommendation: yes, parallel tabs builds as a second fan-out level — but a scope decision (its own task in THIS epic, or only after the first green epic rerun?)."
     priority: medium
     origin: dogfood
     status: resolved
     source: user
-    answer: "Ja — in DIESEN Epic als eigener Task (epic-task-fanout). Beide Fan-out-Ebenen werden gebaut: Phase-Fan-out (G12) UND Task-Fan-out (unabhängige Child-Tasks gleicher depends_on-Ebene parallel im Epic-Loop). Der größere Zeit-Hebel kommt damit gleich mit rein."
+    answer: "Yes — into THIS epic as its own task (epic-task-fanout). Both fan-out levels get built: phase fan-out (G12) AND task fan-out (independent child tasks of the same depends_on level in parallel in the epic loop). The bigger time lever comes right in with it."
 tasks:
   - slug: substrate-write-validation
     goal: |
-      G1 (Keystone): persist() (core/src/ops/node-ops.ts:80–83) parst den Node via
-      tierSchema.schema.parse VOR dem render/atomicWrite — fail-closed mit typed
-      anchoredError('InvalidNode', tier+slug+Feldpfad). Jede Mutation fließt durch
-      persist → automatische, uniforme Deckung über phase/task/epic. Macht die
-      G2/G4/G7-Klasse von 'still gebrickt, Fehler beim späteren Leser' zu
-      'sofortiger, lokalisierter Fehler am schreibenden Op'. Minimal + factory-pur
-      (nutzt das schon injizierte schema-Feld, kein neuer Effekt-Import). Volle
-      ACs: elaboration.json → substrate-write-validation.
+      G1 (keystone): persist() (core/src/ops/node-ops.ts:80–83) parses the node via
+      tierSchema.schema.parse BEFORE the render/atomicWrite — fail-closed with a typed
+      anchoredError('InvalidNode', tier+slug+field path). Every mutation flows through
+      persist → automatic, uniform coverage over phase/task/epic. Turns the
+      G2/G4/G7 class of 'silently bricked, error at the later reader' into
+      'immediate, localized error at the writing op'. Minimal + factory-pure
+      (uses the already-injected schema field, no new effect import). Full
+      acceptance criteria: elaboration.json → substrate-write-validation.
     status: done
     depends_on: []
   - slug: lifecycle-e2e
     goal: |
-      G11: ersetzt die task-only, ops-direkte e2e (e2e.dogfood.spec.ts — nie
-      read-back nach Mutation, nie der Epic-Loop, nie ein abgelehnter Write) durch
-      CLI-getriebene Golden-Paths PRO TIER (task: plan→…→done; epic: volle
-      Symmetrie inkl. each:task-Child-Loop) mit State- + Re-Lesbarkeits-Assertion
-      nach JEDEM Schritt, plus eine invalid-write-Regression (Epic-Child
-      'in-progress' / unbekanntes Feld → ok:false am Op, Node bleibt lesbar).
-      Braucht substrate-write-validation für die Reject-Assertion.
+      G11: replaces the task-only, ops-direct e2e (e2e.dogfood.spec.ts — never a
+      read-back after a mutation, never the epic loop, never a rejected write) with
+      CLI-driven golden paths PER TIER (task: plan→…→done; epic: full
+      symmetry incl. each:task child loop) with state + re-readability assertion
+      after EVERY step, plus an invalid-write regression (epic child
+      'in-progress' / unknown field → ok:false at the op, node stays readable).
+      Needs substrate-write-validation for the reject assertion.
     status: done
     depends_on: [substrate-write-validation]
   - slug: child-status-enum
     goal: |
-      G2: zweischichtig. (a) Op — setChildStatus (node-ops.ts:324) validiert den
-      eingehenden status gegen das CHILD-Tier-Status-Enum (Defence-in-Depth neben
-      G1). (b) Skill/Agent — die build-Orchestrierung mappt tier-korrekt:
-      Epic-Child → 'active', Task-Phase → 'in-progress'. Schließt das
-      Korruptions-Loch, das im Dogfood das Epic unlesbar machte. Setzt die
-      D1-Wörter voraus (siehe q3: Stub-Status bleibt Queue-Marker).
+      G2: two-layered. (a) Op — setChildStatus (node-ops.ts:324) validates the
+      incoming status against the CHILD-tier status enum (defence-in-depth alongside
+      G1). (b) Skill/agent — the build orchestration maps tier-correctly:
+      epic child → 'active', task phase → 'in-progress'. Closes the
+      corruption hole that made the epic unreadable in the dogfood. Presupposes the
+      D1 words (see q3: stub status stays a queue marker).
     status: done
     depends_on: [substrate-write-validation]
   - slug: cli-dx
     goal: |
-      G6+G9+G7: drei DX-Lücken, die Agents zum python-yaml-Geshelle zwangen.
-      G6 — `question-list <slug> [--status open]`-Verb (analog list-phases). G9 —
-      klarere Fehlermeldung, wenn resolve-question source=ai das reasoning-Arg
-      fehlt (5-Arg-Signatur nennen). G7 — Skill/Agent nutzte 'intro' (v1-Feld) auf
-      einem Task, dessen Schema-Feld 'context' heißt → auf context.plan umstellen
-      (mit G1 würde es sofort auffallen).
+      G6+G9+G7: three DX gaps that forced agents into python-yaml shelling.
+      G6 — `question-list <slug> [--status open]` verb (analogous to list-phases). G9 —
+      clearer error message when resolve-question source=ai is missing the reasoning
+      arg (name the 5-arg signature). G7 — a skill/agent used 'intro' (a v1 field) on
+      a task whose schema field is named 'context' → switch to context.plan
+      (with G1 it would surface immediately).
     status: done
     depends_on: [substrate-write-validation]
   - slug: epic-full-lifecycle
     goal: |
-      D1: ersetzt die reduzierte Epic-State-Machine (planning→building→done) durch
-      die volle task-symmetrische Lifecycle mit DENSELBEN Wörtern —
-      plan→drafted→refined→build→wrap→done. Status-Enum (schema/tiers/epic.ts) +
-      validate/transitions.ts (forward-only Epic-Kanten) erweitern; Epic-Schema
-      bekommt context (ContextTrails) wie task. Netto: Stage-Transitions
-      tier-uniform → G3 verschwindet an der Wurzel. Legacy-Wording-Migration der
-      bestehenden _epic.yml: siehe q5.
+      D1: replaces the reduced epic state machine (planning→building→done) with
+      the full task-symmetric lifecycle with THE SAME words —
+      plan→drafted→refined→build→wrap→done. Extend the status enum (schema/tiers/epic.ts) +
+      validate/transitions.ts (forward-only epic edges); the epic schema
+      gets context (ContextTrails) like task. Net: stage transitions
+      tier-uniform → G3 disappears at the root.
+      Legacy-wording migration of the existing _epic.yml: see q5.
     status: done
     depends_on: [substrate-write-validation]
   - slug: taskstub-acceptance
     goal: |
-      D2 (Substrat-Hälfte): TaskStub (schema/tiers/epic.ts) bekommt ein
-      acceptance[] geshaped wie Task-ACs (id, text, status pending|done, evidence
-      optional) — OUTCOME-Task-ACs ('Persistenz funktioniert'), getrennt von
-      Phasen-ACs. Plus ein CLI-Verb + node-op zum Schreiben/Setzen der Stub-ACs
-      (konsistent zu add-ac, durch die validierende CLI). Die Daten-Heimat, in die
-      epic-refine schreibt und gegen die der roll-up validiert.
+      D2 (substrate half): TaskStub (schema/tiers/epic.ts) gets an
+      acceptance[] shaped like task acceptance criteria (id, text, status pending|done, evidence
+      optional) — OUTCOME task acceptance criteria ('persistence works'), separate from
+      phase acceptance criteria. Plus a CLI verb + node-op to write/set the stub acceptance criteria
+      (consistent with add-ac, through the validating CLI). The data home into which
+      epic-refine writes and against which the roll-up validates.
     status: done
     depends_on: [epic-full-lifecycle]
   - slug: epic-refine-pipeline
     goal: |
-      D2 (Policy/Agents-Hälfte): epic.refine.steps im Default-Template gewinnt
-      discover + plan-check + decompose (heute nur [walk]). Neue Agents
-      epic-plan-check (grounded gegen echten Code) + epic-decompose (arbeitet die
-      Stub-Task-ACs aus). Der JIT plan-task seedet die Phasen-Decomposition aus den
-      Stub-Task-ACs (löst G8 — verlorenes goal/context). Der wrap-roll-up
-      (epic-roll-up-Agent) validiert gelieferte Phasen-ACs gegen die Stub-Task-ACs.
-      Reine Template- + Plugin-Änderung, KEIN Engine-Rewrite.
+      D2 (policy/agents half): epic.refine.steps in the default template gains
+      discover + plan-check + decompose (today only [walk]). New agents
+      epic-plan-check (grounded against real code) + epic-decompose (works out
+      the stub task acceptance criteria). The just-in-time plan-task seeds the phase decomposition from the
+      stub task acceptance criteria (resolves G8 — lost goal/context). The wrap roll-up
+      (epic-roll-up agent) validates delivered phase acceptance criteria against the stub task acceptance criteria.
+      Pure template + plugin change, NO engine rewrite.
     status: done
     depends_on: [taskstub-acceptance]
   - slug: skill-tier-branching
     goal: |
-      G3+G5: die vier SKILL.md (plan/refine/build/wrap) fahren uniforme
-      Stage-Transitions auf JEDEM Tier (kein task-only context/drafted/refined/
-      wrap-Sonderfall — jetzt möglich nach D1). Expliziter Epic-each:task-Loop-
-      Block in der build-Skill (next-child → child active → JIT plan/refine/build/
-      wrap des Child-Tasks → child done → repeat) mit tier-korrekten Verben, ersetzt
-      die ad-hoc python-yaml-Parse-Krücken des Dogfoods.
+      G3+G5: the four SKILL.md (plan/refine/build/wrap) run uniform
+      stage transitions on EVERY tier (no task-only context/drafted/refined/
+      wrap special case — now possible after D1). Explicit epic-each:task loop
+      block in the build skill (next-child → child active → just-in-time plan/refine/build/
+      wrap of the child task → child done → repeat) with tier-correct verbs, replacing
+      the ad-hoc python-yaml parse crutches of the dogfood.
     status: done
     depends_on: [epic-full-lifecycle, epic-refine-pipeline]
   - slug: build-phase-discipline
     goal: |
-      G4: build-implement wird strukturell unfähig, einen Phase-Status zu flippen —
-      es schreibt NUR per-AC-Evidence; der done-Flip ist exklusiv Sache des
-      Orchestrators NACH beiden Gates. Entfernt den Gate-vor-done-Bypass (im
-      Dogfood flippte der Agent eine Phase teils 'done', bevor task-validate/
-      code-validate liefen). Spiegelt die Stelle, wo der Agent es richtig machte.
-      Unabhängig vom Epic-Strang.
+      G4: build-implement becomes structurally unable to flip a phase status —
+      it writes ONLY per-acceptance-criterion evidence; the done flip is exclusively the
+      orchestrator's business AFTER both gates. Removes the gate-before-done bypass (in
+      the dogfood the agent flipped a phase partly 'done' before task-validate/
+      code-validate ran). Mirrors the place where the agent did it right.
+      Independent of the epic strand.
     status: done
     depends_on: []
   - slug: user-language
     goal: |
-      G10: v1 plugin/references/communication-style.md ins v2-Plugin portieren
-      (Partner-Stimme im Chat, Machinery nur im Audit-Trail) und jede SKILL.md
-      (plan/refine/build/wrap) um die Avoid(machinery)/Prefer(partner)-Tabelle +
-      die Hard-Rule gegen Leakage erweitern. Stage-Nummern, Config-Slots,
-      CLI-Verben, Status-Flips → SILENT; nur Outcome + echte Entscheidungen
-      erreichen den Chat. Unabhängig.
+      G10: port v1 plugin/references/communication-style.md into the v2 plugin
+      (partner voice in the chat, machinery only in the audit trail) and extend every SKILL.md
+      (plan/refine/build/wrap) with the Avoid(machinery)/Prefer(partner) table +
+      the hard rule against leakage. Stage numbers, config slots,
+      CLI verbs, status flips → SILENT; only outcome + real decisions
+      reach the chat. Independent.
     status: done
     depends_on: []
   - slug: config-override-verify
     goal: |
-      V1: empirisch durch die deployte-CLI-Wiring (createAnchored, index.ts:154+,
-      derselbe Pfad wie bin.ts) beweisen, dass eine User-anchored.yml in der
-      Project-Root Default-Template-Policy überschreibt (inkl. DEEP-Merge — ein
-      gesetztes 'task:' darf nicht den ganzen Default-Block clobbern). e2e: Projekt
-      mit Override-anchored.yml anlegen, 'anchored steps …' MUSS den Override
-      zeigen. Falls der Override nicht greift (oder Merge nur shallow ist) → Merge
-      fixen. Unabhängig.
+      V1: empirically prove through the deployed-CLI wiring (createAnchored, index.ts:154+,
+      the same path as bin.ts) that a user anchored.yml in the
+      project root overrides default-template policy (incl. DEEP merge — a
+      set 'task:' must not clobber the whole default block). e2e: create a project
+      with an override anchored.yml, 'anchored steps …' MUST show the override.
+      If the override does not take (or the merge is only shallow) → fix the
+      merge. Independent.
     status: done
     depends_on: []
   - slug: phase-executor-refine
     goal: |
-      G12: schließt die fehlende Entscheidungs-Schicht auf dem schon vorhandenen
-      Fan-out-Mechanismus. Phase-executor (implement|workflow), set-executor-Verb,
-      build-workflow-Agent und der Fan-out-Pfad in der build-SKILL sind alle bereits
-      da (dogfood-fixings-1) — ABER niemand SETZT den executor, also lief der
-      Epic-Dogfood ~44min für ~200 Zeilen rein seriell. Refine bekommt eine
-      per-Phase-executor-ENTSCHEIDUNG: eine Phase mit mehreren unabhängigen,
-      parallelisierbaren ACs (kein geteilter sequenzieller State) → set-executor
-      workflow; sonst implement. Danach laufen fan-out-fähige Phasen parallel.
-      Orientierung: der v1-executor-Mechanismus (~/Dev/anchored — build-dispatch +
-      workflow-worker). Heuristik + ob AI-entschieden oder gewalkt: Detail-Fragen
-      beim Ausformulieren. (Task-Ebenen-Parallelität = separater Hebel, siehe
+      G12: closes the missing decision layer on the already-existing
+      fan-out mechanism. Phase executor (implement|workflow), set-executor verb,
+      build-workflow agent and the fan-out path in the build SKILL are all already
+      there (dogfood-fixings-1) — BUT no one SETS the executor, so the
+      epic dogfood ran ~44min for ~200 lines purely serially. Refine gets a
+      per-phase executor DECISION: a phase with several independent,
+      parallelizable acceptance criteria (no shared sequential state) → set-executor
+      workflow; otherwise implement. After that, fan-out-capable phases run in parallel.
+      Reference: the v1 executor mechanism (~/Dev/anchored — build-dispatch +
+      workflow-worker). Heuristic + whether AI-decided or walked: detail questions
+      during the elaboration. (Task-level parallelism = a separate lever, see
       epic-task-fanout.)
     status: done
     depends_on: [skill-tier-branching]
   - slug: epic-task-fanout
     goal: |
-      q8 (zweite Fan-out-Ebene, der GRÖSSERE Zeit-Hebel): der Epic-each:task-Loop
-      baut Child-Tasks GLEICHER depends_on-Ebene PARALLEL statt seriell (im Dogfood
-      hingen die 3 Fächer-Features alle nur an core-list, liefen aber nacheinander
-      → ~44min). Fan-out über das Workflow-Tool, je Child der volle JIT-Lebenszyklus
-      plan→refine→build→wrap. Heikel + zu lösen: parallele JIT-Lifecycles + Cross-
-      Process-Lock-Sicherheit beim Schreiben der Child-Status ins selbe _epic.yml;
-      Walk-Fragen die User-Input brauchen können nicht im Hintergrund-Fan-out laufen
-      → Buffering/Defer wie beim Phasen-Workflow (Fragen sammeln, am Join walken).
-      Orientierung: der bestehende build-SKILL-Workflow-Pfad + die DAG-ready-Logik
-      (next-child liefert nur ready Children). depends_on: skill-tier-branching
-      (das den Epic-each:task-Loop-Block ohnehin neu schreibt).
+      q8 (second fan-out level, the BIGGER time lever): the epic-each:task loop
+      builds child tasks of the SAME depends_on level IN PARALLEL instead of serially (in the dogfood
+      the 3 tabs features all only hung on core-list, but ran one after another
+      → ~44min). Fan-out over the workflow tool, for each child the full just-in-time lifecycle
+      plan→refine→build→wrap. Tricky + to solve: parallel just-in-time lifecycles + cross-
+      process lock safety when writing the child status into the same _epic.yml;
+      walk questions that need user input cannot run in the background fan-out
+      → buffering/defer like with the phase workflow (collect questions, walk at the join).
+      Reference: the existing build SKILL workflow path + the dependency-graph-ready logic
+      (next-child returns only ready children). depends_on: skill-tier-branching
+      (which rewrites the epic-each:task loop block anyway).
     status: done
     depends_on: [skill-tier-branching]
   - slug: onboarding-setup
     goal: |
-      G13: Onboarding-/Setup-Skill. v1 (~/Dev/anchored/plugin/skills/setup) hat
-      einen 'config-editor-that-consults' — übersetzt User-Intent in schema-valide
-      anchored.yml, klärt echte Ambiguität WITH dem User, 'never sell a setup',
-      kein Funnel — den nach v2 portieren. PLUS der neue Onboarding-Trigger:
-      startet eine /a:-Skill (z.B. /a:plan) OHNE vorhandene anchored.yml, richtet
-      die CLI das Nötigste lazy ein (minimale anchored.yml + Bash-Allowlist) UND
-      teilt dem User mit, dass er den Prozess mit dem setup-Skill gemeinsam
-      optimieren kann — als Frage 'jetzt gemeinsam einrichten / erstmal nur das
-      Nötigste'. Partner-Stimme (communication-style), kein Verkaufstrichter.
+      G13: onboarding/setup skill. v1 (~/Dev/anchored/plugin/skills/setup) has
+      a 'config-editor-that-consults' — translates user intent into a schema-valid
+      anchored.yml, clarifies real ambiguity WITH the user, 'never sell a setup',
+      no funnel — port that to v2. PLUS the new onboarding trigger:
+      a /a: skill (e.g. /a:plan) starts WITHOUT an existing anchored.yml, the
+      CLI lazily sets up the bare minimum (minimal anchored.yml + Bash allowlist) AND
+      tells the user that they can optimize the process together with the setup skill
+      — as a question 'set up together now / just the bare minimum for now'.
+      Partner voice (communication-style), no sales funnel.
     status: done
     depends_on: [skill-tier-branching, user-language]
   - slug: question-recommendations
     goal: |
-      G14: jede User-Frage trägt Empfehlung + Implikationen — reine Skill-Prosa,
-      KEIN Schema/Code. Behebt den v1-Reboot-Mangel (Fragen ohne Implikationen — man
-      wusste nicht, was eine Antwort nach sich zieht). Drei Teile, pro Frage:
-        1. EMPFEHLUNG — der Orchestrator/Agent arbeitet VOR der Frage eine
-           Empfehlung aus (guckt Code/Kontext an); die empfohlene Option steht
-           zuerst + '(Empfohlen)'.
-        2. IMPLIKATIONEN — 1–3 knappe Stichpunkte ÜBER den Optionen: was hängt an
-           der Entscheidung (was bricht/ermöglicht/kostet welche Richtung). Knapp,
-           kein Aufsatz.
-        3. pro Option / in der Empfehlung benennen, WELCHE Implikation die Wahl löst;
-           AI-aufgelöste Fragen nennen die gelösten Implikationen im reasoning.
-      Phasen (Outcome-ACs): (a) NEU plugin/references/question-style.md als SSOT der
-      Konvention; (b) Frage-autorende Agents (plan-decompose, refine-plan-check,
-      rules-check, epic-plan-check, epic-decompose, epic-roll-up) packen Empfehlung +
-      Implikationen in den Fragen-Text + verweisen auf die Referenz; (c) alle
-      Walk-Stellen (refine-Walk, build-pre-build-Walk, plan-Klassifizierung,
-      stop-check-Escalation, onboarding) präsentieren empfohlene-Option-zuerst +
-      Implikationen in der AskUserQuestion + nennen gelöste Implikationen; (d) Grep-
-      Test (Referenz existiert + Agents/Walks verweisen). Vergleichbarer Aufwand zu
+      G14: every user question carries a recommendation + implications — pure skill prose,
+      NO schema/code. Fixes the v1-reboot shortcoming (questions without implications — one
+      did not know what an answer entailed). Three parts, per question:
+        1. RECOMMENDATION — the orchestrator/agent works out a recommendation
+           BEFORE the question (looks at code/context); the recommended option comes
+           first + '(Recommended)'.
+        2. IMPLICATIONS — 1–3 terse bullets ABOVE the options: what hangs on
+           the decision (what breaks/enables/costs in which direction). Terse,
+           no essay.
+        3. per option / in the recommendation name WHICH implication the choice resolves;
+           AI-resolved questions name the resolved implications in the reasoning.
+      Phases (outcome acceptance criteria): (a) NEW plugin/references/question-style.md as the SSOT of
+      the convention; (b) question-authoring agents (plan-decompose, refine-plan-check,
+      rules-check, epic-plan-check, epic-decompose, epic-roll-up) put recommendation +
+      implications into the question text + reference the reference; (c) all
+      walk points (refine walk, build-pre-build walk, plan classification,
+      stop-check escalation, onboarding) present recommended-option-first +
+      implications in the AskUserQuestion + name resolved implications; (d) a grep
+      test (reference exists + agents/walks reference it). Effort comparable to
       user-language (G10).
     status: done
     depends_on: [skill-tier-branching, user-language, epic-refine-pipeline]

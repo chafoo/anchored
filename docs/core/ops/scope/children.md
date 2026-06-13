@@ -2,30 +2,30 @@
 
 # children
 
-Verwaltet die Kinder eines Knotens (Phasen einer Task, Stubs eines Epics):
-hinzufügen, verschieben, und vor allem **`next-child`** — die DAG-Auswahl, welches
-Kind als Nächstes dran ist.
+Manages the children of a node (phases of a task, stubs of an epic):
+add, move, and above all **`next-child`** — the dependency-graph selection of which
+child comes next.
 
-## Was
+## What
 
-- `add-child` · `move-child` (Reihenfolge = Listen-Position) · `set-child-status`.
-- **`next-child`**: das erste Kind mit `status: pending`, dessen `depends_on` alle
-  `done` sind. Liefert nichts, wenn die Queue erschöpft ist oder alle Übrigen
-  blockiert sind.
-- `depends_on` referenziert Geschwister **flach** (task-lokal); die verschachtelte
-  `<epic>/<slug>`-Form wird erst beim Loop-Aufruf komponiert.
+- `add-child` · `move-child` (order = list position) · `set-child-status`.
+- **`next-child`**: the first child with `status: pending` whose `depends_on` are all
+  `done`. Returns nothing when the queue is exhausted or all remaining ones are
+  blocked.
+- `depends_on` references siblings **flatly** (task-local); the nested
+  `<epic>/<slug>` form is composed only at the loop call.
 
-## Wie
+## How
 
 ```mermaid
 flowchart TB
-    q["Kinder-Queue"] --> f{"erstes pending, dessen depends_on alle done?"}
-    f -->|ja| pick["→ dieses Kind"]
-    f -->|keins| none["→ nichts (erschöpft / blockiert)"]
+    q["children queue"] --> f{"first pending whose depends_on are all done?"}
+    f -->|yes| pick["→ this child"]
+    f -->|none| none["→ nothing (exhausted / blocked)"]
 ```
 
-## Warum
+## Why
 
-`next-child` ist das DAG-Hirn des `loop`-Steps — eine Stelle, die Reihenfolge +
-Abhängigkeiten entscheidet, statt sie über die Runner zu verstreuen. v1 hält beim
-ersten Block (sequenziell); DAG-Park kommt später.
+`next-child` is the dependency-graph brain of the `loop` step — one place that decides
+order + dependencies, instead of scattering them across the runners. v1 stops at the
+first block (sequential); the dependency-graph park comes later.

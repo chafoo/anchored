@@ -1,165 +1,165 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/epic.schema.json
 schema_version: 2
 slug: anchored-v2-core
-title: anchored v2 — fraktaler Rewrite (Engine + Substrat + CLI + Default-Template + Plugin)
+title: anchored v2 — fractal rewrite (engine + substrate + CLI + default template + plugin)
 status: building
 goal: |
-  anchored v2 von Grund auf bauen: EINE fraktale Lebenszyklus-Form
-  (plan→refine→build→wrap) auf jeder Etage (phase▸task▸epic, project reserviert).
-  Keine privilegierten Built-ins — alles Step; opinioniertes Verhalten lebt im
-  Default-Template (anchored.default.yml), aktiv by default, überschreibbar.
-  Integrität im Substrat (kein ac→done ohne evidence). CLI-only Transport (kein
-  MCP), funktioniert in Main-Session UND headless. Factory-Functions
-  createX(cfg, deps)→{run(input)→output}; anchored.yml als gemergte Base-Dependency.
+  Build anchored v2 from the ground up: ONE fractal lifecycle form
+  (plan→refine→build→wrap) on every tier (phase▸task▸epic, project reserved).
+  No privileged built-ins — everything is a step; opinionated behavior lives in the
+  default template (anchored.default.yml), active by default, overridable.
+  Integrity in the substrate (no ac→done without evidence). CLI-only transport (no
+  MCP), works in the main session AND headless. Factory functions
+  createX(cfg, deps)→{run(input)→output}; anchored.yml as merged base dependency.
 
-  Verbindliche Spec: docs/design/ (fractal-lifecycle · engine-architecture ·
-  anchored.default.yml · file-structure · fractal-redesign-notes). Build-Reihenfolge
-  aus CLAUDE.md: pure-engine → default-template → epic-tier.
+  Binding spec: docs/design/ (fractal-lifecycle · engine-architecture ·
+  anchored.default.yml · file-structure · fractal-redesign-notes). Build order
+  from CLAUDE.md: pure-engine → default-template → epic-tier.
 
-  Vorgehen-PRINZIP (gilt für anchored selbst): epic.plan/scaffold schreibt NUR die
-  coarse Stubs hier ins _epic.yml — KEINE Task-Files. Ein Task-File entsteht lazy erst
-  bei task.plan (decompose), wenn der epic.build-Loop den Stub erreicht; dann läuft die
-  volle Iteration drüber. Vor task.plan stehen alle Infos ausschließlich im _epic.yml.
-  Ausnahme in DIESEM Repo: wir haben die Decompose pragmatisch vorgezogen (manuelles
-  task.plan von Hand), weil die Engine, die das sonst führt, erst hier gebaut wird.
+  GUIDING PRINCIPLE (applies to anchored itself): epic.plan/scaffold writes ONLY the
+  coarse stubs here into the _epic.yml — NO task-files. A task-file is created lazily only
+  at task.plan (decompose), once the epic.build loop reaches the stub; then the full
+  iteration runs over it. Before task.plan, all info lives exclusively in the _epic.yml.
+  Exception in THIS repo: we pragmatically pulled the decompose forward (manual
+  task.plan by hand), because the engine that would otherwise drive it is only being built here.
 acceptance:
   - id: e1
-    text: core/ baut grün — lint + format + typecheck + test + build alle pass
+    text: core/ builds green — lint + format + typecheck + test + build all pass
     status: done
   - id: e2
-    text: "anchored CLI: plan|refine|build|wrap + generische node-Verben laufen, JSON-Output"
+    text: "anchored CLI: plan|refine|build|wrap + generic node verbs run, JSON output"
     status: done
   - id: e3
-    text: effectiveConfig = merge(default, user) injiziert; minimale anchored.yml reicht (zero-config)
+    text: effectiveConfig = merge(default, user) injected; minimal anchored.yml suffices (zero-config)
     status: done
   - id: e4
-    text: harte Invariante erzwungen — kein ac→done ohne evidence (Substrat-Test grün)
+    text: hard invariant enforced — no ac→done without evidence (substrate test green)
     status: done
   - id: e5
-    text: "fraktaler Loop bewiesen: task.build.each:phase UND epic.build.each:task laufen end-to-end"
+    text: "fractal loop proven: task.build.each:phase AND epic.build.each:task run end-to-end"
     status: done
   - id: e6
-    text: Plugin /a:plan /a:refine /a:build /a:wrap rufen die CLI; Agent-Roster vollständig
+    text: Plugin /a:plan /a:refine /a:build /a:wrap call the CLI; agent roster complete
     status: pending
   - id: e7
-    text: "Dogfood-Smoke: eine triviale Task wird end-to-end geplant + gebaut"
+    text: "Dogfood smoke: a trivial task is planned + built end-to-end"
     status: done
   - id: e8
-    text: Plugin-Skills (/a:plan /a:refine /a:build /a:wrap) via skill-creator-Eval getestet + gebenchmarkt (Trigger-Treffsicherheit + Verhalten)
+    text: Plugin skills (/a:plan /a:refine /a:build /a:wrap) tested + benchmarked via skill-creator eval (trigger accuracy + behavior)
     status: pending
   - id: e9
-    text: "Workflow-Modus: Build-Loop läuft wahlweise sequential ODER als Claude-Code-Workflow-Fan-out (executor=workflow); echter Workflow-Smoke grün"
+    text: "Workflow mode: build loop runs either sequential OR as a Claude Code workflow fan-out (executor=workflow); real workflow smoke green"
     status: done
 questions:
   - id: q1
-    text: "Tooling-Stack für core/ (CLAUDE.md: 'in pure-engine festgelegt')"
+    text: "Tooling stack for core/ (CLAUDE.md: 'decided in pure-engine')"
     priority: high
     origin: scaffold
     status: resolved
-    answer: Bun all-in (install/test/build) + eslint + typescript-eslint + prettier + tsc (typecheck & .d.ts). Code Node-kompatibel (node:* APIs, kein Bun.*), publish als Node-Paket.
+    answer: Bun all-in (install/test/build) + eslint + typescript-eslint + prettier + tsc (typecheck & .d.ts). Code Node-compatible (node:* APIs, no Bun.*), publish as a Node package.
     source: user
-    reasoning: "User-Entscheid: Bun für dev-Speed, eslint gewünscht. Node-Kompatibilität gewahrt → npm-publishbar, Konsumenten brauchen kein Bun. Festgehalten in .claude/rules/tooling-quality-gates.md."
+    reasoning: "User decision: Bun for dev speed, eslint wanted. Node compatibility preserved → npm-publishable, consumers do not need Bun. Recorded in .claude/rules/tooling-quality-gates.md."
   - id: q2
-    text: "spawn: nur headless `claude -p` pro Task-File, oder in-process Subagent-Modus gleich als zweite Impl mitnehmen?"
+    text: "spawn: only headless `claude -p` per task-file, or take the in-process subagent mode along right away as a second impl?"
     priority: medium
     origin: scaffold
     status: resolved
-    answer: BEIDE Modi vollumfänglich bauen — headless `claude -p` (CI/headless, Isolation) UND in-process Subagent-Modus (Live-Progress, session-gebunden). spawn als injizierte Naht, die beide Impls trägt; per Config/Flag wählbar.
+    answer: Build BOTH modes fully — headless `claude -p` (CI/headless, isolation) AND in-process subagent mode (live progress, session-bound). spawn as an injected seam that carries both impls; selectable via config/flag.
     source: user
-    reasoning: "User-Leitplanke: vollumfänglich, kein MVP. Kein 'später' — beide Ausführungsarten von Anfang an. Naht-Design (factory-functions) hält sie austauschbar."
+    reasoning: "User guardrail: full scope, no MVP. No 'later' — both execution kinds from the start. Seam design (factory-functions) keeps them swappable."
   - id: q3
-    text: "loop als positionierbarer Built-in-Step ({name: loop, each: task}) mit interleaved Body bestätigen?"
+    text: "Confirm loop as a positionable built-in step ({name: loop, each: task}) with an interleaved body?"
     priority: medium
     origin: scaffold
     status: resolved
-    answer: "Bestätigt (Item 5a): `each` = Step-Attribut; loop-Step trägt `each` + steps-Body, der INTERLEAVED pro Kind läuft (Kind A: alle Body-Steps, dann Kind B); eigene build.steps davor/danach laufen einmal (Setup/Teardown); Kurzform `build:{each:task}` = Body [run]. Per-Iteration-Mechanik (Status/log/stop) macht die loopStep nach jedem Body-Durchlauf."
+    answer: "Confirmed (Item 5a): `each` = step attribute; the loop step carries `each` + a steps body that runs INTERLEAVED per child (child A: all body steps, then child B); own build.steps before/after run once (setup/teardown); shorthand `build:{each:task}` = body [run]. The loopStep performs the per-iteration mechanics (status/log/stop) after each body pass."
     source: ai
-    reasoning: Interleaved ist die einzig sinnvolle Reihenfolge (jede Einheit komplett fertig+committed vor der nächsten; Pass-Modell würde ungetestete Builds aufstauen). User-Erklärung gegeben + akzeptiert. Konsistent mit engine-architecture.md.
+    reasoning: Interleaved is the only sensible order (each unit fully finished+committed before the next; a pass model would pile up untested builds). User explanation given + accepted. Consistent with engine-architecture.md.
   - id: q4
-    text: project-Tier in diesem Epic mitnehmen?
+    text: Include the project tier in this epic?
     priority: low
     origin: scaffold
     status: resolved
-    answer: Nein. project bauen wir nicht und planen es hier nicht mit — erst epic austesten. Aus Task tier-schemas entfernt (nur phase/task/epic).
+    answer: No. We are not building project and not planning it here — first exercise epic. Removed from the task tier-schemas (only phase/task/epic).
     source: user
-    reasoning: "User-Entscheid: 'projekt bauen wir noch nicht, ich will erstmal austesten wie epic funktioniert'. project ist dank Fraktal billig nachzurüsten, sobald epic steht."
+    reasoning: "User decision: 'we're not building project yet, I first want to test out how epic works'. Thanks to the fractal, project is cheap to add later once epic stands."
   - id: q5
-    text: Ablage `.claude/tasks/<epic>/` bestätigen (Design-Konvention)?
+    text: Confirm the `.claude/tasks/<epic>/` location (design convention)?
     priority: low
     origin: scaffold
     status: resolved
-    answer: Ja — `.claude/tasks/<epic>/_epic.yml` + `.claude/tasks/<epic>/<slug>.yml`. Faktisch bereits so umgesetzt.
+    answer: Yes — `.claude/tasks/<epic>/_epic.yml` + `.claude/tasks/<epic>/<slug>.yml`. In fact already implemented this way.
     source: ai
-    reasoning: Design-Konvention (fractal-redesign-notes 'Struktur-Definition') + epic.example.yml; das Scaffold liegt schon dort. Low-level, im Sinne der Doku autonom geschlossen.
+    reasoning: Design convention (fractal-redesign-notes 'structure definition') + epic.example.yml; the scaffold already lives there. Low-level, closed autonomously in the spirit of the docs.
   - id: q6
-    text: "CLI-Gap (plugin-agents-Fund): add-phase, add-ac fehlen im CLI/node-ops (plan-decompose braucht sie für Phasen+ACs); set-field hat einen Bug; wrap-summarize braucht nested set-field (context.wrap). integration-dogfood muss diese ergänzen."
+    text: "CLI gap (plugin-agents finding): add-phase, add-ac missing in CLI/node-ops (plan-decompose needs them for phases+ACs); set-field has a bug; wrap-summarize needs nested set-field (context.wrap). integration-dogfood must add these."
     priority: high
     origin: plugin-agents
     status: resolved
-    answer: "integration-dogfood ergänzt: node-Verben add-phase/add-ac/add-phase-evidence (node-ops addPhase/addAc/addChildEvidence) + set-field-Bug behoben (Facade read→setField mit reserved-Guard). nested set-field (context.wrap) via generischem set-field abgedeckt."
+    answer: "integration-dogfood adds: node verbs add-phase/add-ac/add-phase-evidence (node-ops addPhase/addAc/addChildEvidence) + set-field bug fixed (facade read→setField with reserved guard). nested set-field (context.wrap) covered via the generic set-field."
     source: ai
 tasks:
   - slug: package-scaffold
-    goal: "core/ npm-Paket: package.json (bin: anchored) + tsconfig + Quality-Gate-Tooling (lint/format/typecheck/test/build) + src-Skelett"
+    goal: "core/ npm package: package.json (bin: anchored) + tsconfig + quality-gate tooling (lint/format/typecheck/test/build) + src skeleton"
     status: done
     depends_on: []
   - slug: tier-schemas
-    goal: "Zod-Schemas: step-Grammatik + config + Tier-Deskriptoren (phase/task/epic) + State-Machine (transitions forward-only) + harte Invariante (kein done ohne evidence)"
+    goal: "Zod schemas: step grammar + config + tier descriptors (phase/task/epic) + state machine (forward-only transitions) + hard invariant (no done without evidence)"
     status: done
     depends_on:
       - package-scaffold
   - slug: parser-io
-    goal: "parse/render (zwei Profile: task-file no-alias, anchored.yml alias-ok; Schema-Directive; block-scalar für Prosa) + atomic-write io (lock + mkdir -p + POSIX-rename)"
+    goal: "parse/render (two profiles: task-file no-alias, anchored.yml alias-ok; schema directive; block-scalar for prose) + atomic-write io (lock + mkdir -p + POSIX rename)"
     status: done
     depends_on:
       - tier-schemas
   - slug: config-bootstrap
-    goal: merge(anchored.default.yml, user anchored.yml) → effectiveConfig; einmal beim Bootstrap validiert + als deps.config injiziert
+    goal: merge(anchored.default.yml, user anchored.yml) → effectiveConfig; validated once at bootstrap + injected as deps.config
     status: done
     depends_on:
       - tier-schemas
       - parser-io
   - slug: ops-core
-    goal: "createNodeOps(tierSchema, deps): tier-generischer Op-Kern — create/read/set-status/add+next-child (DAG)/add+resolve question/append log; Invariante greift am schreibenden Op"
+    goal: "createNodeOps(tierSchema, deps): tier-generic op core — create/read/set-status/add+next-child (dependency order)/add+resolve question/append log; the invariant applies at the writing op"
     status: done
     depends_on:
       - tier-schemas
       - parser-io
   - slug: spawn
-    goal: "Ausführungs-Substrat: spawn = headless `claude -p` pro Task-File, Phasen in-process; injizierte Naht (in-process Subagent-Modus später nachrüstbar)"
+    goal: "execution substrate: spawn = headless `claude -p` per task-file, phases in-process; injected seam (in-process subagent mode addable later)"
     status: done
     depends_on:
       - tier-schemas
   - slug: engine
-    goal: "fraktale Factory-Engine: createEngine → tier/stage/step-runner + scope/(run-step · worker-step · loop-step · resolve-steps); loopStep schließt Rekursion (ruft tier-runner der Kind-Etage)"
+    goal: "fractal factory engine: createEngine → tier/stage/step-runner + scope/(run-step · worker-step · loop-step · resolve-steps); loopStep closes the recursion (calls the tier-runner of the child tier)"
     status: done
     depends_on:
       - config-bootstrap
       - ops-core
       - spawn
   - slug: cli
-    goal: "anchored CLI (einziger Transport): index dispatch + commands/(plan classify-wenn-tier-fehlt · refine · build · wrap · node generische Verben); JSON-Output"
+    goal: "anchored CLI (the single transport): index dispatch + commands/(plan classify-when-tier-missing · refine · build · wrap · node generic verbs); JSON output"
     status: done
     depends_on:
       - engine
   - slug: default-template
-    goal: anchored.default.yml als mitgelieferte Referenz + resolve-steps Default-Injektion + step-name→worker Dispatch; jeder Step/Feld/Stage des Defaults ist umgesetzt
+    goal: anchored.default.yml as a shipped reference + resolve-steps default injection + step-name→worker dispatch; every step/field/stage of the default is implemented
     status: done
     depends_on:
       - engine
   - slug: plugin-skills
-    goal: plugin/.claude-plugin/plugin.json (name 'a', Fallback 'anc') + skills/{plan,refine,build,wrap}/SKILL.md — rufen `anchored <verb>` via Bash; classify-Routing im plan-Skill
+    goal: plugin/.claude-plugin/plugin.json (name 'a', fallback 'anc') + skills/{plan,refine,build,wrap}/SKILL.md — call `anchored <verb>` via Bash; classify routing in the plan skill
     status: blocked
     depends_on:
       - cli
   - slug: plugin-agents
-    goal: "flacher Agent-Roster (Stage-Präfix-Buckets): discover/plan-check/rules-check/walk/review/summarize (geteilt) + decompose/scaffold/implement/task-validate/code-validate/roll-up (spezifisch); lesen+schreiben via CLI"
+    goal: "flat agent roster (stage-prefix buckets): discover/plan-check/rules-check/walk/review/summarize (shared) + decompose/scaffold/implement/task-validate/code-validate/roll-up (specific); read+write via CLI"
     status: done
     depends_on:
       - cli
       - default-template
   - slug: epic-tier
-    goal: "epic als volle Etage: build.each:task-Loop + scaffold/walk/roll-up + nested slugs (<epic>/<slug>) durch parser/io/ops + classify-Erkennung; beweist den fraktalen Loop end-to-end"
+    goal: "epic as a full tier: build.each:task loop + scaffold/walk/roll-up + nested slugs (<epic>/<slug>) through parser/io/ops + classify detection; proves the fractal loop end-to-end"
     status: done
     depends_on:
       - engine
@@ -167,14 +167,14 @@ tasks:
       - default-template
       - plugin-agents
   - slug: workflow-mode
-    goal: "Workflow-Fan-out-Executor: Build-Loop wahlweise als Claude-Code-Dynamic-Workflow (≤16 parallel, self-write via CLI, resume-safe via Task-File-Evidence); reserved executor-Feld + Orchestrierung"
+    goal: "workflow fan-out executor: build loop optionally as a Claude Code dynamic workflow (≤16 parallel, self-write via CLI, resume-safe via task-file evidence); reserved executor field + orchestration"
     status: done
     depends_on:
       - engine
       - cli
       - plugin-agents
   - slug: integration-dogfood
-    goal: "index.ts wiring (createEngine + createOps) + lazy-init minimale anchored.yml + Bash(anchored *)-Allowlist + e2e-Smoke: triviale Task plan→build durchspielen (sequential + workflow)"
+    goal: "index.ts wiring (createEngine + createOps) + lazy-init minimal anchored.yml + Bash(anchored *) allowlist + e2e smoke: run a trivial task plan→build through (sequential + workflow)"
     status: done
     depends_on:
       - cli
@@ -186,34 +186,34 @@ tasks:
 log:
   - at: package-scaffold
     kind: decision
-    note: Epic gescaffolded aus docs/design/ — 13 coarse Stubs entlang Build-Reihenfolge (pure-engine→default-template→epic-tier) + File-Struktur. Phasen-Decompose folgt im manuellen Loop pro Task.
+    note: Epic scaffolded from docs/design/ — 13 coarse stubs along the build order (pure-engine→default-template→epic-tier) + file structure. Phase decompose follows in the manual loop per task.
   - at: package-scaffold
     kind: decision
-    note: "q1 entschieden: Bun all-in + eslint+prettier+tsc, Node-kompatibel/npm-publishbar. 4 high-level Rules angelegt (factory-functions, fractal-substrate-integrity, cli-only-transport, tooling-quality-gates) unter .claude/rules/."
+    note: "q1 decided: Bun all-in + eslint+prettier+tsc, Node-compatible/npm-publishable. 4 high-level rules created (factory-functions, fractal-substrate-integrity, cli-only-transport, tooling-quality-gates) under .claude/rules/."
   - at: plugin-skills
     kind: decision
-    note: "e8 ergänzt: Plugin-Skills müssen nach dem Bau via skill-creator-Eval getestet werden (Trigger + Verhalten, Varianz) — nicht nur manueller Smoke."
+    note: "e8 added: plugin skills must be tested after the build via skill-creator eval (trigger + behavior, variance) — not just a manual smoke."
   - at: spawn
     kind: decision
-    note: "LEITPLANKE: vollumfänglich bauen, kein MVP/keine 'später'-Cuts. q2 resolved → beide spawn-Modi. q3 resolved → interleaved loop-Body (Kind komplett, dann nächstes). q5 resolved → Ablage .claude/tasks/<epic>/."
+    note: "GUARDRAIL: build full scope, no MVP/no 'later' cuts. q2 resolved → both spawn modes. q3 resolved → interleaved loop body (child complete, then next). q5 resolved → location .claude/tasks/<epic>/."
   - at: workflow-mode
     kind: decision
-    note: "q4 resolved → project NICHT in diesem Epic (erst epic austesten). Workflow-Kompatibilität ergänzt (e9): neue Task workflow-mode + Constraints in 01/05/06/10. Build-Loop bekommt zweiten Modus (workflow-fanout) neben sequential-interleaved. v1-Vorläufer: dynamic-workflow-executor."
+    note: "q4 resolved → project NOT in this epic (first test out epic). Workflow compatibility added (e9): new task workflow-mode + constraints in 01/05/06/10. Build loop gets a second mode (workflow-fanout) alongside sequential-interleaved. v1 precursor: dynamic-workflow-executor."
   - at: package-scaffold
     kind: learning
-    note: "Decompose aller 14 Tasks via Workflow-Fan-out (28 Agents: decompose→adversarischer Verify). Ergebnis: 57 Phasen / 235 ACs, alle parsen, keine leere Phase / kein AC ohne Test / keine vorbefüllte Evidence. Verify fixte 4 echte Lücken: cli fehlendes create-Verb (MVP-Loch im e2e-Pfad), spawn fehlender in-process-Smoke, tier-schemas instructions-AC, parser-io Typo. Tasks bleiben status:plan bis Review."
+    note: "Decompose of all 14 tasks via workflow fan-out (28 agents: decompose→adversarial verify). Result: 57 phases / 235 ACs, all parse, no empty phase / no AC without a test / no pre-filled evidence. Verify fixed 4 real gaps: cli missing create verb (MVP hole in the e2e path), spawn missing in-process smoke, tier-schemas instructions AC, parser-io typo. Tasks stay status:plan until review."
   - at: package-scaffold
     kind: decision
-    note: "Task-Files ENT-NUMMERIERT (Slugs/depends_on/Cross-Refs → reine Namen) — Reihenfolge lebt nur im _epic.yml. PRINZIP geklärt: epic.plan/scaffold legt KEINE Task-Files an, nur Stubs ins _epic.yml; Task-File lazy bei task.plan (epic-tier a3 + context verankert). step-merge bestätigt: keyed before/after-Insert (extend-only), stop=union-append (config-bootstrap a5/a6 ergänzt → 237 ACs)."
+    note: "Task-files DE-NUMBERED (slugs/depends_on/cross-refs → plain names) — order lives only in the _epic.yml. PRINCIPLE clarified: epic.plan/scaffold creates NO task-files, only stubs into the _epic.yml; task-file lazily at task.plan (epic-tier a3 + context anchored). step-merge confirmed: keyed before/after insert (extend-only), stop=union-append (config-bootstrap a5/a6 added → 237 ACs)."
   - at: default-template
     kind: learning
-    note: "REFINE-FUND für plugin-agents: default.yml task.plan.rules-scan braucht einen plan-rules-scan-Agent (Roster hatte nur refine-rules-check). worker-dispatch mappt rules-scan→plan-rules-scan; plugin-agents muss den Agent bauen."
+    note: "REFINE FINDING for plugin-agents: default.yml task.plan.rules-scan needs a plan-rules-scan agent (the roster only had refine-rules-check). worker-dispatch maps rules-scan→plan-rules-scan; plugin-agents must build the agent."
   - at: plugin-agents
     kind: blocker
-    note: "CLI-Gap q6: add-phase/add-ac fehlen, set-field buggy — integration-dogfood adressiert. Worker referenzieren die idealen Verben."
+    note: "CLI gap q6: add-phase/add-ac missing, set-field buggy — integration-dogfood addresses it. Workers reference the ideal verbs."
   - at: workflow-mode
     kind: learning
-    note: "workflow-mode gebaut + alle 5 Gates grün (139 Tests). e9 erfüllt: zweiter Build-Modus (workflow-fanout) neben sequential — reserved executor-Op, loop-workflow.ts Orchestrierung (dispatch/collect/gates/stop/retry, resume-safe via Task-File-Evidence), e2e-Smoke grün. Nur noch integration-dogfood offen (+ skill-creator-Eval e8)."
+    note: "workflow-mode built + all 5 gates green (139 tests). e9 met: second build mode (workflow-fanout) alongside sequential — reserved executor op, loop-workflow.ts orchestration (dispatch/collect/gates/stop/retry, resume-safe via task-file evidence), e2e smoke green. Only integration-dogfood left open (+ skill-creator eval e8)."
   - at: integration-dogfood
     kind: learning
-    note: "integration-dogfood gebaut + alle 5 Gates grün (153 Tests). e1/e2/e3/e4/e7 erfüllt, q6 aufgelöst. Alle 14 Build-Tasks fertig außer plugin-skills (blocked). Offen: skill-creator-Eval (e8/e6) als finaler Schritt → entblockt plugin-skills → epic-roll-up."
+    note: "integration-dogfood built + all 5 gates green (153 tests). e1/e2/e3/e4/e7 met, q6 resolved. All 14 build tasks done except plugin-skills (blocked). Open: skill-creator eval (e8/e6) as the final step → unblocks plugin-skills → epic roll-up."

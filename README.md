@@ -1,38 +1,38 @@
 # anchored v2
 
-Fraktaler Rewrite von [anchored](https://github.com/chafoo/anchored) — ein reines
-Framework für AI-getriebene Arbeit über vier selbstähnliche Etagen:
+Fractal rewrite of [anchored](https://github.com/chafoo/anchored) — a pure
+framework for AI-driven work across four self-similar tiers:
 
 ```
-project ▸ epic ▸ task ▸ phase     (alle: plan → refine → build → wrap)
+project ▸ epic ▸ task ▸ phase     (all: plan → refine → build → wrap)
 ```
 
-Kernprinzipien (Design steht, Implementierung beginnt):
+Core principles (design settled, implementation beginning):
 
-- **Fraktal**: eine Lebenszyklus-Form auf jeder Etage; `build.each` ist die
-  Rekursions-Kante, `phase` der Leaf.
-- **Pures Framework, keine Built-ins**: das Verhalten lebt im Default-Template
-  (`anchored.default.yml`), aktiv by default, voll überschreibbar.
-- **Integrität im Substrat**: kein `ac` auf `done` ohne `evidence` — die USP
-  sitzt im Datenmodell, nicht in einem Step.
-- **CLI-only Transport**: alle Ops über die `anchored`-CLI via Bash (kein MCP) —
-  funktioniert in Main-Session *und* Subagents/headless.
-- **Factory-Engine**: `createX(cfg, deps) → { run(input) → output }`, `scope/`-
-  Helfer; Engine = deterministischer Code, AI = Effekt hinter `spawn`.
+- **Fractal**: one lifecycle form on every tier; `build.each` is the recursion
+  edge, `phase` the leaf.
+- **Pure framework, no built-ins**: the behaviour lives in the default template
+  (`anchored.default.yml`), active by default, fully overridable.
+- **Integrity in the substrate**: no `ac` to `done` without `evidence` — the core
+  value sits in the data model, not in a step.
+- **CLI-only transport**: all ops through the `anchored` CLI via Bash (no MCP) —
+  works in the main session *and* subagents/headless.
+- **Factory engine**: `createX(cfg, deps) → { run(input) → output }`, `scope/`
+  helpers; the engine is deterministic code, AI is an effect behind `spawn`.
 
-## Wo was liegt
+## Where things live
 
-- **`docs/design/`** — die verbindliche Design-Spec (aus der v1-Dogfood-Session):
-  - `fractal-lifecycle.md` — das Etagen-Modell + Diagramm
-  - `anchored.default.yml` — die vollständige Default-Config (Steps + Felder)
-  - `engine-architecture.md` — die Factory-Function-Engine
-  - `fractal-redesign-notes.md` — Entscheidungs-Record (alle Items)
-  - `agenda.md` — die durchgegangene Frageliste
-- **`core/`** — das CLI-/Engine-Paket (TS) — *noch leer, Build folgt*
-- **`plugin/`** — das Claude-Code-Plugin (Skills, Agents, Commands) — *noch leer*
+- **`docs/design/`** — the binding design spec (from the v1 dogfood session):
+  - `fractal-lifecycle.md` — the tier model + diagram
+  - `anchored.default.yml` — the complete default config (steps + fields)
+  - `engine-architecture.md` — the factory-function engine
+  - `fractal-redesign-notes.md` — decision record (all items)
+  - `agenda.md` — the walked-through question list
+- **`core/`** — the CLI/engine package (TS) — *still empty, build to follow*
+- **`plugin/`** — the Claude Code plugin (skills, agents, commands) — *still empty*
 
 ## Status
 
-Design abgeschlossen, Implementierung steht am Anfang. Plugin-Namespace: `a`
-(Commands `/a:plan|refine|build|wrap`). Build-Reihenfolge: `pure-engine` →
+Design complete, implementation at the start. Plugin namespace: `a`
+(commands `/a:plan|refine|build|wrap`). Build order: `pure-engine` →
 `default-template` → `epic-tier`.

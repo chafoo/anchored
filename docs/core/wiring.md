@@ -2,52 +2,52 @@
 
 # wiring (Composition-Root)
 
-Die **Komposition** des Pakets — zwei Dateien, eine harte Trennlinie: `index.ts` ist
-die **reine Wiring-Factory** (kein Effekt), `bin.ts` ist der **einzige Effekt-Ort**
-(`process.*`, `node:fs`, `crypto`, top-level `await`). `bin.ts` verdrahtet die echten
-Node-Effekte in `createAnchored` und fährt die CLI — genau das hält `index.ts` rein
-und damit fakebar.
+The **composition** of the package — two files, one hard dividing line: `index.ts` is
+the **pure wiring factory** (no effect), `bin.ts` is the **only effect site**
+(`process.*`, `node:fs`, `crypto`, top-level `await`). `bin.ts` wires the real
+Node effects into `createAnchored` and drives the CLI — that is precisely what keeps
+`index.ts` pure and thus fakeable.
 
-## Was
+## What
 
-- **`index.ts` — `createAnchored(deps) → { cli, engine, ops, config }`:** bootstrappt
-  die gemergte Config **genau einmal** (Base-Dependency) und verdrahtet das Substrat
-  in **deps-Graph-Reihenfolge**: `parser/render/io → ops → engine → cli`. Kein
-  Top-Level-Seiteneffekt, keine Klassen, kein Runtime-Zugriff. Jeder Effekt (fs, yaml,
-  spawn, merge) kommt durch eine injizierte Naht → der ganze Graph ist fakebar
-  (Wiring-Tests injizieren Spy-Sub-Factories über `deps.wiring`).
-- **`buildCli(WireDeps)`:** die schlankere slug-facade + cli-Verdrahtung für die
-  e2e-Harness (Engine optional gestubbt).
-- **`bin.ts`:** baut die realen `io`/`fs`/`lock`/`rand`/`pid`-Effekte, ruft
-  [`createInit(...).ensure(root)`](config/init.md) (lazy-init) **vor**
-  `createAnchored`, dann `anchored.cli.run(process.argv.slice(2))` → `process.exit`.
-  Shebang `#!/usr/bin/env node` (Node-Kompatibilität, kein `Bun.*`).
+- **`index.ts` — `createAnchored(deps) → { cli, engine, ops, config }`:** bootstraps
+  the merged config **exactly once** (base dependency) and wires the substrate
+  in **deps-graph order**: `parser/render/io → ops → engine → cli`. No
+  top-level side effect, no classes, no runtime access. Every effect (fs, yaml,
+  spawn, merge) comes through an injected seam → the whole graph is fakeable
+  (wiring tests inject spy sub-factories via `deps.wiring`).
+- **`buildCli(WireDeps)`:** the leaner slug facade + cli wiring for the
+  e2e harness (engine optionally stubbed).
+- **`bin.ts`:** builds the real `io`/`fs`/`lock`/`rand`/`pid` effects, calls
+  [`createInit(...).ensure(root)`](config/init.md) (lazy-init) **before**
+  `createAnchored`, then `anchored.cli.run(process.argv.slice(2))` → `process.exit`.
+  Shebang `#!/usr/bin/env node` (Node compatibility, no `Bun.*`).
 
-## Wie
+## How
 
 ```mermaid
 flowchart TB
-    subgraph bin["bin.ts · einziger Effekt-Ort"]
+    subgraph bin["bin.ts · only effect site"]
         fx["node:fs · crypto · process.*"] --> init["createInit().ensure(root)"]
         init --> ca["createAnchored(deps)"]
     end
-    subgraph idx["index.ts · reine Factory"]
+    subgraph idx["index.ts · pure factory"]
         boot["bootstrap.load → config (1×)"] --> ops["buildSubstrate → node-ops + facade"]
-        ops --> eng["createEngine (ops injiziert)"]
-        eng --> cli["createCli (engine + ops injiziert)"]
+        ops --> eng["createEngine (ops injected)"]
+        eng --> cli["createCli (engine + ops injected)"]
     end
     ca --> boot
     cli --> run["cli.run(argv) → exit-code"]
 ```
 
-Reihenfolge ist Vertrag: Config zuerst, dann Substrat → ops → engine → cli; jede
-Stufe bekommt die vorige als Dep gefüttert. `createAnchoredFn`-Overrides
-(`merge`/`createNodeOps`/`createEngine`/`createCli`) erlauben Spy-Injektion.
+Order is a contract: config first, then substrate → ops → engine → cli; each
+stage is fed the previous one as a dep. `createAnchoredFn` overrides
+(`merge`/`createNodeOps`/`createEngine`/`createCli`) allow spy injection.
 
-## Warum
+## Why
 
-Macht das oberste Architektur-Prinzip konkret: [Factory-Functions](../../.claude/rules/factory-functions.md)
-überall, Effekte hinter Nähten. Indem **alle** `process.*`/`fs`/top-level-await in
-`bin.ts` isoliert sind, bleibt `index.ts` ein deterministischer, vollständig
-fakebarer Graph — die Grundlage dafür, dass [engine-ops](ops/engine-ops.md) und
-[facade](ops/facade.md) ihre await-Glue tragen dürfen, `index.ts` aber nicht.
+Makes the top-level architecture principle concrete: [Factory-Functions](../../.claude/rules/factory-functions.md)
+everywhere, effects behind seams. By isolating **all** `process.*`/`fs`/top-level-await in
+`bin.ts`, `index.ts` stays a deterministic, fully
+fakeable graph — the foundation that lets [engine-ops](ops/engine-ops.md) and
+[facade](ops/facade.md) carry their await glue, while `index.ts` may not.

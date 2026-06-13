@@ -2,19 +2,19 @@
 
 # state
 
-Die **Substrat-Mechanik**, die Integrität erzwingt: die forward-only
-State-Machine + die harte Invariante. Beides greift in den mutierenden
-[ops](../ops/_ops.md), nicht in einem Step — so kann es kein Config weg-schalten.
+The **substrate mechanism** that enforces integrity: the forward-only
+state machine + the hard invariant. Both hook into the mutating
+[ops](../ops/_ops.md), not into a step — so no config can switch it off.
 
 ```mermaid
 flowchart LR
     op["set-status / add-evidence"] --> t["transitions · forward-only?"]
-    op --> i["invariants · evidence da?"]
+    op --> i["invariants · evidence present?"]
     t -. "illegal" .-> e1["throw"]
-    i -. "done ohne evidence" .-> e2["throw"]
+    i -. "done without evidence" .-> e2["throw"]
 ```
 
-| Unit | Verantwortung |
+| Unit | Responsibility |
 |---|---|
-| [transitions](transitions.md) | Per-Tier forward-only State-Machine + `assertTransition`. |
-| [invariants](invariants.md) | Die harte Invariante: kein `done` ohne `evidence`. Anchoreds Versprechen. |
+| [transitions](transitions.md) | Per-tier forward-only state machine + `assertTransition`. |
+| [invariants](invariants.md) | The hard invariant: no `done` without `evidence`. Anchored's promise. |

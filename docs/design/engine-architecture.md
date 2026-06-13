@@ -1,28 +1,27 @@
-# Engine-Architektur — fraktale Factory-Functions
+# Engine architecture — fractal factory functions
 
-> Draft / Design-Spec (Item 3). Wie wir die Lifecycle-Engine bauen: dasselbe
-> `createX(cfg, deps) → { run(input) → output }`-Pattern wie die trader-Module,
-> nur auf den fraktalen Lifecycle angewandt.
+> Draft / design spec (Item 3). How we build the lifecycle engine: the same
+> `createX(cfg, deps) → { run(input) → output }` pattern as the trader modules,
+> just applied to the fractal lifecycle.
 
-## Die Grundidee in einem Satz
+## The core idea in one sentence
 
-Es gibt **zwei Fraktale mit derselben Form**: das **Runtime-Fraktal** (was zur
-Laufzeit läuft) und das **Code-Fraktal** (wie der Code aufgebaut ist). Beide
-schachteln `tier → stage → step`, und an der `each`-Kante schließt sich die
-Rekursion.
+There are **two fractals with the same form**: the **runtime fractal** (what runs
+at runtime) and the **code fractal** (how the code is structured). Both nest
+`tier → stage → step`, and at the `each` edge the recursion closes.
 
-## Wichtige Trennung: deterministische Engine vs. AI-Effekte
+## Important separation: deterministic engine vs. AI effects
 
-- **Engine = reiner Code** (testbar, robust): Kontrollfluss (welche Stage,
-  welcher Step), State-Transitions, `retry`, `stop`, atomic-writes, die
-  Substrat-Invariante.
-- **Worker-Steps = AI-Effekte**, die die Engine *triggert* (über `spawn` →
-  Agent bzw. `claude -p`). Die AI hängt hinter einer injizierten `spawn`-Dep —
-  also austauschbar und im Test durch ein Fake ersetzbar.
+- **Engine = pure code** (testable, robust): control flow (which stage, which
+  step), state transitions, `retry`, `stop`, atomic-writes, the substrate
+  invariant.
+- **Worker steps = AI effects** that the engine *triggers* (via `spawn` →
+  agent or `claude -p`). The AI hangs behind an injected `spawn` dep — i.e.
+  swappable and replaceable by a fake in tests.
 
-Der Code-Teil ist der Kern, den wir voll testen; die AI ist ein pluggable Effekt.
+The code part is the core that we test fully; the AI is a pluggable effect.
 
-## Runtime-Fraktal — was läuft
+## Runtime fractal — what runs
 
 ```mermaid
 flowchart TB
@@ -36,31 +35,31 @@ flowchart TB
         PL["plan"] --> RF["refine"] --> BD["build"]:::loop --> WR["wrap"]
     end
 
-    BD --> STG["stageRunner — steps der Reihe nach"]
+    BD --> STG["stageRunner — steps in order"]
     STG --> STP["stepRunner(step)"]
     STP -->|"run: / use:"| WK["worker → Bash / CLI / Agent"]:::leaf
     STP -->|"each: child"| LP["loop-step"]:::loop
-    LP -. "pro Kind: tierRunner(child-node)" .-> TIER
+    LP -. "per child: tierRunner(child-node)" .-> TIER
 ```
 
-Lies es so: ein `tierRunner` fährt die vier Stages eines Knotens. Eine Stage
-fährt ihre `steps` in Reihenfolge. Ein Step ist **entweder** ein Worker
-(`run:`/`use:` → Bash/CLI/Agent) **oder** der Loop (`each:`), der pro Kind
-rekursiv den `tierRunner` der Kind-Etage ruft. Am Leaf (`phase`) gibt's keinen
-Loop — nur Worker (implement/validate).
+Read it like this: a `tierRunner` drives the four stages of a node. A stage
+drives its `steps` in order. A step is **either** a worker
+(`run:`/`use:` → Bash/CLI/Agent) **or** the loop (`each:`), which per child
+recursively calls the `tierRunner` of the child tier. At the leaf (`phase`)
+there is no loop — only workers (implement/validate).
 
-## Code-Fraktal — wie's gebaut ist
+## Code fractal — how it's built
 
-Jede Runtime-Ebene = eine **Factory-Function** `createX(cfg, deps)`, die ein
-`{ run(input) → output }` zurückgibt. Tiefer liegende Helfer liegen im
-`scope/`-Ordner des Moduls, auch mit klarem input/output.
+Each runtime layer = a **factory function** `createX(cfg, deps)` that returns a
+`{ run(input) → output }`. Deeper helpers live in the module's `scope/` folder,
+also with a clear input/output.
 
 ```mermaid
 flowchart LR
-    subgraph deps["deps — Substrat, injiziert"]
+    subgraph deps["deps — substrate, injected"]
         ops["ops = createOps()"]
         parse["parser / render"]
-        val["validate · state-machine · Invariante"]
+        val["validate · state-machine · invariant"]
         spawn["spawn · agent / claude -p"]
     end
 
@@ -68,68 +67,68 @@ flowchart LR
     T --> S["createStageRunner(cfg, deps)"]
     S --> P["createStepRunner(cfg, deps)"]
     P --> SC["scope/ : run-step · worker-step · loop-step"]
-    SC -. "loop-step ruft" .-> T
+    SC -. "loop-step calls" .-> T
     deps --> E
 ```
 
-Skizze (Pseudo-TS), damit input/output greifbar ist:
+Sketch (pseudo-TS) to make input/output tangible:
 
 ```ts
-// jede Ebene: createX(deps) → { run(input) → output }
+// each layer: createX(deps) → { run(input) → output }
 export function createStepRunner(deps) {
   const { spawn, ops } = deps
   return {
-    async run(step, node) {                 // input: step-config + aktueller node
+    async run(step, node) {                 // input: step-config + current node
       if (step.run)  return runStep(step, deps)           // scope/run-step.ts
       if (step.use)  return workerStep(step, node, deps)  // scope/worker-step.ts → spawn()
-      if (step.each) return loopStep(step, node, deps)    // scope/loop-step.ts → pro Kind: Body-steps, dann advance+stop
+      if (step.each) return loopStep(step, node, deps)    // scope/loop-step.ts → per child: body-steps, then advance+stop
     },                                        // output: { node', status, evidence }
   }
 }
 ```
 
-Die `loopStep` ist der Punkt, an dem sich das Code-Fraktal schließt: sie ruft
-den `tierRunner` der Kind-Etage → Rekursion. Genau wie das Runtime-Fraktal.
+The `loopStep` is the point where the code fractal closes: it calls the
+`tierRunner` of the child tier → recursion. Exactly like the runtime fractal.
 
-## Der loop-Step hat einen Body (interleaved)
+## The loop-step has a body (interleaved)
 
-Ein loop-Step trägt `each: <tier>` **+ einen `steps`-Body**. Pro Kind fährt die
-`loopStep` den Body der Reihe nach durch — **interleaved**: alle Body-Steps für
-Kind A, dann alle für Kind B, … (NICHT erst Step-1 über alle, dann Step-2 über
-alle). Dafür reused `loopStep` denselben `stepRunner` auf den Body → wieder
-fraktal, nur eine Ebene tiefer.
+A loop-step carries `each: <tier>` **+ a `steps` body**. Per child the
+`loopStep` drives the body in order — **interleaved**: all body-steps for
+child A, then all for child B, … (NOT first step-1 across all, then step-2 across
+all). For this the `loopStep` reuses the same `stepRunner` on the body → fractal
+again, just one layer deeper.
 
 ```yaml
 epic:
   build:
     steps:
-      - { name: setup,  run: '...' }        # einmal, vor dem Loop
+      - { name: setup,  run: '...' }        # once, before the loop
       - name: loop
         each: task
-        steps:                               # BODY — pro Task der Reihe nach
-          - { name: run }                    # built-in: diese Task fahren (headless spawn)
-          - { name: commit, run: '...' }     # direkt danach, noch bei DIESER Task
-      - { name: report, run: '...' }        # einmal, danach
+        steps:                               # BODY — per task in order
+          - { name: run }                    # built-in: drive this task (headless spawn)
+          - { name: commit, run: '...' }     # right after, still on THIS task
+      - { name: report, run: '...' }        # once, afterwards
 ```
 
-Pro Task: `run → commit`, dann die nächste. Die Per-Iteration-Mechanik
-(Stub-Status fortschreiben, log, stop-check) macht die `loopStep` nach dem Body
-jeder Iteration — built-in. Kurzform `build: { each: task }` = loop mit
-implizitem Body `[run]`.
+Per task: `run → commit`, then the next one. The per-iteration mechanics
+(advance the stub status, log, stop-check) the `loopStep` does after the body of
+each iteration — built-in. Shorthand `build: { each: task }` = loop with an
+implicit body `[run]`.
 
-## Was uns das bringt
+## What this gives us
 
-- **Testbarkeit**: `createStepRunner({ spawn: fakeSpawn, ops: fakeOps })` →
-  `run(step, node)` aufrufen, Output asserten. Kein echtes CC nötig.
-- **Austauschbarkeit**: `spawn` von Agent auf `claude -p` umstellen, oder ein
-  Worker-Step von MCP auf CLI — ohne die tier/stage-Runner anzufassen.
-- **Erweiterbarkeit**: neuer Step-Typ = eine Datei in `scope/`, die Verträge
-  oben bleiben gleich.
-- **Robustheit**: jede Ebene hat input/output-Verträge; die harte Invariante
-  (kein `done` ohne `evidence`) sitzt in `val`/`ops` und greift genau am Step,
-  der schreibt.
+- **Testability**: `createStepRunner({ spawn: fakeSpawn, ops: fakeOps })` →
+  call `run(step, node)`, assert the output. No real CC needed.
+- **Swappability**: switch `spawn` from agent to `claude -p`, or a worker-step
+  from MCP to CLI — without touching the tier/stage runners.
+- **Extensibility**: a new step type = one file in `scope/`, the contracts
+  above stay the same.
+- **Robustness**: each layer has input/output contracts; the hard invariant
+  (no `done` without `evidence`) sits in `val`/`ops` and bites exactly at the
+  step that writes.
 
-## Ordner-Skizze
+## Folder sketch
 
 ```
 core/
@@ -142,7 +141,7 @@ core/
       run-step.ts           run: → Bash
       worker-step.ts        use: → spawn(agent | claude -p)
       loop-step.ts          each: → createTierRunner(child)
-      resolve-steps.ts      Built-in-Defaults aus anchored.default.yml einsetzen
-  ops/                      createOps() — das bestehende Substrat (bleibt)
-  parser/  validate/  io/   Substrat (bleibt)
+      resolve-steps.ts      inject built-in defaults from anchored.default.yml
+  ops/                      createOps() — the existing substrate (stays)
+  parser/  validate/  io/   substrate (stays)
 ```

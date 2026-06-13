@@ -2,18 +2,18 @@
 
 # io
 
-`atomic-write` — schreibt Node-Files sicher: Lock, `mkdir -p`, dann POSIX-rename.
-Ein Einzel-File (kein Ordner).
+`atomic-write` — writes Node files safely: lock, `mkdir -p`, then POSIX rename.
+A single file (not a folder).
 
-## Was
+## What
 
-- `atomicWrite(path, content)`: schreibt in eine Temp-Datei und benennt sie atomar
-  um (rename), so dass nie ein halb-geschriebenes File sichtbar wird.
-- `mkdir -p` legt fehlende Eltern-Ordner an (load-bearing für den ersten Write
-  unter `.claude/tasks/<epic>/`).
-- Cross-Process-Lock schützt vor parallelen Schreibern.
+- `atomicWrite(path, content)`: writes to a temp file and renames it atomically
+  (rename), so that a half-written file is never visible.
+- `mkdir -p` creates missing parent folders (load-bearing for the first write
+  under `.claude/tasks/<epic>/`).
+- A cross-process lock guards against concurrent writers.
 
-## Wie
+## How
 
 ```mermaid
 flowchart LR

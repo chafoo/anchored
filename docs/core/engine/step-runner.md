@@ -2,21 +2,21 @@
 
 # step-runner
 
-Führt **einen** Step aus. Dispatcht anhand der Step-Form auf einen der drei
-Helfer: `run` → Bash, `use` → Worker, `each` → Loop (Rekursion). Die Step-Form
-ist strukturell ([schema/step](../schema/_schema.md)); die Built-in-Semantik
-lebt in [resolve-steps](scope/resolve-steps.md), nicht hier.
+Runs **one** step. Dispatches based on the step form to one of three
+helpers: `run` → Bash, `use` → worker, `each` → loop (recursion). The step form
+is structural ([schema/step](../schema/_schema.md)); the built-in semantics
+live in [resolve-steps](scope/resolve-steps.md), not here.
 
-## Was
+## What
 
 - `createStepRunner(cfg, deps) → { run(step, node) → output }`.
-- Genau eines greift: `run:` (Shell), `use:` (`agent|skill`-Worker), `each:`
-  (Loop über die Kind-Etage). `run` XOR `use` ist strukturell erzwungen.
-- `instructions` sind uniform an **jedem** Step-Typ erlaubt (run/use/worker) — der
-  Planner reicht sie durch, der Skill befolgt sie beim Ausführen/Dispatchen;
-  `involve` nur am `walk`.
+- Exactly one applies: `run:` (shell), `use:` (`agent|skill` worker), `each:`
+  (loop over the child tier). `run` XOR `use` is structurally enforced.
+- `instructions` are uniformly allowed on **every** step type (run/use/worker) — the
+  planner passes them through, the skill follows them when executing/dispatching;
+  `involve` only on the `walk`.
 
-## Wie
+## How
 
 `createStepRunner(cfg, deps): { run(step: Step, node: Node) => Promise<Output> }`
 
@@ -25,5 +25,5 @@ flowchart TB
     S["step"] --> Q{"run | use | each ?"}
     Q -->|run| RS["scope/run-step → Bash"]
     Q -->|use| WS["scope/worker-step → spawn(agent | claude -p)"]
-    Q -->|each| LS["scope/loop-step → rekursiert in die Kind-Etage"]
+    Q -->|each| LS["scope/loop-step → recurses into the child tier"]
 ```

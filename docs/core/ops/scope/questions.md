@@ -2,17 +2,17 @@
 
 # questions
 
-Fragen + Antworten auf einem Knoten: hinzufügen und auflösen. Nutzt die
-**geteilte** AC/Question-Form (dieselben Typen + sequenzielle ids über alle Tiers).
+Questions + answers on a node: add and resolve. Uses the **shared**
+AC/question form (the same types + sequential ids across all tiers).
 
-## Was
+## What
 
-- `add-question` (text, priority, origin, optional phase) → sequenzielle id.
-- `resolve-question` (id, answer, source `user|ai`, bei `ai` Pflicht-`reasoning`).
-- Auflösung mit `source: ai` + `reasoning` bildet den Entscheidungs-Trail
-  (von `/a:wrap` reviewbar).
+- `add-question` (text, priority, origin, optional phase) → sequential id.
+- `resolve-question` (id, answer, source `user|ai`, with `ai` mandatory `reasoning`).
+- Resolution with `source: ai` + `reasoning` forms the decision trail
+  (reviewable from `/a:wrap`).
 
-## Wie
+## How
 
 ```mermaid
 flowchart LR

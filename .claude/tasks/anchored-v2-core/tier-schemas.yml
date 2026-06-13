@@ -1,340 +1,340 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
 slug: anchored-v2-core/tier-schemas
-title: Zod-Schemas + State-Machine + harte Invariante
+title: Zod schemas + state machine + hard invariant
 status: done
 created: 2026-06-10
 context:
   plan: |
-    SCOPE: Das Substrat-Fundament — Datenmodell + Mechanik, auf dem alles steht.
+    SCOPE: The substrate foundation — data model + mechanics that everything rests on.
 
-    Liefert:
-      schema/step.ts    — Step-Grammatik: name + (run XOR use+type) + instructions;
-                          involve auf walk; each als Step-Attribut.
-      schema/config.ts  — anchored.yml-Schema (Tiers phase/task/epic, _lib-Aliasse erlaubt).
-      schema/tiers/{phase,task,epic}.ts — Tier-Deskriptoren: Felder
-                          (config-getrieben) + Mechanik (Status-Enum, Kind-Beziehung).
-                          project = NICHT in diesem Epic (q4: erst epic austesten).
-                          phase bekommt ein reserved `executor`-Feld
-                          (implement | workflow, default implement) für den
-                          Workflow-Fan-out-Modus → siehe Task workflow-mode.
-      state/transitions.ts — per-Tier Transitions + assertTransition (forward-only).
-      state/invariants.ts  — HARTE Invariante: kein ac→done ohne evidence.
+    Delivers:
+      schema/step.ts    — step grammar: name + (run XOR use+type) + instructions;
+                          involve on walk; each as a step attribute.
+      schema/config.ts  — anchored.yml schema (tiers phase/task/epic, _lib aliases allowed).
+      schema/tiers/{phase,task,epic}.ts — tier descriptors: fields
+                          (config-driven) + mechanics (status enum, child relationship).
+                          project = NOT in this epic (q4: test epic out first).
+                          phase gets a reserved `executor` field
+                          (implement | workflow, default implement) for the
+                          workflow fan-out mode → see Task workflow-mode.
+      state/transitions.ts — per-tier transitions + assertTransition (forward-only).
+      state/invariants.ts  — HARD invariant: no ac→done without evidence.
 
-    DESIGN: file-structure.md (schema/ + state/) · anchored.default.yml (alle Felder
-    pro Tier — der Vertrag) · fractal-redesign-notes.md (Tier-Schema-Deskriptor =
-    Code-Mechanik + Config-Felder; Item 5b) · fractal-lifecycle.md (Status-Werte).
-    V1-REF (Logik-Vorlage, neu im Factory-Pattern — kein 1:1-Port): mcp/src/schema/{task-file.ts(405),anchored-yml.ts(217),urls.ts} +
-    mcp/src/ops/validate.ts(373) — Invarianten/Transitions-Logik tier-generisch ziehen.
+    DESIGN: file-structure.md (schema/ + state/) · anchored.default.yml (all fields
+    per tier — the contract) · fractal-redesign-notes.md (tier-schema descriptor =
+    code mechanics + config fields; Item 5b) · fractal-lifecycle.md (status values).
+    V1-REF (logic template, rewritten in the factory pattern — no 1:1 port): mcp/src/schema/{task-file.ts(405),anchored-yml.ts(217),urls.ts} +
+    mcp/src/ops/validate.ts(373) — pull invariant/transition logic out tier-generically.
 
-    KERN-INVARIANTE (e4): ac→done verlangt evidence — im Datenmodell, nicht im Step.
+    CORE INVARIANT (e4): ac→done requires evidence — in the data model, not in the step.
 
-    GROBE PHASEN: (1) step + config Schema · (2) Tier-Deskriptoren phase/task/epic
-    (KEIN project) + reserved `executor`-Feld · (3) transitions forward-only ·
-    (4) Invariante + Tests.
+    ROUGH PHASES: (1) step + config schema · (2) tier descriptors phase/task/epic
+    (NO project) + reserved `executor` field · (3) transitions forward-only ·
+    (4) invariant + tests.
   refine: |
-    Cross-Task-Korrektur (source: ai): step-schema a1 verlangte ursprünglich 'genau eines von run/use' (neither → abgelehnt), was die Default-Built-in-Steps ({name: implement} ohne run/use) abgelehnt und damit config-schema a1 (parst die volle anchored.default.yml) gebrochen hätte. Korrigiert zu 'höchstens eines von run|use|each; bare name = Built-in-Referenz' — abgeleitet aus anchored.default.yml (dem Vertrag); AC a1-Text angepasst. zod 4 API verifiziert (strictObject, refine{error:...}, lazy-recursive). NodeNext: .js-Import-Extensions durchgängig.
+    Cross-task correction (source: ai): step-schema a1 originally required 'exactly one of run/use' (neither → rejected), which would have rejected the default built-in steps ({name: implement} without run/use) and thereby broken config-schema a1 (parses the full anchored.default.yml). Corrected to 'at most one of run|use|each; bare name = built-in reference' — derived from anchored.default.yml (the contract); AC a1 text adjusted. zod 4 API verified (strictObject, refine{error:...}, lazy-recursive). NodeNext: .js import extensions throughout.
   build: |
-    6 Module: schema/{step,config}.ts, schema/tiers/{phase,task,epic,project}.ts, state/{transitions,invariants}.ts. Zusätzlich: reserved executor auf phase (optional, kein Default) + before/after am StepSchema (Vorbereitung config-bootstrap before/after-Merge). 22 Tests über 6 spec-Files. Typed errors via anchoredError(kind,message,suggestions)-Factory (keine Klasse). Alle 5 Gates grün.
+    6 modules: schema/{step,config}.ts, schema/tiers/{phase,task,epic,project}.ts, state/{transitions,invariants}.ts. Additionally: reserved executor on phase (optional, no default) + before/after on the StepSchema (preparation for config-bootstrap before/after merge). 22 tests across 6 spec files. Typed errors via anchoredError(kind,message,suggestions) factory (no class). All 5 gates green.
   wrap: |
-    Substrat-Fundament steht: Step-Grammatik, fraktales Config-Schema, 3 aktive Tier-Deskriptoren (+ project reserviert), forward-only State-Machine, harte Invariante doppelt (Daten-Modell-asserts + Zod-refine). Bereit für parser-io + ops-core.
+    Substrate foundation in place: step grammar, fractal config schema, 3 active tier descriptors (+ project reserved), forward-only state machine, hard invariant doubled (data-model asserts + Zod refine). Ready for parser-io + ops-core.
 questions: []
 log:
   - at: step-schema
     kind: decision
-    note: "step-Grammatik korrigiert: höchstens eines von run|use|each (bare name = Built-in-Ref) statt genau eines — sonst hätte config a1 (Default-Built-ins) gebrochen. Cross-Task-Fund, source: ai."
+    note: "step grammar corrected: at most one of run|use|each (bare name = built-in ref) instead of exactly one — otherwise config a1 (default built-ins) would have broken. Cross-task finding, source: ai."
   - at: tier-descriptors
     kind: decision
-    note: before/after am StepSchema ergänzt (für config-bootstrap before/after-Merge-AC); executor reserved auf phase, optional ohne Default; AcceptanceCriterion-Zod spiegelt die Invariante.
+    note: before/after added on the StepSchema (for the config-bootstrap before/after merge AC); executor reserved on phase, optional with no default; AcceptanceCriterion Zod mirrors the invariant.
   - at: invariants
     kind: learning
-    note: "Typed errors via anchoredError-Factory (factory-functions-Rule, keine Error-Subklasse). Invariante doppelt verankert: state/invariants.ts asserts + Zod-refine auf AcceptanceCriterion."
+    note: "Typed errors via anchoredError factory (factory-functions rule, no Error subclass). Invariant doubly anchored: state/invariants.ts asserts + Zod refine on AcceptanceCriterion."
 phases:
-  - name: Step-Grammatik (schema/step.ts)
+  - name: Step grammar (schema/step.ts)
     slug: step-schema
     status: done
     context: |
-      Erste Bausteine: die Step-Grammatik als Zod-Schema in `core/src/schema/step.ts`,
-      als reine Factory-konforme Modul-Exports (kein Top-Level-Seiteneffekt, kein
-      Singleton — nur Zod-Schemas + pure parse-Helfer; das ist die laut
-      [[factory-functions]] erlaubte "reine-Daten-Typen/Zod"-Ausnahme).
+      First building blocks: the step grammar as a Zod schema in `core/src/schema/step.ts`,
+      as pure factory-conforming module exports (no top-level side effect, no
+      singleton — only Zod schemas + pure parse helpers; that is the
+      "pure-data-types/Zod" exception allowed per [[factory-functions]]).
 
-      Form (siehe anchored.default.yml + fractal-redesign-notes Item 5a + V1
-      anchored-yml.ts:89-103 als Logik-Vorlage, NICHT 1:1 portieren):
-        - `name` Pflicht (non-empty string).
-        - GENAU EINES von `run` (Bash/Prosa) XOR `use` (Worker-Ref) — refine
-          erzwingt `count(run,use) === 1`.
-        - `type` (agent | skill) NUR gültig auf einem `use`-Step.
-        - `instructions` optional auf JEDEM Step.
-        - `involve` (all | high-only | none) NUR auf walk-Steps zulässig.
-        - `each: <tier>` + optionaler `steps`-Body (rekursiv `Step[]`) für den
-          loop-Step; ein loop-Step trägt KEIN run/use (er ist der Loop, kein Worker).
-      Reserved-Name-Semantik (implement/decompose/…) lebt NICHT hier — die kommt
-      in resolve-steps (anderer Task). Hier nur die strukturelle Grammatik.
+      Form (see anchored.default.yml + fractal-redesign-notes Item 5a + V1
+      anchored-yml.ts:89-103 as a logic template, do NOT port 1:1):
+        - `name` required (non-empty string).
+        - EXACTLY ONE of `run` (Bash/prose) XOR `use` (worker ref) — refine
+          enforces `count(run,use) === 1`.
+        - `type` (agent | skill) ONLY valid on a `use` step.
+        - `instructions` optional on EVERY step.
+        - `involve` (all | high-only | none) ONLY allowed on walk steps.
+        - `each: <tier>` + optional `steps` body (recursive `Step[]`) for the
+          loop step; a loop step carries NO run/use (it is the loop, not a worker).
+      Reserved-name semantics (implement/decompose/…) does NOT live here — that comes
+      in resolve-steps (another task). Here only the structural grammar.
 
-      Tooling-Naht: `parseStep`/`safeParseStep` als pure Helfer; zod-Dep in
-      core/package.json verdrahtet, falls noch nicht vorhanden.
+      Tooling seam: `parseStep`/`safeParseStep` as pure helpers; zod dep wired in
+      core/package.json if not already present.
     rules:
       - path: .claude/rules/factory-functions.md
-        why: Zod-Schemas sind die erlaubte reine-Daten-Ausnahme; kein Modul-Level-Seiteneffekt/Singleton im step.ts
+        why: Zod schemas are the allowed pure-data exception; no module-level side effect/singleton in step.ts
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: Step-Grammatik = Mechanismus (Code); Reserved-Step-Namen = Policy → bleiben draußen
+        why: Step grammar = mechanism (code); reserved step names = policy → stay out
       - path: .claude/rules/tooling-quality-gates.md
-        why: zod-Dep + bun test grün für die Schema-Tests
+        why: zod dep + bun test green for the schema tests
     acceptance_criteria:
       - id: a1
-        text: "schema/step.ts erzwingt name + HÖCHSTENS EINES von run|use|each: ein Step mit BEIDEN run+use wird abgelehnt; run-only, use-only und ein loop (each) akzeptiert; ein bare {name} (Built-in-Referenz wie {name: implement}) akzeptiert; {} (kein name) abgelehnt — belegbar durch bun-Test (KORRIGIERT von 'genau eines / neither rejected', was config a1 gebrochen hätte)"
+        text: "schema/step.ts enforces name + AT MOST ONE of run|use|each: a step with BOTH run+use is rejected; run-only, use-only and a loop (each) accepted; a bare {name} (built-in reference like {name: implement}) accepted; {} (no name) rejected — provable by bun test (CORRECTED from 'exactly one / neither rejected', which would have broken config a1)"
         status: done
         evidence:
-          - src/schema/step.spec.ts 'run XOR use; bare built-in reference accepted' — both run+use→false, run-only/use-only→true, bare {name:implement}→true, {}→false (bun test grün)
+          - src/schema/step.spec.ts 'run XOR use; bare built-in reference accepted' — both run+use→false, run-only/use-only→true, bare {name:implement}→true, {}→false (bun test green)
       - id: a2
-        text: "`type` (agent|skill) wird auf einem `run`-Step von Zod abgelehnt und auf einem `use`-Step akzeptiert; `involve` (all|high-only|none) wird nur auf einem walk-benannten Step akzeptiert und sonst abgelehnt; `instructions` (optionaler String) wird auf JEDEM Step-Typ (run/use/loop) akzeptiert und sein Fehlen ist valide — belegbar durch bun-Test-Fälle mit datei:zeile der refines + grünem output"
+        text: "`type` (agent|skill) is rejected by Zod on a `run` step and accepted on a `use` step; `involve` (all|high-only|none) is accepted only on a walk-named step and rejected otherwise; `instructions` (optional string) is accepted on EVERY step type (run/use/loop) and its absence is valid — provable by bun test cases with file:line of the refines + green output"
         status: done
         evidence:
-          - src/schema/step.spec.ts 'type/involve/instructions placement' — type on run→false / on use→true; involve nur auf name=walk; instructions optional auf jedem Step (grün)
+          - src/schema/step.spec.ts 'type/involve/instructions placement' — type on run→false / on use→true; involve only on name=walk; instructions optional on every step (green)
       - id: a3
-        text: "ein loop-Step mit `each: phase` und einem `steps`-Body aus 2 Sub-Steps parst rekursiv zu typisierten Step-Objekten (Body ist `Step[]`); ein loop-Step mit gleichzeitig `run`/`use` wird abgelehnt — belegbar durch bun-Test (datei:zeile + parse-Ergebnis im output)"
+        text: "a loop step with `each: phase` and a `steps` body of 2 sub-steps parses recursively to typed Step objects (body is `Step[]`); a loop step with simultaneous `run`/`use` is rejected — provable by bun test (file:line + parse result in output)"
         status: done
         evidence:
-          - src/schema/step.spec.ts 'loop step parses recursive body' — each:phase + 2-Step-Body parst rekursiv (steps[1].run='git commit'); loop+run→false; steps-Body nur auf loop (grün)
+          - src/schema/step.spec.ts 'loop step parses recursive body' — each:phase + 2-step body parses recursively (steps[1].run='git commit'); loop+run→false; steps body only on loop (green)
       - id: a4
-        text: "`parseStep` wirft auf invaliden Input, `safeParseStep` gibt eine diskriminierte Union {ok:true,value}|{ok:false,error} zurück — beide als pure Funktion ohne Modul-Level-Effekt; belegbar durch bun-Test + `grep -nE '^(import .*\\b(fs|child_process)\\b)|Bun\\.' core/src/schema/step.ts` (leeres Ergebnis = keine Effekt-Imports)"
+        text: "`parseStep` throws on invalid input, `safeParseStep` returns a discriminated union {ok:true,value}|{ok:false,error} — both as pure functions with no module-level effect; provable by bun test + `grep -nE '^(import .*\\b(fs|child_process)\\b)|Bun\\.' core/src/schema/step.ts` (empty result = no effect imports)"
         status: done
         evidence:
-          - src/schema/step.spec.ts 'parseStep throws, safeParseStep returns union' — parseStep wirft, safeParseStep {ok:true,value}|{ok:false,error}; grep -nE 'fs|child_process|Bun\.' src/schema/step.ts → leer
+          - src/schema/step.spec.ts 'parseStep throws, safeParseStep returns union' — parseStep throws, safeParseStep {ok:true,value}|{ok:false,error}; grep -nE 'fs|child_process|Bun\.' src/schema/step.ts → empty
       - id: a5
-        text: "Quality-Gates für core/ grün: `bun test` (step-Tests inkl.), `tsc --noEmit`, eslint, prettier --check — belegbar durch die jeweiligen Kommando-Outputs (exit 0 je Gate)"
+        text: "Quality gates for core/ green: `bun test` (step tests incl.), `tsc --noEmit`, eslint, prettier --check — provable by the respective command outputs (exit 0 per gate)"
         status: done
         evidence:
-          - "5 Gates exit 0: bun test (22 pass/0 fail), tsc --noEmit, eslint, prettier --check, bun build"
-  - name: anchored.yml-Config-Schema (schema/config.ts)
+          - "5 gates exit 0: bun test (22 pass/0 fail), tsc --noEmit, eslint, prettier --check, bun build"
+  - name: anchored.yml config schema (schema/config.ts)
     slug: config-schema
     status: done
     context: |
-      `core/src/schema/config.ts`: das anchored.yml-Schema als Zod, fraktal
-      (Top-Level-Blöcke `phase`/`task`/`epic`; `project` schema-reserviert, gleiche
-      Form). Jede Etage hat `plan`/`refine`/`build`/`wrap` (Stages mit `steps`),
-      `build` darf zusätzlich `each: <tier>` + `stop` (string[]) + `retry_limit`
-      (int>=1) tragen. `fields` pro Etage = das Daten-Modell-Shape (Default-Felder
-      + User-Custom über denselben Mechanismus — supersedet den globalen
-      `_fields`-Bucket aus V1).
+      `core/src/schema/config.ts`: the anchored.yml schema as Zod, fractal
+      (top-level blocks `phase`/`task`/`epic`; `project` schema-reserved, same
+      form). Each tier has `plan`/`refine`/`build`/`wrap` (stages with `steps`),
+      `build` may additionally carry `each: <tier>` + `stop` (string[]) + `retry_limit`
+      (int>=1). `fields` per tier = the data-model shape (default fields
+      + user custom via the same mechanism — supersedes the global
+      `_fields` bucket from V1).
 
-      Vertrag = docs/design/anchored.default.yml (jede Stage/jedes Feld dort muss
-      das Schema akzeptieren). V1-Vorlage: anchored-yml.ts:114-205 (Stage-Configs +
-      Top-Level), aber NEU im fraktalen Tier-Layout statt flach — kein 1:1-Port.
+      Contract = docs/design/anchored.default.yml (every stage/every field there must
+      be accepted by the schema). V1 template: anchored-yml.ts:114-205 (stage configs +
+      top-level), but NEW in the fractal tier layout instead of flat — no 1:1 port.
 
-      Besonderheiten:
-        - Top-Level `.strict()` bis auf den erlaubten `_lib`-Pfad (YAML-Anchor-
-          Aliasse NUR dort zulässig — anchored.yml-Profil, NICHT Task-File-Profil).
-        - `each` ist NUR im `build` einer Etage zulässig (nicht in plan/refine/wrap).
-        - Merge-Tauglichkeit: alle Stages/Felder optional mit Defaults, sodass eine
-          fast-leere User-anchored.yml valide ist (Base-Dependency-Prinzip).
-      `merge(default,user)` selbst ist NICHT dieser Task (config/merge.ts) — hier
-      nur das Schema, das beide Seiten validiert.
+      Specifics:
+        - Top-level `.strict()` except for the allowed `_lib` path (YAML anchor
+          aliases ONLY allowed there — anchored.yml profile, NOT task-file profile).
+        - `each` is ONLY allowed in the `build` of a tier (not in plan/refine/wrap).
+        - Merge-fitness: all stages/fields optional with defaults, so that a
+          near-empty user anchored.yml is valid (base-dependency principle).
+      `merge(default,user)` itself is NOT this task (config/merge.ts) — here
+      only the schema that validates both sides.
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: Stage-steps + fields = Policy-Shape; das Schema kennt KEINE konkreten Step-Namen (config-driven)
+        why: Stage steps + fields = policy shape; the schema knows NO concrete step names (config-driven)
       - path: .claude/rules/factory-functions.md
-        why: Reine Zod-Schemas + parse-Helfer; cfg ist die später injizierte Base-Dependency
+        why: Pure Zod schemas + parse helpers; cfg is the base dependency injected later
       - path: .claude/rules/cli-only-transport.md
-        why: Config wird einmal beim Bootstrap gelesen; Schema muss minimale User-Deltas zulassen
+        why: Config is read once at bootstrap; schema must allow minimal user deltas
     acceptance_criteria:
       - id: a1
-        text: schema/config.ts parst die VOLLSTÄNDIGE docs/design/anchored.default.yml (phase+task+epic, alle Stages + fields) fehlerfrei — belegbar durch einen bun-Test, der die Datei einliest und gegen das Schema validiert (datei:zeile des Tests + grüner output)
+        text: schema/config.ts parses the FULL docs/design/anchored.default.yml (phase+task+epic, all stages + fields) without error — provable by a bun test that reads the file in and validates against the schema (file:line of the test + green output)
         status: done
         evidence:
-          - src/schema/config.spec.ts 'parses the full anchored.default.yml' — default-template/anchored.default.yml via yaml geladen + safeParseConfig → ok (grün)
+          - src/schema/config.spec.ts 'parses the full anchored.default.yml' — default-template/anchored.default.yml loaded via yaml + safeParseConfig → ok (green)
       - id: a2
-        text: eine fast-leere User-Config (`{}` bzw. nur ein einzelner Delta-Step in phase.build) ist valide und liefert die Default-besetzten Stages zurück — belegbar durch bun-Test, der die geparsten Defaults asserted (datei:zeile + output)
+        text: a near-empty user config (`{}` or just a single delta step in phase.build) is valid and returns the default-populated stages — provable by a bun test that asserts the parsed defaults (file:line + output)
         status: done
         evidence:
-          - src/schema/config.spec.ts 'empty and single-delta user configs' — {} valide; phase.build mit Delta-Step {name:lint,run,after:implement} valide (grün)
+          - src/schema/config.spec.ts 'empty and single-delta user configs' — {} valid; phase.build with delta step {name:lint,run,after:implement} valid (green)
       - id: a3
-        text: "`each` wird im `build` einer Etage akzeptiert, aber in `plan`/`refine`/`wrap` von Zod abgelehnt; `retry_limit:0` und `retry_limit:'x'` werden abgelehnt, `retry_limit:3` akzeptiert — belegbar durch bun-Test-Fälle (datei:zeile der refines + output)"
+        text: "`each` is accepted in the `build` of a tier, but rejected by Zod in `plan`/`refine`/`wrap`; `retry_limit:0` and `retry_limit:'x'` are rejected, `retry_limit:3` accepted — provable by bun test cases (file:line of the refines + output)"
         status: done
         evidence:
-          - src/schema/config.spec.ts 'each only in build; retry_limit' — each in build→true / in plan→false; retry_limit 3→true, 0 & 'x'→false (grün)
+          - src/schema/config.spec.ts 'each only in build; retry_limit' — each in build→true / in plan→false; retry_limit 3→true, 0 & 'x'→false (green)
       - id: a4
-        text: YAML-Anchor-Aliasse sind auf dem `_lib`-Pfad zulässig und ein unbekannter Top-Level-Key (außerhalb tier-Blöcke + `_lib`) wird durch `.strict()` abgelehnt — belegbar durch bun-Test mit beiden Fällen (datei:zeile + output)
+        text: YAML anchor aliases are allowed on the `_lib` path and an unknown top-level key (outside tier blocks + `_lib`) is rejected by `.strict()` — provable by a bun test with both cases (file:line + output)
         status: done
         evidence:
-          - src/schema/config.spec.ts '_lib allowed, unknown top-level rejected' — _lib akzeptiert; {bogus:1} via strictObject abgelehnt (grün)
+          - src/schema/config.spec.ts '_lib allowed, unknown top-level rejected' — _lib accepted; {bogus:1} rejected via strictObject (green)
       - id: a5
-        text: "`parseConfig`/`safeParseConfig` existieren als pure Helfer (gleiche Union-Form wie step) und core/-Gates grün: `bun test`, `tsc --noEmit`, eslint, prettier --check — belegbar durch test-output + je Gate exit 0"
+        text: "`parseConfig`/`safeParseConfig` exist as pure helpers (same union form as step) and core/ gates green: `bun test`, `tsc --noEmit`, eslint, prettier --check — provable by test output + exit 0 per gate"
         status: done
         evidence:
-          - "src/schema/config.ts parseConfig/safeParseConfig (SafeResult-Union, pure); 5 Gates exit 0: bun test (22 pass/0 fail), tsc --noEmit, eslint, prettier --check, bun build"
-  - name: Tier-Deskriptoren phase/task/epic (+ reserved executor)
+          - "src/schema/config.ts parseConfig/safeParseConfig (SafeResult union, pure); 5 gates exit 0: bun test (22 pass/0 fail), tsc --noEmit, eslint, prettier --check, bun build"
+  - name: Tier descriptors phase/task/epic (+ reserved executor)
     slug: tier-descriptors
     status: done
     context: |
-      `core/src/schema/tiers/{phase,task,epic}.ts` (+ `project.ts` schema-reserviert,
-      gleiche Form). Jeder Tier-Deskriptor vereint laut fractal-redesign-notes Item 5b:
-        - Config-getriebene FELDER (das Daten-Shape je Etage, Vertrag aus
-          anchored.default.yml fields-Blöcken): phase = name/slug/status/context/
+      `core/src/schema/tiers/{phase,task,epic}.ts` (+ `project.ts` schema-reserved,
+      same form). Each tier descriptor, per fractal-redesign-notes Item 5b, unites:
+        - Config-driven FIELDS (the data shape per tier, contract from the
+          anchored.default.yml fields blocks): phase = name/slug/status/context/
           rules/acceptance_criteria(+evidence)/failures; task = schema_version/slug/
           title/created/status/context.{plan,refine,build,wrap}/questions/log/phases;
           epic = schema_version/slug/title/status/goal/acceptance/questions/
           tasks(stubs)/log.
-        - CODE-MECHANIK (fix): Status-Enum je Tier (phase: pending|in-progress|done|
+        - CODE MECHANICS (fixed): status enum per tier (phase: pending|in-progress|done|
           blocked|deferred; task: plan|drafted|refined|build|wrap|done; epic:
-          planning|building|done) + die KIND-Beziehung (task→phase, epic→task,
-          phase=Leaf/kein Kind). Als maschinenlesbarer Deskriptor exponiert
-          (z.B. `{ tier, statusEnum, childTier, schema }`), sodass der spätere
-          tier-generische createNodeOps darüber parametrisiert.
-      project = NICHT ausgebaut (q4: erst epic austesten) — nur als reservierter
-      Deskriptor gleicher Form vorhanden, ungenutzt.
+          planning|building|done) + the CHILD relationship (task→phase, epic→task,
+          phase=leaf/no child). Exposed as a machine-readable descriptor
+          (e.g. `{ tier, statusEnum, childTier, schema }`), so that the later
+          tier-generic createNodeOps is parameterized over it.
+      project = NOT built out (q4: test epic out first) — present only as a reserved
+      descriptor of the same form, unused.
 
-      RESERVED `executor`-Feld auf phase (implement | workflow, default implement)
-      für den Workflow-Fan-out-Modus (→ Task workflow-mode). V1-Vorlage: task-file.ts:76-77
-      (PhaseExecutor) + :145-166 (Feld optional, Schema injiziert KEINEN Default →
-      parse→serialize byte-identisch). Slug-Form je Tier: phase=kebab,
-      task=kebab|nested(<epic>/<slug>), epic=kebab (V1 task-file.ts:34-39 als
-      KebabSlug-Vorlage).
+      RESERVED `executor` field on phase (implement | workflow, default implement)
+      for the workflow fan-out mode (→ Task workflow-mode). V1 template: task-file.ts:76-77
+      (PhaseExecutor) + :145-166 (field optional, schema injects NO default →
+      parse→serialize byte-identical). Slug form per tier: phase=kebab,
+      task=kebab|nested(<epic>/<slug>), epic=kebab (V1 task-file.ts:34-39 as the
+      KebabSlug template).
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: Felder = Policy, Status-Enum + Kind-Beziehung = Mechanismus; beide im selben Deskriptor sauber getrennt
+        why: Fields = policy, status enum + child relationship = mechanism; both cleanly separated in the same descriptor
       - path: .claude/rules/factory-functions.md
-        why: Deskriptor ist ein reines Daten-Objekt + Zod-Schema, das createNodeOps(tierSchema, deps) später parametrisiert
+        why: The descriptor is a pure data object + Zod schema that createNodeOps(tierSchema, deps) parameterizes later
     acceptance_criteria:
       - id: a1
-        text: jeder Deskriptor (phase/task/epic) exportiert ein Zod-Node-Schema, das ein gültiges Node-Beispiel des Tiers parst und ein Node mit Status außerhalb des Tier-Enums ablehnt (phase!=task-Status etc.) — belegbar durch bun-Test je Tier (datei:zeile + output)
+        text: each descriptor (phase/task/epic) exports a Zod node schema that parses a valid node example of the tier and rejects a node with a status outside the tier enum (phase!=task status etc.) — provable by a bun test per tier (file:line + output)
         status: done
         evidence:
-          - src/schema/tiers/tiers.spec.ts 'parse valid nodes and reject foreign status' — phase/task/epic parsen valide Nodes; phase mit task-Status & task mit phase-Status abgelehnt (grün)
+          - src/schema/tiers/tiers.spec.ts 'parse valid nodes and reject foreign status' — phase/task/epic parse valid nodes; phase with task status & task with phase status rejected (green)
       - id: a2
-        text: der phase-Deskriptor trägt ein reserved `executor`-Feld vom Enum {implement,workflow}, OPTIONAL auf der Wire, ohne injizierten Default — ein phase-Node ohne `executor` parst und serialisiert byte-identisch (kein Default eingefügt) — belegbar durch bun-Test, der parse→render→vergleich asserted (datei:zeile + output)
+        text: the phase descriptor carries a reserved `executor` field of the enum {implement,workflow}, OPTIONAL on the wire, with no injected default — a phase node without `executor` parses and serializes byte-identically (no default inserted) — provable by a bun test that asserts parse→render→compare (file:line + output)
         status: done
         evidence:
-          - "tiers.spec.ts 'executor optional with no injected default' — phase ohne executor: 'executor' not in parsed + toEqual(input); executor:'workflow' valide (grün) [volle YAML-render-Identität in parser-io]"
+          - "tiers.spec.ts 'executor optional with no injected default' — phase without executor: 'executor' not in parsed + toEqual(input); executor:'workflow' valid (green) [full YAML render identity in parser-io]"
       - id: a3
-        text: jeder Deskriptor exponiert maschinenlesbar `childTier` (phase→undefined/Leaf, task→'phase', epic→'task') und sein `statusEnum`; ein Test asserted die drei Kind-Beziehungen + dass phase als Leaf kein Kind hat — belegbar durch bun-Test (datei:zeile + output)
+        text: each descriptor exposes machine-readably `childTier` (phase→undefined/leaf, task→'phase', epic→'task') and its `statusEnum`; a test asserts the three child relationships + that phase as leaf has no child — provable by a bun test (file:line + output)
         status: done
         evidence:
-          - tiers.spec.ts 'expose childTier' — phaseDescriptor.childTier undefined, taskDescriptor 'phase', epicDescriptor 'task'; statusEnum enthält 'blocked' (grün)
+          - tiers.spec.ts 'expose childTier' — phaseDescriptor.childTier undefined, taskDescriptor 'phase', epicDescriptor 'task'; statusEnum contains 'blocked' (green)
       - id: a4
-        text: task-Slug akzeptiert sowohl flach (`my-task`) als auch nested (`my-epic/my-task`), phase/epic akzeptieren nur kebab; ein nested-Slug auf phase wird abgelehnt — belegbar durch bun-Test mit den Slug-Fällen (datei:zeile + output)
+        text: task slug accepts both flat (`my-task`) and nested (`my-epic/my-task`), phase/epic accept only kebab; a nested slug on phase is rejected — provable by a bun test with the slug cases (file:line + output)
         status: done
         evidence:
-          - tiers.spec.ts 'task slug nested; phase rejects nested' — task 'my-epic/my-task' & flach ok; phase/epic 'a/b' abgelehnt (grün)
+          - tiers.spec.ts 'task slug nested; phase rejects nested' — task 'my-epic/my-task' & flat ok; phase/epic 'a/b' rejected (green)
       - id: a5
-        text: "`project.ts` existiert als reservierter Deskriptor gleicher Form (childTier='epic', eigenes statusEnum), wird aber von keinem aktiven Code-Pfad ausgeführt — belegbar durch datei:zeile des Exports + `grep -rn \"tiers/project\" core/src` zeigt keinen aktiven Import außerhalb von Tests"
+        text: "`project.ts` exists as a reserved descriptor of the same form (childTier='epic', own statusEnum), but is executed by no active code path — provable by file:line of the export + `grep -rn \"tiers/project\" core/src` shows no active import outside tests"
         status: done
         evidence:
-          - tiers.spec.ts 'project reserved descriptor' — projectDescriptor.tier='project', childTier='epic'; grep -rn 'tiers/project' src → nur tiers.spec (kein aktiver Import)
+          - tiers.spec.ts 'project reserved descriptor' — projectDescriptor.tier='project', childTier='epic'; grep -rn 'tiers/project' src → only tiers.spec (no active import)
       - id: a6
-        text: "core/-Gates grün nach den Deskriptoren: `bun test`, `tsc --noEmit`, eslint, prettier --check — belegbar durch je Gate exit 0 + test-output"
+        text: "core/ gates green after the descriptors: `bun test`, `tsc --noEmit`, eslint, prettier --check — provable by exit 0 per gate + test output"
         status: done
         evidence:
-          - "5 Gates exit 0: bun test (22 pass/0 fail), tsc --noEmit, eslint, prettier --check, bun build"
-  - name: Forward-only State-Machine (state/transitions.ts)
+          - "5 gates exit 0: bun test (22 pass/0 fail), tsc --noEmit, eslint, prettier --check, bun build"
+  - name: Forward-only state machine (state/transitions.ts)
     slug: transitions
     status: done
     context: |
-      `core/src/state/transitions.ts`: per-Tier Transitions-Maps + ein
-      tier-generisches `assertTransition(tierDescriptor, from, to)`, forward-only.
-      Factory-Form: `createTransitions(deps?)` ODER pure Funktion, die den
-      Tier-Deskriptor (aus dem vorigen Phase) als Parameter nimmt — KEIN
-      hardcodeter 3-fach-Dupe (Item 5b: Logik einmal, tier-generisch).
+      `core/src/state/transitions.ts`: per-tier transition maps + a
+      tier-generic `assertTransition(tierDescriptor, from, to)`, forward-only.
+      Factory form: `createTransitions(deps?)` OR a pure function that takes the
+      tier descriptor (from the previous phase) as a parameter — NO
+      hardcoded 3-fold dupe (Item 5b: logic once, tier-generic).
 
-      V1-Vorlage (Logik, neu schreiben): ops/validate.ts:40-129 — TASK_TRANSITIONS
-      (plan→drafted→refined→build→wrap→done + update-mode-Rückkante nach drafted +
-      idempotente Selbst-Transition) und PHASE_TRANSITIONS (pending→in-progress→
-      done|blocked|deferred, blocked→retry-Pfad, done/deferred terminal).
-      epic-Transitions analog (planning→building→done). assertTransition wirft einen
-      typisierten Fehler mit `suggestions: string[]` (V1 InvalidTransition,
-      validate.ts:301-306) bei illegalem Übergang.
+      V1 template (logic, rewrite): ops/validate.ts:40-129 — TASK_TRANSITIONS
+      (plan→drafted→refined→build→wrap→done + update-mode back edge to drafted +
+      idempotent self-transition) and PHASE_TRANSITIONS (pending→in-progress→
+      done|blocked|deferred, blocked→retry path, done/deferred terminal).
+      epic transitions analogous (planning→building→done). assertTransition throws a
+      typed error with `suggestions: string[]` (V1 InvalidTransition,
+      validate.ts:301-306) on an illegal transition.
 
-      Forward-only heißt: keine Übergänge, die Gates überspringen; erlaubte
-      Rückkante nur die explizit modellierte (drafted-Update-Mode bei task).
+      Forward-only means: no transitions that skip gates; the only allowed
+      back edge is the explicitly modeled one (drafted update mode on task).
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: Transitions = Mechanismus (fix, getesteter Code); forward-only, keine Gate-Skips
+        why: Transitions = mechanism (fixed, tested code); forward-only, no gate skips
       - path: .claude/rules/factory-functions.md
-        why: tier-generisch über den Deskriptor parametrisiert, kein hardcodeter Per-Tier-Dupe; injizier-/testbar
+        why: tier-generic, parameterized over the descriptor, no hardcoded per-tier dupe; injectable/testable
     acceptance_criteria:
       - id: a1
-        text: "`assertTransition` lässt jeden legalen Forward-Schritt je Tier durch (task plan→drafted→refined→build→wrap→done; phase pending→in-progress→done; epic planning→building→done) und ist no-op bei idempotenter Selbst-Transition X→X — belegbar durch bun-Test, der die Ketten abfährt (datei:zeile + grüner output)"
+        text: "`assertTransition` lets every legal forward step per tier through (task plan→drafted→refined→build→wrap→done; phase pending→in-progress→done; epic planning→building→done) and is a no-op on an idempotent self-transition X→X — provable by a bun test that walks the chains (file:line + green output)"
         status: done
         evidence:
-          - src/state/transitions.spec.ts 'legal forward + idempotent' — task plan→drafted→refined→build→wrap→done, phase pending→in-progress→done, epic planning→building; build→build no-op (grün)
+          - src/state/transitions.spec.ts 'legal forward + idempotent' — task plan→drafted→refined→build→wrap→done, phase pending→in-progress→done, epic planning→building; build→build no-op (green)
       - id: a2
-        text: "ein illegaler Rückwärts-/Skip-Übergang (z.B. task done→plan, phase done→pending, epic done→planning) wirft einen typisierten Fehler, dessen `suggestions: string[]` die legalen Folgezustände nennt — belegbar durch bun-Test, der throw + suggestions-Inhalt asserted (datei:zeile + output)"
+        text: "an illegal backward/skip transition (e.g. task done→plan, phase done→pending, epic done→planning) throws a typed error whose `suggestions: string[]` names the legal next states — provable by a bun test that asserts throw + suggestions content (file:line + output)"
         status: done
         evidence:
-          - transitions.spec.ts 'illegal throw with suggestions' — task done→plan wirft InvalidTransition, suggestions enthält 'drafted'; phase done→pending & epic done→planning werfen (grün)
+          - transitions.spec.ts 'illegal throw with suggestions' — task done→plan throws InvalidTransition, suggestions contains 'drafted'; phase done→pending & epic done→planning throw (green)
       - id: a3
-        text: "die modellierte Update-Mode-Rückkante (task: refined/build/wrap/done → drafted) ist erlaubt, jede ANDERE Rückkante verboten — belegbar durch bun-Test mit erlaubtem + verbotenem Fall (datei:zeile + output)"
+        text: "the modeled update-mode back edge (task: refined/build/wrap/done → drafted) is allowed, every OTHER back edge forbidden — provable by a bun test with an allowed + forbidden case (file:line + output)"
         status: done
         evidence:
-          - transitions.spec.ts 'update-mode backedge' — task refined/build/done→drafted erlaubt; build→refined wirft (grün)
+          - transitions.spec.ts 'update-mode backedge' — task refined/build/done→drafted allowed; build→refined throws (green)
       - id: a4
-        text: "`assertTransition` ist tier-generisch: dieselbe Funktion bedient phase/task/epic, parametrisiert über den Tier-Deskriptor (keine drei kopierten asserts) — belegbar durch datei:zeile der einen Signatur + `grep -cE 'function assert.*Transition' core/src/state/transitions.ts` == 1"
+        text: "`assertTransition` is tier-generic: the same function serves phase/task/epic, parameterized over the tier descriptor (no three copied asserts) — provable by file:line of the single signature + `grep -cE 'function assert.*Transition' core/src/state/transitions.ts` == 1"
         status: done
         evidence:
-          - grep -cE 'function assert.*Transition' src/state/transitions.ts == 1 — eine tier-generische Funktion, parametrisiert über den Deskriptor (TierLike)
+          - grep -cE 'function assert.*Transition' src/state/transitions.ts == 1 — one tier-generic function, parameterized over the descriptor (TierLike)
       - id: a5
-        text: "core/-Gates grün: `bun test`, `tsc --noEmit`, eslint, prettier --check — belegbar durch je Gate exit 0 + test-output"
+        text: "core/ gates green: `bun test`, `tsc --noEmit`, eslint, prettier --check — provable by exit 0 per gate + test output"
         status: done
         evidence:
-          - "5 Gates exit 0: bun test (22 pass/0 fail), tsc --noEmit, eslint, prettier --check, bun build"
-  - name: Harte Invariante ac→done + evidence (state/invariants.ts)
+          - "5 gates exit 0: bun test (22 pass/0 fail), tsc --noEmit, eslint, prettier --check, bun build"
+  - name: Hard invariant ac→done + evidence (state/invariants.ts)
     slug: invariants
     status: done
     context: |
-      `core/src/state/invariants.ts`: die nicht-abschaltbare Substrat-Invariante —
-      ein `ac` geht nur auf `done`, wenn `evidence` vorliegt; und (V1-Analog) eine
-      Phase/ein Node geht nur auf einen Abschluss-Status, wenn alle ACs evidence-
-      gedeckt sind. Erzwungen am DATENMODELL (hier), NICHT in einem Step
-      (fractal-substrate-integrity: "im Datenmodell, nicht in einem privilegierten
-      Step").
+      `core/src/state/invariants.ts`: the non-switchable-off substrate invariant —
+      an `ac` goes to `done` only when `evidence` is present; and (V1 analog) a
+      phase/a node goes to a completion status only when all ACs are evidence-
+      covered. Enforced at the DATA MODEL (here), NOT in a step
+      (fractal-substrate-integrity: "in the data model, not in a privileged
+      step").
 
-      V1-Vorlage (Logik neu schreiben): ops/validate.ts:230-278
-      (assertEvidenceArrayNonEmpty: leeres Array / whitespace / '—'-Sentinel
-      abgelehnt; isEvidenceFilled als pure Prädikat) + die typisierten Fehler
-      IncompleteEvidence (validate.ts:343-348) / InvalidEvidence (:322-327) mit
-      `suggestions`. Zusätzlich die Zod-Refine-Spiegelung aus task-file.ts:117-126
-      ("AC status='done' must have non-empty evidence") als zweite Verteidigungslinie.
+      V1 template (rewrite logic): ops/validate.ts:230-278
+      (assertEvidenceArrayNonEmpty: empty array / whitespace / '—' sentinel
+      rejected; isEvidenceFilled as a pure predicate) + the typed errors
+      IncompleteEvidence (validate.ts:343-348) / InvalidEvidence (:322-327) with
+      `suggestions`. Additionally the Zod refine mirroring from task-file.ts:117-126
+      ("AC status='done' must have non-empty evidence") as a second line of defense.
 
-      Factory/pur: `isEvidenceFilled(evidence)` pure Prädikat;
-      `assertAcDoneHasEvidence(ac)` + `assertNodeCompletable(node)` werfen typisiert.
-      Diese werden später am schreibenden Op (set-status/add-evidence) aufgerufen —
-      hier baust du sie + die Tests; die Verdrahtung in node-ops ist anderer Task.
+      Factory/pure: `isEvidenceFilled(evidence)` pure predicate;
+      `assertAcDoneHasEvidence(ac)` + `assertNodeCompletable(node)` throw typed.
+      These get called later at the writing op (set-status/add-evidence) —
+      here you build them + the tests; the wiring in node-ops is another task.
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: "DIE Kern-USP: kein ac→done ohne evidence, im Substrat verankert, nicht abschaltbar"
+        why: "THE core value: no ac→done without evidence, anchored in the substrate, not switchable off"
       - path: .claude/rules/factory-functions.md
-        why: pure Prädikate + werfende asserts mit typisierten Fehlern; keine versteckten Effekte
+        why: pure predicates + throwing asserts with typed errors; no hidden effects
       - path: .claude/rules/tooling-quality-gates.md
-        why: Evidence-Honesty auf Paket-Ebene = Gates grün vor done
+        why: Evidence honesty at the package level = gates green before done
     acceptance_criteria:
       - id: a1
-        text: "`assertAcDoneHasEvidence` wirft einen typisierten Fehler (mit `suggestions: string[]`), wenn ein AC auf `done` gesetzt würde ohne nicht-leeres evidence, und ist no-op, wenn evidence vorhanden ist — belegbar durch bun-Test mit beiden Fällen (datei:zeile + grüner output)"
+        text: "`assertAcDoneHasEvidence` throws a typed error (with `suggestions: string[]`) when an AC would be set to `done` without non-empty evidence, and is a no-op when evidence is present — provable by a bun test with both cases (file:line + green output)"
         status: done
         evidence:
-          - src/state/invariants.spec.ts 'assertAcDoneHasEvidence' — done ohne evidence wirft (suggestions nicht-leer); done mit evidence & pending no-op (grün)
+          - src/state/invariants.spec.ts 'assertAcDoneHasEvidence' — done without evidence throws (suggestions non-empty); done with evidence & pending no-op (green)
       - id: a2
-        text: "`isEvidenceFilled` ist ein pures Prädikat: leeres Array, `['  ']`, `['—']` und null/undefined → false; `['src/x.ts:42 — foo']` → true — belegbar durch tabellengetriebenen bun-Test (datei:zeile + output)"
+        text: "`isEvidenceFilled` is a pure predicate: empty array, `['  ']`, `['—']` and null/undefined → false; `['src/x.ts:42 — foo']` → true — provable by a table-driven bun test (file:line + output)"
         status: done
         evidence:
-          - invariants.spec.ts 'isEvidenceFilled' — [], ['  '], ['—'], null, undefined → false; ['src/x.ts:42 — foo'] → true (grün)
+          - invariants.spec.ts 'isEvidenceFilled' — [], ['  '], ['—'], null, undefined → false; ['src/x.ts:42 — foo'] → true (green)
       - id: a3
-        text: "die Zod-Ebene spiegelt die Invariante: das AcceptanceCriterion-Schema lehnt ein Objekt mit status='done' und fehlendem/leerem evidence beim Parsen ab (zweite Verteidigungslinie) — belegbar durch bun-Test, der den Parse-Fehler asserted (datei:zeile des refine + output)"
+        text: "the Zod layer mirrors the invariant: the AcceptanceCriterion schema rejects an object with status='done' and missing/empty evidence on parse (second line of defense) — provable by a bun test that asserts the parse error (file:line of the refine + output)"
         status: done
         evidence:
-          - "invariants.spec.ts 'AcceptanceCriterion rejects done without evidence' — Zod-refine: done ohne evidence → false; mit evidence/pending → true (grün, zweite Verteidigungslinie)"
+          - "invariants.spec.ts 'AcceptanceCriterion rejects done without evidence' — Zod refine: done without evidence → false; with evidence/pending → true (green, second line of defense)"
       - id: a4
-        text: "`assertNodeCompletable` lehnt den Abschluss eines Nodes ab, solange irgendein AC unbelegt ist, und nennt im Fehler das/die betroffene(n) AC — belegbar durch bun-Test mit einem teilweise belegten Node (datei:zeile + output)"
+        text: "`assertNodeCompletable` rejects the completion of a node as long as any AC is uncovered, and names the affected AC(s) in the error — provable by a bun test with a partially covered node (file:line + output)"
         status: done
         evidence:
-          - invariants.spec.ts 'assertNodeCompletable' — Node mit unbelegtem a2 wirft, message enthält 'a2' (grün)
+          - invariants.spec.ts 'assertNodeCompletable' — node with uncovered a2 throws, message contains 'a2' (green)
       - id: a5
-        text: "die Invariante lebt NICHT in einem Step: `grep -rniE 'implement|task-validate|code-validate' core/src/state/` liefert kein Ergebnis (Invariante ist Substrat, kein Step) — belegbar durch das leere grep-Ergebnis + datei:zeile der asserts in state/invariants.ts"
+        text: "the invariant does NOT live in a step: `grep -rniE 'implement|task-validate|code-validate' core/src/state/` yields no result (invariant is substrate, not a step) — provable by the empty grep result + file:line of the asserts in state/invariants.ts"
         status: done
         evidence:
-          - grep -rniE 'implement|task-validate|code-validate' src/state/ → leer (Invariante = Substrat, kein Step); asserts in src/state/invariants.ts
+          - grep -rniE 'implement|task-validate|code-validate' src/state/ → empty (invariant = substrate, not a step); asserts in src/state/invariants.ts
       - id: a6
-        text: "alle core/-Quality-Gates grün auf dem Gesamtstand der Task: `bun test` (alle Schema-/State-Tests), `tsc --noEmit`, eslint, prettier --check, `bun build` — belegbar durch je Gate exit 0 + gesammelter test-output"
+        text: "all core/ quality gates green on the overall state of the task: `bun test` (all schema/state tests), `tsc --noEmit`, eslint, prettier --check, `bun build` — provable by exit 0 per gate + collected test output"
         status: done
         evidence:
-          - "Gesamtstand 5 Gates exit 0: bun test (22 pass/0 fail), tsc --noEmit, eslint, prettier --check, bun build; dist/ + .d.ts emittiert"
+          - "Overall state 5 gates exit 0: bun test (22 pass/0 fail), tsc --noEmit, eslint, prettier --check, bun build; dist/ + .d.ts emitted"

@@ -2,21 +2,21 @@
 
 # tier-runner
 
-Fährt einen Knoten durch seine vier Stages `plan → refine → build → wrap`.
-**Eine** Funktion bedient alle Etagen (epic/task/phase) — der Unterschied ist nur
-der `cfg` (aus `anchored.yml`) und der `node` (die Daten). Das ist der fraktale
-Kern.
+Drives a node through its four stages `plan → refine → build → wrap`.
+**One** function serves all tiers (epic/task/phase) — the only difference is the
+`cfg` (from `anchored.yml`) and the `node` (the data). That is the fractal
+core.
 
-## Was
+## What
 
 - `createTierRunner(cfg, deps) → { run(node) → result }`.
-- Fährt die Stages in fester Reihenfolge und schreibt den Tier-Status über
-  `deps.ops` fort (forward-only, siehe [state](../state/_state.md)).
-- `phase` ist der Leaf: dessen `build` hat kein `each`, läuft also einmal
-  (echte Arbeit). Bei `task`/`epic` rekursiert `build` über `each` in die
-  Kind-Etage.
+- Drives the stages in fixed order and advances the tier status via
+  `deps.ops` (forward-only, see [state](../state/_state.md)).
+- `phase` is the leaf: its `build` has no `each`, so it runs once
+  (real work). For `task`/`epic`, `build` recurses through `each` into the
+  child tier.
 
-## Wie
+## How
 
 `createTierRunner(cfg, deps): { run(node: Node) => Promise<Result> }`
 
@@ -26,8 +26,8 @@ flowchart LR
     build -. "each: child-tier" .-> child["tier-runner(child).run(...)"]
 ```
 
-## Warum
+## Why
 
-Selbstähnlichkeit: dieselbe Lifecycle-Form auf jeder Etage heißt *eine*
-Implementierung statt einer pro Tier. Neue Etage = neuer Schema-Deskriptor, kein
-neuer Runner.
+Self-similarity: the same lifecycle form on every tier means *one*
+implementation instead of one per tier. New tier = new schema descriptor, no
+new runner.

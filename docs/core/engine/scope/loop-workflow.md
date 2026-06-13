@@ -2,60 +2,61 @@
 
 # loop-workflow
 
-Der **WORKFLOW-Modus** des Loop-Steps — die Schwester von
-[loop-step](loop-step.md). Wo der sequentielle Loop einen interleavten Body *pro
-Kind* fährt, fanned dieser die offenen Kinder als **Hintergrund-Workflow** aus
-(≤16er-Batches), sammelt die Evidence aus dem Task-File-State wieder ein und fährt
-die wrap-Gates **einmal** über das gemergte Ergebnis. Läuft hinter der injizierten
-`WorkflowSeam` → der ganze Pfad ist fakebar (kein echter Claude-Code-Workflow im
-Test).
+The **WORKFLOW mode** of the loop step — the sibling of
+[loop-step](loop-step.md). Where the sequential loop runs an interleaved body *per
+child*, this one fans out the open children as a **background workflow**
+(≤16-element batches), gathers the evidence back from the task-file state, and runs
+the wrap gates **once** over the merged result. Runs behind the injected
+`WorkflowSeam` → the whole path is fakeable (no real Claude Code workflow in the
+test).
 
-## Was
+## What
 
-Drei Garantien spiegeln den sequentiellen Pfad exakt:
+Three guarantees mirror the sequential path exactly:
 
-- **stop-Conditions halten den Loop** — flaggt ein Kind über seine `failures` eine
-  `stop`-Regel, bricht der Loop nach dem Collect ab (`status: 'failed'`).
-- **fehlschlagende Kinder retryen** bis `retry_limit` (Default 3); bereits grüne
-  Kinder werden in der nächsten Runde übersprungen.
-- **Die harte Invariante bleibt im Substrat** — die Gates umgehen *nie* „kein
-  `ac→done` ohne `evidence`".
+- **stop conditions halt the loop** — if a child flags a `stop` rule via its
+  `failures`, the loop aborts after the collect (`status: 'failed'`).
+- **failing children retry** up to `retry_limit` (default 3); children already
+  green are skipped in the next round.
+- **The hard invariant stays in the substrate** — the gates *never* bypass "no
+  `ac→done` without `evidence`".
 
-Evidence-getrieben, nicht workflow-resume-abhängig: `isUnitComplete` zählt ein Kind
-nur als fertig, wenn es `done` ist *oder* jedes AC `done` **mit** `evidence` trägt.
+Evidence-driven, not workflow-resume-dependent: `isUnitComplete` counts a child as
+finished only when it is `done` *or* every acceptance criterion is `done` **with**
+`evidence`.
 Exports: `WORKFLOW_CAP` (16), `selectWorker`, `isUnitComplete`, `partition`,
 `workflowLoop`.
 
-## Wie
+## How
 
-`workflowLoop(parent, childTier, cfg, seam) → StepResult`. Worker-Wahl folgt dem
-`executor`-Feld des Kindes: `executor=workflow` → workflow-Worker, sonst →
-implement-Worker (`selectWorker`). Ohne `seam` ist es ein No-op (`status: 'ok'`).
+`workflowLoop(parent, childTier, cfg, seam) → StepResult`. Worker choice follows the
+child's `executor` field: `executor=workflow` → workflow worker, otherwise →
+implement worker (`selectWorker`). Without `seam` it is a no-op (`status: 'ok'`).
 
 ```mermaid
 flowchart TB
-    start["workflowLoop(parent, …)"] --> open{"offene Kinder?<br/>(!isUnitComplete)"}
-    open -->|nein| ok["status: ok"]
-    open -->|ja| disp["seam.dispatch · ≤16er-Batches<br/>(Hintergrund, kein await)"]
-    disp --> coll["seam.collect · Parent-State neu lesen"]
-    coll --> gates["seam.gates · einmal über merged"]
-    gates -->|gate-fail| recoll["re-collect (Failures beobachten)"]
+    start["workflowLoop(parent, …)"] --> open{"open children?<br/>(!isUnitComplete)"}
+    open -->|no| ok["status: ok"]
+    open -->|yes| disp["seam.dispatch · ≤16-element batches<br/>(background, no await)"]
+    disp --> coll["seam.collect · re-read parent state"]
+    coll --> gates["seam.gates · once over merged"]
+    gates -->|gate-fail| recoll["re-collect (observe failures)"]
     gates -->|ok| stopc
-    recoll --> stopc{"stop-Condition geflaggt?"}
-    stopc -->|ja| halt["status: failed · halted"]
-    stopc -->|nein| failed{"merged.failed leer?"}
-    failed -->|ja| ok
-    failed -->|nein| retry{"attempt < retry_limit?"}
-    retry -->|ja| open
-    retry -->|nein| unresolved["status: failed · unresolved"]
+    recoll --> stopc{"stop condition flagged?"}
+    stopc -->|yes| halt["status: failed · halted"]
+    stopc -->|no| failed{"merged.failed empty?"}
+    failed -->|yes| ok
+    failed -->|no| retry{"attempt < retry_limit?"}
+    retry -->|yes| open
+    retry -->|no| unresolved["status: failed · unresolved"]
 ```
 
-`partition(children)` teilt die eingesammelten Kinder per Evidence in `done` vs
-`failed`; `CHILD_FIELD` mappt den Tier auf sein Kind-Array (`phase→phases`,
+`partition(children)` splits the gathered children by evidence into `done` vs
+`failed`; `CHILD_FIELD` maps the tier to its child array (`phase→phases`,
 `task→tasks`, `epic→epics`).
 
-## Wann
+## When
 
-Greift im `build`-Step eines Knotens, dessen Loop im Workflow-Modus läuft (Task
-workflow-mode) — die fan-out-Alternative zum interleavten [loop-step](loop-step.md).
-Die Modus-Wahl + `stop`/`retry_limit` kommen aus der `build`-Stage-Config.
+Kicks in during the `build` step of a node whose loop runs in workflow mode (Task
+workflow-mode) — the fan-out alternative to the interleaved [loop-step](loop-step.md).
+The mode choice + `stop`/`retry_limit` come from the `build` stage config.

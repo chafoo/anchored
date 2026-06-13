@@ -2,26 +2,26 @@
 
 # ops
 
-Der **tier-generische Op-Kern** — die einzige Stelle, die Node-Files mutiert.
-`createNodeOps(tierSchema, deps)` liefert eine Op-Fläche, die über *jeden* Knoten
-(epic/task/phase) funktioniert; der `tierSchema` parametrisiert sie. Jede Mutation
-folgt `read → validate → mutate → re-validate → atomicWrite`.
+The **tier-generic op core** — the single place that mutates node files.
+`createNodeOps(tierSchema, deps)` yields an op surface that works over *every* node
+(epic/task/phase); the `tierSchema` parametrizes it. Every mutation
+follows `read → validate → mutate → re-validate → atomicWrite`.
 
 ```mermaid
 flowchart LR
     op["op(slug, …)"] --> rd["read"] --> v1["validate"]
     v1 --> mut["mutate"] --> v2["re-validate"] --> w["atomic-write"]
-    v1 -. "invariante / transition verletzt" .-> err["throw"]
+    v1 -. "invariant / transition violated" .-> err["throw"]
 ```
 
-| Unit | Verantwortung |
+| Unit | Responsibility |
 |---|---|
-| [node-ops](node-ops.md) | Die Op-Fläche: create/read/status/children/questions/log/evidence — generisch über `tierSchema`. |
-| [facade](facade.md) | Die slug-basierte `NodeOpsFacade` der **CLI**: `slug→verb`, read→apply→persist. Hält die await-Glue. |
-| [engine-ops](engine-ops.md) | Die `OpsLike` der **Engine**: re-read-vor-write, damit Worker-Evidence nie überschrieben wird. |
-| [children](scope/children.md) | add/move/**next-child** (DAG-Auswahl des nächsten Kindes). |
-| [questions](scope/questions.md) | add/resolve question (geteilte AC/Question-Form). |
-| [log](scope/log.md) | append-only Log. |
+| [node-ops](node-ops.md) | The op surface: create/read/status/children/questions/log/evidence — generic over `tierSchema`. |
+| [facade](facade.md) | The slug-based `NodeOpsFacade` of the **CLI**: `slug→verb`, read→apply→persist. Holds the await glue. |
+| [engine-ops](engine-ops.md) | The `OpsLike` of the **engine**: re-read-before-write, so that worker evidence is never overwritten. |
+| [children](scope/children.md) | add/move/**next-child** (dependency-order selection of the next child). |
+| [questions](scope/questions.md) | add/resolve question (shared acceptance-criterion/question form). |
+| [log](scope/log.md) | append-only log. |
 
-> Nach außen lesbare per-Tier-Surfaces: `anchored task|epic|phase <verb>` — alle
-> über *diesen* Kern. Kein separater Namespace pro Tier.
+> Outward-readable per-tier surfaces: `anchored task|epic|phase <verb>` — all
+> via *this* core. No separate namespace per tier.

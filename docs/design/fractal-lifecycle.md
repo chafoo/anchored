@@ -1,68 +1,68 @@
-# Fraktaler Lifecycle — project ▸ epic ▸ task ▸ phase
+# Fractal Lifecycle — project ▸ epic ▸ task ▸ phase
 
-> Draft / Design-Spec. Gehört in dieselbe Familie wie
-> `anchored.epic.example.yml` + `_epic.example.yml`, ersetzt aber deren
-> Grundannahme: **es gibt nur *eine* Form — `plan/refine/build/wrap` mit
-> `steps` — und sie gilt auf *jeder* Etage gleich, von `project` bis `phase`.**
+> Draft / Design-Spec. Belongs to the same family as
+> `anchored.epic.example.yml` + `_epic.example.yml`, but replaces their
+> core assumption: **there is only *one* form — `plan/refine/build/wrap` with
+> `steps` — and it holds on *every* tier alike, from `project` to `phase`.**
 
-## Die Kernidee
+## The core idea
 
-Es gibt **eine** Lebenszyklus-Form, und sie wiederholt sich auf jeder Etage —
-inklusive `phase`:
+There is **one** lifecycle form, and it repeats on every tier —
+including `phase`:
 
 ```
-plan ─▶ refine ─▶ build ─▶ wrap        (jede Stage = eine steps-Liste)
+plan ─▶ refine ─▶ build ─▶ wrap        (each stage = one steps list)
 ```
 
-Der **einzige** strukturelle Unterschied zwischen den Etagen: ob `build` ein
-`each: <tier>` hat (dann loopt es die Etage darunter) oder nicht (dann ist es
-der Leaf und läuft einmal). Sonst ist alles identisch — add/override/
-instructions funktioniert überall gleich, nur der *Ort* unterscheidet sich.
+The **only** structural difference between the tiers: whether `build` has an
+`each: <tier>` (then it loops the tier below) or not (then it is
+the leaf and runs once). Otherwise everything is identical — add/override/
+instructions work the same everywhere, only the *place* differs.
 
-| Etage     | `build.each` →  | Loop-Body / Verhalten         |
+| Tier      | `build.each` →  | Loop body / behavior          |
 |-----------|-----------------|-------------------------------|
-| project   | `epic`          | loopt den `epic`-Block        |
-| epic      | `task`          | loopt den `task`-Block        |
-| task      | `phase`         | loopt den `phase`-Block       |
-| phase     | *(kein each)*   | **Leaf** — `build` läuft einmal, hier entsteht Code |
+| project   | `epic`          | loops the `epic` block        |
+| epic      | `task`          | loops the `task` block        |
+| task      | `phase`         | loops the `phase` block       |
+| phase     | *(no each)*     | **Leaf** — `build` runs once, this is where code is produced |
 
-`build` auf Etage N = „für jedes Kind: fahre den Tier-Block N−1". Die Rekursion
-endet bei `phase`, weil dessen `build` kein `each` hat. **`stop` + `retry_limit`
-sind Eigenschaften eines loopenden `build`** (eins *mit* `each`) → man hält auf
-jeder Granularität an. Der Leaf-`build` braucht keins.
+`build` on tier N = "for each child: run the tier block N−1". The recursion
+ends at `phase`, because its `build` has no `each`. **`stop` + `retry_limit`
+are properties of a looping `build`** (one *with* `each`) → you can stop on
+any granularity. The leaf `build` needs none.
 
-## Dieselben vier Stages, pro Etage anders gefüllt
+## The same four stages, filled differently per tier
 
-Die Built-in-Defaults jeder Stage machen tier-spezifisch „dasselbe in grün".
-Alles unten ist **Default** — schreibst du nichts, läuft genau das:
+The built-in defaults of each stage do the tier-specific "same thing in green".
+Everything below is **default** — if you write nothing, exactly that runs:
 
 | Stage      | phase                       | task                              | epic                  |
 |------------|-----------------------------|-----------------------------------|-----------------------|
-| **plan**   | ACs (Definition-of-Done)    | discover → rules-scan → decompose | scaffold (→ stubs)    |
-| **refine** | — (leer)                    | plan-check → rules-check → walk    | walk (Stubs klären)   |
+| **plan**   | acceptance criteria (definition of done)    | discover → rules-scan → decompose | scaffold (→ stubs)    |
+| **refine** | — (empty)                   | plan-check → rules-check → walk    | walk (clarify stubs)  |
 | **build**  | `implement`                 | `each: phase`                      | `each: task`          |
-| **wrap**   | `task-validate` `code-validate` | review → summarize             | roll-up (DoD + Retro) |
+| **wrap**   | `task-validate` `code-validate` | review → summarize             | roll-up (definition of done + retro) |
 
-> `project` (später): plan=scope→epics · refine=walk · build=`each: epic` · wrap=roll-up.
+> `project` (later): plan=scope→epics · refine=walk · build=`each: epic` · wrap=roll-up.
 
-Die Semantik ist fraktal stabil:
-- **plan** = die Kinder / die Definition-of-Done *erzeugen*
-- **refine** = prüfen + offene Fragen *walken*
-- **build** = *tun* (Leaf) bzw. die Kinder *abarbeiten* (`each`) — hält bei `stop`
-- **wrap** = *reviewen* + abschließen (auf Leaf-Ebene: die Validatoren)
+The semantics are fractally stable:
+- **plan** = *produce* the children / the definition of done
+- **refine** = check + *walk* open questions
+- **build** = *do* (leaf) or *work through* the children (`each`) — stops on `stop`
+- **wrap** = *review* + finalize (on leaf level: the validators)
 
-Das frühere `scaffold/walk/loop/roll-up` der epic-Stage verteilt sich verlustfrei
-auf epic's vier Stages; und `implement`+Validatoren der heutigen build-Schleife
-verteilen sich sauber auf `phase.build` (tun) + `phase.wrap` (reviewen).
+The former `scaffold/walk/loop/roll-up` of the epic stage distributes losslessly
+across epic's four stages; and `implement`+validators of today's build loop
+distribute cleanly across `phase.build` (do) + `phase.wrap` (review).
 
-## Der Prozess als Diagramm
+## The process as a diagram
 
 ```mermaid
 flowchart TB
     classDef build fill:#fde68a,stroke:#b45309,color:#000;
     classDef leaf fill:#bbf7d0,stroke:#15803d,color:#000;
 
-    subgraph PROJECT["PROJECT · Zukunft, noch nicht v1"]
+    subgraph PROJECT["PROJECT · future, not yet v1"]
         direction LR
         P1["plan"] --> P2["refine"] --> P3["build · each: epic"]:::build --> P4["wrap"]
     end
@@ -77,9 +77,9 @@ flowchart TB
         T1["plan<br/>decompose → phases"] --> T2["refine<br/>plan-/rules-check · walk"] --> T3["build · each: phase"]:::build --> T4["wrap<br/>review · summarize"]
     end
 
-    subgraph PHASE["PHASE · Leaf — build hat kein each"]
+    subgraph PHASE["PHASE · Leaf — build has no each"]
         direction LR
-        F1["plan<br/>ACs"] --> F2["refine<br/>—"] --> F3["build<br/>implement"]:::leaf --> F4["wrap<br/>task-/code-validate"]
+        F1["plan<br/>acceptance criteria"] --> F2["refine<br/>—"] --> F3["build<br/>implement"]:::leaf --> F4["wrap<br/>task-/code-validate"]
     end
 
     P3 -. "each: epic" .-> EPIC
@@ -87,44 +87,44 @@ flowchart TB
     T3 -. "each: phase" .-> PHASE
 ```
 
-Jede Etage ist dieselbe Einheit `plan ─▶ refine ─▶ build ─▶ wrap`. Ein `build`
-mit `each` (gelb) iteriert die Etage darunter; der Leaf-`build` (grün, `phase`)
-läuft einmal und macht echte Arbeit. `stop`/`retry_limit` liegen in jedem
-loopenden `build` → Halt auf jeder Granularität.
+Every tier is the same unit `plan ─▶ refine ─▶ build ─▶ wrap`. A `build`
+with `each` (yellow) iterates the tier below; the leaf `build` (green, `phase`)
+runs once and does real work. `stop`/`retry_limit` live in every
+looping `build` → stop on any granularity.
 
-## Das anchored.yml-Modell
+## The anchored.yml model
 
-Schlüssel gegen die 10×-Wiederholung: **was du *nicht* schreibst, kommt aus dem
-Framework.** Die Built-ins jeder Stage + ihre kanonische Reihenfolge sind fix
-(nur per `instructions` erweiterbar, nie entfernbar). Die fraktale Form lebt im
-Schema — deine Datei enthält nur Deltas. Die Step-Grammatik aus `step-anatomy`
-(name + run XOR use+type + instructions; `involve` auf `walk`) gilt unverändert
-*innerhalb* jeder `steps`-Liste.
+The key against the 10× repetition: **what you do *not* write comes from the
+framework.** The built-ins of each stage + their canonical order are fixed
+(only extensible via `instructions`, never removable). The fractal form lives in
+the schema — your file contains only deltas. The step grammar from `step-anatomy`
+(name + run XOR use+type + instructions; `involve` on `walk`) holds unchanged
+*within* each `steps` list.
 
-Das Folgende ist die **vollständige Default-Form** — ein User, der nichts
-schreibt, bekommt genau das. Wer will, greift in jede einzelne Stage jeder
-Etage ein.
+The following is the **complete default form** — a user who writes nothing
+gets exactly that. Whoever wants to can reach into every single stage of every
+tier.
 
 ```yaml
-# ── phase ▸ Leaf: build hat kein each, läuft einmal ──
+# ── phase ▸ Leaf: build has no each, runs once ──
 phase:
   plan:
-    steps: []                         # default: keine — die ACs sind die "Plan"-Daten
+    steps: []                         # default: none — the acceptance criteria are the "plan" data
   refine:
-    steps: []                         # default: leer
+    steps: []                         # default: empty
   build:
     steps:
-      - { name: implement }           # Built-in · die Arbeit
-    # kein `each` → Rekursion endet hier
+      - { name: implement }           # built-in · the work
+    # no `each` → recursion ends here
   wrap:
     steps:
-      - { name: task-validate }       # Built-in · extend-only, nicht entfernbar
-      - { name: code-validate }       # Built-in · extend-only, nicht entfernbar
+      - { name: task-validate }       # built-in · extend-only, not removable
+      - { name: code-validate }       # built-in · extend-only, not removable
 
-# ── task ▸ build loopt phases ──
+# ── task ▸ build loops phases ──
 task:
   plan:
-    steps:                            # Built-ins
+    steps:                            # built-ins
       - { name: discover }
       - { name: rules-scan }
       - { name: decompose }
@@ -134,92 +134,92 @@ task:
       - { name: rules-check }
       - { name: walk, involve: high-only }
   build:
-    each: phase                       # Loop-Body = der phase-Block oben
+    each: phase                       # loop body = the phase block above
     stop:
       - 'a decision deviates from the plan'
-    retry_limit: 3                    # so oft wird eine fehlschlagende Phase neu gefahren
+    retry_limit: 3                    # how often a failing phase is re-run
   wrap:
     steps:
       - { name: review }
       - { name: summarize }
 
-# ── epic ▸ build loopt tasks ──
+# ── epic ▸ build loops tasks ──
 epic:
   plan:
     steps:
-      - { name: scaffold }            # goal-Prosa → coarse stubs
+      - { name: scaffold }            # goal prose → coarse stubs
   refine:
     steps:
       - { name: walk, involve: high-only }
   build:
-    each: task                        # Loop-Body = der task-Block oben
+    each: task                        # loop body = the task block above
     stop:
-      - 'an architectural boundary is crossed (layer, DAG, contract)'
+      - 'an architectural boundary is crossed (layer, dependency graph, contract)'
     retry_limit: 3
   wrap:
     steps:
-      - { name: roll-up }             # DoD gegen epic.acceptance + Retro
+      - { name: roll-up }             # definition of done against epic.acceptance + retro
 
-# ── project ▸ später — exakt dieselbe Form ──
+# ── project ▸ later — exactly the same form ──
 # project:
 #   build: { each: epic }
 ```
 
-In der Praxis schreibt der User fast nichts (alles Default) und ergänzt
-punktuell — z.B. ein `lint`-Step in `phase.build` zwischen implement und
-validate, oder ein `instructions:` an `implement`. Die Macht liegt darin, dass
-**dieselbe** Mechanik auf jeder Etage greift.
+In practice the user writes almost nothing (all default) and supplements
+selectively — e.g. a `lint` step in `phase.build` between implement and
+validate, or an `instructions:` on `implement`. The power lies in the fact that
+**the same** mechanics apply on every tier.
 
-### Offen: `steps` neben `each` im loopenden build
+### Open: `steps` alongside `each` in the looping build
 
-Ein loopender `build` kann `each` *und* eigene `steps` haben. Frage: laufen die
-`steps` **einmal** (Setup/Teardown um den Loop) oder **pro Kind**?
+A looping `build` can have `each` *and* its own `steps`. Question: do the
+`steps` run **once** (setup/teardown around the loop) or **per child**?
 
-Vorschlag (q17-konsistent): Der Loop ist ein **positionierbarer Built-in-Step**
-in der `steps`-Liste — du legst eigene Steps davor/danach, genau wie um
-`implement`. Per-Kind-Logik gehört in die *Kind-Etage* (z.B. ein custom Step in
-`task.wrap` läuft nach jeder Task). Die Kurzform `build: { each: task }` ist
-Zucker für „nur der `loop`-Step, keine Wrapper".
+Proposal (q17-consistent): the loop is a **positionable built-in step**
+in the `steps` list — you place your own steps before/after it, just like around
+`implement`. Per-child logic belongs in the *child tier* (e.g. a custom step in
+`task.wrap` runs after each task). The shorthand `build: { each: task }` is
+sugar for "only the `loop` step, no wrappers".
 
 ```yaml
 epic:
   build:
     steps:
-      - { name: notify-start, run: '…' }   # einmal, vor dem Loop
-      - { name: loop, each: task }          # der Loop-Built-in
-      - { name: epic-report, run: '…' }     # einmal, nach dem Loop
+      - { name: notify-start, run: '…' }   # once, before the loop
+      - { name: loop, each: task }          # the loop built-in
+      - { name: epic-report, run: '…' }     # once, after the loop
     stop: [...]
 ```
 
-**→ zu bestätigen.**
+**→ to be confirmed.**
 
-> Verworfene Alternativen: ein `tiers:`-Namespace (gleiche Form, eine
-> Schema-Definition) und geteilte `lifecycle:`-Defaults + Tier-Deltas (maximal
-> DRY, aber Merge-Semantik nötig). Beide optimieren ein Problem, das
-> „omit → Built-ins" ohnehin löst — auf Kosten von Indirektion. Top-Level-Blöcke
-> bleiben am lesbarsten.
+> Rejected alternatives: a `tiers:` namespace (same form, one
+> schema definition) and shared `lifecycle:` defaults + tier deltas (maximally
+> DRY, but merge semantics needed). Both optimize a problem that
+> "omit → built-ins" already solves anyway — at the cost of indirection. Top-level blocks
+> remain the most readable.
 
 ## Scope
 
-- **v1 baut**: die Tiers `phase`, `task`, `epic`. `task.build.each: phase` ist
-  der bestehende Per-Phase-Build (heute schon da, nur jetzt als eigener
-  phase-Block sichtbar). `epic.build.each: task` ist der neue Loop.
-- **Schema-reserviert, nicht gebaut**: `project` (und jede tiefere Etage) — das
-  Schema akzeptiert die Form, ein Executor kommt später.
+- **v1 builds**: the tiers `phase`, `task`, `epic`. `task.build.each: phase` is
+  the existing per-phase build (already there today, just now visible as its own
+  phase block). `epic.build.each: task` is the new loop.
+- **Schema-reserved, not built**: `project` (and every deeper tier) — the
+  schema accepts the form, an executor comes later.
 
-## Auswirkung auf den gelockten Plan (`impl-epic-layer`)
+## Impact on the locked plan (`impl-epic-layer`)
 
-Dieses Modell reframed Teile des refined Plans und sollte vor `/impl-build`
-eingearbeitet werden (Task zurück auf `drafted`):
+This model reframes parts of the refined plan and should be incorporated before
+`/impl-build` (task back to `drafted`):
 
-- **Phase 1 (unified-step-schema)**: Stage-Form bleibt (Single-List pro Stage),
-  aber das Schema bekommt die **Tier-Ebene** darüber (Top-Level-Blöcke
-  `phase/task/epic/project`, jeder mit `plan/refine/build/wrap`; `build.each:
-  <tier>` optional). Validatoren wandern von `build` nach `phase.wrap`.
-- **Phase 3 (epic-manifest-schema)**: unverändert gültig — `_epic.yml` bleibt
-  der *Daten*-Layer; das hier ist der *Config/Ausführungs*-Layer.
-- **Phase 5 (skill-wiring)**: `epic` ist eine Etage mit vier Stages —
-  `/impl-epic` orchestriert `plan/refine/build/wrap` auf epic-Ebene, und
-  `epic.build` ruft pro Stub die task-Etage (`/impl-task`).
-- **q5/q17**: `plan` bleibt `plan` (kein Stage-Rename); die fraktale Tier-Idee
-  ersetzt die „epic-als-eine-Stage"-Annahme.
+- **Phase 1 (unified-step-schema)**: the stage form stays (single list per stage),
+  but the schema gets the **tier level** above it (top-level blocks
+  `phase/task/epic/project`, each with `plan/refine/build/wrap`; `build.each:
+  <tier>` optional). Validators move from `build` to `phase.wrap`.
+- **Phase 3 (epic-manifest-schema)**: unchanged and valid — `_epic.yml` stays
+  the *data* layer; this here is the *config/execution* layer.
+- **Phase 5 (skill-wiring)**: `epic` is a tier with four stages —
+  `/impl-epic` orchestrates `plan/refine/build/wrap` on the epic level, and
+  `epic.build` calls the task tier per stub (`/impl-task`).
+- **q5/q17**: `plan` stays `plan` (no stage rename); the fractal tier idea
+  replaces the "epic-as-one-stage" assumption.

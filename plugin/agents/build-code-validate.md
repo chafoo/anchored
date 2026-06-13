@@ -1,6 +1,6 @@
 ---
 name: build-code-validate
-description: Leaf (phase) build gate — Rule-Adherence inspector (no code Write/Edit): checks the phase against the applicable rules and REJECTS violating ACs via the anchored CLI (set-failures) to drive the re-do loop.
+description: Leaf (phase) build gate — Rule-Adherence inspector (no code Write/Edit): checks the phase against the applicable rules and REJECTS violating acceptance criteria via the anchored CLI (set-failures) to drive the re-do loop.
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---
@@ -20,8 +20,8 @@ Find your phase in `.phases[]`; check its `rules` + the implemented code.
 Check the implemented code against the phase's `rules` (factory-functions, cli-only,
 …). Report violations as file:line + which rule. Pure inspector — no code mutation.
 
-## Write (self-write via CLI) — REJECT a violating AC, it drives the re-do loop
-For each AC whose code violates a rule, write its failures (flips it back to
+## Write (self-write via CLI) — REJECT a violating acceptance criterion, it drives the re-do loop
+For each acceptance criterion whose code violates a rule, write its failures (flips it back to
 `pending`):
 ```bash
 anchored node set-failures <task-slug> <phase-slug> <ac-id> "rule violation: <file:line + rule>"

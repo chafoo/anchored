@@ -1,43 +1,43 @@
-# Ticket: dogfood-fixings-4 — Frage-Disziplin universal (Generosität zurückholen)
+# Ticket: dogfood-fixings-4 — Question discipline universal (bring generosity back)
 
-**Quelle:** Gespräch nach der Härtung. Beobachtung aus allen v2-Dogfood-Läufen:
-ständig „0 offene Fragen". Nach dem v1-Maßstab (*under-surface ist der Failure-
-Mode*) ist das ein Warnzeichen — v2 surfaced zu wenig.
+**Source:** Conversation after the hardening. Observation from all v2 dogfood runs:
+constantly "0 open questions". By the v1 standard (*under-surface is the failure
+mode*) that's a warning sign — v2 surfaces too little.
 
 ## Problem
-v1 (`~/Dev/anchored/plugin/agents/plan.md`) hatte ein reiches Frage-Tuning:
-Generosität-Direktive, der „ich pick einfach X = das IST die Frage"-Reflex, eine
-Taxonomie von WANN, der Klammer-Empfehlungs-Trick, Prioritäts-Kalibrierung. Beim
-Verschlanken der v2-decompose-Agenten ging das **teilweise verloren** — die
-*Struktur* (Split plan/refine, Walk-Style, `question-style.md`) blieb, das
-*Generositäts-Tuning* nicht.
+v1 (`~/Dev/anchored/plugin/agents/plan.md`) had a rich question tuning:
+generosity directive, the "I just pick X = that IS the question" reflex, a
+taxonomy of WHEN, the parenthetical-recommendation trick, priority calibration. When
+slimming down the v2 decompose agents this was **partly lost** — the
+*structure* (split plan/refine, walk-style, `question-style.md`) stayed, the
+*generosity tuning* did not.
 
-## Lösung: ein universelles Prinzip, pro Etage nur die Linse
-Das v1-Tuning ist nicht task-spezifisch — die Mechanik ist universal, nur „was als
-Ambiguität zählt" unterscheidet sich. Also DRY:
+## Solution: one universal principle, per tier only the lens
+The v1 tuning isn't task-specific — the mechanism is universal, only "what counts
+as ambiguity" differs. So DRY:
 
-- **Universelle Referenz `plugin/references/question-discipline.md`** (aus v1
-  generalisiert): „over-surface ok, under-surface = Failure-Mode" · „ich pick
-  einfach X = die Frage" · Klammer-Empfehlung (`… ? (lean X — weil Y)`) ·
-  Prioritäts-Test („wäre der User sauer, wenn das ohne ihn entschieden wurde?" =
-  high; prägt-das-Gefühl-aber-tauschbar = medium; in-5-Min-reversibel = low).
-  Grenzt sich von `question-style.md` ab: *discipline* = WANN/wie generös,
-  *style* = WIE formuliert (Empfehlung + Implikationen).
-- **Pro Etage 2–3 Zeilen „was hier eine Frage ist":**
-  - *Task/Phase:* Feature-/UX-Entscheidungen — Verhalten, Style, Sortierung,
-    Error-UX, Empty-State, A11y.
-  - *Epic:* Scope-/Zerlegungs-Entscheidungen — wie wird gesplittet, was ist
-    drin/draußen, wo verlaufen die Task-Grenzen, der Integrations-Vertrag, die
-    DAG-Kanten.
+- **Universal reference `plugin/references/question-discipline.md`** (generalized
+  from v1): "over-surface ok, under-surface = failure mode" · "I just pick
+  X = the question" · parenthetical recommendation (`… ? (lean X — because Y)`) ·
+  priority test ("would the user be annoyed if this was decided without them?" =
+  high; shapes-the-feel-but-swappable = medium; reversible-in-5-min = low).
+  Distinguishes itself from `question-style.md`: *discipline* = WHEN/how generous,
+  *style* = HOW phrased (recommendation + implications).
+- **Per tier 2–3 lines "what is a question here":**
+  - *Task/Phase:* Feature/UX decisions — behavior, style, sorting,
+    error UX, empty state, A11y.
+  - *Epic:* Scope/decomposition decisions — how it's split, what's
+    in/out, where the task boundaries run, the integration contract, the
+    dependency-graph edges.
 
-## Betroffen
-- NEU: `plugin/references/question-discipline.md`.
-- Linken + tier-Linse ergänzen: plan-decompose, epic-decompose, refine-plan-check,
+## Affected
+- NEW: `plugin/references/question-discipline.md`.
+- Link + add tier lens: plan-decompose, epic-decompose, refine-plan-check,
   refine-rules-check, epic-plan-check.
 
-## Akzeptanz
-- a1: universelle Referenz existiert (die v1-Direktiven, generalisiert).
-- a2: jeder Frage-autorende Agent linkt sie + trägt seine tier-spezifische Linse.
-- a3: Epic bekommt die Zerlegungs-Linse (Scope/Split/Integration/DAG).
-- a4: Grep-Test sichert die Verdrahtung; ein Dogfood/Trockenlauf surfaced wieder
-  Fragen statt „0".
+## Acceptance
+- a1: universal reference exists (the v1 directives, generalized).
+- a2: every question-authoring agent links it + carries its tier-specific lens.
+- a3: Epic gets the decomposition lens (scope/split/integration/dependency-graph).
+- a4: Grep test secures the wiring; a dogfood/dry run surfaces questions again
+  instead of "0".

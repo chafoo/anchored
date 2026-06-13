@@ -2,30 +2,30 @@
 
 # config
 
-Das Schema der `anchored.yml` — die Form der Datei, die beim Bootstrap geladen +
-gemerged wird. Tiers mit Stages, plus die `_`-Buckets.
+The schema of `anchored.yml` — the shape of the file loaded + merged at bootstrap.
+Tiers with stages, plus the `_` buckets.
 
-## Was
+## What
 
-- Top-Level: die Tiers (`phase`/`task`/`epic`/`project`), je mit Stages
-  (`plan`/`refine`/`build`/`wrap`), je eine `steps`-Liste ([step](step.md)).
-- `build` trägt zusätzlich `each` (intrinsisch), `stop`, `retry_limit` als
-  Geschwister von `steps`.
-- `_lib` (YAML-Anchors **erlaubt** auf diesem Parse-Profil) + custom `fields` pro
-  Tier. Top-level **strict** (unbekannte Keys → Fehler).
+- Top-level: the tiers (`phase`/`task`/`epic`/`project`), each with stages
+  (`plan`/`refine`/`build`/`wrap`), each a `steps` list ([step](step.md)).
+- `build` additionally carries `each` (intrinsic), `stop`, `retry_limit` as
+  siblings of `steps`.
+- `_lib` (YAML anchors **allowed** on this parse profile) + custom `fields` per
+  tier. Top-level **strict** (unknown keys → error).
 
-## Wie
+## How
 
 ```mermaid
 flowchart TB
     cfg["anchored.yml"] --> tiers["tiers: phase/task/epic/project"]
     tiers --> stages["plan/refine/build/wrap → steps[]"]
     cfg --> lib["_lib (anchors)"]
-    cfg --> fields["fields (custom, pro Tier)"]
+    cfg --> fields["fields (custom, per tier)"]
 ```
 
-## Warum
+## Why
 
-Das User-File ist minimal (nur Deltas); die Default-Basis kommt aus dem
-Default-Template. Zwei Parse-Profile (`anchored.yml` alias-ok, Node-Files
-no-alias) — siehe [parser](../parser/_parser.md).
+The user file is minimal (deltas only); the default base comes from the
+default-template. Two parse profiles (`anchored.yml` alias-ok, node files
+no-alias) — see [parser](../parser/_parser.md).

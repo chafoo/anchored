@@ -1,35 +1,34 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/epic.schema.json
-# _epic.yml — Beispiel eines Epic-Manifests · liegt unter .claude/tasks/<epic-slug>/_epic.yml
-# Die epic-Etage: PM-Tier, das Tasks orchestriert. KEINE Phasen — die leben in den
-# Task-Files. Felder = epic-Tier-Deskriptor (siehe config.md → Felder).
+# _epic.yml — example of an epic manifest · lives at .claude/tasks/<epic-slug>/_epic.yml
+# The epic tier: PM tier that orchestrates tasks. NO phases — those live in the
+# task files. Fields = epic-tier descriptor (see config.md → fields).
 
 schema_version: 2
 slug:   history-flow-backtest
-title:  "History-Flow im Backtest beweisen"
+title:  "Prove history flow in the backtest"
 status: build                         # plan → drafted → refined → build → wrap → done (D1: task-symmetric)
 
-goal: |                               # das große Ziel in Prosa (Input für `scaffold`)
-  Der volle Pipeline-Flow market → events → analysis → trader → executor → positions
-  läuft im History-Modus end-to-end durch — erst deterministisch ($0), dann ein
-  kurzer echter Bull-Run. Der billige, risikolose Beweis vor allem Live-Aufwand.
+goal: |                               # the big goal in prose (input for `scaffold`)
+  The full pipeline flow market → events → analysis → trader → executor → positions
+  runs end-to-end in history mode — first deterministically ($0), then a
+  short real bull run. The cheap, risk-free evidence before any live effort.
 
-acceptance:                           # Definition-of-Done (epic-Ebene, grob) — im wrap/roll-up geprüft
-  - { id: e1, text: "Exit-Sim feuert im Replay → Position hat open→exit Lebenszyklus", status: pending }
-  - { id: e2, text: "$0-Tests grün + ein manueller $3-Lauf ist verwertbar",            status: pending }
+acceptance:                           # definition of done (epic level, coarse) — checked in wrap/roll-up
+  - { id: e1, text: "Exit sim fires in replay → position has open→exit lifecycle", status: pending }
+  - { id: e2, text: "$0 tests green + one manual $3 run is usable",                status: pending }
 
-questions:                            # high-level, via `walk` (refine) geklärt — BEVOR der loop startet
-  - { id: q1, text: "Event-Bucket 'continuation' in dieser Phase oder erst später?", priority: high, status: open }
+questions:                            # high-level, resolved via `walk` (refine) — BEFORE the loop starts
+  - { id: q1, text: "Event bucket 'continuation' in this phase or only later?", priority: high, status: open }
 
-tasks:                                # coarse Stubs = Loop-Queue. KEINE ACs. Reihenfolge = Listen-Position.
-  - slug: 01-exit-sim                 #   das Task-File entsteht lazy, wenn der loop hier ankommt
-    goal: "settleExits-Seam im History-Runner, no-op live"
-    status: pending                   #   Rollup: pending | active | done | blocked (loop schreibt's)
-    depends_on: []                    #   flache, task-lokale Slugs (nested <epic>/<slug> erst beim Aufruf)
+tasks:                                # coarse stubs = loop queue. NO acceptance criteria. Order = list position.
+  - slug: 01-exit-sim                 #   the task file is created just-in-time when the loop reaches it
+    goal: "settleExits seam in the history runner, no-op live"
+    status: pending                   #   rollup: pending | active | done | blocked (the loop writes it)
+    depends_on: []                    #   flat, task-local slugs (nested <epic>/<slug> only at call time)
   - slug: 02-bull-run-seed
-    goal: "Q4-2020 Breakout seed + 2-Wochen-Lauf, Cap $3"
+    goal: "Q4-2020 breakout seed + 2-week run, cap $3"
     status: pending
-    depends_on: [01-exit-sim]         #   next-child: erster pending dessen depends_on alle done sind
-
-log:                                  # append-only PM-Notizbuch — kind: decision | reorder | learning | blocker
-  - { at: 01-exit-sim, kind: decision, note: "settleExits als Seam, nicht in matchCandle — DAG bleibt rein." }
-  - { at: 01-exit-sim, kind: reorder,  note: "02 hinter 01 gezogen — braucht den Exit-Lebenszyklus." }
+    depends_on: [01-exit-sim]         #   next-child: first pending whose depends_on are all done
+log:                                  # append-only PM notebook — kind: decision | reorder | learning | blocker
+  - { at: 01-exit-sim, kind: decision, note: "settleExits as a seam, not in matchCandle — dependency graph stays pure." }
+  - { at: 01-exit-sim, kind: reorder,  note: "02 pulled behind 01 — needs the exit lifecycle." }

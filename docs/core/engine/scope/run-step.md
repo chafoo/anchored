@@ -2,19 +2,19 @@
 
 # run-step
 
-Helfer für einen Step mit `run:` — führt das Shell-Kommando über die injizierte
-`run`-Naht (Bash) aus und gibt das kanonische `StepResult` zurück. Der einfachste
-Step-Typ: ein reiner Run, Exit 0 → `ok`, non-zero → `failed`.
+Helper for a step with `run:` — executes the shell command via the injected
+`run` seam (Bash) and returns the canonical `StepResult`. The simplest
+step type: a pure run, exit 0 → `ok`, non-zero → `failed`.
 
-## Was
+## What
 
-- Eingabe: ein Step mit `run: '<cmd>'`. Ausgabe: `StepResult`
-  (`{ node, status, evidence }` bei Erfolg · `{ node, status: 'failed', error }`
-  bei non-zero Exit).
-- Exit 0 → `status: 'ok'`, stdout (falls vorhanden) wird als `evidence` gereicht.
-- Non-zero Exit → `status: 'failed'`, `stderr` (bzw. `exit <code>`) als `error`.
+- Input: a step with `run: '<cmd>'`. Output: `StepResult`
+  (`{ node, status, evidence }` on success · `{ node, status: 'failed', error }`
+  on non-zero exit).
+- Exit 0 → `status: 'ok'`, stdout (if present) is passed through as `evidence`.
+- Non-zero exit → `status: 'failed'`, `stderr` (or `exit <code>`) as `error`.
 
-## Wie
+## How
 
 ```mermaid
 flowchart LR

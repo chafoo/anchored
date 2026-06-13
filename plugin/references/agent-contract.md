@@ -1,63 +1,62 @@
-# Agent-Contract — der Spawn-Input-Vertrag (Skill ⇄ Agent)
+# Agent contract — the spawn-input contract (skill ⇄ agent)
 
-> Die eine Naht zwischen der **Skill** (Dirigent, in-session) und einem **Agent**
-> (Effekt, via Task-Tool gespawnt). Beide Seiten referenzieren dieses Dokument,
-> damit sie nicht aneinander vorbeiraten. CLI-only-Transport: der Agent liest +
-> schreibt ausschließlich über die `anchored`-CLI, nie über rohe Write/Edit auf
-> Task-Files (Source-Code-Dateien mutiert nur build-implement, via Write/Edit/Bash).
+> The single seam between the **skill** (the conductor, in-session) and an **agent**
+> (an effect, spawned via the Task tool). Both sides reference this document so they
+> never guess past each other. CLI-only transport: the agent reads and writes
+> exclusively through the `anchored` CLI, never through raw Write/Edit on task-files
+> (only build-implement mutates source-code files, via Write/Edit/Bash).
 
-## Was die Skill jedem Agent durchreicht (Input)
+## What the skill hands each agent (input)
 
-Beim Spawn (Task-Tool) übergibt die Skill im Prompt mindestens:
+On spawn (Task tool), the skill passes at least the following in the prompt:
 
-| Feld | Bedeutung |
+| Field | Meaning |
 |---|---|
-| `task-slug` | der **Task**-Slug (das Task-File). IMMER der Task, nie der Phasen-Slug. |
-| `phase-slug` | (nur build/leaf) die Ziel-**Phase** innerhalb des Task-Files. |
-| `tier` | `phase` \| `task` \| `epic` — auf welcher Etage gearbeitet wird. |
-| `stage` | `plan` \| `refine` \| `build` \| `wrap` — welche Stage. |
-| `context` | Prosa-Kontext: Phase-/Node-`context`, der `plan`-Trail, resolved questions. |
-| `rules` | die `rules[]` der Phase/des Tasks (`{ path, why }`) — der Agent liest sie + hält sie ein. |
-| `instructions` | optionale Step-`instructions` aus der (gemergten) Config — wörtlich durchgereicht. |
+| `task-slug` | the **task** slug (the task-file). ALWAYS the task, never the phase slug. |
+| `phase-slug` | (build/leaf only) the target **phase** inside the task-file. |
+| `tier` | `phase` \| `task` \| `epic` — which level is being worked on. |
+| `stage` | `plan` \| `refine` \| `build` \| `wrap` — which stage. |
+| `context` | prose context: the phase/node `context`, the `plan` trail, resolved questions. |
+| `rules` | the `rules[]` of the phase/task (`{ path, why }`) — the agent reads them and adheres to them. |
+| `instructions` | optional step `instructions` from the (merged) config — passed through verbatim. |
 
-Die Skill ermittelt die Worker-Identität (welcher Agent) **nicht** hardcoded,
-sondern aus `anchored steps <tier> <stage>` (→ `agent`-Ref pro worker-Step).
+The skill determines the worker identity (which agent) **not** by hardcoding it, but
+from `anchored steps <tier> <stage>` (→ the `agent` reference per worker step).
 
-## Phasen-Adressierung (kritisch)
+## Phase addressing (critical)
 
-Eine **Phase ist ein Kind im Task-File** — sie hat KEIN eigenes Node-File. Darum
-adressiert ein phase-level-Agent seine Schreibvorgänge über **`<task-slug>
-<phase-slug>`**, nie als eigenständigen Node:
+A **phase is a child inside the task-file** — it has NO node-file of its own. So a
+phase-level agent addresses its writes via **`<task-slug> <phase-slug>`**, never as a
+standalone node:
 
-- Evidence pro Phasen-AC → `anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "<beweis>"`
-  — **Evidence am Symbol verankern, KEINE rohen Zeilennummern (H6, verschärft):**
-  führe mit der Funktion/dem Symbol/der Datei (`saveTasks() in app.js`) + einem
-  kurzen Code-Snippet, wo der Beweis lebt. Hänge **kein** „(line NN)" an — eine
-  Zeilennummer veraltet schon *innerhalb desselben Tasks*, sobald eine spätere Phase
-  Code darüber einfügt (im Dogfood driftete Evidence ~40 Zeilen auf fremden Code).
-  Symbol + Snippet ist stabil; die Zeilennummer ist nur veraltender Lärm.
-- Phasen-Status setzen → `anchored node set-child-status <task-slug> <phase-slug> <status>`
+- Evidence per phase acceptance criterion → `anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "<proof>"`
+  — **anchor the evidence on the symbol, NO raw line numbers (H6, tightened):**
+  lead with the function/symbol/file (`saveTasks() in app.js`) plus a short code
+  snippet where the proof lives. Do **not** append "(line NN)" — a line number goes
+  stale *within the same task* the moment a later phase inserts code above it (in the
+  dogfood, evidence drifted ~40 lines onto unrelated code). Symbol + snippet is
+  stable; the line number is only stale-going noise.
+- Set phase status → `anchored node set-child-status <task-slug> <phase-slug> <status>`
 
-Ein **node-level**-Agent (task/epic, z. B. wrap-summarize, epic-roll-up) adressiert
-dagegen den Node über seinen eigenen `<slug>` (`set-field <slug> …`, `set-status
-<slug> …`) — das ist sein eigenes File.
+A **node-level** agent (task/epic, e.g. wrap-summarize, epic-roll-up) instead
+addresses the node by its own `<slug>` (`set-field <slug> …`, `set-status <slug> …`) —
+that is its own file.
 
-## Was der Agent zurück-/rausschreibt (Output = self-write via CLI)
+## What the agent writes back out (output = self-write via CLI)
 
-Kein strukturierter Return den die Skill anwendet — der Agent **self-writet** sein
-Ergebnis direkt via CLI. Pro Agent-Rolle:
+No structured return that the skill applies — the agent **self-writes** its result
+directly via the CLI. Per agent role:
 
-| Rolle | self-write-Befehle |
+| Role | self-write commands |
 |---|---|
 | plan-discover / plan-rules-scan / refine-* / wrap-review / validators | `anchored node append-log <task-slug> <stage> <kind> "<note>"` |
-| plan-decompose | `anchored node add-phase <task-slug> <phase-slug> "<name>"` · `anchored node add-ac <task-slug> <phase-slug> "<text>"` (id auto a1,a2,…) |
+| plan-decompose | `anchored node add-phase <task-slug> <phase-slug> "<name>"` · `anchored node add-ac <task-slug> <phase-slug> "<text>"` (id auto a1, a2, …) |
 | epic-scaffold | `anchored node add-child <epic-slug> <task-stub-slug>` |
-| build-implement | `anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "<beweis>"` (evidence-only — Symbol-Anker; flippt NIE den Phasen-Status selbst, G4) |
-| build-task-validate / build-code-validate | pure inspector (kein Code-Write); REJECT einer AC via `anchored node set-failures <task-slug> <phase-slug> <ac-id> "<why>"` (flippt sie pending → Re-Do-Loop) + Rollup via `append-log … build learning` |
-| wrap-summarize | `anchored node set-field <node-slug> context.wrap "<TL;DR>"` (dotted-path → nested) |
-| epic-roll-up | `anchored node append-log <epic-slug> wrap <kind> "<DoD/Retro>"` · `anchored node set-status <epic-slug> done` |
+| build-implement | `anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "<proof>"` (evidence-only — symbol anchor; NEVER flips the phase status itself, G4) |
+| build-task-validate / build-code-validate | pure inspector (no code write); REJECT an acceptance criterion via `anchored node set-failures <task-slug> <phase-slug> <ac-id> "<why>"` (flips it pending → re-do loop) + rollup via `append-log … build learning` |
+| wrap-summarize | `anchored node set-field <node-slug> context.wrap "<summary>"` (dotted-path → nested) |
+| epic-roll-up | `anchored node append-log <epic-slug> wrap <kind> "<definition-of-done / retro>"` · `anchored node set-status <epic-slug> done` |
 
-Jeder Agent-Doc nennt am Kopf die Felder, die er erwartet, + die Befehle, die er
-ausführt — dieser Vertrag ist die gemeinsame Referenz. Wenn ein Agent ein Feld
-braucht, das hier nicht steht, ist das ein Vertrags-Update (hier), nicht ein
-stilles Raten.
+Each agent doc names, at its head, the fields it expects plus the commands it runs —
+this contract is the shared reference. When an agent needs a field that is not listed
+here, that is a contract update (here), not a silent guess.

@@ -2,20 +2,20 @@
 
 # transitions
 
-Die **forward-only** State-Machines — eine pro Tier. `assertTransition` lässt nur
-erlaubte Status-Übergänge zu; rückwärts/überspringen wirft.
+The **forward-only** state machines — one per tier. `assertTransition` only allows
+permitted status transitions; backward/skip throws.
 
-## Was
+## What
 
-- Pro Tier eine Übergangstabelle (aus dem [tier-Deskriptor](../schema/tiers.md)):
+- One transition table per tier (from the [tier descriptor](../schema/tiers.md)):
   - task: `plan → drafted → refined → build → wrap → done`
   - epic: `planning → building → done`
   - phase: `pending → in-progress → {done|blocked|deferred}`
-- `assertTransition(tier, from, to)` — illegaler Übergang → throw.
-- Einzige erlaubte Rückwärts-Kante: die Update-Mode-Ausnahme (`→ drafted`),
-  falls v2 sie übernimmt — sonst strikt vorwärts.
+- `assertTransition(tier, from, to)` — illegal transition → throw.
+- The only permitted backward edge: the update-mode exception (`→ drafted`),
+  if v2 adopts it — otherwise strictly forward.
 
-## Wie
+## How
 
 ```mermaid
 stateDiagram-v2
@@ -24,4 +24,4 @@ stateDiagram-v2
     done --> [*]
 ```
 
-*(task gezeigt; epic/phase analog, eigene Tabelle.)*
+*(task shown; epic/phase analogous, own table.)*

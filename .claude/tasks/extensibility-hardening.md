@@ -1,51 +1,51 @@
-# Ticket: Extensibility-Hardening — „beliebig erweitern ohne Code", test-verriegelt
+# Ticket: Extensibility-Hardening — "extend arbitrarily without code", test-locked
 
-**Motivation:** Der USP ist, dass User extrem umfangreiche `anchored.yml` bauen
-(custom Steps + Felder in jeder Etage/Stage) OHNE Framework-Code anzufassen. Der
-Dogfood deckte auf, dass diese Garantie nicht durchgängig erfüllt + nicht
-test-verriegelt ist. Außerdem fehlt ein Validator, mit dem der Setup-Skill (und
-der User) eine yml verlässlich prüfen kann.
+**Motivation:** The core value is that users build extremely extensive `anchored.yml`
+files (custom steps + fields in every tier/stage) WITHOUT touching framework code.
+The dogfood revealed that this guarantee is not met consistently and is not
+test-locked. On top of that, a validator is missing with which the setup skill (and
+the user) can reliably check a yml.
 
-## Befunde (Ausgangslage)
-- Custom-Step-Dispatch existiert nur in **build + wrap** Skills — NICHT plan +
-  refine (0 Treffer). „Web-Research in Plan → research-Feld" würde nicht feuern.
-- **Kein `anchored validate`** — Validierung nur implizit über `anchored steps`
-  (wirft ConfigError, crasht aktuell unschön via Bootstrap).
-- Custom-Felder funktionieren (F1) für task; nicht test-abgedeckt für phase/epic.
-- Keine geschlossene Test-Matrix (custom Step × Etage×Stage; custom Field × Etage).
+## Findings (starting point)
+- Custom-step dispatch exists only in **build + wrap** skills — NOT plan +
+  refine (0 hits). "Web research in plan → research field" would not fire.
+- **No `anchored validate`** — validation only implicit via `anchored steps`
+  (throws ConfigError, currently crashes ungracefully via bootstrap).
+- Custom fields work (F1) for task; not test-covered for phase/epic.
+- No closed test matrix (custom step × tier×stage; custom field × tier).
 
-## Status: D1–D4 ALLE erledigt ✅ (243 Tests grün)
+## Status: D1–D4 ALL done ✅ (243 tests green)
 
-- **D1 ✅** `anchored validate` — live bewiesen (valide → volle Shape, invalide →
-  sauberes Error-Envelope statt Crash; bin.ts fängt ConfigError). Unit:
-  validate.spec. Setup-Skill nutzt es als Abschluss-Check.
-- **D2 ✅** plan + refine SKILLs dispatchen jetzt custom run/use-Steps + Variablen-
-  Kontrakt (vorher 0 Treffer). Grep-Test.
-- **D3 ✅** geschlossene Matrix: custom run-Step + use-Step in JEDER Etage×Stage
-  (24 Tests), custom Field in phase/task/epic (3). extensibility-matrix.spec.
-- **D4 ✅** umfangreiche Beispiel-yml `plugin/references/anchored.example-
-  comprehensive.yml` (research→research-Feld in plan, TDD-implement-Instruktion,
-  per-phase commit, custom Steps in allen 4 Stages, custom Felder pro Etage) —
-  validiert via `anchored validate` + im Test gegen Defaults gemerged verriegelt.
+- **D1 ✅** `anchored validate` — proven live (valid → full shape, invalid →
+  clean error envelope instead of crash; bin.ts catches ConfigError). Unit:
+  validate.spec. Setup skill uses it as the final check.
+- **D2 ✅** plan + refine SKILLs now dispatch custom run/use steps + variable
+  contract (previously 0 hits). Grep test.
+- **D3 ✅** closed matrix: custom run-step + use-step in EVERY tier×stage
+  (24 tests), custom field in phase/task/epic (3). extensibility-matrix.spec.
+- **D4 ✅** extensive example yml `plugin/references/anchored.example-
+  comprehensive.yml` (research→research field in plan, TDD-implement instruction,
+  per-phase commit, custom steps in all 4 stages, custom fields per tier) —
+  validated via `anchored validate` + locked in the test merged against defaults.
 
-## Deliverables (Original)
-- **D1 — `anchored validate`**: lädt + merged + validiert die ganze anchored.yml,
-  resolved alle Tier×Stage-Step-Pläne, listet custom Felder, meldet präzise Fehler
-  (statt Bootstrap-Crash). Der Verifier für den Setup-Skill. + Test.
-- **D2 — plan + refine dispatchen custom Steps**: die SKILLs führen `kind:'run'`/
-  `kind:'use'`-Steps generisch aus (wie build/wrap), mit Variablen-Kontrakt. Damit
-  feuern Steps in ALLEN 4 Stages. + Grep-Test.
-- **D3 — geschlossene Test-Matrix**: custom run-Step resolved in jeder gültigen
-  Etage×Stage; custom Field schreibt/liest in phase/task/epic; end-to-end. + Tests.
-- **D4 — umfangreiche Beispiel-anchored.yml** als Fixture in anchored-v2: Web-
-  Research-Step in plan → `research`-Feld, commit, und die ARCHITEKTUR-INSTRUKTION
-  = **TDD** (jeder implement-Worker baut test-first: red → green → refactor; via
-  `build.implement.instructions` o.ä. an den Worker durchgereicht). Getestet via
-  `anchored validate` + steps-Pläne.
+## Deliverables (original)
+- **D1 — `anchored validate`**: loads + merges + validates the whole anchored.yml,
+  resolves all tier×stage step plans, lists custom fields, reports precise errors
+  (instead of a bootstrap crash). The verifier for the setup skill. + test.
+- **D2 — plan + refine dispatch custom steps**: the SKILLs run `kind:'run'`/
+  `kind:'use'` steps generically (like build/wrap), with a variable contract. This
+  makes steps fire in ALL 4 stages. + grep test.
+- **D3 — closed test matrix**: custom run-step resolves in every valid
+  tier×stage; custom field writes/reads in phase/task/epic; end-to-end. + tests.
+- **D4 — extensive example anchored.yml** as a fixture in anchored-v2: web
+  research step in plan → `research` field, commit, and the ARCHITECTURE INSTRUCTION
+  = **test-driven development** (every implement worker builds test-first: red → green → refactor; via
+  `build.implement.instructions` or similar, passed through to the worker). Tested via
+  `anchored validate` + steps plans.
 
-## Setup-Skill
-- Nach D1: Setup-Skill nutzt `anchored validate` als Abschluss-Check (statt nur
+## Setup skill
+- After D1: the setup skill uses `anchored validate` as the final check (instead of just
   `anchored steps`).
 
-## Enforcement-Kontext (schon erledigt, B5)
-- block-task-file-edits-Hook deckt jetzt auch Bash-Writes ab.
+## Enforcement context (already done, B5)
+- The block-task-file-edits hook now also covers Bash writes.

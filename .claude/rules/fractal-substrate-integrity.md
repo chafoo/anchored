@@ -1,48 +1,48 @@
-# Rule: Fraktale Integrität — Mechanismus vs. Policy, Invariante im Substrat
+# Rule: Fractal Integrity — Mechanism vs. Policy, Invariant in the Substrate
 
-> Geltung: Engine, Substrat, Schema, State, Default-Template. Nicht-verhandelbar.
+> Scope: Engine, substrate, schema, state, default template. Non-negotiable.
 
-## Mechanismus (Code, fix) vs. Policy (Config, austauschbar)
+## Mechanism (Code, fixed) vs. Policy (Config, swappable)
 
-- **Mechanismus = deterministischer Code**: die Etagen-Form, State-Machine +
-  Transitions (forward-only), die harte Invariante, atomic-writes, Audit-Trail,
-  die Tier-Mechanik (Status-Enum, Kind-Beziehung). Lebt in `engine/`, `state/`,
-  `ops/`, `parser/`, `io.ts`, der Mechanik-Hälfte von `schema/tiers/*`.
-- **Policy = Config/Template, austauschbar**: WAS in jeder Stage passiert (die
-  Step-Sequenzen) + die `fields` (Daten-Modell-Shape). Lebt im Default-Template
-  (`anchored.default.yml`) + den User-Deltas in `anchored.yml`.
+- **Mechanism = deterministic code**: the tier form, state machine +
+  transitions (forward-only), the hard invariant, atomic-writes, audit-trail,
+  the tier mechanics (status enum, child relationship). Lives in `engine/`, `state/`,
+  `ops/`, `parser/`, `io.ts`, the mechanics half of `schema/tiers/*`.
+- **Policy = Config/Template, swappable**: WHAT happens in each stage (the
+  step sequences) + the `fields` (data-model shape). Lives in the default template
+  (`anchored.default.yml`) + the user deltas in `anchored.yml`.
 
-Wenn du überlegst, wo etwas hingehört: Verhalten, das der User umkonfigurieren
-können soll → Policy (Step/Feld). Garantie, die nie brechen darf → Mechanismus.
+When you are deciding where something belongs: behavior the user should be able to
+reconfigure → policy (step/field). A guarantee that must never break → mechanism.
 
-## Keine privilegierten Built-ins
+## No privileged built-ins
 
-Alles opinionierte Verhalten (implement, Validatoren, scaffold, decompose …) ist
-ein **Step** im Default-Template — aktiv by default, voll überschreib-/ersetzbar.
-Kein Step ist im Engine-Code hardcoded. Die Engine dispatcht config-getrieben
-(`resolve-steps` setzt Defaults ein), sie kennt keine konkreten Step-Namen.
+All opinionated behavior (implement, validators, scaffold, decompose …) is
+a **step** in the default template — active by default, fully overridable/replaceable.
+No step is hardcoded in the engine code. The engine dispatches config-driven
+(`resolve-steps` fills in defaults); it knows no concrete step names.
 
-## Harte Invariante (im Datenmodell, nicht in einem Step)
+## Hard invariant (in the data model, not in a step)
 
-**Ein `ac` geht nur auf `status: done`, wenn `evidence` vorliegt.** Erzwungen in
-`state/invariants.ts` am schreibenden Op — NICHT in einem Step, der weggelassen
-werden könnte. „Alles konfigurierbar" gilt, OHNE die USP zu verlieren.
+**An `ac` only goes to `status: done` when `evidence` is present.** Enforced in
+`state/invariants.ts` at the writing op — NOT in a step that could be omitted.
+"Everything configurable" holds, WITHOUT losing the core value.
 
-## Engine = deterministisch, AI = Effekt hinter `spawn`
+## Engine = deterministic, AI = effect behind `spawn`
 
-Kontrollfluss (welche Stage/Step), Transitions, `retry`, `stop`, atomic-writes,
-Invariante = reiner, getesteter Code. AI-Worker sind **Effekte**, die die Engine
-über die injizierte `spawn`-Dep triggert. Niemals AI-Aufrufe direkt im
-Kontrollfluss — immer hinter der Naht (fakebar im Test).
+Control flow (which stage/step), transitions, `retry`, `stop`, atomic-writes,
+invariant = pure, tested code. AI workers are **effects** that the engine
+triggers via the injected `spawn` dep. Never AI calls directly in the
+control flow — always behind the seam (fakeable in the test).
 
-## v1 ist Referenz, nicht Port
+## v1 is reference, not port
 
-`~/Dev/anchored/mcp/src` ist prozedural + MCP-getrieben. Nutze es als **Logik-
-Vorlage** (wie Validierung/Transitions/Render gedacht waren), aber **schreibe
-alles neu im Factory-Pattern** ([[factory-functions]]). Kein Copy-Paste, kein
-1:1-Port.
+`~/Dev/anchored/mcp/src` is procedural + MCP-driven. Use it as a **logic
+template** (how validation/transitions/render were intended), but **rewrite
+everything anew in the factory pattern** ([[factory-functions]]). No copy-paste, no
+1:1 port.
 
-## Referenz
+## Reference
 
 `docs/design/fractal-lifecycle.md`, `docs/design/fractal-redesign-notes.md`
-(„Mechanismus vs. Policy", „Harte Invariante"). [[cli-only-transport]].
+("Mechanism vs. Policy", "Hard invariant"). [[cli-only-transport]].

@@ -2,10 +2,10 @@
 
 # core
 
-Das CLI-/Engine-Paket — die **deterministische** Hälfte von anchored. Lädt die
-Config, fährt den fraktalen Lifecycle, mutiert die Node-Files atomar und erzwingt
-die Integritäts-Invariante. AI-Arbeit wird nur als Effekt über `spawn` getriggert
-(Engine = Code, AI = Effekt).
+The CLI/engine package — the **deterministic** half of anchored. Loads the
+config, drives the fractal lifecycle, mutates the node files atomically, and
+enforces the integrity invariant. AI work is only triggered as an effect via
+`spawn` (engine = code, AI = effect).
 
 ```mermaid
 flowchart TB
@@ -14,25 +14,25 @@ flowchart TB
     engine --> ops["ops · createNodeOps"]
     engine --> spawn["spawn · claude -p"]
     ops --> schema["schema · step/config/tiers"]
-    ops --> state["state · transitions + invariante"]
+    ops --> state["state · transitions + invariant"]
     ops --> parser["parser · YAML ↔ node"]
     parser --> io["io · atomic-write"]
 ```
 
-| Bereich | Verantwortung (Scope-Grenze) |
+| Area | Responsibility (scope boundary) |
 |---|---|
-| [config](config/_config.md) | Bootstrap der Base-Dependency: `merge(default-template, user anchored.yml)` → `effectiveConfig`, einmal beim Start. |
-| [engine](engine/_engine.md) | Die fraktale Factory-Engine — fährt `plan/refine/build/wrap` pro Knoten; `each` rekursiert in die Kind-Etage. |
-| [ops](ops/_ops.md) | Tier-generischer Op-Kern: create/read/status/children/questions/log über *jeden* Node. |
-| [schema](schema/_schema.md) | Zod-Schemas: Step-Grammatik, `anchored.yml`, Tier-Deskriptoren. |
-| [state](state/_state.md) | State-Machine (forward-only) + die **harte Invariante** (kein `done` ohne `evidence`). |
-| [parser](parser/_parser.md) | YAML ↔ Node (zwei Parse-Profile), block-scalar-Render + Schema-Directive. |
-| [io](io.md) | `atomic-write` (lock + mkdir + POSIX-rename). Einzel-File. |
-| [spawn](spawn.md) | Ausführungs-Substrat: `claude -p` pro Task-File, Phasen in-process. Einzel-File. |
-| [cli](cli/_cli.md) | Der `anchored`-Befehl — einziger Transport (kein MCP). `plan/refine/build/wrap` + generische Node-Verben. |
-| [wiring](wiring.md) | Composition-Root: `index.ts` (reine Factory `createAnchored`) + `bin.ts` (einziger Effekt-Ort). Verdrahtet das Substrat in deps-Graph-Reihenfolge. |
+| [config](config/_config.md) | Bootstrap of the base dependency: `merge(default-template, user anchored.yml)` → `effectiveConfig`, once at startup. |
+| [engine](engine/_engine.md) | The fractal factory engine — drives `plan/refine/build/wrap` per node; `each` recurses into the child tier. |
+| [ops](ops/_ops.md) | Tier-generic op core: create/read/status/children/questions/log over *any* node. |
+| [schema](schema/_schema.md) | Zod schemas: step grammar, `anchored.yml`, tier descriptors. |
+| [state](state/_state.md) | State machine (forward-only) + the **hard invariant** (no `done` without `evidence`). |
+| [parser](parser/_parser.md) | YAML ↔ node (two parse profiles), block-scalar render + schema directive. |
+| [io](io.md) | `atomic-write` (lock + mkdir + POSIX rename). Single file. |
+| [spawn](spawn.md) | Execution substrate: `claude -p` per task file, phases in-process. Single file. |
+| [cli](cli/_cli.md) | The `anchored` command — sole transport (no MCP). `plan/refine/build/wrap` + generic node verbs. |
+| [wiring](wiring.md) | Composition root: `index.ts` (pure factory `createAnchored`) + `bin.ts` (sole effect site). Wires the substrate in deps-graph order. |
 
-> **YAGNI**: Die Modul-Seiten bilden das **schon entschiedene** Design ab
-> (eingearbeitet aus [docs/design/](../design/)) — nur so tief, wie festgelegt.
-> Tiefere Impl-Details (micro: Schemas, Signaturen, Enums) folgen **mit dem Code**,
-> nicht vorgebaut.
+> **YAGNI**: The module pages reflect the **already decided** design
+> (worked in from [docs/design/](../design/)) — only as deep as settled.
+> Deeper implementation details (micro: schemas, signatures, enums) follow **with the code**,
+> not pre-built.

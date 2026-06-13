@@ -1,8 +1,8 @@
-# Offene Fragen — Index
+# Open questions — index
 
-Querschnittlicher Index aller offenen Doku-Fragen. Bereich → offene Anzahl. Eine
-Datei pro Doku-Bereich, Bereich steckt im Punkt-Pfad-Dateinamen.
+Cross-cutting index of all open documentation questions. Area → open count. One
+file per documentation area; the area is encoded in the dot-path filename.
 
-| Bereich | offen |
+| Area | open |
 |---|---|
 | [core.state](core.state.md) | 0 |

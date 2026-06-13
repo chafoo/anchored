@@ -2,27 +2,27 @@
 
 # stage-runner
 
-Fährt die `steps` **einer** Stage in Deklarations-Reihenfolge. Setzt vorher per
-[resolve-steps](scope/resolve-steps.md) die Built-in-Defaults ein und hält an,
-sobald ein Step fehlschlägt.
+Runs the `steps` of **one** stage in declaration order. Beforehand, it inserts
+the built-in defaults via [resolve-steps](scope/resolve-steps.md) and halts as
+soon as a step fails.
 
-## Was
+## What
 
 - `createStageRunner(cfg, deps) → { run(node) → result }`.
-- Reihenfolge = Eintragungsreihenfolge der `steps`; jeder Step via
+- Order = entry order of the `steps`; each step via
   [step-runner](step-runner.md).
-- Halt bei Fehler (non-zero / Worker-Error) — der Tier-Status bleibt stehen,
-  Re-Run setzt fort.
-- Built-ins sind nicht entfernbar; fehlende werden in `resolve-steps` an ihrer
-  kanonischen Position ergänzt, eigene Steps interleaven dazwischen.
+- Stop on failure (non-zero / worker error) — the tier status stays put,
+  a re-run resumes.
+- Built-ins are not removable; missing ones are added at their canonical
+  position in `resolve-steps`, custom steps interleave in between.
 
-## Wie
+## How
 
 `createStageRunner(cfg, deps): { run(node: Node) => Promise<Result> }`
 
 ```mermaid
 flowchart TB
-    R["resolve-steps · Built-ins einsetzen + Reihenfolge"] --> s1["step 1"]
+    R["resolve-steps · insert built-ins + order"] --> s1["step 1"]
     s1 --> s2["step 2"] --> s3["…"]
-    s1 -. "Fehler" .-> H["halt — Status bleibt"]
+    s1 -. "error" .-> H["halt — status stays"]
 ```

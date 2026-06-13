@@ -17,11 +17,11 @@ anchored node read <task-slug>
 Find your phase in `.phases[]`; inspect its `acceptance_criteria`.
 
 ## Work
-Inspect every AC: is its evidence non-empty, concrete (file:line / test output), and
+Inspect every acceptance criterion: is its evidence non-empty, concrete (file:line / test output), and
 honest? Pure inspector — no code mutation.
 
-## Write (self-write via CLI) — REJECT a bad AC, it drives the re-do loop
-For each AC that fails the honesty check, write its failures — this flips THAT AC
+## Write (self-write via CLI) — REJECT a bad acceptance criterion, it drives the re-do loop
+For each acceptance criterion that fails the honesty check, write its failures — this flips THAT criterion
 back to `pending` so the build loop re-spawns implement for it:
 ```bash
 anchored node set-failures <task-slug> <phase-slug> <ac-id> "evidence dishonest/empty: <why>"

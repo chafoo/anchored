@@ -1,110 +1,110 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
 slug: dogfood-fixings/epic-tier-cli
-title: Epic-Tier durch die CLI fahrbar machen (F13 + F14)
+title: Make the epic tier drivable through the CLI (F13 + F14)
 status: done
 created: 2026-06-11
 context:
   plan: |
-    F13 (HOCH): Der Epic-Tier (e5, Headline-Feature) läuft NICHT durch die echte CLI.
-    `anchored plan epic` reicht den Tier nicht an create (plan.ts:49), und alle Ops
-    nehmen den Tier aus `tierForSlug`, das auf 'task' defaultet (index.ts:82/137) →
-    der Epic-Node wird als Task erzeugt + gelesen, add-child/next-child über tasks
-    routen nie zum epic-Deskriptor. Beim Dogfood fiel scaffold deshalb auf add-phase
-    zurück → der „Epic" wurde ein Task mit 4 Phasen-Stubs.
-    F14 (mittel): slugFromInput strippt Dashes VOR dem slice(0,48) → der Cut kann
-    einen Trailing-Dash hinterlassen → Schema-Regex lehnt ab → Duplikat-Node.
+    F13 (HIGH): The epic tier (e5, headline feature) does NOT run through the real CLI.
+    `anchored plan epic` does not pass the tier to create (plan.ts:49), and all ops
+    take the tier from `tierForSlug`, which defaults to 'task' (index.ts:82/137) →
+    the epic node gets created + read as a task, add-child/next-child over tasks
+    never route to the epic descriptor. During dogfooding scaffold therefore fell back
+    to add-phase → the "epic" became a task with 4 phase stubs.
+    F14 (medium): slugFromInput strips dashes BEFORE the slice(0,48) → the cut can
+    leave a trailing dash → schema regex rejects it → duplicate node.
 
-    ENTSCHEIDUNG (q1, User): File-Shape ist SSOT — read leitet den Tier aus dem
-    Inhalt ab (tasks[]→epic, phases[]→task), create bekommt einen EXPLIZITEN
-    tier-Param, der das Shape seedet.
+    DECISION (q1, user): file shape is the SSOT — read derives the tier from the
+    content (tasks[]→epic, phases[]→task), create receives an EXPLICIT
+    tier param that seeds the shape.
     REF: .claude/temp/dogfood-findings.md F13/F14.
 questions: []
 log: []
 phases:
-  - name: Tier-aware create — Shape pro Tier seeden
+  - name: Tier-aware create — seed the shape per tier
     slug: tier-aware-create
     status: done
     context: |
-      facade.create + planCommand so umbauen, dass der Tier explizit durchgereicht
-      wird und create das richtige Shape erzeugt: epic → { tasks: [], status:
-      planning }, task → { phases-fähig, status plan }, phase → leaf. Kein
-      task-Default mehr.
+      Rework facade.create + planCommand so that the tier is passed through explicitly
+      and create produces the right shape: epic → { tasks: [], status:
+      planning }, task → { phase-capable, status plan }, phase → leaf. No more
+      task default.
     rules:
       - path: .claude/rules/factory-functions.md
-        why: create über injizierte deps; tier-Param als input/output-Vertrag; fakebar
+        why: create via injected deps; tier param as input/output contract; fakeable
       - path: .claude/rules/cli-only-transport.md
-        why: create läuft über die CLI/facade, JSON-Output
+        why: create runs through the CLI/facade, JSON output
     acceptance_criteria:
       - id: a1
-        text: "facade.create akzeptiert einen expliziten tier-Param und seedet das Tier-Shape: epic → tasks:[] + status 'planning' + epic-Deskriptor, task → status 'plan', phase → leaf. Beweis: facade-Test, der für tier='epic' einen Node mit tasks:[] + status planning asserted, für 'task' ohne tasks (grün) + datei:zeile."
+        text: "facade.create accepts an explicit tier param and seeds the tier shape: epic → tasks:[] + status 'planning' + epic descriptor, task → status 'plan', phase → leaf. Evidence: facade test that for tier='epic' asserts a node with tasks:[] + status planning, for 'task' without tasks (green) + file:line."
         status: done
         evidence:
-          - core/src/ops/facade.ts create nimmt expliziten tier-Param, seedet epic→tasks:[]+status planning; epic-tier.spec "plan epic seeds epic-shaped node" grün
+          - core/src/ops/facade.ts create takes an explicit tier param, seeds epic→tasks:[]+status planning; epic-tier.spec "plan epic seeds epic-shaped node" green
       - id: a2
-        text: "planCommand reicht den geparsten Tier an create durch (epic-Plan → epic-Node). Beweis: plan.spec/cli-Test, der `plan epic <x>` fährt und einen Node mit tasks:[] (epic-Shape) asserted, NICHT phases/task (grün) + datei:zeile plan.ts."
+        text: "planCommand passes the parsed tier through to create (epic plan → epic node). Evidence: plan.spec/CLI test that runs `plan epic <x>` and asserts a node with tasks:[] (epic shape), NOT phases/task (green) + file:line plan.ts."
         status: done
         evidence:
-          - core/src/cli/commands/plan.ts:49 planCommand reicht tier an create durch (create(slug,{title,tier})); epic-tier.spec belegt epic-Shape
-  - name: Tier-Ableitung beim read aus dem File-Shape
+          - core/src/cli/commands/plan.ts:49 planCommand passes tier through to create (create(slug,{title,tier})); epic-tier.spec evidences epic shape
+  - name: Tier derivation on read from the file shape
     slug: tier-derivation
     status: done
     context: |
-      tierForSlug/read den Tier aus dem File-Inhalt bestimmen (tasks[]→epic,
-      phases[]→task, sonst nach schema/Default), sodass read + alle Mutationen den
-      richtigen Deskriptor nutzen. add-child (Task-Stub) + next-child (Loop über
-      tasks) müssen auf einem Epic funktionieren.
+      Have tierForSlug/read determine the tier from the file content (tasks[]→epic,
+      phases[]→task, otherwise by schema/default), so that read + all mutations use the
+      right descriptor. add-child (task stub) + next-child (loop over tasks)
+      must work on an epic.
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: Tier-Mechanik = Mechanismus; File-Shape ist SSOT, kein Default-Raten
+        why: tier mechanics = mechanism; file shape is the SSOT, no default guessing
       - path: .claude/rules/cli-only-transport.md
-        why: alle Ops über die CLI mit korrektem Tier-Routing
+        why: all ops through the CLI with correct tier routing
     acceptance_criteria:
       - id: a1
-        text: "read bestimmt den Tier aus dem File-Inhalt (tasks[]→epic, phases[]→task) statt aus einem 'task'-Default; ein epic-Node wird als epic gelesen + die Ops routen zum epic-Deskriptor. Beweis: Test, der ein epic-File liest und tier='epic' + epic-Deskriptor (childField 'tasks') asserted (grün) + datei:zeile."
+        text: "read determines the tier from the file content (tasks[]→epic, phases[]→task) instead of from a 'task' default; an epic node gets read as an epic + the ops route to the epic descriptor. Evidence: test that reads an epic file and asserts tier='epic' + epic descriptor (childField 'tasks') (green) + file:line."
         status: done
         evidence:
-          - core/src/ops/tier-derive.ts makeTierFor leitet Tier aus File-Inhalt ab (tasks[]→epic, phases[]→task, ACs ohne schema_version→phase); index.ts verdrahtet als facade.tierFor; epic-tier.spec "makeTierFor derives tier" grün
+          - core/src/ops/tier-derive.ts makeTierFor derives tier from file content (tasks[]→epic, phases[]→task, ACs without schema_version→phase); index.ts wires it as facade.tierFor; epic-tier.spec "makeTierFor derives tier" green
       - id: a2
-        text: "add-child schreibt einen Task-Stub auf einen Epic (childField tasks), next-child loopt die tasks in DAG-Reihenfolge. Beweis: CLI-Smoke gegen das echte Binary: create epic → add-child ×2 (mit depends_on) → next-child liefert sie in DAG-Order; alle ok:true + datei:zeile."
+        text: "add-child writes a task stub onto an epic (childField tasks), next-child loops the tasks in dependency order. Evidence: CLI smoke against the real binary: create epic → add-child ×2 (with depends_on) → next-child returns them in dependency order; all ok:true + file:line."
         status: done
         evidence:
-          - add-child schreibt Task-Stub auf Epic (epic-Deskriptor childField tasks), next-child loopt; epic-tier.spec "epic round-trip" grün (t1→t2 nach done); CLI-Smoke gegen Binary ok
-  - name: Slug-Trailing-Dash-Fix + Duplikat-Cleanup
+          - add-child writes a task stub onto the epic (epic descriptor childField tasks), next-child loops; epic-tier.spec "epic round-trip" green (t1→t2 after done); CLI smoke against binary ok
+  - name: Slug trailing-dash fix + duplicate cleanup
     slug: slug-fix-cleanup
     status: done
     context: |
-      slugFromInput: erst slice(0,48), DANN strippen — kein Trailing-Dash mehr.
-      Plus: die zwei Duplikat-Epic-Files in anchored-test aufräumen.
+      slugFromInput: first slice(0,48), THEN strip — no more trailing dash.
+      Plus: clean up the two duplicate epic files in anchored-test.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: Slug muss schema-valide sein, sonst verweigern die Verben Lesen/Schreiben
+        why: the slug must be schema-valid, otherwise the verbs refuse to read/write
     acceptance_criteria:
       - id: a1
-        text: "slugFromInput erzeugt für lange Titel keinen Trailing-Dash mehr (slice→strip-Reihenfolge). Beweis: Unit-Test mit einem >48-Zeichen-Titel, dessen 48. Zeichen ein Wort-Mittelpunkt ist → Slug matcht ^[a-z0-9]+(?:-[a-z0-9]+)*$ (grün) + datei:zeile plan.ts."
+        text: "slugFromInput no longer produces a trailing dash for long titles (slice→strip order). Evidence: unit test with a >48-character title whose 48th character is in the middle of a word → slug matches ^[a-z0-9]+(?:-[a-z0-9]+)*$ (green) + file:line plan.ts."
         status: done
         evidence:
-          - core/src/cli/commands/plan.ts slugFromInput slice→strip-Reihenfolge; epic-tier.spec "slug has no trailing dash" grün
+          - core/src/cli/commands/plan.ts slugFromInput slice→strip order; epic-tier.spec "slug has no trailing dash" green
       - id: a2
-        text: "Die Duplikat-Epic-Files in ~/Dev/anchored-test (…-vorhandenes-.yml + …-vorhandenes.yml) sind aufgeräumt (gelöscht/archiviert). Beweis: ls zeigt keine Trailing-Dash-Duplikate mehr."
+        text: "The duplicate epic files in ~/Dev/anchored-test (…-vorhandenes-.yml + …-vorhandenes.yml) are cleaned up (deleted/archived). Evidence: ls shows no more trailing-dash duplicates."
         status: done
         evidence:
-          - anchored-test Duplikat-Epic-Files (…-vorhandenes-.yml + …-vorhandenes.yml) nach .claude/tasks/_archive/ verschoben
-  - name: Epic-e2e durch die CLI (der Beweis)
+          - anchored-test duplicate epic files (…-vorhandenes-.yml + …-vorhandenes.yml) moved to .claude/tasks/_archive/
+  - name: Epic e2e through the CLI (the proof)
     slug: epic-e2e
     status: done
     context: |
-      Der End-to-End-Beweis: der ganze Epic-Flow läuft durch die echte CLI —
-      plan epic → scaffold add-child Stubs (DAG) → next-child loopt → roll-up.
-      Das ist e3 des Epics + entsperrt dogfood-epic.
+      The end-to-end proof: the whole epic flow runs through the real CLI —
+      plan epic → scaffold add-child stubs (dependency order) → next-child loops → roll-up.
+      This is e3 of the epic + unblocks dogfood-epic.
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: epic = volle Etage, build.each:task intrinsisch
+        why: epic = full tier, build.each:task intrinsic
       - path: .claude/rules/tooling-quality-gates.md
-        why: erst grün, wenn der Epic-Roundtrip durch die CLI sauber läuft + Tests grün
+        why: only green once the epic roundtrip runs cleanly through the CLI + tests green
     acceptance_criteria:
       - id: a1
-        text: "Ein CLI-Epic-Roundtrip ist grün: `anchored plan epic <x>` seedet einen epic-Node (tasks:[]), add-child ×N mit depends_on, next-child liefert die Stubs in DAG-Order, set-child-status advanced sie. Beweis: ein e2e-Spec ODER ein dokumentierter CLI-Smoke gegen das Binary, alle Schritte ok:true (grün) + die 5 Quality-Gates grün."
+        text: "A CLI epic roundtrip is green: `anchored plan epic <x>` seeds an epic node (tasks:[]), add-child ×N with depends_on, next-child returns the stubs in dependency order, set-child-status advances them. Evidence: an e2e spec OR a documented CLI smoke against the binary, all steps ok:true (green) + the 5 quality gates green."
         status: done
         evidence:
-          - "Epic-Roundtrip durch die echte CLI grün: plan epic→epic-shape, read→epic, add-child×2, next-child DAG (t1→t2), set-child-status advance; epic-tier.spec 5 Tests + 168 Tests gesamt + 5 Gates grün"
+          - "Epic roundtrip through the real CLI green: plan epic→epic shape, read→epic, add-child×2, next-child dependency order (t1→t2), set-child-status advance; epic-tier.spec 5 tests + 168 tests total + 5 gates green"

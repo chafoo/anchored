@@ -216,7 +216,7 @@ test('H3: epic-wide question policy in refine + applied in the build loop', () =
     'utf8',
   )
   expect(refine).toMatch(/Epic-wide question policy/i)
-  expect(refine).toContain('Sag mir, worauf du Einfluss willst') // the free-form option
+  expect(refine).toContain('Tell me what you want a say in') // the free-form option
   expect(refine).toMatch(/conditions/) // the internal code for it
   const build = readFileSync(
     new URL('../../../plugin/skills/build/SKILL.md', import.meta.url),
@@ -235,21 +235,21 @@ test('H2: no cryptic abbreviations — policy + concrete template fixes', () => 
     'utf8',
   )
   expect(ref).toMatch(/cryptic abbreviations/i)
-  expect(ref).toMatch(/Abhängigkeits-Reihenfolge/)
+  expect(ref).toMatch(/dependency order/)
   // refine walk-prompt uses plain priority words, not raw "X high, Y medium, Z low"
   const refine = readFileSync(
     new URL('../../../plugin/skills/refine/SKILL.md', import.meta.url),
     'utf8',
   )
-  expect(refine).toContain('X wichtige, Y mittlere, Z geringe')
-  expect(refine).not.toMatch(/"N Fragen — X high, Y medium, Z low/)
-  // build finish line dropped the status word; chat example expands "ACs"
+  expect(refine).toContain('X important, Y medium, Z minor')
+  expect(refine).not.toMatch(/"N questions — X high, Y medium, Z low/)
+  // build finish line uses plain words, not a raw status word; chat example spells out acceptance criteria
   const build = readFileSync(
     new URL('../../../plugin/skills/build/SKILL.md', import.meta.url),
     'utf8',
   )
-  expect(build).not.toMatch(/Build\s*\n?\s*durch\. P done \/ Q blocked\. Status: wrap/)
-  expect(build).toContain('Zwei Akzeptanz-Kriterien hängen noch')
+  expect(build).toContain("Build's done — P of Q finished") // partner-voice finish, no status word
+  expect(build).toContain('Two acceptance criteria still pending')
   // the build.stop config string no longer abbreviates the dependency order as "DAG"
   const tmpl = readFileSync(
     new URL('../../default-template/anchored.default.yml', import.meta.url),
@@ -269,9 +269,9 @@ test('H1: no pipeline narration — rule in communication-style + skill replacem
   expect(ref.toLowerCase()).toContain('pair-programmer')
   const skill = (n: string) =>
     readFileSync(new URL(`../../../plugin/skills/${n}/SKILL.md`, import.meta.url), 'utf8')
-  expect(skill('plan')).toContain('skizzier die zwei Tasks')
-  expect(skill('refine')).toContain('arbeite ihre Akzeptanz-Kriterien aus')
-  expect(skill('build')).toContain('von der Planung bis fertig')
+  expect(skill('plan')).toContain('sketch the two tasks')
+  expect(skill('refine')).toContain('work out their acceptance criteria')
+  expect(skill('build')).toContain('from planning to done')
 })
 
 // G13 — the setup skill exists (config-editor-that-consults, no funnel) and the
@@ -327,7 +327,7 @@ test('G3/G5: explicit epic each:task loop + no stale epic transition words', () 
   const skill = (n: string) =>
     readFileSync(new URL(`../../../plugin/skills/${n}/SKILL.md`, import.meta.url), 'utf8')
   const build = skill('build')
-  expect(build).toContain('JIT plan')
+  expect(build).toContain('just-in-time plan')
   expect(build).toMatch(/Seed its decomposition from the stub/i)
   expect(build).toMatch(/Build the child.*recurse/is) // child runs its own lifecycle
   // the pre-D1 tier-special epic transitions are gone everywhere
@@ -349,7 +349,7 @@ test('H6: evidence-author guidance prefers symbol anchors over line numbers', ()
     new URL('../../../plugin/references/agent-contract.md', import.meta.url),
     'utf8',
   )
-  expect(contract).toMatch(/am Symbol verankern/i)
+  expect(contract).toMatch(/anchor the evidence on the symbol/i)
 })
 
 // H7/H8 — epic-decompose authors an epic-level integration AC + keeps outcome-ACs
@@ -457,7 +457,7 @@ test('config.md + setup teach the real run-step variable contract + positioning'
   // the canonical commit example uses the real var; $SLUG survives ONLY as an
   // explicit "there is no $SLUG" trap-warning, never as the taught pattern
   expect(config).toContain('git commit -am "${TASK_SLUG}"')
-  expect(config).toMatch(/kein[\s*]+`?\$SLUG/i) // the trap is called out
+  expect(config).toMatch(/no[*\s]+`?\$SLUG/i) // the trap is called out
   for (const v of ['TASK_SLUG', 'PHASE_SLUG', 'PHASE_NAME', 'EPIC_SLUG']) {
     expect(config).toContain(v)
   }
@@ -487,7 +487,7 @@ test('B1: evidence guidance forbids raw line numbers (symbol-anchored only)', ()
   )
   expect(impl).toMatch(/NO raw line numbers/i)
   expect(impl).not.toMatch(/line ~?\d+\)/) // no "(line 110)" style in the example
-  expect(contract).toMatch(/KEINE rohen Zeilennummern/i)
+  expect(contract).toMatch(/NO raw line numbers/i)
 })
 
 test('B3: refine-plan-check persists findings as questions/ACs, not just prose', () => {

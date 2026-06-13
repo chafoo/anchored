@@ -1,73 +1,73 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
 slug: dogfood-fixings/enforcement-hook
-title: Enforcement strukturell — Hook blockt rohe Task-File-Edits (F8)
+title: Enforcement structural — hook blocks raw task-file edits (F8)
 status: done
 created: 2026-06-11
 context:
   plan: |
-    F8 (HOCH): Die Kern-Garantie (kein done ohne Evidence, Invariante im Substrat)
-    hält nur, wenn jeder Task-File-Schreibvorgang durch die validierende CLI geht.
-    Aktuell ist „keine rohen Write/Edit auf Task-Files" nur Konvention. Die Agents
-    haben Write/Edit (für Source-Code) → könnten das Task-File-YAML direkt editieren,
-    an der CLI vorbei → Invariante umgangen, Evidence frei erfindbar.
+    F8 (HIGH): The core guarantee (no done without evidence, invariant in the substrate)
+    only holds if every task-file write goes through the validating CLI.
+    Currently "no raw Write/Edit on task-files" is only a convention. The agents
+    have Write/Edit (for source code) → they could edit the task-file YAML directly,
+    bypassing the CLI → invariant circumvented, evidence freely fabricable.
 
-    ENTSCHEIDUNG (q2, User): PreToolUse-Hook blockt rohe Write/Edit auf
-    .claude/tasks/**/*.yml (+ _epic.yml), NUR im Build-/Agent-Kontext (Subagents) —
-    manuelles Editieren in der Main-Session-Planung bleibt frei.
+    DECISION (q2, user): a PreToolUse hook blocks raw Write/Edit on
+    .claude/tasks/**/*.yml (+ _epic.yml), ONLY in the build/agent context (subagents) —
+    manual editing in the main-session planning stays free.
     REF: .claude/temp/dogfood-findings.md F8.
 questions: []
 log: []
 phases:
-  - name: Hook-Script — Task-File-Edits erkennen + blocken
+  - name: Hook script — detect + block task-file edits
     slug: hook-script
     status: done
     context: |
-      Ein PreToolUse-Hook (plugin/hooks/), der bei Write/Edit prüft, ob der Ziel-Pfad
-      auf .claude/tasks/**/*.yml ODER **/_epic.yml matcht, und dann mit deny +
-      Hinweis „task-files sind CLI-only: nutze `anchored node …`" abbricht.
-      Source-Code-Pfade (app.js, *.ts) bleiben frei.
+      A PreToolUse hook (plugin/hooks/) that, on Write/Edit, checks whether the target path
+      matches .claude/tasks/**/*.yml OR **/_epic.yml, and then aborts with deny +
+      hint "task-files are CLI-only: use `anchored node …`".
+      Source-code paths (app.js, *.ts) stay free.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: der Hook IST die strukturelle Durchsetzung von cli-only auf Task-Files
+        why: the hook IS the structural enforcement of cli-only on task-files
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: die Invariante wird so unfälschbar — Schreiben nur über das validierende Substrat
+        why: the invariant becomes unforgeable this way — writing only through the validating substrate
     acceptance_criteria:
       - id: a1
-        text: "Ein Hook-Script (plugin/hooks/<name>) erkennt Write/Edit auf .claude/tasks/**/*.yml + **/_epic.yml und liefert deny + Hinweis. Beweis: das Script existiert + ein Matcher-Test (task-File-Pfad → deny, app.js → allow) (grün) + datei:zeile."
+        text: "A hook script (plugin/hooks/<name>) detects Write/Edit on .claude/tasks/**/*.yml + **/_epic.yml and returns deny + hint. Evidence: the script exists + a matcher test (task-file path → deny, app.js → allow) (green) + file:line."
         status: done
         evidence:
-          - plugin/hooks/block-task-file-edits.js denied .claude/tasks/**/*.yml + _epic.yml (PreToolUse-Payload piped → exit 2 + Hinweis-Message); Matcher-Regex getestet
+          - plugin/hooks/block-task-file-edits.js denied .claude/tasks/**/*.yml + _epic.yml (PreToolUse payload piped → exit 2 + hint message); matcher regex tested
       - id: a2
-        text: "Source-Code-Pfade werden NICHT geblockt (Write/Edit auf app.js/*.ts läuft durch). Beweis: Matcher-Test für einen Code-Pfad → allow (grün)."
+        text: "Source-code paths are NOT blocked (Write/Edit on app.js/*.ts passes through). Evidence: matcher test for a code path → allow (green)."
         status: done
         evidence:
-          - Source-Pfade (app.js, core/src/x.ts) → exit 0 (allow) — piped-Test bestätigt; nur Task-Files werden geblockt
-  - name: Registrieren + Scope (nur Build-/Agent-Kontext)
+          - Source paths (app.js, core/src/x.ts) → exit 0 (allow) — piped test confirmed; only task-files are blocked
+  - name: Register + scope (build/agent context only)
     slug: register-scope
     status: done
     context: |
-      Hook in plugin.json (hooks-Config) registrieren. Scope-Entscheidung umsetzen:
-      der Hook soll im Build-/Agent-Kontext greifen, aber die manuelle
-      Main-Session-Planung nicht blocken. Mechanik dafür ermitteln (z. B. nur für
-      Subagent-Tool-Calls, ODER ein dokumentierter Escape für bewusste Planungs-Edits)
-      — die genaue CC-Hook-Fähigkeit hier verifizieren.
+      Register the hook in plugin.json (hooks config). Implement the scope decision:
+      the hook should take effect in the build/agent context, but not block the manual
+      main-session planning. Determine the mechanism for that (e.g. only for
+      subagent tool-calls, OR a documented escape for deliberate planning edits)
+      — verify the exact CC hook capability here.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: Scope so, dass Build/Agent strukturell gezwungen sind, Planung frei bleibt
+        why: scope it so build/agent are structurally forced, planning stays free
     acceptance_criteria:
       - id: a1
-        text: "Der Hook ist in plugin.json registriert (PreToolUse, Matcher Write|Edit). Beweis: plugin.json:zeile der Hook-Registrierung."
+        text: "The hook is registered in plugin.json (PreToolUse, matcher Write|Edit). Evidence: plugin.json:line of the hook registration."
         status: done
         evidence:
-          - plugin/.claude-plugin/plugin.json "hooks":"./hooks/hooks.json" + plugin/hooks/hooks.json (PreToolUse, matcher Write|Edit|MultiEdit, command node ${CLAUDE_PLUGIN_ROOT}/hooks/...); beide valide JSON
+          - plugin/.claude-plugin/plugin.json "hooks":"./hooks/hooks.json" + plugin/hooks/hooks.json (PreToolUse, matcher Write|Edit|MultiEdit, command node ${CLAUDE_PLUGIN_ROOT}/hooks/...); both valid JSON
       - id: a2
-        text: "Scope umgesetzt + dokumentiert: der Hook greift im Build-/Agent-Kontext, die Main-Session-Planung bleibt editierbar (Mechanik via Subagent-Erkennung ODER dokumentierter Escape). Beweis: Beschreibung des Mechanismus + ein Beleg (Hook feuert für Agent-Write auf Task-File = deny; Planungs-Pfad funktioniert)."
+        text: "Scope implemented + documented: the hook takes effect in the build/agent context, the main-session planning stays editable (mechanism via subagent detection OR documented escape). Evidence: description of the mechanism + a proof (hook fires for agent-Write on task-file = deny; planning path works)."
         status: done
         evidence:
-          - "Scope = default-deny + Escape ANCHORED_TASKFILE_EDIT=1 für Main-Session-Planung (piped-Test: Escape → exit 0); im Script-Header dokumentiert. (Subagent-genaue Unterscheidung bietet der Hook nicht direkt → default-deny+Escape ist die implementierbare Form von q2.)"
+          - "Scope = default-deny + escape ANCHORED_TASKFILE_EDIT=1 for main-session planning (piped test: escape → exit 0); documented in the script header. (The hook does not offer subagent-exact distinction directly → default-deny+escape is the implementable form of q2.)"
       - id: a3
-        text: "Live-Smoke: ein Build-Agent-Write/Edit auf ein Task-File wird geblockt (Agent muss `anchored node` nutzen). Beweis: ein dokumentierter Lauf/Test, der den deny zeigt."
+        text: "Live smoke: a build-agent Write/Edit on a task-file gets blocked (the agent must use `anchored node`). Evidence: a documented run/test that shows the deny."
         status: done
         evidence:
-          - Hook-Decision-Logik bewiesen via piped PreToolUse-Payloads (task-file→deny exit2+Message, source→allow exit0, Escape→allow). LIVE in-Session Plugin-Fire = User-Check nach /reload-plugins (ein Agent-Roh-Write auf ein Task-File wird geblockt) — Handoff, da nur in einer geladenen Session prüfbar.
+          - Hook decision logic proven via piped PreToolUse payloads (task-file→deny exit2+message, source→allow exit0, escape→allow). LIVE in-session plugin fire = user check after /reload-plugins (an agent raw-Write on a task-file gets blocked) — handoff, since only verifiable in a loaded session.

@@ -2,23 +2,23 @@
 
 # /a:plan
 
-Strukturiert eine Arbeitseinheit (erzeugt/aktualisiert den Node). Der Entry-Punkt
-in den Lifecycle.
+Structures a unit of work (creates/updates the node). The entry point
+into the lifecycle.
 
-## Was
+## What
 
-- `/a:plan <epic|task|phase>? <prosa|path>`.
-- **Mit Tier** → direkt die `plan`-Stage des Tiers (epic→scaffold, task→decompose).
-- **Ohne Tier** → `discover` sondieren, dann **classify** (Empfehlung epic|task;
-  Schwellen: <5 Phasen task / 5–9 Unabhängigkeits-Test / ≥10 epic), User bestätigt.
-- Ruft `anchored plan …`; alle Mutationen über die CLI, nie direktes File-Edit.
+- `/a:plan <epic|task|phase>? <prose|path>`.
+- **With tier** → directly the `plan` stage of the tier (epic→scaffold, task→decompose).
+- **Without tier** → probe `discover`, then **classify** (recommendation epic|task;
+  thresholds: <5 phases task / 5–9 independence test / ≥10 epic), user confirms.
+- Calls `anchored plan …`; all mutations via the CLI, never direct file editing.
 
-## Wie
+## How
 
 ```mermaid
 flowchart TB
-    p["/a:plan <args>"] --> t{"Tier angegeben?"}
-    t -->|nein| d["discover → classify → confirm"]
-    t -->|ja| s["anchored plan <tier> …"]
+    p["/a:plan <args>"] --> t{"Tier given?"}
+    t -->|no| d["discover → classify → confirm"]
+    t -->|yes| s["anchored plan <tier> …"]
     d --> s
 ```

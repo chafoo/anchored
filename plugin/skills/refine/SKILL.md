@@ -14,15 +14,16 @@ Partner voice in chat, machinery only in the audit trail — see
 
 | Avoid (machinery) | Prefer (partner) |
 |---|---|
-| "Spawne plan-check + rules-check parallel…" | "Lass mich den plan kurz gegen den aktuellen code-stand prüfen." |
-| "epic-refine fährt epic-plan-check → epic-decompose → walk" | "Ich prüf die zwei Tasks gegen den Code und arbeite ihre Akzeptanz-Kriterien aus." |
-| "Walk-Style = high-together" | "Okay — die wichtigen kläre ich mit dir, den rest mach ich selbst." |
-| "Status-Transition drafted → refined" | "Plan ist durchgesprochen. Run `/a:build`." |
+| "Spawning plan-check + rules-check in parallel…" | "Let me check the plan against the current state of the code." |
+| "epic-refine runs epic-plan-check → epic-decompose → walk" | "I'll check the two tasks against the code and work out their acceptance criteria." |
+| "walk-style = high-together" | "Okay — I'll settle the important ones with you and handle the rest myself." |
+| "status transition drafted → refined" | "Plan's been talked through. Run `/a:build`." |
 
-**Vor jeder user-facing Zeile** das Jargon-Mapping aus `communication-style.md`
-anwenden — Framework-Begriffe (scaffold, stub, seam, grounding, roll-up,
-outcome-AC, executor, der each-Loop, drafted/refined, concern, DAG/JIT) gehören
-nie in den Chat, nur ihr Klartext.
+**Before every user-facing line**, apply the jargon mapping from
+`communication-style.md` — framework terms (scaffold, stub, seam, grounding,
+roll-up, outcome acceptance criteria, executor, the each-loop, drafted/refined,
+concern, dependency graph, just-in-time) never belong in chat, only their plain
+words.
 
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns the refine agents itself via the **Task tool**
@@ -36,7 +37,7 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
 2. `steps` is the resolved refine pipeline: for a task
    `[plan-check, rules-check, walk]`, for an **epic**
    `[epic-plan-check, epic-decompose, walk]` (D2 — epic-refine is a REAL stage:
-   ground the stubs against code, then author per-stub outcome-ACs, then walk).
+   ground the stubs against code, then author per-stub outcome acceptance criteria, then walk).
 
 ## Spawn each step's agent (Task tool, in order)
 
@@ -47,20 +48,20 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   drift it can't auto-fix becomes an open question.
 - **rules-check → refine-rules-check** — verifies each phase covers the applicable
   `.claude/rules/*.md`; self-writes the coverage rollup via `append-log`. A missing
-  rule-enforcement is an **auto-fix** (the agent adds an enforcing AC itself), NOT a
-  user question — project rules are framework requirements that get enforced, not
+  rule-enforcement is an **auto-fix** (the agent adds an enforcing acceptance
+  criterion itself), NOT a user question — project rules are framework requirements that get enforced, not
   negotiated. Only a genuine architecture/code ambiguity becomes an open question.
 
 **Epic tier (D2):**
-- **epic-plan-check → epic-plan-check** — grounds the epic's task-stubs + DAG
-  against the real code (seams exist, no drift, DAG sound); writes the grounding
-  rollup to `context.refine`; genuine scope/architecture ambiguities → open
-  questions.
-- **epic-decompose → epic-decompose** — authors **outcome-level task-ACs per stub**
-  (`anchored node add-ac <epic> <stub> "<outcome AC>"`, the Epic→Task contract).
-  These seed the JIT `plan task`'s phase decomposition at build (so the contract is
-  never lost — the G8 fix) and are what the wrap roll-up validates the built task
-  against.
+- **epic-plan-check → epic-plan-check** — grounds the epic's task-stubs + their
+  dependency order against the real code (seams exist, no drift, the order is
+  sound); writes the grounding rollup to `context.refine`; genuine
+  scope/architecture ambiguities → open questions.
+- **epic-decompose → epic-decompose** — authors **outcome-level task acceptance
+  criteria per stub** (`anchored node add-ac <epic> <stub> "<outcome acceptance criterion>"`,
+  the Epic→Task contract). These seed the just-in-time `plan task`'s phase
+  decomposition at build (so the contract is never lost — the G8 fix) and are what
+  the wrap roll-up validates the built task against.
 - **walk** — the consolidated Q&A walk. **First, pick the walk-style** (this is the
   v1 Stage-0 choice, ephemeral — never persisted): read the open questions
   (`anchored node question-list <slug> open`), count them by priority, and ask
@@ -70,11 +71,11 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   walk-style codes stay INTERNAL** (they're only the value you pass to
   `resolve-question`, never a user-visible label):
 
-  > "N Fragen — X wichtige, Y mittlere, Z geringe. Wie wollen wir die durchgehen?"
-  > - **Nur die wichtigen — den Rest entscheide ich** (internal: `high-together`,
+  > "N questions — X important, Y medium, Z minor. How do you want to go through them?"
+  > - **Just the important ones — I'll decide the rest** (internal: `high-together`,
   >   the recommended default / sweet spot)
-  > - **Alle gemeinsam durchgehen** (internal: `all-together`)
-  > - **Du entscheidest alles** (internal: `AI-all`)
+  > - **Go through all of them together** (internal: `all-together`)
+  > - **You decide everything** (internal: `AI-all`)
 
   **If there are 0 open questions, skip this silently** (no AskUserQuestion). Then
   walk each question in priority order per the chosen style: a question AT-or-above
@@ -89,13 +90,13 @@ When you refine an **epic**, the choice above ALSO decides how the questions tha
 arise *later* — in each child-task's own refine during the build loop — get handled.
 For an epic, offer a **fourth, richer option** and remember the choice for the build:
 
-> "Wie wollen wir's mit den Fragen halten — auch bei den einzelnen Tasks später?"
-> - **Nur die wichtigen — den Rest entscheide ich** (the recommended default;
+> "How do you want to handle the questions — including the individual tasks later?"
+> - **Just the important ones — I'll decide the rest** (the recommended default;
 >   internal: `high-together`)
-> - **Alle gemeinsam durchgehen** (internal: `all-together`)
-> - **Du entscheidest alles** (internal: `AI-all`)
-> - **Sag mir, worauf du Einfluss willst** — frei beschrieben, z.B. "frag mich bei
->   allem zu Persistenz oder der UI-Sprache, den Rest entscheidest du"
+> - **Go through all of them together** (internal: `all-together`)
+> - **You decide everything** (internal: `AI-all`)
+> - **Tell me what you want a say in** — free-form, e.g. "ask me about anything
+>   touching persistence or the UI language, decide the rest yourself"
 >   (internal: `conditions`, plus the user's own words)
 
 This follows `plugin/references/question-style.md` (recommended option first,
@@ -109,7 +110,7 @@ styles; its build-time decisions are already covered by the stop-conditions).
   the question text already carries a worked-out **recommendation** + 1–3
   **implication** bullets (the authoring agent baked them in). In the
   `AskUserQuestion`, present the **recommended answer as the FIRST option** labelled
-  `(Empfohlen)`, put the implication bullets in the question text above the options,
+  `(Recommended)`, put the implication bullets in the question text above the options,
   and let each option note what it settles. If a question arrives WITHOUT that shape
   (terse/older), **work the recommendation + implications out yourself at ask-time**
   from the code/context before presenting — never ask the bare question. For an
@@ -136,35 +137,35 @@ walks only the still-open ones.
 ## Decide the per-phase executor (fan-out — task tier only, G12)
 
 The fan-out mechanism already exists (the build SKILL runs `executor: workflow`
-phases as a parallel per-AC Dynamic Workflow). What was missing is the **decision** —
+phases as a parallel per-criterion Dynamic Workflow). What was missing is the **decision** —
 so by default every phase ran sequentially (a ~44-min epic for ~200 lines). Refine
-is where that call belongs, because the phases + their ACs are now settled.
+is where that call belongs, because the phases + their acceptance criteria are now settled.
 
 **Default to the fastest safe path.** For each phase (`anchored node list-phases
 <slug>`), the call is about **correctness, never quality** — parallel and sequential
 build the exact same thing:
 
 - **Safety-floor (hard, non-negotiable — this is correctness, NOT
-  speed-vs-quality).** Fan-out is safe only when the phase's ACs are genuinely
-  **independent**: no AC depends on another's output, and no two ACs mutate the same
-  region of the same file. Non-independent ACs would race → corruption. That's the
-  only thing the floor protects.
+  speed-vs-quality).** Fan-out is safe only when the phase's acceptance criteria are
+  genuinely **independent**: no criterion depends on another's output, and no two
+  criteria mutate the same region of the same file. Non-independent criteria would
+  race → corruption. That's the only thing the floor protects.
 - **Within "safe" → default to `workflow`** (the fastest path), not sequential. A
-  phase with **≥2 independent ACs fans out by default**:
+  phase with **≥2 independent acceptance criteria fans out by default**:
   `anchored node set-executor <slug> <phase> workflow`.
-- **`implement`** (sequential) only when the floor doesn't hold — a single AC, or
-  ACs that share sequential state / build on each other / touch the same region —
-  **or** when you're genuinely unsure two ACs are independent (when the doubt is
-  about *correctness*, stay sequential; leave it unset, absent ⇒ implement).
+- **`implement`** (sequential) only when the floor doesn't hold — a single
+  criterion, or criteria that share sequential state / build on each other / touch
+  the same region — **or** when you're genuinely unsure two criteria are independent
+  (when the doubt is about *correctness*, stay sequential; leave it unset, absent ⇒ implement).
 
 **Ask the user once — speed vs. watchability (never a quality call).** The ONLY real
 difference between parallel and sequential is that sequential lands the phases one
 after another (the user can half-watch) while parallel lands them together — the
 quality is identical. So offer it once, ephemeral (like the walk-style), phrased per
 `question-style.md`:
-> "Wo's sicher ist — so schnell wie möglich (parallel) oder lieber nacheinander,
-> damit du mitschauen kannst? Rein Tempo vs. Zuschauen — die Qualität ist
-> identisch." Default: so schnell wie sicher.
+> "Where it's safe — as fast as possible (parallel) or one after another so you can
+> follow along? Purely speed vs. watching — the quality is identical." Default: as
+> fast as is safe.
 
 Hold the answer in memory for this refine. If they pick "sequential to watch", leave
 the executors unset regardless of the floor. The user can always override a single
@@ -180,5 +181,5 @@ then — only when **every** question is resolved — flip the status:
 anchored node set-field <slug> context.refine "<plan-check + rules-check rollups>"
 anchored node set-status <slug> refined
 ```
-Tell the user: *"Plan ist durchgesprochen — N+M auto-fixes, K Fragen geklärt. Run `/a:build`."*
+Tell the user: *"Plan's been talked through — N+M auto-fixes, K questions settled. Run `/a:build`."*
 No MCP, no raw node-file edit.

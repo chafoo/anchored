@@ -2,30 +2,30 @@
 
 # spawn
 
-Das **Ausführungs-Substrat** — die `spawn`-Dep, über die [worker-step](engine/scope/worker-step.md)
-AI-Arbeit triggert. Default: headless `claude -p` pro Task-File. Ein Einzel-File.
+The **execution substrate** — the `spawn` dep through which [worker-step](engine/scope/worker-step.md)
+triggers AI work. Default: headless `claude -p` per task-file. A single file.
 
-## Was
+## What
 
-- `spawn(worker, input)` → startet eine **frische `claude -p`-Instanz pro
-  Task-File**; die Phasen dieser Task laufen *in-process* in dieser Instanz
-  (Verschachtelung gedeckelt bei ~2).
-- Cross-Task-Kontext (z.B. epic-log-Auszug) wird als Argument übergeben —
-  `/a:plan` (task) bleibt epic-blind.
-- Injizierte Naht: ein in-process Task-Subagent-Modus (Live-Progress) kann später
-  als zweite Implementierung dazukommen, ohne die Runner zu ändern.
+- `spawn(worker, input)` → starts a **fresh `claude -p` instance per
+  task-file**; that task's phases run *in-process* in this instance
+  (nesting capped at ~2).
+- Cross-task context (e.g. epic-log excerpt) is passed as an argument —
+  `/a:plan` (task) stays epic-blind.
+- Injected seam: an in-process task-subagent mode (live progress) can be added
+  later as a second implementation, without changing the runners.
 
-## Wie
+## How
 
 ```mermaid
 flowchart LR
-    loop["epic.build · loop"] -->|pro Task| s["spawn → claude -p"]
-    s --> inst["frische Instanz · Phasen in-process"]
-    inst --> r["Ergebnis zurück an den Loop"]
+    loop["epic.build · loop"] -->|per task| s["spawn → claude -p"]
+    s --> inst["fresh instance · phases in-process"]
+    inst --> r["result back to the loop"]
 ```
 
-## Warum
+## Why
 
-Headless macht anchored autonom + CI-/cron-fähig (fire-and-forget) und ist
-trivial fakebar im Test (Shell-Out). Pro Task statt pro Phase hält die Kosten +
-Prozess-Tiefe im Rahmen.
+Headless makes anchored autonomous + CI-/cron-capable (fire-and-forget) and is
+trivially fakeable in tests (shell-out). Per task instead of per phase keeps cost +
+process depth in check.

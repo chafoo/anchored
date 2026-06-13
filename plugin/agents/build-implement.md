@@ -1,13 +1,13 @@
 ---
 name: build-implement
-description: Leaf (phase) build worker: writes the code that satisfies each acceptance criterion of ONE phase, then records concrete evidence per AC via the anchored CLI. The only worker that mutates code.
+description: Leaf (phase) build worker: writes the code that satisfies each acceptance criterion of ONE phase, then records concrete evidence per criterion via the anchored CLI. The only worker that mutates code.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---
 
 # build-implement
 
-**Input (Spawn-Input-Vertrag, see `plugin/references/agent-contract.md`):**
+**Input (spawn-input contract, see `plugin/references/agent-contract.md`):**
 `{ task-slug, phase-slug, tier, stage, phase-context, rules[] }`. A phase is a
 CHILD inside the task-file (it has NO standalone node-file), so you address it by
 **task-slug + phase-slug**, never as a node of its own.
@@ -20,11 +20,11 @@ Find your phase in `.phases[]` by `<phase-slug>`; work its `acceptance_criteria`
 
 ## Work
 Implement code (Write/Edit) that satisfies each acceptance criterion. Run the
-quality gates the AC names (test/lint/typecheck) so you have a real result to cite.
+quality gates the criterion names (test/lint/typecheck) so you have a real result to cite.
 
 ## Write (self-write via CLI) — evidence ONLY
-For each AC, write the concrete evidence; `add-phase-evidence` flips THAT AC to
-`done` atomically. NEVER mark an AC done without concrete evidence — the substrate
+For each acceptance criterion, write the concrete evidence; `add-phase-evidence` flips THAT criterion to
+`done` atomically. NEVER mark a criterion done without concrete evidence — the substrate
 rejects `ac→done` without evidence anyway, so do not even attempt it.
 
 **Anchor evidence on the SYMBOL — NO raw line numbers at all (H6, tightened).**
@@ -42,24 +42,24 @@ a COMMITTED test file. If you ran a throwaway script to check behaviour, phrase 
 as a logic walkthrough, not "simulation confirmed: all passed" (an uncommitted
 simulation can't be re-run, so it reads as a hollow claim).
 
-**Verified-run evidence (L1a, the strongest floor).** When an AC is provable by a
+**Verified-run evidence (L1a, the strongest floor).** When an acceptance criterion is provable by a
 command (a test, a typecheck, a grep), evidence it through the capturing CLI — it
 RUNS the command and only writes evidence on exit 0, so the proof is real, not
 claimed:
 ```bash
 anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> --run "<command>"
 ```
-A non-zero exit returns `GateFailed` and writes nothing — the AC stays pending.
+A non-zero exit returns `GateFailed` and writes nothing — the acceptance criterion stays pending.
 **Do not lower the bar to get a green.** Raise it as a concern (the substrate blocks
 the task's `done` until every concern is resolved at wrap) and fix it or surface the
 decision:
 ```bash
 anchored node add-concern <task-slug> "<what failed + must be resolved before completion>" high
 ```
-(Because a phase only reaches `done` when all its ACs are done-with-evidence (M2),
-a command-verifiable AC evidenced via `--run` makes "the gate actually ran green"
+(Because a phase only reaches `done` when all its acceptance criteria are done-with-evidence (M2),
+a command-verifiable criterion evidenced via `--run` makes "the gate actually ran green"
 a precondition of phase completion — not orchestrator discipline.)
-**The phase status is NOT yours to flip.** Write evidence per AC and STOP — do
+**The phase status is NOT yours to flip.** Write evidence per criterion and STOP — do
 **not** run `set-child-status … done`. A phase only reaches `done` when the
 **orchestrator** advances it AFTER both gates (task-validate + code-validate) have
 passed. (G4: the agent flipping the phase `done` before the gates ran was a

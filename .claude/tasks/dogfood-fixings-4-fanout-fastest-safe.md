@@ -1,49 +1,49 @@
-# Ticket: dogfood-fixings-4 — Fan-out: schnellster *sicherer* Weg als Default
+# Ticket: dogfood-fixings-4 — Fan-out: the fastest *safe* path as default
 
-**Quelle:** Gespräch nach der Härtung. Beobachtung: die executor-Entscheidung ist
-konservativ-default-sequentiell → der Fan-out feuert praktisch nie (beide Dogfoods
-liefen komplett sequentiell, obwohl der Mechanismus da ist).
+**Source:** conversation after the hardening. Observation: the executor decision is
+conservative-default-sequential → the fan-out practically never fires (both dogfoods
+ran fully sequential even though the mechanism is there).
 
-## Leitprinzip (vom User)
-**Tempo ist Default, wo es sicher ist. Die Schranke schützt NUR Korrektheit, nie
-Qualität.** Der einzige echte Qualitäts-/Verhaltensunterschied zwischen parallel
-und sequentiell ist: sequentiell landen die Phasen nacheinander (der User kann
-halbwegs zuschauen), parallel zusammen. Sonst nichts.
+## Guiding principle (from the user)
+**Speed is the default wherever it's safe. The barrier protects ONLY correctness, never
+quality.** The only real quality/behavior difference between parallel and sequential
+is: sequential lands the phases one after another (the user can sort of watch along),
+parallel lands them together. Nothing else.
 
-## Lösung: Default umdrehen + User-Präferenz im Refine
-Heute: konservativ → sequentiell, außer offensichtlich unabhängig.
-Neu: **schnellster sicherer Weg → parallel; sequentiell nur als bewusste Wahl oder
-wenn unsicher.**
+## Solution: flip the default + user preference in refine
+Today: conservative → sequential, except when obviously independent.
+New: **fastest safe path → parallel; sequential only as a deliberate choice or
+when unsure.**
 
-- **Sicherheits-Floor (hart, nie verhandelbar — Korrektheit):** parallel nur wenn
-  die ACs wirklich unabhängig sind (keine fasst die andere an, keine zwei dieselbe
-  Datei-Region). Sonst racen sie → Korruption. Klar als Korrektheit framen, NICHT
-  als Tempo-vs-Qualität.
-- **Innerhalb von „sicher" → Default = `workflow`** (schnellster Weg), nicht mehr
-  konservativ-sequentiell.
-- **User-Präferenz, einmal im Refine gefragt** (wie der Walk-Style, ephemer):
-  *„Wo's sicher ist — so schnell wie möglich (parallel) oder lieber sequentiell,
-  damit du mitschauen kannst? Rein Tempo vs. Zuschauen — die Qualität ist
-  identisch."* Default: so schnell wie sicher.
-- **Sicher auch bei Fehleinschätzung:** jeden Fan-out-Worker in
-  **git-Worktree-Isolation** fahren — dann korrumpiert ein falsches Unabhängigkeits-
-  Urteil nichts (die Stände mergen nur), und der CAS/Lock (Harden-2/M4) fängt den
-  Rest. So bleibt „schnellster Weg" robust gegen das AI-Judgment.
+- **Safety floor (hard, never negotiable — correctness):** parallel only when
+  the acceptance criteria are truly independent (none touches another, no two touch the same
+  file region). Otherwise they race → corruption. Frame clearly as correctness, NOT
+  as speed-vs-quality.
+- **Within "safe" → default = `workflow`** (fastest path), no longer
+  conservative-sequential.
+- **User preference, asked once in refine** (like the walk-style, ephemeral):
+  *"Where it's safe — as fast as possible (parallel) or rather sequential,
+  so you can watch along? Pure speed vs. watching — the quality is
+  identical."* Default: as fast as safe.
+- **Safe even on a misjudgment:** run every fan-out worker in
+  **git worktree isolation** — then a wrong independence judgment corrupts nothing
+  (the states only merge), and the compare-and-swap/lock (Harden-2/M4) catches the
+  rest. That keeps "fastest path" robust against the AI judgment.
 
-## Betroffen
-- `refine/SKILL.md` „Decide the per-phase executor": Default umdrehen + die
-  Tempo-vs-Zuschauen-Präferenz (einmalig, ephemer, explizit „nie eine Qualitäts-
-  entscheidung").
-- `build/SKILL.md`: Fan-out-Worker unter Worktree-Isolation (Phase- UND Task-Level);
-  der Worktree-Caveat wird vom Caveat zur Vorgabe.
-- ggf. `communication-style.md`: das „Tempo vs. Zuschauen, Qualität identisch"-Framing.
+## Affected
+- `refine/SKILL.md` "Decide the per-phase executor": flip the default + the
+  speed-vs-watching preference (one-time, ephemeral, explicitly "never a quality
+  decision").
+- `build/SKILL.md`: fan-out workers under worktree isolation (phase AND task level);
+  the worktree caveat turns from a caveat into a requirement.
+- possibly `communication-style.md`: the "speed vs. watching, quality identical" framing.
 
-## Akzeptanz
-- a1: Refine wählt `workflow`, sobald der Sicherheits-Floor (unabhängige ACs)
-  passt — Default ist Tempo, nicht Konservativität.
-- a2: Refine fragt einmal die Tempo-vs-Zuschauen-Präferenz; Prosa stellt klar, dass
-  das NIE eine Qualitätsentscheidung ist (nur Zuschaubarkeit).
-- a3: Fan-out-Worker laufen unter git-Worktree-Isolation (dokumentiert + im
-  build-SKILL als Vorgabe, nicht Option).
-- a4: Grep-Test sichert die Verdrahtung; der Sicherheits-Floor bleibt als
-  Korrektheits-Schranke erhalten.
+## Acceptance
+- a1: Refine picks `workflow` as soon as the safety floor (independent acceptance criteria)
+  passes — the default is speed, not conservatism.
+- a2: Refine asks the speed-vs-watching preference once; prose makes clear that
+  this is NEVER a quality decision (only watchability).
+- a3: Fan-out workers run under git worktree isolation (documented + in the
+  build-SKILL as a requirement, not an option).
+- a4: Grep test secures the wiring; the safety floor remains as a
+  correctness barrier.

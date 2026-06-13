@@ -1,40 +1,40 @@
 # Rule: Tooling + Quality-Gates
 
-> Geltung: `core/` (npm-Paket) und jeder Code-Beitrag. Festgelegt im Scaffold.
+> Scope: `core/` (npm package) and every code contribution. Fixed in the scaffold.
 
-## Stack (ENTSCHIEDEN 2026-06-10)
+## Stack (DECIDED 2026-06-10)
 
-- **Bun all-in** als dev-Toolchain: `bun install`, `bun test`, `bun build`.
-- **eslint + typescript-eslint** fürs Linting.
-- **prettier** fürs Formatieren (eslint lintet, prettier formatiert — getrennt).
-- **tsc** für typecheck (`--noEmit`) + `.d.ts`-Emit.
+- **Bun all-in** as the dev toolchain: `bun install`, `bun test`, `bun build`.
+- **eslint + typescript-eslint** for linting.
+- **prettier** for formatting (eslint lints, prettier formats — separated).
+- **tsc** for typecheck (`--noEmit`) + `.d.ts` emit.
 
-## Node-Kompatibilität (Publish-Bedingung)
+## Node compatibility (publish condition)
 
-Wir veröffentlichen ein **normales npm-Paket** (kompiliertes JS + Types).
-Konsumenten brauchen kein Bun.
+We publish a **normal npm package** (compiled JS + types).
+Consumers do not need Bun.
 
-- **Code Node-kompatibel halten** — `node:fs` / `node:path` / `node:child_process`,
-  **keine `Bun.*`-APIs** im Produktiv-Code. Bun ist nur dev-Beschleuniger +
-  Test-/Build-Runner.
-- **`bin`-shebang** `#!/usr/bin/env node` fürs publizierte CLI (max. Kompatibilität).
-- Publish-Artefakt: zu JS kompiliert, `target: node`. `bun publish` oder `npm publish`.
+- **Keep the code Node-compatible** — `node:fs` / `node:path` / `node:child_process`,
+  **no `Bun.*` APIs** in production code. Bun is only a dev accelerator +
+  test/build runner.
+- **`bin` shebang** `#!/usr/bin/env node` for the published CLI (maximum compatibility).
+- Publish artifact: compiled to JS, `target: node`. `bun publish` or `npm publish`.
 
-## Quality-Gates (grün vor `done`)
+## Quality-Gates (green before `done`)
 
-Vor jeder `ac → done`-/Phase-Abschluss gilt für `core/`:
+Before every `ac → done` / phase completion, the following holds for `core/`:
 
-1. **lint** — eslint sauber
-2. **format** — prettier-check sauber
-3. **typecheck** — `tsc --noEmit` ohne Fehler
-4. **test** — `bun test` grün
-5. **build** — `bun build` / kompiliert ohne Fehler
+1. **lint** — eslint clean
+2. **format** — prettier check clean
+3. **typecheck** — `tsc --noEmit` without errors
+4. **test** — `bun test` green
+5. **build** — `bun build` / compiles without errors
 
-Als npm-Scripts verdrahtet. Ein roter Gate blockiert den Abschluss — das ist
-Evidence-Honesty auf Paket-Ebene.
+Wired up as npm scripts. A red gate blocks completion — that is
+evidence-honesty at the package level.
 
-## Referenz
+## Reference
 
-`CLAUDE.md` (Quality-Gates pro Paket), `docs/design/file-structure.md`
-(core/package.json). [[fractal-substrate-integrity]] (Gates ≈ Invariante auf
-Paket-Ebene).
+`CLAUDE.md` (quality-gates per package), `docs/design/file-structure.md`
+(core/package.json). [[fractal-substrate-integrity]] (gates ≈ invariant at the
+package level).

@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Configure and extend the project's `anchored.yml` — add or edit custom lifecycle steps (run/use), gate instructions, the per-tier retry_limit + stop-conditions, custom phase fields. USE THIS whenever the user wants to create, change, extend, or tidy their `anchored.yml` in ANY way — adding a step, wiring an agent or skill into a stage, tuning a gate, setting up TDD / commit / PR automation — even when they don't say "anchored.yml" or "setup" (e.g. "make anchored run my linter after each phase", "have it open a PR when the task is done", "commit each phase"). Also the ONBOARDING entry — when a `/a:*` skill runs in a project with no `anchored.yml`, this is where the user optionally sets it up together. Translates the user's stated requirements into correct, schema-valid config, clarifies genuine ambiguities WITH the user, advises on request — but never pushes a setup the user didn't ask for.
+description: Configure and extend the project's `anchored.yml` — add or edit custom lifecycle steps (run/use), gate instructions, the per-tier retry_limit + stop-conditions, custom phase fields. USE THIS whenever the user wants to create, change, extend, or tidy their `anchored.yml` in ANY way — adding a step, wiring an agent or skill into a stage, tuning a gate, setting up test-driven development / commit / PR automation — even when they don't say "anchored.yml" or "setup" (e.g. "make anchored run my linter after each phase", "have it open a PR when the task is done", "commit each phase"). Also the ONBOARDING entry — when a `/a:*` skill runs in a project with no `anchored.yml`, this is where the user optionally sets it up together. Translates the user's stated requirements into correct, schema-valid config, clarifies genuine ambiguities WITH the user, advises on request — but never pushes a setup the user didn't ask for.
 ---
 
 # /a:setup — configure anchored.yml
@@ -33,7 +33,7 @@ question; suggest at most a one-liner. No salesmanship, no funnel.
   the step does and _why_; on a `use` step it is additionally threaded to the worker.
 - **anchored.yml is deltas only.** The default template
   (`core/default-template/anchored.default.yml`, mirrored at
-  `plugin/references/default.yml`) is the base — the user file overrides via deep
+  `plugin/references/anchored.default.yml`) is the base — the user file overrides via deep
   merge (steps extend-only by name; scalars win). Touch only what the request implies.
 
 ## Procedure (per request)
@@ -49,7 +49,7 @@ question; suggest at most a one-liner. No salesmanship, no funnel.
    - **custom phase fields** (`task.phase.fields`).
 3. **Make the edit** — write `name` + `instructions` on any custom step, `type` on
    `use` steps. Preserve the user's existing config. Two things bite if you wing
-   them — see `plugin/references/config.md` ("Ein Step"):
+   them — see `plugin/references/config.md` ("A step"):
    - **Position with `after:`/`before:`** a named step (else it appends to the end).
      A bad anchor does NOT error — it silently appends, so verify the *order* in
      step 4, not just that the step is present.
@@ -74,13 +74,13 @@ tour:
    defaults) + the `Bash(anchored *)` allowlist on first use. That is enough to
    run; say so in one line.
 2. Offer, as a single question, to tune it together now vs later:
-   > "Anchored läuft schon mit den Defaults. Wollen wir's kurz auf dein Projekt
-   > anpassen (linter/test-command, commit-per-phase, …), oder erstmal nur das
-   > Nötigste und du machst das später mit `/a:setup`?"
-   - **Jetzt gemeinsam einrichten** → walk the 1–3 things that actually matter for
+   > "Anchored's already running on the defaults. Want to quickly tailor it to your
+   > project (linter/test command, commit-per-phase, …), or just the essentials for
+   > now and you handle it later with `/a:setup`?"
+   - **Set it up together now** → walk the 1–3 things that actually matter for
      their repo (their test/lint command, optional commit-per-phase), each as a
      real edit you show.
-   - **Erstmal nur das Nötigste** → stop here; the defaults stand, `/a:setup` is
+   - **Just the essentials for now** → stop here; the defaults stand, `/a:setup` is
      there whenever they want.
 
 ## Boundaries

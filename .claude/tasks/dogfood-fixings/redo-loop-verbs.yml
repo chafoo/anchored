@@ -1,17 +1,17 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
 slug: dogfood-fixings/redo-loop-verbs
-title: Failures-Re-Do-Loop funktionsfähig machen (F9)
+title: Make the failures re-do loop functional (F9)
 status: done
 created: 2026-06-11
 context:
   plan: |
-    F9 (HOCH): Die Validatoren bzw. der Orchestrator können eine AC NICHT ablehnen
-    — `set-failures` + `set-ac-status` existieren als CLI-Verben nicht (getestet:
-    UnknownNodeVerb). Damit kann ein Gate keine failures schreiben und keine
-    done→pending zurückdrehen → der failures-driven Re-Do-Loop (Kern-USP) ist eine
-    Attrappe. Im core-list-Lauf fiel es nicht auf, weil beide Gates immer passten.
-    node-ops hat setAcStatus (nicht exponiert); setFailures fehlt ganz.
+    F9 (HIGH): The validators / the orchestrator CANNOT reject an AC
+    — `set-failures` + `set-ac-status` do not exist as CLI verbs (tested:
+    UnknownNodeVerb). So a gate cannot write failures and cannot reverse
+    done→pending → the failures-driven re-do loop (core value) is a
+    sham. In the core-list run it went unnoticed because both gates always passed.
+    node-ops has setAcStatus (not exposed); setFailures is missing entirely.
     REF: .claude/temp/dogfood-findings.md F9.
 questions: []
 log: []
@@ -20,65 +20,65 @@ phases:
     slug: ops
     status: done
     context: |
-      node-ops `setFailures(node, childSlug, acId, failures[])` — flippt die Phasen-AC
-      auf pending + setzt failures, hält die bisherige evidence als History.
-      `setAcStatus` (existiert) über die facade exponieren.
+      node-ops `setFailures(node, childSlug, acId, failures[])` — flips the phase AC
+      to pending + sets failures, keeps the previous evidence as history.
+      Expose `setAcStatus` (exists) through the facade.
     rules:
       - path: .claude/rules/factory-functions.md
-        why: Ops über createNodeOps(deps); fakebar, keine Singletons
+        why: Ops via createNodeOps(deps); fakeable, no singletons
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: Gate-Rejection = Mechanismus am schreibenden Op; Invariante bleibt (failures ≠ done)
+        why: Gate rejection = mechanism at the writing op; invariant holds (failures ≠ done)
     acceptance_criteria:
       - id: a1
-        text: "node-ops.setFailures(node, childSlug, acId, failures[]) flippt die Phasen-AC auf 'pending', setzt das failures-Feld, behält evidence als History. Beweis: bun-Test (AC vorher done+evidence → nach setFailures pending + failures gesetzt + evidence noch da) grün + datei:zeile."
+        text: "node-ops.setFailures(node, childSlug, acId, failures[]) flips the phase AC to 'pending', sets the failures field, keeps evidence as history. Evidence: bun test (AC previously done+evidence → after setFailures pending + failures set + evidence still there) green + file:line."
         status: done
         evidence:
-          - core/src/ops/node-ops.ts setChildFailures (flippt Phasen-AC pending + failures, Evidence als History); node-ops.spec.ts:171 grün (AC done+evidence → setChildFailures → pending+failures+evidence behalten); CLI-Smoke set-failures ok
+          - core/src/ops/node-ops.ts setChildFailures (flips phase AC pending + failures, evidence as history); node-ops.spec.ts:171 green (AC done+evidence → setChildFailures → pending+failures+evidence kept); CLI smoke set-failures ok
       - id: a2
-        text: "setAcStatus ist über die facade nutzbar (Phasen-AC done↔pending). Beweis: facade-Test + datei:zeile."
+        text: "setAcStatus is usable through the facade (phase AC done↔pending). Evidence: facade test + file:line."
         status: done
         evidence:
-          - core/src/ops/node-ops.ts setChildAcStatus (done→pending, done erfordert evidence via assertAcDoneHasEvidence); facade.ts exponiert setChildFailures+setChildAcStatus; node-ops.spec assert done-ohne-evidence wirft
-  - name: CLI-Verben set-failures + set-ac-status
+          - core/src/ops/node-ops.ts setChildAcStatus (done→pending, done requires evidence via assertAcDoneHasEvidence); facade.ts exposes setChildFailures+setChildAcStatus; node-ops.spec asserts done-without-evidence throws
+  - name: CLI verbs set-failures + set-ac-status
     slug: cli
     status: done
     context: |
       `node set-failures <task> <phase> <ac> <text>` + `node set-ac-status <task>
-      <phase> <ac> <status>` — gemappt auf je einen facade-Aufruf, JSON-Envelope.
+      <phase> <ac> <status>` — each mapped to a single facade call, JSON envelope.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: Gate-Rejection läuft über die CLI, JSON-Output; aus Subagents gleich
+        why: Gate rejection runs through the CLI, JSON output; same from subagents
     acceptance_criteria:
       - id: a1
-        text: "Beide Verben mappen auf genau einen facade-Aufruf mit geparsten Args + JSON-Envelope. Beweis: node.spec mit Spy-facade asserted je genau-ein-Aufruf (grün) + datei:zeile node.ts."
+        text: "Both verbs map to exactly one facade call with parsed args + JSON envelope. Evidence: node.spec with spy facade asserts exactly-one-call each (green) + file:line node.ts."
         status: done
         evidence:
-          - core/src/cli/commands/node.ts:56 set-failures + :59 set-ac-status → je ein facade-Aufruf; node.spec.ts mapping-Test grün (setChildFailures/setChildAcStatus genau-ein-Aufruf)
+          - core/src/cli/commands/node.ts:56 set-failures + :59 set-ac-status → one facade call each; node.spec.ts mapping test green (setChildFailures/setChildAcStatus exactly-one-call)
       - id: a2
-        text: "CLI-Smoke gegen das echte Binary: eine AC done → set-failures → AC pending + failures present → set-ac-status done (mit evidence) wieder done. Beweis: Smoke-Sequenz, alle ok:true (grün)."
+        text: "CLI smoke against the real binary: an AC done → set-failures → AC pending + failures present → set-ac-status done (with evidence) done again. Evidence: smoke sequence, all ok:true (green)."
         status: done
         evidence:
-          - "CLI-Smoke gegen das echte Binary: add-phase-evidence(done) → set-failures → AC pending+failures+evidence behalten (ok:true)"
-  - name: Re-Do-Loop verdrahten (Skill + Validatoren)
+          - "CLI smoke against the real binary: add-phase-evidence(done) → set-failures → AC pending+failures+evidence kept (ok:true)"
+  - name: Wire up the re-do loop (skill + validators)
     slug: wire
     status: done
     context: |
-      agent-contract + build-SKILL + die Validatoren auf die neuen Verben verdrahten:
-      ein Gate, das eine AC ablehnt, schreibt failures → der build-Loop retried bis
-      retry_limit → dann blocked.
+      Wire agent-contract + build SKILL + the validators onto the new verbs:
+      a gate that rejects an AC writes failures → the build loop retries until
+      retry_limit → then blocked.
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: retry/stop/blocked = Mechanismus; harte Invariante bleibt
+        why: retry/stop/blocked = mechanism; hard invariant holds
       - path: .claude/rules/cli-only-transport.md
-        why: Validatoren self-writen failures via CLI; Skill treibt den Loop
+        why: validators self-write failures via CLI; skill drives the loop
     acceptance_criteria:
       - id: a1
-        text: "build-task-validate + build-code-validate (Docs) + agent-contract nutzen set-failures zum Ablehnen; build-SKILL beschreibt den Re-Do-Loop (Gate-Reject → set-failures → re-spawn implement → retry bis retry_limit → blocked). Beweis: grep über plugin/agents + plugin/skills/build zeigt set-failures + den Loop."
+        text: "build-task-validate + build-code-validate (docs) + agent-contract use set-failures to reject; build SKILL describes the re-do loop (gate reject → set-failures → re-spawn implement → retry until retry_limit → blocked). Evidence: grep over plugin/agents + plugin/skills/build shows set-failures + the loop."
         status: done
         evidence:
-          - plugin/agents/build-task-validate.md + build-code-validate.md self-writen set-failures auf rejected ACs; agent-contract.md Validator-Zeile + build/SKILL.md Re-Do-Loop auf set-failures verdrahtet (grep)
+          - plugin/agents/build-task-validate.md + build-code-validate.md self-write set-failures on rejected ACs; agent-contract.md validator line + build/SKILL.md re-do loop wired onto set-failures (grep)
       - id: a2
-        text: "Ein Lauf/Test belegt, dass ein abgelehntes AC einen Retry auslöst (nicht still auf done geht): ein Gate-Fail schreibt failures, der Loop fährt einen weiteren Versuch. Beweis: ein dokumentierter Sim/Test (grün)."
+        text: "A run/test proves that a rejected AC triggers a retry (does not silently go to done): a gate fail writes failures, the loop runs another attempt. Evidence: a documented sim/test (green)."
         status: done
         evidence:
-          - "Re-Do-Zyklus substrat-bewiesen: addChildEvidence→done, setChildFailures→pending+failures (Evidence behalten), re-addChildEvidence→done (node-ops.spec); build-SKILL liest failures + re-spawnt implement. Live skill-getriebener Retry wird im dogfood-task-Rerun re-validiert."
+          - "Re-do cycle proven at the substrate level: addChildEvidence→done, setChildFailures→pending+failures (evidence kept), re-addChildEvidence→done (node-ops.spec); build SKILL reads failures + re-spawns implement. Live skill-driven retry is re-validated in the dogfood-task rerun."

@@ -5,45 +5,45 @@ title: jargon-scrub
 created: 2026-06-12
 status: done
 phases:
-  - name: Universelle Jargon-Regel + Mapping-Tabelle in communication-style.md
+  - name: Universal jargon rule + mapping table in communication-style.md
     slug: central-rule-table
     status: done
     acceptance_criteria:
       - id: a1
-        text: "communication-style.md enthaelt eine universelle Hard-Rule 'kein Framework-Prozess-Jargon im User-Chat' (grep: Regel-Heading present)."
+        text: "communication-style.md contains a universal hard rule 'no framework-process jargon in user chat' (grep: rule heading present)."
         status: done
         evidence:
-          - "communication-style.md: neue Hard-Rule 'Hard rule on framework-process jargon' eingefuegt (nach dem system-reminders-Block). guard-prose.sh Check 1 gruen."
+          - "communication-style.md: new hard rule 'Hard rule on framework-process jargon' inserted (after the system-reminders block). guard-prose.sh check 1 green."
       - id: a2
-        text: "Eine Mapping-Tabelle mit allen 13 Begriffen (DAG, JIT, scaffold, stub, seam, grounding, roll-up, outcome-AC, executor/fan-out, each-Loop, drafted, refined, concern) -> Klartext steht in communication-style.md (grep: Tabellen-Header + jeder Begriff)."
+        text: "A mapping table with all 13 terms (DAG, JIT, scaffold, stub, seam, grounding, roll-up, outcome-AC, executor/fan-out, each-loop, drafted, refined, concern) -> plain language is in communication-style.md (grep: table header + every term)."
         status: done
         evidence:
-          - "communication-style.md: Mapping-Tabelle 'Framework-Begriff | Klartext' mit allen 13 Begriffen (DAG, JIT, scaffold, stub, seam, grounding, roll-up, outcome-AC, executor/fan-out, each-Loop, drafted, refined, concern). guard-prose.sh: 'mapping table covers all 13 framework terms' ok."
-  - name: Prefer-Spalten/Chat-Zeilen saeubern + question-style verlinken + Mapping-Zeile je SKILL
+          - "communication-style.md: mapping table 'Framework term | Plain language' with all 13 terms (DAG, JIT, scaffold, stub, seam, grounding, roll-up, outcome-AC, executor/fan-out, each-loop, drafted, refined, concern). guard-prose.sh: 'mapping table covers all 13 framework terms' ok."
+  - name: Clean up Prefer columns/chat lines + link question-style + mapping line per SKILL
     slug: scrub-skills-question-style
     status: done
     acceptance_criteria:
       - id: a1
-        text: Kein gelisteter Jargon-Begriff mehr in einer Prefer-Spalte der vier SKILLs oder einer 'Tell the user'-Chat-Zeile (grep ueber plan/refine/build/wrap).
+        text: No listed jargon term remains in a Prefer column of the four SKILLs or a 'Tell the user' chat line (grep across plan/refine/build/wrap).
         status: done
         evidence:
-          - "Prefer-Spalten jargon-frei (guard-prose.sh: 'no framework jargon in any Prefer/partner-voice cell' ok). Gefixte Lecks: communication-style.md:56, refine/SKILL.md:20 + Chat-Zeile 'Plan ist refined' -> 'durchgesprochen'."
+          - "Prefer columns jargon-free (guard-prose.sh: 'no framework jargon in any Prefer/partner-voice cell' ok). Fixed leaks: communication-style.md:56, refine/SKILL.md:20 + chat line 'Plan ist refined' -> 'talked through'."
       - id: a2
-        text: "Jeder der vier SKILLs traegt im Comm-style-Block eine Zeile, die das Jargon-Mapping vor jeder user-facing Formulierung anwendet (grep: Zeile in allen vier)."
+        text: "Each of the four SKILLs carries a line in its comm-style block that applies the jargon mapping before every user-facing phrasing (grep: line in all four)."
         status: done
         evidence:
-          - Alle vier SKILLs (plan/refine/build/wrap) tragen die Mapping-Apply-Zeile 'das Jargon-Mapping aus communication-style.md anwenden'. guard-prose.sh Checks 4 (4x) ok.
+          - All four SKILLs (plan/refine/build/wrap) carry the mapping-apply line 'apply the jargon mapping from communication-style.md'. guard-prose.sh checks 4 (4x) ok.
       - id: a3
-        text: "question-style.md verlinkt die Mapping-Tabelle und erweitert seine Schranke um Framework-Prozess-Jargon (grep: Link + Schranken-Zeile)."
+        text: "question-style.md links the mapping table and extends its guardrail to cover framework-process jargon (grep: link + guardrail line)."
         status: done
         evidence:
-          - question-style.md:65-74 verlinkt 'jargon mapping table in communication-style.md' + erweiterte Schranke um Framework-Prozess-Jargon. guard-prose.sh Check 5 ok.
-  - name: Zentrales Guard-Script sichert Regel + saubere Prefer-Spalten + Verlinkung
+          - question-style.md:65-74 links 'jargon mapping table in communication-style.md' + extended guardrail to cover framework-process jargon. guard-prose.sh check 5 ok.
+  - name: Central guard script secures rule + clean Prefer columns + linking
     slug: guard-script
     status: done
     acceptance_criteria:
       - id: a1
-        text: plugin/scripts/guard-prose.sh existiert, prueft Regel+Tabelle-Praesenz + jargon-freie Prefer-Spalten + question-style-Link, exit!=0 bei Verstoss; echter Lauf gruen.
+        text: plugin/scripts/guard-prose.sh exists, checks rule+table presence + jargon-free Prefer columns + question-style link, exit!=0 on violation; real run green.
         status: done
         evidence:
-          - "plugin/scripts/guard-prose.sh angelegt (8 Checks). Echter Lauf: 'guard-prose: ALL GREEN', exit=0."
+          - "plugin/scripts/guard-prose.sh created (8 checks). Real run: 'guard-prose: ALL GREEN', exit=0."

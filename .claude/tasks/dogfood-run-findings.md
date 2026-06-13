@@ -1,99 +1,99 @@
-# Ticket: Funde aus dem ersten vollen Epic-Dogfood mit VCS-Customs (2026-06-12)
+# Ticket: Findings from the first full epic dogfood with version-control customs (2026-06-12)
 
-**Quelle:** Live-Lauf in anchored-test — `/a:setup` (VCS-Strategie) + voller
-Epic-Lifecycle (`/a:plan` → `/a:refine` → `/a:build` → `/a:wrap`) auf der
-Tasks-App. Lief end-to-end grün, deckte aber echte Lücken auf.
+**Source:** Live run in anchored-test — `/a:setup` (version-control strategy) + full
+epic lifecycle (`/a:plan` → `/a:refine` → `/a:build` → `/a:wrap`) on the
+tasks app. Ran green end-to-end, but uncovered real gaps.
 
-## Status der alten Fixes (gehalten?)
+## Status of the old fixes (held?)
 
-- **USP / Honesty-Gate** — GEHALTEN, exemplarisch: task-validate hat ein
-  DOM-AC mit statischem Code-Trace zu Recht abgelehnt → echter Browser-E2E
-  erzwungen. Genau wofür das Gate da ist.
-- **D1/D2 (Epic-Lifecycle-Symmetrie, per-Task-Outcome-ACs, Roll-up)** —
-  GEHALTEN: epic-decompose schrieb 8 Outcome-ACs + 1 Integrations-AC (e1),
-  epic-plan-check fing den Spec-Fehler (#clear-completed fehlt real), Roll-up
-  validierte 8/8 + e1 hart.
-- **H4 (failures-reset + clear-failures)** — LIVE OK (dist war in der ersten
-  Session stale → UnknownNodeVerb; nach Rebuild vorhanden). Lehre: dist muss
-  nach jeder CLI-Änderung neu gebaut werden (npm-link zeigt auf core/dist).
-- **VCS-Customs (Orchestrator run-steps)** — GEHALTEN: branch-per-task,
-  commit-per-phase, merge-to-main (-X theirs) liefen über den ganzen Lauf.
+- **Core-value / honesty gate** — HELD, exemplary: task-validate correctly
+  rejected a DOM acceptance criterion with a static code trace → forced a real
+  browser E2E. Exactly what the gate is there for.
+- **D1/D2 (epic lifecycle symmetry, per-task outcome acceptance criteria, roll-up)** —
+  HELD: epic-decompose wrote 8 outcome acceptance criteria + 1 integration acceptance criterion (e1),
+  epic-plan-check caught the spec error (#clear-completed actually missing), roll-up
+  hard-validated 8/8 + e1.
+- **H4 (failures-reset + clear-failures)** — LIVE OK (dist was stale in the first
+  session → UnknownNodeVerb; present after rebuild). Lesson: dist must be
+  rebuilt after every CLI change (npm-link points at core/dist).
+- **Version-control customs (orchestrator run-steps)** — HELD: branch-per-task,
+  commit-per-phase, merge-to-main (-X theirs) ran across the whole run.
 
-## Neue Funde
+## New findings
 
-### F1 — Custom-Node-Felder gar nicht persistierbar  ✅ GEFIXT
-`task.fields.commit_sha` wird von der Config akzeptiert, aber NICHT ins strikte
-Node-Schema durchgereicht → `set-field commit_sha` warf „Unrecognized key". Der
-Kern-Wunsch des Users (Commit-SHA pro Task im Feld) war damit tot; der
-Orchestrator wich auf `append-log` aus.
-**Fix:** `schema/custom-fields.ts` erweitert das Tier-Schema (Parser + persist)
-um die deklarierten Custom-Fields; bekannte Felder behalten ihren strikten
-typisierten Check, undeklarierte Keys bleiben abgelehnt. Live + Unit bewiesen.
+### F1 — Custom node fields not persistable at all  ✅ FIXED
+`task.fields.commit_sha` is accepted by the config but NOT passed through into the strict
+node schema → `set-field commit_sha` threw "Unrecognized key". The
+user's core wish (commit SHA per task in a field) was thereby dead; the
+orchestrator fell back to `append-log`.
+**Fix:** `schema/custom-fields.ts` extends the tier schema (parser + persist)
+with the declared custom fields; known fields keep their strict
+typed check, undeclared keys remain rejected. Proven live + unit.
 
-### F7 — config.md lehrt die FALSCHE `fields`-Form  ✅ GEFIXT
-Doku zeigte `fields: - { name: x, type: string }` (Liste), das Schema will aber
-einen Record (`x: string`). Der Setup-Skill produzierte erst die Listenform →
-Schema-Fehler, musste nachbessern.
-**Fix:** config.md auf die Record-Form korrigiert + Beispiel.
+### F7 — config.md teaches the WRONG `fields` form  ✅ FIXED
+Docs showed `fields: - { name: x, type: string }` (list), but the schema wants
+a record (`x: string`). The setup skill first produced the list form →
+schema error, had to fix it up.
+**Fix:** config.md corrected to the record form + example.
 
-### F3 — `anchored plan <tier> <desc>` macht hässliche Slugs aus der ganzen Beschreibung  ✅ GEFIXT
-Der Slug wurde aus dem vollen Beschreibungstext abgeleitet
-(`tasks-app-aus-dem-leeren-vanilla-js-scaffold-ind`). Der Orchestrator musste
-mehrfach das Node-File `rm`en und mit kurzer Beschreibung neu anlegen.
-**Fix:** expliziter Slug als erstes Argument: `anchored plan <tier> <slug>
+### F3 — `anchored plan <tier> <desc>` makes ugly slugs out of the whole description  ✅ FIXED
+The slug was derived from the full description text
+(`tasks-app-aus-dem-leeren-vanilla-js-scaffold-ind`). The orchestrator had to
+`rm` the node file multiple times and recreate it with a short description.
+**Fix:** explicit slug as the first argument: `anchored plan <tier> <slug>
 "<desc>"`.
 
-### F2 — Kein CLI-Weg, `depends_on` (oder ein Kind-Feld) zu setzen  ✅ GEFIXT
-`add-child` nahm nur `<slug> [goal]`; `set-field tasks.1.depends_on` scheiterte
-(set-field indiziert keine Arrays). Die DAG-Kante musste per
-`ANCHORED_TASKFILE_EDIT=1`-Direktedit gesetzt werden — und ein scaffold-Agent
-behauptete fälschlich, sie gesetzt zu haben.
-**Fix:** `add-child` nimmt jetzt `depends_on` (CSV 3. Arg); neuer Verb
-`set-child-field <slug> <child> <field> <value>` für Kind-Felder.
+### F2 — No CLI way to set `depends_on` (or a child field)  ✅ FIXED
+`add-child` only took `<slug> [goal]`; `set-field tasks.1.depends_on` failed
+(set-field does not index arrays). The dependency-graph edge had to be set via
+`ANCHORED_TASKFILE_EDIT=1` direct edit — and a scaffold agent
+falsely claimed it had set it.
+**Fix:** `add-child` now takes `depends_on` (CSV 3rd arg); new verb
+`set-child-field <slug> <child> <field> <value>` for child fields.
 
-### F5 — `anchored --version` → 0.0.0  ✅ GEFIXT
-Version war nicht aus package.json verdrahtet.
+### F5 — `anchored --version` → 0.0.0  ✅ FIXED
+Version was not wired from package.json.
 
-### F8 — epic-scaffold-Agent-Verlässlichkeit  ✅ GEFIXT (Folge von F2)
-Der Agent meldete eine gesetzte DAG-Kante, die nicht im File stand, und nutzte
-das `goal` nicht. Mit F2 (add-child nimmt depends_on) bekommt der Agent den
-echten Hebel; epic-scaffold.md schärft die Anweisung (depends_on + goal setzen,
-danach per read verifizieren).
+### F8 — epic-scaffold agent reliability  ✅ FIXED (consequence of F2)
+The agent reported a set dependency-graph edge that was not in the file, and did not use
+the `goal`. With F2 (add-child takes depends_on) the agent gets the
+real lever; epic-scaffold.md sharpens the instruction (set depends_on + goal,
+then verify via read).
 
-### F10 — `git add -A` im phase-commit-Step fegt fremde Untracked-Files mit  ✅ DOKU
-Der erste Phasen-Commit hätte das ungetrackte Setup (anchored.yml, EPIC.md,
-Plan-Files) mitgenommen; der Orchestrator musste vorher manuell auf main
-committen. Lehre in config.md (VCS-Beispiel) + der anchored.yml-Vorlage.
+### F10 — `git add -A` in the phase-commit step sweeps in foreign untracked files  ✅ DOCS
+The first phase commit would have swept in the untracked setup (anchored.yml, EPIC.md,
+plan files); the orchestrator had to commit manually to main beforehand. Lesson
+in config.md (version-control example) + the anchored.yml template.
 
-### F9 — Maschinen-Vokabular leakt noch in den Chat  ⏳ BEOBACHTET
-„DAG", „next-child", „each:task-Loop", „Gates", „ready-children", „executor"
-tauchten im Chat auf. Der User hat es diesmal nicht moniert; H1/H2 greifen
-größtenteils. Niedrige Priorität — Nachschärfung optional.
+### F9 — Machine vocabulary still leaks into the chat  ⏳ OBSERVED
+"DAG", "next-child", "each:task loop", "gates", "ready-children", "executor"
+showed up in the chat. The user did not object this time; H1/H2 mostly
+hold. Low priority — further sharpening optional.
 
-### F4 — dist-Staleness (erste Session: clear-failures UnknownNodeVerb)  ✅ KEIN BUG
-Der npm-gelinkte CLI zeigt auf `core/dist` — nach jeder CLI-Änderung muss
-`npm run build` laufen, sonst ist der live-CLI stale. Aktuell gebaut + verifiziert
-(clear-failures live, alle F1-F5-Fixes in dist).
+### F4 — dist staleness (first session: clear-failures UnknownNodeVerb)  ✅ NO BUG
+The npm-linked CLI points at `core/dist` — after every CLI change,
+`npm run build` must run, otherwise the live CLI is stale. Currently built + verified
+(clear-failures live, all F1-F5 fixes in dist).
 
-### F6 — Task-Node hat kein `goal`-Feld  ⏳ BEOBACHTET (nicht gefixt)
-`set-field core-list goal …` warf „Unrecognized key". Unkritisch: der Child-JIT-
-Plan seedet aus den Outcome-ACs, das goal lebt im Stub + plan-Trail. Niedrige
-Priorität; bewusst nicht geändert (redundantes Feld).
+### F6 — Task node has no `goal` field  ⏳ OBSERVED (not fixed)
+`set-field core-list goal …` threw "Unrecognized key". Uncritical: the child just-in-time
+plan seeds from the outcome acceptance criteria, the goal lives in the stub + plan trail. Low
+priority; intentionally not changed (redundant field).
 
-## Eval (alle Fixes live bewiesen)
-- F1: commit_sha-Feld end-to-end — live in anchored-test + im vollen Flow
-  (branch → phase-commit → `set-field commit_sha` == HEAD ✓). Unit: 5 Tests.
-- F2: add-child depends_on + set-child-field + DAG-Gating — Integration: 1 Test.
-- F3: plan --slug → sauberer Slug — Integration: 1 Test.
+## Eval (all fixes proven live)
+- F1: commit_sha field end-to-end — live in anchored-test + in the full flow
+  (branch → phase-commit → `set-field commit_sha` == HEAD ✓). Unit: 5 tests.
+- F2: add-child depends_on + set-child-field + dependency-graph gating — integration: 1 test.
+- F3: plan --slug → clean slug — integration: 1 test.
 - F5: `anchored --version` → 0.1.0.
-- merge-to-main: im echten Dogfood-Run nachweislich durchgelaufen.
-- Alle 5 Gates grün (208 Tests). core dist neu gebaut, Plugin v0.1.7.
+- merge-to-main: demonstrably ran through in the real dogfood run.
+- All 5 gates green (208 tests). core dist rebuilt, plugin v0.1.7.
 
-## Prep — anchored-test ist startklar für morgen ✅
-- Scaffold-Baseline (app.js-Stub, index.html, style.css) wiederhergestellt.
-- `anchored.yml`: volle Customs — branch-per-task, commit-per-phase **mit
-  funktionierendem commit_sha-Feld** (F1), merge-to-main (-X theirs),
-  Slug-flatten-Guard. Live validiert (3 Stages parsen, Feld schreibt).
-- Run-Task-Files ins `_archive` verschoben; Task-Branches gelöscht; nur `main`.
-- Baseline-Commit `9988ffb`. **Morgen: Plugin v0.1.7 reinstall + /reload-plugins,
-  dann `/a:plan EPIC.md`.** (CLI ist via npm-link + Rebuild bereits live.)
+## Prep — anchored-test is ready to go for tomorrow ✅
+- Scaffold baseline (app.js stub, index.html, style.css) restored.
+- `anchored.yml`: full customs — branch-per-task, commit-per-phase **with
+  a working commit_sha field** (F1), merge-to-main (-X theirs),
+  slug-flatten guard. Validated live (3 stages parse, field writes).
+- Run task-files moved into `_archive`; task branches deleted; only `main`.
+- Baseline commit `9988ffb`. **Tomorrow: reinstall plugin v0.1.7 + /reload-plugins,
+  then `/a:plan EPIC.md`.** (CLI is already live via npm-link + rebuild.)

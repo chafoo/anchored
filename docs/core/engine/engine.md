@@ -2,20 +2,20 @@
 
 # engine
 
-Der Top-Level-Orchestrator. `createEngine(deps)` gibt ein `{ run(tier, node) }`
-zurück; `run` startet den `tier-runner` für den übergebenen Knoten. Reiner,
-deterministischer Code — die einzige Verbindung zur AI ist `deps.spawn`.
+The top-level orchestrator. `createEngine(deps)` returns a `{ run(tier, node) }`;
+`run` starts the `tier-runner` for the passed node. Pure,
+deterministic code — the only connection to the AI is `deps.spawn`.
 
-## Was
+## What
 
-- `createEngine(deps) → { run(tier, node) }`. `deps` ist die beim Bootstrap
-  gebaute Base-Dependency (`config`, `ops`, `spawn`, …).
-- `run(tier, node)` wählt den Tier-Schema-Deskriptor und fährt den
-  `tier-runner` über den Knoten; Rückgabe = der aktualisierte Knoten + Status.
-- Kennt **kein** AI-Detail: Worker-Effekte laufen ausschließlich über
-  `deps.spawn`, das hier nur durchgereicht wird.
+- `createEngine(deps) → { run(tier, node) }`. `deps` is the base dependency
+  built at bootstrap (`config`, `ops`, `spawn`, …).
+- `run(tier, node)` selects the tier schema descriptor and drives the
+  `tier-runner` over the node; return value = the updated node + status.
+- Knows **no** AI detail: worker effects run exclusively through
+  `deps.spawn`, which is only passed through here.
 
-## Wie
+## How
 
 `createEngine(deps): { run(tier: TierName, node: Node) => Promise<Result> }`
 
@@ -26,8 +26,8 @@ flowchart LR
     T --> R["result · node' + status"]
 ```
 
-## Warum
+## Why
 
-Eine einzige Naht für die gesamte Ausführung. Weil alle Effekte (Dateizugriff
-über `ops`, AI über `spawn`) injizierte Deps sind, ist die Engine im Test mit
-Fakes fahrbar — ohne echtes Claude, ohne echtes Dateisystem.
+A single seam for the entire execution. Because all effects (file access
+via `ops`, AI via `spawn`) are injected deps, the engine is runnable in tests with
+fakes — without real Claude, without a real file system.

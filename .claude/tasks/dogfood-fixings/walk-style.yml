@@ -1,58 +1,58 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
 slug: dogfood-fixings/walk-style
-title: Walk-Style-Wahl zurück + rules-check auto-fix (F12 + F5)
+title: Walk-style choice back + rules-check auto-fix (F12 + F5)
 status: done
 created: 2026-06-11
 context:
   plan: |
-    F12 (mittel, User-Wunsch): Der User soll VOR dem Q&A-Walk wählen, wie die Fragen
-    durchgegangen werden — all-AI / all-user / high-user (high→User, Rest AI). Das
-    war der v1-Stage-0-Walk-Style, im Rewrite verloren. high-user = Sweet-Spot/Default.
-    F5 (mittel): rules-check soll Rule-Coverage-Lücken NICHT als User-Frage stellen
-    (Framework-Requirements werden durchgesetzt, nicht verhandelt) — sondern als
-    auto-fix (add-ac). User-Fragen nur für Architektur/Code.
-    ENTSCHEIDUNG (q5): Optionen all-together / high-together (Default) / AI-all;
-    bei 0 Fragen still überspringen.
+    F12 (medium, user request): The user should choose, BEFORE the Q&A walk, how the
+    questions are walked through — all-AI / all-user / high-user (high→user, rest AI).
+    That was the v1 stage-0 walk-style, lost in the rewrite. high-user = sweet-spot/default.
+    F5 (medium): rules-check should NOT raise rule-coverage gaps as a user question
+    (framework requirements are enforced, not negotiated) — but as an
+    auto-fix (add-ac). User questions only for architecture/code.
+    DECISION (q5): options all-together / high-together (default) / AI-all;
+    on 0 questions skip silently.
     REF: .claude/temp/dogfood-findings.md F12/F5.
 questions: []
 log: []
 phases:
-  - name: Walk-Style-Wahl vor dem Q&A-Walk
+  - name: Walk-style choice before the Q&A walk
     slug: walk-style-choice
     status: done
     context: |
-      refine-SKILL (+ die build-pre-walk, falls noch offene Fragen beim Build): vor
-      dem Walk eine AskUserQuestion „N Fragen — X high, Y medium, Z low. Wie
-      durchgehen?" → {alle gemeinsam / nur high gemeinsam, Rest AI (Default) / alle
-      AI}. Wahl ephemer (kein Feld). high-user löst high mit User, medium+low als AI
-      mit reasoning. Bei 0 Fragen still überspringen.
+      refine-SKILL (+ the build-pre-walk, if there are still open questions at build): before
+      the walk an AskUserQuestion "N questions — X high, Y medium, Z low. How
+      to walk through?" → {all together / only high together, rest AI (default) / all
+      AI}. Choice ephemeral (no field). high-user resolves high with the user, medium+low as AI
+      with reasoning. On 0 questions skip silently.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: Frage-Resolution via resolve-question über die CLI
+        why: Question resolution via resolve-question through the CLI
     acceptance_criteria:
       - id: a1
-        text: "refine-SKILL bietet die Walk-Style-Wahl (3 Optionen, high-together als Default) als AskUserQuestion vor dem Walk; danach Walk nach gewählter Schwelle. Beweis: refine/SKILL.md zeigt die Stage-0-Wahl + die Schwellen-Logik (datei:zeile)."
+        text: "refine-SKILL offers the walk-style choice (3 options, high-together as default) as an AskUserQuestion before the walk; afterwards walk by the chosen threshold. Evidence: refine/SKILL.md shows the stage-0 choice + the threshold logic (file:line)."
         status: done
         evidence:
-          - "plugin/skills/refine/SKILL.md walk-Step: AskUserQuestion-Walk-Style-Wahl (high-together Default / all-together / AI-all) vor dem Walk, dann Resolution nach Schwelle (user vs ai+reasoning)"
+          - "plugin/skills/refine/SKILL.md walk step: AskUserQuestion walk-style choice (high-together default / all-together / AI-all) before the walk, then resolution by threshold (user vs ai+reasoning)"
       - id: a2
-        text: "Bei 0 offenen Fragen wird die Wahl still übersprungen (keine AskUserQuestion). Beweis: refine/SKILL.md nennt den 0-Fragen-Skip; build-pre-walk gleich verdrahtet."
+        text: "On 0 open questions the choice is skipped silently (no AskUserQuestion). Evidence: refine/SKILL.md names the 0-questions skip; build-pre-walk wired the same way."
         status: done
         evidence:
-          - "plugin/skills/build/SKILL.md Pre-flight Schritt 3 Pre-build walk: gleiche Walk-Style-Wahl bei offenen Fragen, 0 Fragen → still überspringen"
-  - name: rules-check Coverage-Gaps als auto-fix
+          - "plugin/skills/build/SKILL.md pre-flight step 3 pre-build walk: same walk-style choice on open questions, 0 questions → skip silently"
+  - name: rules-check coverage gaps as auto-fix
     slug: rules-autofix
     status: done
     context: |
-      refine-rules-check: eine fehlende Rule-Enforcement-AC ist ein auto-fix
-      (add-ac), KEINE User-Frage. Nur echte Architektur-Ambiguität wird zur Frage.
+      refine-rules-check: a missing rule-enforcement acceptance criterion is an auto-fix
+      (add-ac), NOT a user question. Only genuine architecture ambiguity becomes a question.
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: Projekt-Rules sind Framework-Requirements (Policy, durchgesetzt), keine User-Verhandlung
+        why: Project rules are framework requirements (policy, enforced), not a user negotiation
     acceptance_criteria:
       - id: a1
-        text: "refine-rules-check.md gibt Coverage-Gaps als auto-fix (add-ac) aus, nicht als question_to_add; explizit dokumentiert, dass Framework-Requirements nicht zur User-Frage werden. Beweis: plugin/agents/refine-rules-check.md (datei:zeile)."
+        text: "refine-rules-check.md outputs coverage gaps as an auto-fix (add-ac), not as question_to_add; explicitly documents that framework requirements do not become a user question. Evidence: plugin/agents/refine-rules-check.md (file:line)."
         status: done
         evidence:
-          - "plugin/agents/refine-rules-check.md: fehlende Rule-Enforcement → AUTO-FIX (add-ac + set-phase-rules), KEINE User-Frage; nur echte Architektur-Ambiguität → add-question. Dokumentiert: Framework-Requirements werden durchgesetzt nicht verhandelt"
+          - "plugin/agents/refine-rules-check.md: missing rule enforcement → AUTO-FIX (add-ac + set-phase-rules), NO user question; only genuine architecture ambiguity → add-question. Documented: framework requirements are enforced not negotiated"

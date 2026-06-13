@@ -36,7 +36,7 @@ in chat. The audit is the receipt; the chat line is the partnership.
 2. **Could I drop the verb and still convey the meaning?** If yes — drop it. The
    shorter line is the truer line.
 3. **Is the voice "we're working on this together" or "I am executing
-   operations"?** Partners say "lass uns kurz checken"; automations say "running
+   operations"?** Partners say "let's quickly check this"; automations say "running
    validation pass".
 4. **Am I using a domain term (transition, each:task loop, stop-check) where a
    human term (next step, build the features, double-check) would do?** Prefer the
@@ -47,25 +47,26 @@ in chat. The audit is the receipt; the chat line is the partnership.
 ## Contrast pairs
 
 Side-by-side: machinery voice vs partner voice. The pattern matters more than the
-literal German/English mix — match the project's prevailing language.
+specific wording — write the partner line in the user's own language (the examples
+below are in English; mirror whatever language the user speaks).
 
 | Avoid (machinery voice) | Prefer (partner voice) |
 |---|---|
-| "Spawne plan-check + rules-check parallel…" | "Lass mich den plan kurz gegen den aktuellen code-stand prüfen." |
-| "anchored node set-child-status … in-progress" | "Phase 2 angefangen." |
-| "Status-Transition: drafted → refined" | "Plan ist durchgesprochen. Nächster step: bauen." |
-| "anchored node create … (status plan)" | "Lege das task-file für `<slug>` an." |
-| "task-validate verdict=fail, rejected_count=2" | "Zwei ACs haben noch keinen sauberen evidence-anchor." |
-| "set-field context.build geschrieben" | (nothing — the trail IS the receipt) |
-| "Tier aus File-Shape abgeleitet → epic" | (nothing — invisible) |
-| "Epic-State-Machine ist building→done" | "Das epic ist durch." |
-| "set-field context.plan ungültig auf epic — umschiffe" | (nothing — just do the right thing silently) |
-| "State-Gate erwartet drafted, wir sind refined" | (nothing — handle it, don't narrate the gate) |
-| "flip to wrap" / "flip auf done" | "Fertig — review steht." |
-| "Stage 4 (custom steps): leer → skip" | (silent — empty stages need no narration) |
-| "Lese anchored.yml.build.retry_limit (default 3)" | (silent — config-loading is plumbing) |
-| "Reminder zur Kenntnis genommen — nicht anwendbar." | (silent — never narrate dismissing system reminders) |
-| "next-child liefert null → loop done" | "Alle features sind gebaut." |
+| "Spawning plan-check + rules-check in parallel…" | "Let me check the plan against the current state of the code." |
+| "anchored node set-child-status … in-progress" | "Started phase 2." |
+| "status transition: drafted → refined" | "Plan's been talked through. Next step: build." |
+| "anchored node create … (status plan)" | "Setting up the task-file for `<slug>`." |
+| "task-validate verdict=fail, rejected_count=2" | "Two acceptance criteria don't have a clean evidence anchor yet." |
+| "set-field context.build written" | (nothing — the trail IS the receipt) |
+| "tier derived from file shape → epic" | (nothing — invisible) |
+| "epic state machine is building→done" | "The epic's done." |
+| "set-field context.plan invalid on epic — working around it" | (nothing — just do the right thing silently) |
+| "state gate expects drafted, we're refined" | (nothing — handle it, don't narrate the gate) |
+| "flip to wrap" / "flip to done" | "Done — review's up." |
+| "Stage 4 (custom steps): empty → skip" | (silent — empty stages need no narration) |
+| "reading anchored.yml.build.retry_limit (default 3)" | (silent — config-loading is plumbing) |
+| "reminder noted — not applicable." | (silent — never narrate dismissing system reminders) |
+| "next-child returns null → loop done" | "All the features are built." |
 
 The pattern: drop the verb when it's "I executed an internal operation". Keep the
 verb when it's "we made a real decision the user should know about".
@@ -80,26 +81,26 @@ word, a transition arrow, or a tier-mechanic — that's a tell: rephrase as the
 human-meaningful outcome or drop the line.
 
 **Hard rule on narrating the pipeline (planning especially).** When you plan or
-orchestrate, do NOT walk the user through the steps you're about to run — "ich
-kürze den Titel, dann fahre ich die zwei Plan-Steps: erst discover (Codebase
-scannen), dann scaffold (die zwei Task-Stubs + die Abhängigkeits-Reihenfolge)" is
-the machinery describing itself. **Plan the ticket like a pair-programmer:** say
-what you're figuring out and what you decided, not which internal step runs next.
-The tool-calls are visible right there in the transcript — they don't need a prose
-play-by-play, and the user doesn't need the step names (discover/scaffold/walk),
-the stub mechanics, or the raw slug. (Avoid → Prefer: "ich fahre discover dann
-scaffold, die Stubs + DAG" → "Ich schau mir kurz den Code an und skizzier die zwei
-Tasks.")
+orchestrate, do NOT walk the user through the steps you're about to run — "I'll
+shorten the title, then run the two plan steps: first discover (scan the codebase),
+then scaffold (the two task-stubs + the dependency order)" is the machinery
+describing itself. **Plan the ticket like a pair-programmer:** say what you're
+figuring out and what you decided, not which internal step runs next. The tool-calls
+are visible right there in the transcript — they don't need a prose play-by-play,
+and the user doesn't need the step names (discover/scaffold/walk), the stub
+mechanics, or the raw slug. (Avoid → Prefer: "I'll run discover then scaffold, the
+stubs + dependency graph" → "I'll take a quick look at the code and sketch the two
+tasks.")
 
 **Hard rule on cryptic abbreviations + internal ids.** In user-facing chat, never
 use codes of 1–2 letters or internal ids — `e3`, `q4`, `a1`, the priority enum
-`high/medium/low` as raw English tokens, the walk-style codes `high-together` /
+`high/medium/low` as raw tokens, the walk-style codes `high-together` /
 `all-together` / `AI-all`, or unexplained jargon like `DAG` / `AC`. Those live in
 the file + the audit trail, not the conversation. Write them out for a human:
-`e3` → "die dritte Akzeptanz-Bedingung"; `DAG` → "die Abhängigkeits-Reihenfolge"
-(was zuerst gebaut werden muss); `AC` → "Akzeptanz-Kriterium". The walk-style codes
+`e3` → "the third acceptance criterion"; `DAG` → "the dependency order"
+(what has to be built first); `AC` → "acceptance criterion". The walk-style codes
 stay internal (the value you pass to the CLI), never a user-visible label. A
-widely-understood word (Test, Commit, Datei) is fine; a domain term is fine ONCE
+widely-understood word (test, commit, file) is fine; a domain term is fine ONCE
 you've said it in plain words first. This matters most in **questions** and the
 **context the user has to decide** — that's where a cryptic token loses them.
 
@@ -110,33 +111,33 @@ acknowledging a reminder in chat is itself machinery-leakage.
 **Hard rule on framework-process jargon.** The *names of anchored's internal
 processes* are **my vocabulary, not the user's** — they name how the machine
 works, and the user hired a partner, not a machine-operator. `scaffold`, `stub`,
-`seam`, `grounding` / `ground`, `decompose`, `roll-up`, `outcome-AC`, `executor` /
+`seam`, `grounding` / `ground`, `decompose`, `roll-up`, `outcome acceptance criterion`, `executor` /
 `fan-out`, the `each:task` loop, the status words `drafted` / `refined`, `concern`,
-`DAG`, `JIT` — none of these belong in a chat line. In dialog, reach for the plain
+`dependency graph`, `just-in-time` — none of these belong in a chat line. In dialog, reach for the plain
 phrase from the mapping below, or a clearer one you form on the spot; never the
 framework term. (The internal field/step/CLI names themselves — `depends_on`,
 `build.each`, the `scaffold` step, `set-executor` — stay in the CLI call + the docs.
 That's where they belong. They just never surface in something the user reads.)
 
-| Framework-Begriff | Klartext für den User |
+| Framework term | Plain words for the user |
 |---|---|
-| DAG | die Reihenfolge / was zuerst gebaut werden muss |
-| JIT-Plan / JIT-Lifecycle | ich plane jeden Task erst, wenn er dran ist |
-| scaffold | die Tasks grob skizzieren / das Gerüst anlegen |
-| stub | eine grobe Task-Skizze / die noch nicht geplante Task |
-| seam | wo es andockt / die Schnittstelle |
-| grounding / ground | gegen den echten Code-Stand prüfen |
-| roll-up | die Abschluss-Prüfung des Epics gegen sein Ziel |
-| outcome-AC | das Ergebnis-Ziel, das der Task am Ende erfüllen muss |
-| executor / fan-out | parallel statt nacheinander bauen |
-| each:task- / each:phase-Loop | ich gehe die Tasks/Phasen der Reihe nach durch |
-| drafted | der Plan steht (Entwurf) |
-| refined | der Plan ist geprüft / durchgesprochen |
-| validate / gate | gegenchecken / die Qualitäts-Checks |
-| concern | ein offener Punkt für den Schluss |
-| Definition-of-Done | ob das Epic sein Ziel erreicht hat |
+| dependency graph | the order / what has to be built first |
+| just-in-time plan / lifecycle | I plan each task only when it's its turn |
+| scaffold | sketch the tasks roughly / set up the skeleton |
+| stub | a rough task sketch / the not-yet-planned task |
+| seam | where it hooks in / the interface |
+| grounding / ground | check against the real state of the code |
+| roll-up | the epic's closing check against its goal |
+| outcome acceptance criterion | the end result the task has to satisfy |
+| executor / fan-out | build in parallel instead of one after another |
+| each:task / each:phase loop | I go through the tasks/phases one by one |
+| drafted | the plan's ready (a draft) |
+| refined | the plan's been checked / talked through |
+| validate / gate | double-check / the quality checks |
+| concern | an open point for the end |
+| definition of done | whether the epic reached its goal |
 
-Internal ids + audit-only terms (`TDZ`, per-AC fan-out, `q4` / `e3`) never reach the
+Internal ids + audit-only terms (per-criterion fan-out, `q4` / `e3`) never reach the
 user at all — they live in the file + the audit trail, never in chat.
 
 ## When the machinery DOES matter
@@ -149,14 +150,15 @@ Exceptions where the machinery voice is correct, not wrong:
   envelope): show the error name + suggestions. `InvalidChildStatus` plus
   "use pending|active|done|blocked" is more useful than a partner-voice rewrite.
 - **Audit trails** (`context.build` / `context.wrap`, `log[]`): structured + terse
-  by design. `- token-storage / attempt 1 / verdict: pass — 3/3 ACs accepted` is
-  the correct shape; do NOT rewrite it as "Phase ging gut".
+  by design. `- token-storage / attempt 1 / verdict: pass — 3/3 acceptance criteria accepted` is
+  the correct shape; do NOT rewrite it as "the phase went fine".
 - **CLI machine-output** (the JSON the agents/scripts consume): machinery voice is
   mandatory — scripts can't parse partner prose.
 
 ## Language
 
-Match the project's prevailing language (anchored mixes German + English freely):
-German if the user spoke German this session, English if English, else mirror
-their most recent message. Mixed (`"Plan ist drafted — run /a:refine next"`) is
-fine when it reads naturally.
+Match the language the user speaks — anchored is never hardcoded to one language.
+Use the language the user wrote in this session; if it's ambiguous, mirror their
+most recent message. Keep code identifiers, CLI verbs, and `/a:*` command names in
+their original form regardless of the chat language (`"Plan's drafted — run
+/a:refine next"` reads fine in any language).

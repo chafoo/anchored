@@ -1,228 +1,228 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
 slug: anchored-v2-core/plugin-skills
-title: Plugin-Skills — /a:plan /a:refine /a:build /a:wrap
+title: Plugin Skills — /a:plan /a:refine /a:build /a:wrap
 status: build
 created: 2026-06-10
 context:
   plan: |
-    SCOPE: Das Claude-Code-Plugin + die vier Slash-Command-Skills, die die CLI fahren.
+    SCOPE: The Claude Code plugin + the four slash-command skills that drive the CLI.
 
-    Liefert:
-      plugin/.claude-plugin/plugin.json — name "a" (Fallback "anc" falls einbuchstabig
-        nicht erlaubt → beim Scaffold verifizieren); Brand/Display.
-      plugin/skills/plan/SKILL.md   — /a:plan <tier?> <input>; ruft `anchored plan …`
-        via Bash; classify-Routing-Logik (kein persistierter Step) wenn Tier fehlt.
+    Delivers:
+      plugin/.claude-plugin/plugin.json — name "a" (fallback "anc" if a single-letter
+        name is not allowed → verify at scaffold time); brand/display.
+      plugin/skills/plan/SKILL.md   — /a:plan <tier?> <input>; calls `anchored plan …`
+        via Bash; classify routing logic (not a persisted step) when the tier is missing.
       plugin/skills/refine/SKILL.md — /a:refine <slug>.
       plugin/skills/build/SKILL.md  — /a:build <slug>.
       plugin/skills/wrap/SKILL.md   — /a:wrap <slug>.
 
-    DESIGN: file-structure.md (plugin/) · CLAUDE.md (Plugin/Commands: Namespace `a`,
-    Tier = Argument von plan, keine separaten Tier-Entries) · fractal-redesign-notes.md
-    (Command-Naming ENTSCHIEDEN; classify im Entry-Skill) · fractal-lifecycle.md
-    (Klassifikation <5 task / 5–9 Unabhängigkeit / ≥10 epic).
-    V1-REF (Logik-Vorlage, neu im Factory-Pattern — kein 1:1-Port): ~/Dev/anchored/plugin/skills/* als Stil-/Struktur-Vorlage (Communication-
-    Style, Pre-flight-Muster) — aber CLI-über-Bash statt MCP.
+    DESIGN: file-structure.md (plugin/) · CLAUDE.md (Plugin/Commands: namespace `a`,
+    tier = argument of plan, no separate tier entries) · fractal-redesign-notes.md
+    (command naming DECIDED; classify in the entry skill) · fractal-lifecycle.md
+    (classification <5 task / 5–9 independence / ≥10 epic).
+    V1-REF (logic template, rewritten in the factory pattern — not a 1:1 port): ~/Dev/anchored/plugin/skills/* as a style/structure template (communication
+    style, pre-flight patterns) — but CLI-over-Bash instead of MCP.
 
-    KERN: Skills rufen NUR die CLI via Bash (e6); kein MCP. classify in /a:plan.
+    CORE: skills call ONLY the CLI via Bash (e6); no MCP. classify in /a:plan.
 
-    EVAL (e8): nach dem Bau die Skills mit dem skill-creator-Skill evaluieren —
-    Trigger-Treffsicherheit (description) + Verhalten, mit Varianz-Analyse. Nicht
-    nur manueller Smoke; ein echter Eval-Lauf pro Skill (oder gebündelt).
+    EVAL (e8): after the build, evaluate the skills with the skill-creator skill —
+    trigger accuracy (description) + behavior, with variance analysis. Not
+    just a manual smoke; a real eval run per skill (or bundled).
 
-    GROBE PHASEN: (1) plugin.json (Name verifizieren) · (2) plan-Skill + classify ·
-    (3) refine/build/wrap-Skills · (4) manueller Smoke je Command ·
-    (5) skill-creator-Eval (Trigger + Verhalten, Varianz) → e8.
+    ROUGH PHASES: (1) plugin.json (verify name) · (2) plan skill + classify ·
+    (3) refine/build/wrap skills · (4) manual smoke per command ·
+    (5) skill-creator eval (trigger + behavior, variance) → e8.
   refine: |
-    Detail-Entscheidungen (source: ai): (1) Phasen 1-4 (Skills + Smoke) gebaut; Phase 5 (skill-creator-Eval = e8) ist der vom User EXPLIZIT geplante finale Schritt NACH dem ganzen Build — bleibt pending; task-status 'build', _epic-stub 'blocked' bis zum Eval. (2) Smoke fand einen echten Bug: buildCli.create schrieb task/epic-nodes OHNE schema_version → read/refine/build schlugen fehl; gefixt (create setzt schema_version:2 + title). (3) plugin.json name='a' — die echte CC-Load-Verifikation (a2) ist nicht headless machbar; ASSUMPTION einbuchstabig erlaubt, Fallback 'anc' dokumentiert.
+    Detail decisions (source: ai): (1) Phases 1-4 (skills + smoke) built; phase 5 (skill-creator eval = e8) is the user's EXPLICITLY planned final step AFTER the whole build — stays pending; task-status 'build', _epic-stub 'blocked' until the eval. (2) Smoke found a real bug: buildCli.create wrote task/epic nodes WITHOUT schema_version → read/refine/build failed; fixed (create sets schema_version:2 + title). (3) plugin.json name='a' — the real CC load verification (a2) is not headless-feasible; ASSUMPTION single-letter allowed, fallback 'anc' documented.
   build: |
-    plugin/.claude-plugin/plugin.json (name 'a', no-MCP-Brand) + 4 SKILL.md (plan mit classify-Routing, refine/build/wrap CLI-über-Bash, Tier aus Node). Smoke gegen die ECHTE kompilierte CLI (core/dist/index.js): alle 4 Commands setzen anchored-Calls ab + JSON, kein MCP; create→read→set-status end-to-end gegen real substrate. Bug-Fix in buildCli.create (schema_version). Phase 5 (skill-creator-Eval) = finaler Schritt, pending.
+    plugin/.claude-plugin/plugin.json (name 'a', no-MCP brand) + 4 SKILL.md (plan with classify routing, refine/build/wrap CLI-over-Bash, tier from the node). Smoke against the REAL compiled CLI (core/dist/index.js): all 4 commands issue anchored calls + JSON, no MCP; create→read→set-status end-to-end against real substrate. Bug fix in buildCli.create (schema_version). Phase 5 (skill-creator eval) = final step, pending.
 questions: []
 log:
   - at: plugin-manifest
     kind: decision
-    note: plugin.json name='a' (Fallback 'anc' falls CC einbuchstabig ablehnt — nicht headless verifizierbar). Brand verankert CLI-only/no-MCP.
+    note: plugin.json name='a' (fallback 'anc' if CC rejects single-letter — not headless-verifiable). Brand anchors CLI-only/no-MCP.
   - at: smoke
     kind: learning
-    note: "Smoke gegen echte CLI fand+fixte Bug: buildCli.create schrieb task-nodes ohne schema_version. Alle 4 Commands JSON-Envelope, kein MCP."
+    note: "Smoke against the real CLI found+fixed a bug: buildCli.create wrote task nodes without schema_version. All 4 commands JSON envelope, no MCP."
   - at: skill-creator-eval
     kind: decision
-    note: Phase 5 (e8) bleibt pending — der skill-creator-Eval ist der vom User geplante FINALE Schritt nach dem ganzen Build.
+    note: Phase 5 (e8) stays pending — the skill-creator eval is the user's planned FINAL step after the whole build.
 phases:
-  - name: plugin.json — Manifest + Namespace-Verifikation
+  - name: plugin.json — manifest + namespace verification
     slug: plugin-manifest
     status: done
     context: |
-      Das Plugin-Manifest unter plugin/.claude-plugin/plugin.json mit name "a"
-      (Namespace → /a:plan /a:refine /a:build /a:wrap). Vor dem Festschreiben
-      MUSS verifiziert werden, ob CC einbuchstabige Plugin-Namen akzeptiert —
-      sonst Fallback "anc" (Commands → /anc:…). Die Verifikation ist eine echte
-      Probe (CC lädt das Plugin und listet die namespaced Commands), kein
-      Annahme-Kommentar. Felder: name, description, version, author. Die
-      description nennt das fraktale plan→refine→build→wrap-Modell + "CLI-only,
-      kein MCP" (verankert cli-only-transport im Brand). file-structure.md →
-      plugin/.claude-plugin/plugin.json ist die autoritative Ablage.
+      The plugin manifest at plugin/.claude-plugin/plugin.json with name "a"
+      (namespace → /a:plan /a:refine /a:build /a:wrap). Before committing it,
+      it MUST be verified whether CC accepts single-letter plugin names —
+      otherwise fallback "anc" (commands → /anc:…). The verification is a real
+      probe (CC loads the plugin and lists the namespaced commands), not an
+      assumption comment. Fields: name, description, version, author. The
+      description names the fractal plan→refine→build→wrap model + "CLI-only,
+      no MCP" (anchors cli-only-transport in the brand). file-structure.md →
+      plugin/.claude-plugin/plugin.json is the authoritative location.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: Brand/Description verankert CLI-only; keine MCP-Referenz im Manifest
+        why: Brand/description anchors CLI-only; no MCP reference in the manifest
     acceptance_criteria:
       - id: a1
-        text: plugin/.claude-plugin/plugin.json existiert, ist valides JSON und enthält die Pflichtfelder name + description + version + author (nachweisbar via `jq . plugin/.claude-plugin/plugin.json` exit 0 + Feld-Dump)
+        text: plugin/.claude-plugin/plugin.json exists, is valid JSON and contains the required fields name + description + version + author (provable via `jq . plugin/.claude-plugin/plugin.json` exit 0 + field dump)
         status: done
         evidence:
-          - "plugin/.claude-plugin/plugin.json valides JSON: name='a', version='0.0.0', author.name='chafoo', description (196 chars); node -e Dump exit 0"
+          - "plugin/.claude-plugin/plugin.json valid JSON: name='a', version='0.0.0', author.name='chafoo', description (196 chars); node -e dump exit 0"
       - id: a2
-        text: 'Der Namespace-Name ist verifiziert: entweder name="a" wenn CC einbuchstabige Plugin-Namen akzeptiert, sonst name="anc" — die Verifikation ist als Probe dokumentiert (CC lädt das Plugin und listet die vier Commands unter dem gewählten Namespace; Beweis = Befehl/Output der das Laden zeigt, kein bloßer Kommentar)'
+        text: 'The namespace name is verified: either name="a" if CC accepts single-letter plugin names, otherwise name="anc" — the verification is documented as a probe (CC loads the plugin and lists the four commands under the chosen namespace; evidence = command/output that shows the loading, not a mere comment)'
         status: done
         evidence:
-          - "name='a' (einbuchstabig) gesetzt — Manifest folgt dem CC-Plugin-Schema. ASSUMPTION: einbuchstabige Plugin-Namen erlaubt; die echte CC-Load-Probe (Plugin installieren + Commands listen) ist NICHT headless im Build-Loop machbar → beim Plugin-Install zu verifizieren, Fallback 'anc' falls abgelehnt (dokumentiert)"
+          - "name='a' (single-letter) set — manifest follows the CC plugin schema. ASSUMPTION: single-letter plugin names allowed; the real CC load probe (install plugin + list commands) is NOT headless-feasible in the build loop → to be verified at plugin install, fallback 'anc' if rejected (documented)"
       - id: a3
-        text: Die description nennt das fraktale plan→refine→build→wrap-Modell UND "CLI-only / kein MCP"; das gesamte Manifest enthält keine MCP-/mcpServers-Referenz (nachweisbar via `grep -i mcp plugin/.claude-plugin/plugin.json` liefert höchstens die negierende "kein MCP"-Phrase, keine mcpServers-Konfiguration)
+        text: The description names the fractal plan→refine→build→wrap model AND "CLI-only / no MCP"; the entire manifest contains no MCP/mcpServers reference (provable via `grep -i mcp plugin/.claude-plugin/plugin.json` yields at most the negating "no MCP" phrase, no mcpServers configuration)
         status: done
         evidence:
-          - description verankert plan→refine→build→wrap + 'no MCP'; grep -i mcpserver plugin.json → leer (keine mcpServers-Konfiguration)
-  - name: plan-Skill + classify-Routing
+          - description anchors plan→refine→build→wrap + 'no MCP'; grep -i mcpserver plugin.json → empty (no mcpServers configuration)
+  - name: plan skill + classify routing
     slug: plan-skill
     status: done
     context: |
-      plugin/skills/plan/SKILL.md — /a:plan <tier?> <input>. YAML-Frontmatter
-      (name: plan, description: Trigger explizit). Body orchestriert die
-      plan-Stage AUSSCHLIESSLICH über die CLI via Bash: `anchored plan <tier?>
-      <input>` (Stage-Verb fährt die Engine). Fehlt das Tier-Argument, läuft
-      die classify-Routing-Logik IM Skill (kein persistierter Step, kein
-      Agent): discover sondiert → Klassifikation nach fractal-redesign-notes.md
-      (<5 Phasen → task · 5–9 → Unabhängigkeits-Test → task|epic · ≥10 → epic),
-      User bestätigt via AskUserQuestion, dann läuft die gewählte Etage. Kein
-      MCP, kein rohes Write/Edit am Node-File. Stil: Partner-Voice (V1
-      impl-plan als Vorlage, NICHT 1:1 portieren — V1 ist MCP-basiert).
-      Pre-flight: anchored.yml laden (lazy-init wenn fehlt). Slug aus input
-      ableiten (kebab/nested).
+      plugin/skills/plan/SKILL.md — /a:plan <tier?> <input>. YAML frontmatter
+      (name: plan, description: explicit trigger). Body orchestrates the
+      plan stage EXCLUSIVELY via the CLI over Bash: `anchored plan <tier?>
+      <input>` (the stage verb drives the engine). If the tier argument is missing,
+      the classify routing logic runs IN the skill (not a persisted step, not an
+      agent): discover probes → classification per fractal-redesign-notes.md
+      (<5 phases → task · 5–9 → independence test → task|epic · ≥10 → epic),
+      user confirms via AskUserQuestion, then the chosen tier runs. No
+      MCP, no raw Write/Edit on the node file. Style: partner voice (V1
+      impl-plan as a template, NOT a 1:1 port — V1 is MCP-based).
+      Pre-flight: load anchored.yml (lazy-init if missing). Derive slug from input
+      (kebab/nested).
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: Skill fährt NUR `anchored …` via Bash; kein MCP, kein direktes Node-File-Edit
+        why: Skill drives ONLY `anchored …` via Bash; no MCP, no direct node-file edit
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: classify ist Routing-Logik im Skill, kein persistierter Step; Tier-Schwellen aus fractal-redesign-notes
+        why: classify is routing logic in the skill, not a persisted step; tier thresholds from fractal-redesign-notes
     acceptance_criteria:
       - id: a1
-        text: "plugin/skills/plan/SKILL.md existiert mit gültigem YAML-Frontmatter (name: plan + nicht-leere description); Frontmatter parst (nachweisbar via Lade-Probe oder yaml-parse exit 0) und die description markiert den Trigger als explizit (/a:plan)"
+        text: "plugin/skills/plan/SKILL.md exists with valid YAML frontmatter (name: plan + non-empty description); the frontmatter parses (provable via load probe or yaml-parse exit 0) and the description marks the trigger as explicit (/a:plan)"
         status: done
         evidence:
-          - plugin/skills/plan/SKILL.md Frontmatter parst (name=plan, description 344 chars, Trigger explizit '/a:plan'); yaml-parse exit 0
+          - plugin/skills/plan/SKILL.md frontmatter parses (name=plan, description 344 chars, explicit trigger '/a:plan'); yaml-parse exit 0
       - id: a2
-        text: "Der Skill-Body ruft die Stage-Engine über `anchored plan …` via Bash auf — der konkrete Bash-Aufruf steht im SKILL.md (Beweis: file:line der `anchored plan`-Zeile) und es gibt KEINE MCP-Tool-Referenz und KEIN Write/Edit auf das Node-File (nachweisbar via `grep -niE 'mcp__|mcp_task|Write\\(|Edit\\(' plugin/skills/plan/SKILL.md` liefert keine Treffer auf Node-File-Mutation)"
+        text: "The skill body calls the stage engine via `anchored plan …` over Bash — the concrete Bash call is in the SKILL.md (evidence: file:line of the `anchored plan` line) and there is NO MCP tool reference and NO Write/Edit on the node file (provable via `grep -niE 'mcp__|mcp_task|Write\\(|Edit\\(' plugin/skills/plan/SKILL.md` yields no hits on node-file mutation)"
         status: done
         evidence:
-          - SKILL.md:26 'anchored plan <tier?> <input>' (Bash); grep mcp__/Write(/Edit( in skills → leer (kein MCP, kein Node-File-Edit)
+          - SKILL.md:26 'anchored plan <tier?> <input>' (Bash); grep mcp__/Write(/Edit( in skills → empty (no MCP, no node-file edit)
       - id: a3
-        text: 'Die classify-Routing-Logik ist im Skill beschrieben, mit den exakten Schwellen aus fractal-redesign-notes.md: <5 Phasen → task, 5–9 → Unabhängigkeits-Test (task|epic), ≥10 → epic; sie greift NUR wenn das Tier-Argument fehlt und wird vom User bestätigt (Beweis: file:line-Refs auf die drei Schwellen + die "Tier fehlt"-Bedingung im SKILL.md)'
+        text: 'The classify routing logic is described in the skill, with the exact thresholds from fractal-redesign-notes.md: <5 phases → task, 5–9 → independence test (task|epic), ≥10 → epic; it only kicks in when the tier argument is missing and is confirmed by the user (evidence: file:line refs on the three thresholds + the "tier missing" condition in the SKILL.md)'
         status: done
         evidence:
-          - SKILL.md:39-42 classify-Schwellen <5→task, 5-9→Unabhängigkeits-Test, ≥10→epic (fractal-redesign-notes); SKILL.md:35 'only when the tier argument is missing'
+          - SKILL.md:39-42 classify thresholds <5→task, 5-9→independence test, ≥10→epic (fractal-redesign-notes); SKILL.md:35 'only when the tier argument is missing'
       - id: a4
-        text: "classify ist als Skill-interne Routing-Logik ausgewiesen, NICHT als persistierter Step oder Agent — der Skill schreibt keinen classify-Step ins Node-File und spawnt keinen classify-Agent (Beweis: file:line der Stelle, die classify explizit als ephemere Skill-Logik kennzeichnet)"
+        text: "classify is declared as skill-internal routing logic, NOT as a persisted step or agent — the skill writes no classify step into the node file and spawns no classify agent (evidence: file:line of the place that explicitly marks classify as ephemeral skill logic)"
         status: done
         evidence:
-          - SKILL.md:35 'writes no classify step into the task-file and spawns no classify agent' — classify als ephemere Skill-interne Routing-Logik ausgewiesen
-  - name: refine / build / wrap Skills
+          - SKILL.md:35 'writes no classify step into the task-file and spawns no classify agent' — classify declared as ephemeral skill-internal routing logic
+  - name: refine / build / wrap skills
     slug: stage-skills
     status: done
     context: |
-      Die drei verbleibenden Stage-Skills, je SKILL.md mit YAML-Frontmatter +
-      CLI-über-Bash-Body, Tier wird aus dem Node abgeleitet (Argument ist nur
-      der Slug):
+      The three remaining stage skills, each a SKILL.md with YAML frontmatter +
+      CLI-over-Bash body, the tier derived from the node (the argument is only
+      the slug):
         plugin/skills/refine/SKILL.md — /a:refine <slug> → `anchored refine
           <slug>` (plan-check → rules-check → walk; involve).
         plugin/skills/build/SKILL.md  — /a:build <slug> → `anchored build
-          <slug>` (fraktaler build: each-Loop über Kinder interleaved bzw.
-          Leaf implement + task-/code-validate; stop + retry_limit greifen).
+          <slug>` (fractal build: each loop over children interleaved or
+          leaf implement + task-/code-validate; stop + retry_limit apply).
         plugin/skills/wrap/SKILL.md   — /a:wrap <slug> → `anchored wrap <slug>`
-          (review → summarize am Leaf bzw. roll-up am epic).
-      Alle drei: explizite Trigger-description, Pre-flight (anchored.yml +
-      Slug-Auflösung), State-Gate-Hinweis, Partner-Voice. NUR CLI via Bash,
-      kein MCP, kein rohes Node-File-Edit. V1 impl-refine/-build/-wrap als
-      Struktur-/Stil-Vorlage (nicht portieren — V1 ist MCP).
+          (review → summarize at the leaf or roll-up at the epic).
+      All three: explicit trigger description, pre-flight (anchored.yml +
+      slug resolution), state-gate hint, partner voice. ONLY CLI via Bash,
+      no MCP, no raw node-file edit. V1 impl-refine/-build/-wrap as a
+      structure/style template (do not port — V1 is MCP).
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: Alle drei Skills fahren nur `anchored refine|build|wrap …` via Bash; kein MCP
+        why: All three skills drive only `anchored refine|build|wrap …` via Bash; no MCP
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: build respektiert stop/retry_limit + Leaf-vs-each; Tier aus Node abgeleitet
+        why: build respects stop/retry_limit + leaf-vs-each; tier derived from the node
     acceptance_criteria:
       - id: a1
-        text: Alle drei Dateien existieren — plugin/skills/{refine,build,wrap}/SKILL.md — je mit gültigem YAML-Frontmatter (name + nicht-leere, explizit-getriggerte description), nachweisbar via Lade-/Parse-Probe exit 0 für jede Datei
+        text: All three files exist — plugin/skills/{refine,build,wrap}/SKILL.md — each with valid YAML frontmatter (name + non-empty, explicitly-triggered description), provable via load/parse probe exit 0 for each file
         status: done
         evidence:
-          - plugin/skills/{refine,build,wrap}/SKILL.md je gültiges Frontmatter (name + explizit-getriggerte description); yaml-parse exit 0 je Datei
+          - plugin/skills/{refine,build,wrap}/SKILL.md each valid frontmatter (name + explicitly-triggered description); yaml-parse exit 0 per file
       - id: a2
-        text: "Jeder der drei Skill-Bodies enthält den passenden Stage-CLI-Aufruf via Bash — `anchored refine <slug>` / `anchored build <slug>` / `anchored wrap <slug>` (Beweis: je file:line der `anchored <stage>`-Zeile); das Tier wird aus dem Node abgeleitet, das Skill-Argument ist nur der Slug (Beweis: file:line der Slug-als-einziges-Argument-Stelle)"
+        text: "Each of the three skill bodies contains the matching stage CLI call via Bash — `anchored refine <slug>` / `anchored build <slug>` / `anchored wrap <slug>` (evidence: file:line of the `anchored <stage>` line each); the tier is derived from the node, the skill argument is only the slug (evidence: file:line of the slug-as-only-argument place)"
         status: done
         evidence:
-          - refine SKILL.md:21 'anchored refine <slug>', build:20 'anchored build <slug>', wrap:19 'anchored wrap <slug>'; Tier aus Node abgeleitet, Slug einziges Argument
+          - refine SKILL.md:21 'anchored refine <slug>', build:20 'anchored build <slug>', wrap:19 'anchored wrap <slug>'; tier derived from the node, slug the only argument
       - id: a3
-        text: Keiner der drei Skills referenziert MCP oder mutiert das Node-File direkt (nachweisbar via `grep -niE 'mcp__|mcpServers|Write\(|Edit\(' plugin/skills/{refine,build,wrap}/SKILL.md` liefert keinen Treffer auf MCP-Tool oder Node-File-Write/Edit)
+        text: None of the three skills references MCP or mutates the node file directly (provable via `grep -niE 'mcp__|mcpServers|Write\(|Edit\(' plugin/skills/{refine,build,wrap}/SKILL.md` yields no hit on an MCP tool or node-file Write/Edit)
         status: done
         evidence:
-          - grep mcp__/mcpServers/Write(/Edit( plugin/skills/{refine,build,wrap} → leer (kein MCP/Node-Mutation)
+          - grep mcp__/mcpServers/Write(/Edit( plugin/skills/{refine,build,wrap} → empty (no MCP/node mutation)
       - id: a4
-        text: "Der build-Skill dokumentiert die fraktale build-Semantik: each-Loop über Kinder (interleaved) bzw. Leaf-Arbeit (implement + task-/code-validate), und dass stop + retry_limit greifen (Beweis: file:line-Refs in plugin/skills/build/SKILL.md auf each/Leaf UND auf stop/retry_limit)"
+        text: "The build skill documents the fractal build semantics: each loop over children (interleaved) or leaf work (implement + task-/code-validate), and that stop + retry_limit apply (evidence: file:line refs in plugin/skills/build/SKILL.md on each/leaf AND on stop/retry_limit)"
         status: done
         evidence:
-          - build SKILL.md:27-33 each-Loop interleaved (task.build.each:phase, epic.build.each:task) + Leaf implement+task-/code-validate + stop+retry_limit (default 3)
-  - name: Manueller Smoke je Command
+          - build SKILL.md:27-33 each loop interleaved (task.build.each:phase, epic.build.each:task) + leaf implement+task-/code-validate + stop+retry_limit (default 3)
+  - name: Manual smoke per command
     slug: smoke
     status: done
     context: |
-      Pro Command (/a:plan /a:refine /a:build /a:wrap) ein manueller
-      Smoke-Durchlauf, der zeigt, dass der Skill lädt, getriggert wird und den
-      korrekten `anchored …`-Bash-Call absetzt. Da der CLI-Bau (Tasks 01–08)
-      das Stage-Verb liefert, wird der Smoke gegen die echte CLI ODER — falls
-      die CLI für eine Stage noch nicht vollständig ist — gegen einen
-      protokollierten Trockenlauf gefahren (Befehl + erwarteter CLI-Aufruf
-      festgehalten). Beweis ist reproduzierbar: das festgehaltene
-      Smoke-Transkript/-Log pro Command (Eingabe → ausgelöster anchored-Call →
-      Resultat/JSON oder dokumentierter Stub). Kein MCP im Pfad.
+      Per command (/a:plan /a:refine /a:build /a:wrap) a manual
+      smoke run that shows that the skill loads, is triggered and issues the
+      correct `anchored …` Bash call. Since the CLI build (tasks 01–08)
+      delivers the stage verb, the smoke is run against the real CLI OR — if
+      the CLI for a stage is not yet complete — against a
+      logged dry run (command + expected CLI call
+      recorded). The evidence is reproducible: the recorded
+      smoke transcript/log per command (input → triggered anchored call →
+      result/JSON or documented stub). No MCP in the path.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: Smoke verifiziert, dass jeder Command real über `anchored …` (Bash) fährt, nicht über MCP
+        why: Smoke verifies that each command really runs via `anchored …` (Bash), not via MCP
     acceptance_criteria:
       - id: a1
-        text: "Für /a:plan ist ein Smoke-Durchlauf festgehalten, der zeigt: Skill lädt + triggert auf /a:plan und setzt den `anchored plan …`-Bash-Call ab (Beweis: Smoke-Log/Transkript mit Eingabe + sichtbarem anchored-plan-Aufruf + Ergebnis-/JSON-Ausgabe oder dokumentiertem CLI-Stub)"
+        text: "For /a:plan a smoke run is recorded that shows: the skill loads + triggers on /a:plan and issues the `anchored plan …` Bash call (evidence: smoke log/transcript with input + visible anchored-plan call + result/JSON output or documented CLI stub)"
         status: done
         evidence:
-          - "Smoke gegen die ECHTE kompilierte CLI (core/dist/index.js): `anchored plan task 'add OAuth device flow'` → {ok:true, command:'plan', result.tier:'task'} (Skill setzt anchored-plan-Bash-Call ab, JSON-Output)"
+          - "Smoke against the REAL compiled CLI (core/dist/index.js): `anchored plan task 'add OAuth device flow'` → {ok:true, command:'plan', result.tier:'task'} (skill issues the anchored-plan Bash call, JSON output)"
       - id: a2
-        text: "Für /a:refine, /a:build und /a:wrap ist je ein analoger Smoke-Durchlauf festgehalten, der den korrekten `anchored refine|build|wrap <slug>`-Call zeigt (Beweis: drei Smoke-Logs/Transkripte, je mit Eingabe + sichtbarem anchored-Stage-Call + Resultat)"
+        text: "For /a:refine, /a:build and /a:wrap an analogous smoke run is recorded each, showing the correct `anchored refine|build|wrap <slug>` call (evidence: three smoke logs/transcripts, each with input + visible anchored-stage call + result)"
         status: done
         evidence:
-          - "Smoke /a:refine|build|wrap → `anchored refine|build|wrap <slug>` gegen echte bin; create→read→set-status drafted→read end-to-end {ok:true} (real-substrate-Persistenz). BUG gefunden+gefixt: buildCli.create schrieb task-node OHNE schema_version → read schlug fehl; create setzt jetzt schema_version:2 + title für task/epic"
+          - "Smoke /a:refine|build|wrap → `anchored refine|build|wrap <slug>` against the real bin; create→read→set-status drafted→read end-to-end {ok:true} (real-substrate persistence). BUG found+fixed: buildCli.create wrote the task node WITHOUT schema_version → read failed; create now sets schema_version:2 + title for task/epic"
       - id: a3
-        text: "Kein Smoke-Pfad benutzt MCP — die festgehaltenen Smoke-Logs zeigen Bash/`anchored …` als Transport für jeden der vier Commands (Beweis: Verweis auf die anchored-Aufrufzeile in jedem der vier Smoke-Logs; keine MCP-Tool-Aufrufe im Transkript)"
+        text: "No smoke path uses MCP — the recorded smoke logs show Bash/`anchored …` as the transport for each of the four commands (evidence: reference to the anchored call line in each of the four smoke logs; no MCP tool calls in the transcript)"
         status: done
         evidence:
-          - Alle 4 Commands fahren über node dist/index.js (Bash/anchored), JSON-Envelope; unknown command → {ok:false, UnknownCommand}; KEINE MCP-Tool-Aufrufe im Smoke-Pfad
-  - name: skill-creator-Eval (Trigger + Verhalten, Varianz) → e8
+          - All 4 commands run via node dist/index.js (Bash/anchored), JSON envelope; unknown command → {ok:false, UnknownCommand}; NO MCP tool calls in the smoke path
+  - name: skill-creator eval (trigger + behavior, variance) → e8
     slug: skill-creator-eval
     status: pending
     context: |
-      e8: Nach dem Bau die vier Skills mit dem skill-creator-Skill evaluieren —
-      ein echter Eval-Lauf (nicht nur manueller Smoke), gemessen auf zwei
-      Achsen: (1) Trigger-Treffsicherheit der description (löst der Skill auf
-      die gemeinten Prompts aus und NICHT auf Fremd-Prompts) und (2) Verhalten
-      (fährt der ausgelöste Skill die korrekte CLI-Stage), inkl.
-      Varianz-Analyse über mehrere Läufe. Pro Skill (oder gebündelt) ein
-      Eval-Lauf; die Ergebnisse (Trigger-Accuracy + Varianz + ggf.
-      Verhaltens-Befund) werden als reproduzierbares Eval-Artefakt
-      festgehalten. Bei schwacher Trigger-Treffsicherheit wird die description
-      nachgeschärft und der Eval erneut gefahren (Vorher/Nachher belegbar).
+      e8: After the build, evaluate the four skills with the skill-creator skill —
+      a real eval run (not just a manual smoke), measured on two
+      axes: (1) trigger accuracy of the description (does the skill trigger on
+      the intended prompts and NOT on foreign prompts) and (2) behavior
+      (does the triggered skill run the correct CLI stage), incl.
+      variance analysis across multiple runs. Per skill (or bundled) one
+      eval run; the results (trigger accuracy + variance + possibly
+      behavior finding) are recorded as a reproducible eval artifact.
+      On weak trigger accuracy the description is
+      sharpened and the eval is run again (before/after provable).
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: Verhaltens-Achse prüft u.a., dass der ausgelöste Skill die CLI-Stage fährt (nicht MCP)
+        why: The behavior axis checks among other things that the triggered skill runs the CLI stage (not MCP)
     acceptance_criteria:
       - id: a1
-        text: "Ein echter skill-creator-Eval-Lauf wurde über die vier Skills gefahren (pro Skill oder gebündelt), inkl. Varianz-Analyse über mehrere Iterationen — kein bloßer manueller Smoke (Beweis: Eval-Output/-Artefakt mit Trigger-Accuracy-Zahlen pro Skill + Varianz-Kennzahl über die Läufe)"
+        text: "A real skill-creator eval run was run over the four skills (per skill or bundled), incl. variance analysis across multiple iterations — not a mere manual smoke (evidence: eval output/artifact with trigger accuracy numbers per skill + variance metric across the runs)"
         status: pending
       - id: a2
-        text: "Die Trigger-Treffsicherheit jeder der vier descriptions ist gemessen und dokumentiert: Treffer auf gemeinte Prompts + Nicht-Auslösen auf Fremd-Prompts (Beweis: Eval-Artefakt mit Positiv-/Negativ-Treffer je Skill); descriptions, die unter Schwelle liegen, wurden nachgeschärft und re-evaluiert (Beweis: Vorher/Nachher-description-Diff + zweiter Eval-Wert)"
+        text: "The trigger accuracy of each of the four descriptions is measured and documented: hits on intended prompts + non-triggering on foreign prompts (evidence: eval artifact with positive/negative hits per skill); descriptions that fall below threshold were sharpened and re-evaluated (evidence: before/after description diff + second eval value)"
         status: pending
       - id: a3
-        text: "Die Verhaltens-Achse ist evaluiert: ein ausgelöster Skill fährt die korrekte `anchored <stage>`-CLI-Stage (Beweis: Eval-Befund je Skill, der den ausgelösten anchored-Stage-Aufruf zeigt — nicht MCP)"
+        text: "The behavior axis is evaluated: a triggered skill runs the correct `anchored <stage>` CLI stage (evidence: eval finding per skill that shows the triggered anchored-stage call — not MCP)"
         status: pending

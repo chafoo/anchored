@@ -1,72 +1,72 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
 slug: dogfood-fixings/decision-trail
-title: Decision-Trail vollständig — reasoning + stop-check + build-notes (F7 + F10)
+title: Decision trail complete — reasoning + stop-check + build-notes (F7 + F10)
 status: done
 created: 2026-06-11
 context:
   plan: |
-    F7 (mittel): `resolve-question <slug> <id> <answer> [source]` nimmt kein
-    reasoning-Argument → AI-geklärte Fragen haben reasoning:(keins), obwohl Schema
-    reasoning? kennt + die Invariante „source=ai ⇒ reasoning" gilt. Workaround:
-    reasoning in den answer-String gepackt.
-    F10 (mittel): Im build hat build-implement within-plan-Entscheidungen getroffen
-    (try/catch, save-Stub), aber NICHTS davon im Task-File dokumentiert (build-stage
-    log = 0); stop-check wurde NIE gespawnt. „Jede Entscheidung auf dem Record" gilt
-    für den build nicht.
+    F7 (medium): `resolve-question <slug> <id> <answer> [source]` takes no
+    reasoning argument → AI-resolved questions have reasoning:(none), even though the schema
+    knows reasoning? + the invariant "source=ai ⇒ reasoning" applies. Workaround:
+    reasoning packed into the answer string.
+    F10 (medium): During build, build-implement made within-plan decisions
+    (try/catch, save stub), but documented NONE of it in the task-file (build-stage
+    log = 0); stop-check was NEVER spawned. "Every decision on the record" does not apply
+    to the build.
     REF: .claude/temp/dogfood-findings.md F7/F10.
 questions: []
 log: []
 phases:
-  - name: resolve-question mit reasoning + Invariante
+  - name: resolve-question with reasoning + invariant
     slug: resolve-reasoning
     status: done
     context: |
-      `resolve-question <slug> <id> <answer> <source> [reasoning]` — reasoning
-      durch facade/ops durchreichen; bei source=ai ist reasoning verpflichtend
-      (Invariante am Op, analog zu kein-done-ohne-evidence).
+      `resolve-question <slug> <id> <answer> <source> [reasoning]` — pass reasoning
+      through facade/ops; when source=ai, reasoning is mandatory
+      (invariant at the op, analogous to no-done-without-evidence).
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: source=ai ⇒ reasoning ist eine Substrat-Invariante am schreibenden Op
+        why: source=ai ⇒ reasoning is a substrate invariant at the writing op
       - path: .claude/rules/cli-only-transport.md
-        why: über die CLI, JSON-Output
+        why: via the CLI, JSON output
     acceptance_criteria:
       - id: a1
-        text: 'resolve-question speichert ein separates reasoning-Feld (nicht im answer). Beweis: CLI-Smoke `resolve-question … ai "<reasoning>"` → Node-Read zeigt reasoning gesetzt (grün) + datei:zeile.'
+        text: 'resolve-question stores a separate reasoning field (not in the answer). Evidence: CLI smoke `resolve-question … ai "<reasoning>"` → Node read shows reasoning set (green) + file:line.'
         status: done
         evidence:
-          - 'core/src/cli/commands/node.ts resolve-question nimmt [reasoning]; facade/cli durchgereicht; questions.ts speichert reasoning; CLI-Smoke: resolve-question ai "<why>" → reasoning gesetzt (ok:true)'
+          - 'core/src/cli/commands/node.ts resolve-question takes [reasoning]; passed through facade/cli; questions.ts stores reasoning; CLI smoke: resolve-question ai "<why>" → reasoning set (ok:true)'
       - id: a2
-        text: "source=ai OHNE reasoning wird am Op abgewiesen (Invariante). Beweis: ops-Test (resolveQuestion source=ai, reasoning leer → wirft) (grün) + datei:zeile."
+        text: "source=ai WITHOUT reasoning is rejected at the op (invariant). Evidence: ops test (resolveQuestion source=ai, reasoning empty → throws) (green) + file:line."
         status: done
         evidence:
-          - "core/src/ops/scope/questions.ts resolveQuestion Invariante (source=ai ⇒ reasoning, sonst MissingReasoning); questions-log.spec grün (ai ohne reasoning wirft, mit ok); CLI-Smoke: resolve-question ai ohne reasoning → ok:false MissingReasoning"
-  - name: Build-Decision-Trail — stop-check + Doku + build-notes
+          - "core/src/ops/scope/questions.ts resolveQuestion invariant (source=ai ⇒ reasoning, otherwise MissingReasoning); questions-log.spec green (ai without reasoning throws, with reasoning ok); CLI smoke: resolve-question ai without reasoning → ok:false MissingReasoning"
+  - name: Build decision trail — stop-check + docs + build-notes
     slug: build-decisions
     status: done
     context: |
-      build-SKILL: für jede self-reported emergente Decision stop-check spawnen;
-      proceed → dokumentieren (append-log decision ODER resolve-question source=ai +
-      reasoning); stop → walk. build-implement: build-notes via append-log mit
-      at=build (nicht Phasen-Slug).
+      build SKILL: for each self-reported emergent decision, spawn stop-check;
+      proceed → document (append-log decision OR resolve-question source=ai +
+      reasoning); stop → walk. build-implement: build-notes via append-log with
+      at=build (not the phase slug).
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: stop-check = die Halt-vs-proceed-Mechanik; Engine deterministisch, AI hinter spawn
+        why: stop-check = the stop-vs-proceed mechanism; engine deterministic, AI behind spawn
       - path: .claude/rules/cli-only-transport.md
-        why: Decisions + Notes self-write via CLI
+        why: decisions + notes self-write via CLI
     acceptance_criteria:
       - id: a1
-        text: "build-SKILL verdrahtet das emergent-decision-Handling: stop-check-Spawn pro self-reported Decision, proceed→dokumentieren, stop→walk. Beweis: build/SKILL.md zeigt den Ablauf (datei:zeile)."
+        text: "build SKILL wires up emergent-decision handling: stop-check spawn per self-reported decision, proceed→document, stop→walk. Evidence: build/SKILL.md shows the flow (file:line)."
         status: done
         evidence:
-          - 'plugin/skills/build/SKILL.md "Emergent decisions → document or stop": pro self-reported Decision stop-check (build.stop-Match), proceed→add-question+resolve-question ai+reasoning, stop→add-question+walk'
+          - 'plugin/skills/build/SKILL.md "Emergent decisions → document or stop": per self-reported decision stop-check (build.stop match), proceed→add-question+resolve-question ai+reasoning, stop→add-question+walk'
       - id: a2
-        text: "build-implement schreibt build-notes mit at=build. Beweis: plugin/agents/build-implement.md nennt `append-log <slug> build …` (datei:zeile)."
+        text: "build-implement writes build-notes with at=build. Evidence: plugin/agents/build-implement.md names `append-log <slug> build …` (file:line)."
         status: done
         evidence:
-          - 'plugin/agents/build-implement.md "Self-report build-notes": append-log <task-slug> build learning mit at=build (Stage, nicht Phasen-Slug)'
+          - 'plugin/agents/build-implement.md "Self-report build-notes": append-log <task-slug> build learning with at=build (stage, not phase slug)'
       - id: a3
-        text: "Ein build-Lauf erzeugt einen nicht-leeren build-Decision-Trail (≥1 build-stage Eintrag bzw. resolved-question source=ai mit reasoning). Beweis: dokumentierter Lauf/Test."
+        text: "A build run produces a non-empty build decision trail (≥1 build-stage entry or resolved-question source=ai with reasoning). Evidence: documented run/test."
         status: done
         evidence:
-          - "Mechanismus verdrahtet + CLI-bewiesen: append-log build + resolve-question ai+reasoning laufen beide über die CLA (Smoke ok). Live non-leerer build-Decision-Trail wird im dogfood-task-Rerun re-validiert (Skill spawnt build-implement → build-notes → stop-check → resolve-question)."
+          - "Mechanism wired + CLI-proven: append-log build + resolve-question ai+reasoning both run via the CLA (smoke ok). Live non-empty build decision trail is re-validated in the dogfood task rerun (skill spawns build-implement → build-notes → stop-check → resolve-question)."

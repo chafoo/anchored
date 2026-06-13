@@ -15,15 +15,16 @@ each:task loop are plumbing; the user hears outcomes:
 
 | Avoid (machinery) | Prefer (partner) |
 |---|---|
-| "set-child-status … in-progress" | "Phase 2 (Persistence) angefangen." |
-| "core-list fährt seinen JIT-Lifecycle plan→refine→build→wrap" | "Ich baue core-list zuerst — von der Planung bis fertig." |
-| "task-validate verdict=fail, rejected_count=2" | "Zwei Akzeptanz-Kriterien hängen noch — ich versuch's nochmal mit den findings als fix-liste." |
-| "flip auf wrap / next-child → null" | "Build durch — alle phasen grün. Review steht." |
+| "set-child-status … in-progress" | "Started phase 2 (Persistence)." |
+| "core-list runs its just-in-time lifecycle plan→refine→build→wrap" | "I'll build core-list first — from planning to done." |
+| "task-validate verdict=fail, rejected_count=2" | "Two acceptance criteria still pending — I'll retry with the findings as a fix-list." |
+| "flip to wrap / next-child → null" | "Build's done — all phases green. Review's up next." |
 
-**Vor jeder user-facing Zeile** das Jargon-Mapping aus `communication-style.md`
-anwenden — Framework-Begriffe (scaffold, stub, seam, grounding, roll-up,
-outcome-AC, executor, der each-Loop, drafted/refined, concern, DAG/JIT) gehören
-nie in den Chat, nur ihr Klartext.
+**Before every user-facing line**, apply the jargon mapping from
+`communication-style.md` — framework terms (scaffold, stub, seam, grounding,
+roll-up, outcome acceptance criteria, executor, the each-loop, drafted/refined,
+concern, dependency graph, just-in-time) never belong in chat, only their plain
+words.
 
 The skill is the **orchestrator**: it runs in-session (it has the plugin + agents
 loaded), consults the `anchored` CLI for the deterministic step-plan + all node
@@ -46,7 +47,7 @@ self-write their results via `anchored node …` (see
    `/a:refine` (all-together / high-together (default) / AI-all) — `AskUserQuestion`
    first, then resolve each (`resolve-question … user|ai ["<reasoning>"]`). Each
    `AskUserQuestion` follows `plugin/references/question-style.md` — recommended
-   option first (`(Empfohlen)`) + implication bullets in the text; work them out at
+   option first (`(Recommended)`) + implication bullets in the text; work them out at
    ask-time if the question is terse. **0 open questions → skip this silently.**
    (Build's own autonomy is for EMERGENT build-time decisions only; pre-existing
    plan questions go through the walk.)
@@ -78,13 +79,13 @@ While `anchored node next-child <slug>` returns a child (else done):
      Task tool with the agent-contract input `{ task-slug: <slug>, phase-slug:
      <child>, tier: phase, stage: build, context, rules }`. It writes code +
      self-writes evidence: `anchored node add-phase-evidence <slug> <child> <ac-id>
-     "<proof>"` per AC. Then spawn the two gates **in parallel** (build-task-validate
-     + build-code-validate) — pure inspectors.
-   - **epic → task**: the child runs its OWN full JIT lifecycle, then the epic-child
-     is marked delivered. Per ready child (the loop's body is the child's
+     "<proof>"` per acceptance criterion. Then spawn the two gates **in parallel**
+     (build-task-validate + build-code-validate) — pure inspectors.
+   - **epic → task**: the child runs its OWN full just-in-time lifecycle, then the
+     epic-child is marked delivered. Per ready child (the loop's body is the child's
      plan→refine→build→wrap, NOT a phase pipeline):
-     1. **JIT plan** — `anchored plan task <child-slug>` creates the child task-file.
-        **Seed its decomposition from the stub's outcome-ACs** (the Epic→Task
+     1. **just-in-time plan** — `anchored plan task <child-slug>` creates the child task-file.
+        **Seed its decomposition from the stub's outcome acceptance criteria** (the Epic→Task
         contract epic-decompose wrote): read them
         (`anchored node read <epic-slug>` → `tasks[].acceptance_criteria`) and pass
         them to plan-decompose as the outcome bar the phases must meet — so the
@@ -103,15 +104,15 @@ While `anchored node next-child <slug>` returns a child (else done):
      4. **Wrap the child** (review + summarize) → child task `done`.
      5. Mark the epic-child delivered:
         `anchored node set-child-status <epic-slug> <child> done`.
-     The stub's outcome-ACs are validated at the EPIC wrap (epic-roll-up,
+     The stub's outcome acceptance criteria are validated at the EPIC wrap (epic-roll-up,
      hard-with-reconcile), not here.
-3. **Gates + failures (the re-do loop):** the gates REJECT a bad AC by self-writing
-   `anchored node set-failures <slug> <phase> <ac-id> "<why>"` — that flips the AC
-   back to `pending` with its `failures` recorded. Read the child back
-   (`anchored node read <slug>`); for each AC carrying `failures`, re-spawn
+3. **Gates + failures (the re-do loop):** the gates REJECT a bad acceptance criterion
+   by self-writing `anchored node set-failures <slug> <phase> <ac-id> "<why>"` — that
+   flips the criterion back to `pending` with its `failures` recorded. Read the child
+   back (`anchored node read <slug>`); for each criterion carrying `failures`, re-spawn
    build-implement with those failures as the fix-list, then re-run the gates. Retry
    up to `retry_limit` (default 3); on exhaustion → blocked (see Failure-handling).
-4. **Advance:** when all the child's ACs are `done` (with evidence) and both gates
+4. **Advance:** when all the child's acceptance criteria are `done` (with evidence) and both gates
    pass → `anchored node set-child-status <slug> <child> done`. This is the **only**
    place a phase reaches `done` — the build-implement agent is evidence-only and
    never flips the phase status (G4: that flip must come AFTER the gates, never
@@ -154,26 +155,26 @@ Run it as, e.g.:
 TASK_SLUG='core-list' PHASE_SLUG='persistence' PHASE_NAME='Local persistence' EPIC_SLUG='' bash -c "$STEP_RUN"
 ```
 where `$STEP_RUN` is the step's `run` string verbatim. **Per-phase commits don't
-leak into chat** — narrate the phase outcome ("Phase 2 grün, committed."), not the
+leak into chat** — narrate the phase outcome ("Phase 2 green, committed."), not the
 git plumbing (see communication-style.md). Git is never the framework's concern: if
 the user wants to capture a SHA into a field, their own `run:` script does it
 (`anchored node set-field "${TASK_SLUG}" commit_sha "$(git rev-parse HEAD)"`).
 
 > **Fan-out runs under git worktree isolation — directive, not caveat.** Every
-> fan-out worker runs in its **own git worktree** — both the per-AC **phase** fan-out
+> fan-out worker runs in its **own git worktree** — both the per-criterion **phase** fan-out
 > (workflow mode, below) and the **task-level** parallel fan-out (epic). A per-task
 > branch (`task/<slug>`) assumes a single working tree, so N parallel workers
 > `git switch`-ing one shared checkout would clobber each other; isolated worktrees
 > never contend. This is what makes "fastest where safe" robust even against a wrong
 > independence call — isolated worktrees merge cleanly, and the cross-process lock +
-> CAS catch the rest. Worktree isolation is the **default for any fan-out**, not a
-> fallback to a sequential loop.
+> compare-and-swap catch the rest. Worktree isolation is the **default for any
+> fan-out**, not a fallback to a sequential loop.
 
 ## Epic task-level fan-out (parallel independent children, q8)
 
 The loop above is sequential (one `next-child` at a time). For an **epic**, the
 bigger speed lever is **task-level parallelism**: independent child-tasks at the
-same DAG level (e.g. three comfort-features that all depend only on `core-list`)
+same dependency level (e.g. three comfort-features that all depend only on `core-list`)
 have no reason to build one-after-another. When the runtime has the **Workflow
 tool**, fan them out:
 
@@ -182,7 +183,7 @@ tool**, fan them out:
    not just the first. If it has ≤1 entry, just run the sequential loop.
 2. **Mark + dispatch:** set each batch child `active`, then dispatch them as a
    **Dynamic Workflow**, one unit per child, each unit running that child's FULL
-   JIT lifecycle (plan→refine→build→wrap, the epic→task body above). Up to the
+   just-in-time lifecycle (plan→refine→build→wrap, the epic→task body above). Up to the
    hard ≤16 parallel ceiling; larger batches run in waves.
 3. **Lock-safety:** each child writes its OWN task-file; the only shared surface is
    the epic's `tasks[]` status updates (`set-child-status`). The CLI's cross-process
@@ -207,7 +208,7 @@ compose: a workflow phase inside a workflow child-task.
 ## Emergent decisions → document or stop (the decision-trail)
 
 build runs maximally autonomous, but **every emergent decision lands on the
-record** — that is the USP ("every decision on the record"). The build-implement
+record** — that is the core value ("every decision on the record"). The build-implement
 worker self-reports decisions the plan didn't fully nail down (which library, which
 error shape, extend-vs-replace) in its build-notes (`append-log <slug> build
 learning "…"`). For EACH such decision, run the **stop-check**:
@@ -231,11 +232,11 @@ learning "…"`). For EACH such decision, run the **stop-check**:
 
 ## Failure-handling (never silent — a5)
 
-- **Agent returns nothing / errors** → treat as a failed AC: record it as a
-  `failures` entry and retry (counts toward `retry_limit`).
+- **Agent returns nothing / errors** → treat as a failed acceptance criterion:
+  record it as a `failures` entry and retry (counts toward `retry_limit`).
 - **retry_limit exhausted** → `anchored node set-child-status <slug> <child>
   blocked`, note what was tried in `anchored node append-log <slug> build blocker
-  "<phase> blocked after N attempts: <ACs>"`, then continue with the next child
+  "<phase> blocked after N attempts: <acceptance criteria>"`, then continue with the next child
   (the wrap reviewer surfaces blocked phases). Retry-exhaustion is a bounded
   mechanical limit, NOT a stop.
 - **stop-condition** (a worker flags a decision matching a `build.stop` rule, e.g.
@@ -249,22 +250,22 @@ learning "…"`). For EACH such decision, run the **stop-check**:
 When a phase carries `executor: workflow` (set via `anchored node set-executor
 <slug> <phase> workflow`) and the `Workflow` tool is available, **the SKILL** fans
 the phase's acceptance criteria out as a Dynamic Workflow — one parallel unit per
-not-yet-evidenced AC (the engine's `loop-workflow.ts` is a headless reference; the
+not-yet-evidenced criterion (the engine's `loop-workflow.ts` is a headless reference; the
 live fan-out lives here). The flow, sibling to the sequential implement path:
 
-1. **Plan the units.** Read the phase (`anchored node read <slug>`). A unit = one AC
-   that is `pending` OR carries `failures` (skip ACs already `done` with evidence —
+1. **Plan the units.** Read the phase (`anchored node read <slug>`). A unit = one criterion
+   that is `pending` OR carries `failures` (skip criteria already `done` with evidence —
    resume-safety). ≤16 units in parallel; >16 → waves of 16.
 2. **Dispatch (Workflow tool).** One `agent({ agentType: 'a:build-workflow',
    isolation: 'worktree', … })` per unit (the `build-workflow` plugin agent — the
-   per-AC fan-out worker), each in its **own git worktree** per the fan-out directive
-   above, so parallel units never contend on one checkout. Each unit does its AC's
+   per-criterion fan-out worker), each in its **own git worktree** per the fan-out directive
+   above, so parallel units never contend on one checkout. Each unit does its criterion's
    work and **self-writes its own evidence/failures via the CLI**
    (`anchored node add-phase-evidence …` on success, `anchored node set-failures …`
    on a blocker). Background — emit one progress line, then return; the await is
    **re-invocation**, not polling.
 3. **Collect (evidence-driven, resume-safe).** On re-engage, re-read the task-file;
-   for each AC: `done`+evidence ⇒ satisfied, anything `pending`/`failures` ⇒
+   for each criterion: `done`+evidence ⇒ satisfied, anything `pending`/`failures` ⇒
    re-dispatch ONLY that unit. No per-worker return to apply — the workers wrote to
    disk (do NOT double-apply).
 4. **Gates ONCE over the merged result.** After the fan-out joins, spawn
@@ -281,6 +282,6 @@ to the sequential implement path** (never hard-error).
 
 When `next-child` returns null and at least one child is `done` (none
 in-progress): `anchored node set-status <slug> wrap`. Tell the user in plain words —
-no status word, no `P/Q` codes: *"Build durch — P von Q fertig (R hängen noch).
-Nächster Schritt: `/a:wrap`."* (drop the bracketed clause when nothing is blocked.)
+no status word, no `P/Q` codes: *"Build's done — P of Q finished (R still pending).
+Next step: `/a:wrap`."* (drop the bracketed clause when nothing is blocked.)
 No MCP, no raw node-file edit — every mutation goes through the `anchored` CLI.

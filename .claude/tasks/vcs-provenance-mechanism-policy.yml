@@ -5,41 +5,41 @@ title: vcs-provenance-mechanism-policy
 created: 2026-06-12
 status: done
 phases:
-  - name: "Hybrid-Mechanismus: provenance auf run-Step faengt SHA + schreibt Feld (Engine)"
+  - name: "Hybrid mechanism: provenance on run-step captures SHA + writes field (Engine)"
     slug: provenance-mechanism
     status: done
     acceptance_criteria:
       - id: a1
-        text: "schema/step.ts: provenance?: {field, ref?} auf Step, nur auf run-Step gueltig (refine); Test deckt die XOR/Gueltigkeit (rot vor gruen)."
+        text: "schema/step.ts: provenance?: {field, ref?} on Step, valid only on run-step (refine); test covers the XOR/validity (red before green)."
         status: done
         evidence:
-          - "schema/step.ts: provenance?: {field, ref?} auf Step + StepSchema; .refine erzwingt nur-auf-run-Step. step.spec.ts: parst auf run-Step (mit/ohne ref), Ablehnung auf use/bare/leeres field. bun test gruen."
+          - "schema/step.ts: provenance?: {field, ref?} on Step + StepSchema; .refine enforces run-step-only. step.spec.ts: parses on run-step (with/without ref), rejects on use/bare/empty field. bun test green."
       - id: a2
-        text: "engine/scope/run-step.ts: nach erfolgreichem run mit provenance faengt deps.run('git rev-parse <ref|HEAD>') den SHA + schreibt ihn ins Feld via ops (Mechanismus); Test mit fake run+ops (kein echtes git)."
+        text: "engine/scope/run-step.ts: after a successful run with provenance, deps.run('git rev-parse <ref|HEAD>') captures the SHA + writes it into the field via ops (mechanism); test with fake run+ops (no real git)."
         status: done
         evidence:
-          - "engine/scope/run-step.ts: nach erfolgreichem run mit provenance faengt deps.run('git rev-parse <ref|HEAD>') den SHA + schreibt via deps.ops.setField (neu in OpsLike + engine-ops). run-step.spec.ts (fake run+ops): SHA landet im Feld, ohne provenance kein setField, failed cmd kein capture, failed rev-parse bleibt ok. Nur deps.run, kein child_process."
+          - "engine/scope/run-step.ts: after a successful run with provenance, deps.run('git rev-parse <ref|HEAD>') captures the SHA + writes via deps.ops.setField (new in OpsLike + engine-ops). run-step.spec.ts (fake run+ops): SHA lands in the field, no setField without provenance, no capture on failed cmd, failed rev-parse stays ok. Only deps.run, no child_process."
       - id: a3
-        text: "Mechanismus-vs-Policy: WAS committet wird bleibt Policy (der run-Befehl), DASS der SHA verlaesslich ins Feld kommt ist Mechanismus; in config.md/Kommentar dokumentiert."
+        text: "Mechanism-vs-policy: WHAT gets committed stays policy (the run command), THAT the SHA reliably reaches the field is mechanism; documented in config.md/comment."
         status: done
         evidence:
-          - "Mechanismus-vs-Policy: git-Effekt + SHA-Capture = Mechanismus (Engine, hinter deps.run-Seam); WAS committet wird + welches Feld = Policy (config). In config.md dokumentiert."
-  - name: Task-File-Commit als Default-Template-Step (separat) + Demo + SKILL-Spiegel
+          - "Mechanism-vs-policy: git effect + SHA capture = mechanism (Engine, behind the deps.run seam); WHAT gets committed + which field = policy (config). Documented in config.md."
+  - name: Task-file commit as default-template step (separate) + demo + SKILL mirror
     slug: commit-policy
     status: done
     acceptance_criteria:
       - id: a1
-        text: "core/default-template/anchored.default.yml: task.wrap bekommt einen task-file-state-commit-Step (SEPARATER Commit des Audit-Trails, guarded: no-op ausserhalb git/ohne Aenderung); parst sauber."
+        text: "core/default-template/anchored.default.yml: task.wrap gets a task-file-state-commit step (SEPARATE commit of the audit trail, guarded: no-op outside git/without changes); parses cleanly."
         status: done
         evidence:
-          - "default-template/anchored.default.yml:72 task.wrap 'commit-audit-trail' (SEPARATER Commit; guarded: no-op ausserhalb git/ohne Aenderung). anchored validate: config ok (Default-Template parst sauber)."
+          - "default-template/anchored.default.yml:72 task.wrap 'commit-audit-trail' (SEPARATE commit; guarded: no-op outside git/without changes). anchored validate: config ok (default-template parses cleanly)."
       - id: a2
-        text: "anchored.example-comprehensive.yml demonstriert provenance: {field: commit} statt hand-verdrahtetem set-field; build/SKILL.md Prosa spiegelt den Mechanismus fuer den live-Build."
+        text: "anchored.example-comprehensive.yml demonstrates provenance: {field: commit} instead of a hand-wired set-field; build/SKILL.md prose mirrors the mechanism for the live build."
         status: done
         evidence:
-          - "anchored.example-comprehensive.yml: provenance:{field:commit_sha} (Phase-Commit, Z.92) + {field:merge_commit} (Wrap-Merge, Z.65) statt hand-verdrahtetem set-field; build/SKILL.md spiegelt den Mechanismus fuer den live-Build."
+          - "anchored.example-comprehensive.yml: provenance:{field:commit_sha} (phase commit, line 92) + {field:merge_commit} (wrap merge, line 65) instead of a hand-wired set-field; build/SKILL.md mirrors the mechanism for the live build."
       - id: a3
-        text: "Alle fuenf Quality-Gates gruen: lint, format, typecheck, test, build."
+        text: "All five quality gates green: lint, format, typecheck, test, build."
         status: done
         evidence:
-          - "Alle fuenf Gates unabhaengig verifiziert: lint exit0, format 'All matched files use Prettier code style', typecheck exit0, build exit0, bun test 273 pass/2 skip/0 fail."
+          - "All five gates verified independently: lint exit0, format 'All matched files use Prettier code style', typecheck exit0, build exit0, bun test 273 pass/2 skip/0 fail."

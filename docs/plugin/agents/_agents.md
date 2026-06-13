@@ -2,9 +2,9 @@
 
 # agents
 
-Die AI-Worker, die die Steps ausführen. Flach in `plugin/agents/` (CC scannt keine
-Unterordner), **Stage-Präfix** als Bucket. Distinkte Worker, benannt nach dem was
-sie tun; geteilte sind **tier-parametrisiert** (ein File bedient mehrere Etagen).
+The AI workers that execute the steps. Flat in `plugin/agents/` (CC does not scan
+subfolders), **stage prefix** as the bucket. Distinct workers, named after what
+they do; shared ones are **tier-parametrized** (one file serves multiple tiers).
 
 ```mermaid
 mindmap
@@ -28,27 +28,27 @@ mindmap
       epic-roll-up
 ```
 
-| Worker | Art | Rolle |
+| Worker | Kind | Role |
 |---|---|---|
-| `plan-discover` | geteilt | Lage/Umfang sondieren (Auftakt plan). |
-| `plan-decompose` | task | in Phasen + ACs zerlegen. |
-| `plan-classify` | — | epic\|task\|phase empfehlen. |
-| `refine-plan-check` | geteilt | Plan gegen aktuellen Code. |
-| `refine-rules-check` | geteilt | Rules-Coverage pro Kind. |
-| `build-implement` | phase (Leaf) | die Arbeit implementieren. |
-| `build-task-validate` | phase | Evidence-Honesty (kein AC ohne Beweis). |
-| `build-code-validate` | phase | Rule-Adherence gegen `.claude/rules`. |
-| `wrap-review` | geteilt | abgeschlossene Einheit reviewen. |
-| `wrap-summarize` | geteilt | TL;DR. |
-| `epic-scaffold` | epic | goal-Prosa → coarse Stubs. |
-| `epic-roll-up` | epic | DoD + Retro. |
+| `plan-discover` | shared | Probe the situation/scope (kick off plan). |
+| `plan-decompose` | task | Decompose into phases + ACs. |
+| `plan-classify` | — | Recommend epic\|task\|phase. |
+| `refine-plan-check` | shared | Plan against current code. |
+| `refine-rules-check` | shared | Rules coverage per child. |
+| `build-implement` | phase (Leaf) | Implement the work. |
+| `build-task-validate` | phase | Evidence-honesty (no acceptance criterion without evidence). |
+| `build-code-validate` | phase | Rule adherence against `.claude/rules`. |
+| `wrap-review` | shared | Review the completed unit. |
+| `wrap-summarize` | shared | Summary. |
+| `epic-scaffold` | epic | goal prose → coarse stubs. |
+| `epic-roll-up` | epic | definition of done + retro. |
 
-## Regeln
+## Rules
 
-- Schreiben via [`anchored`-CLI](../../core/cli/_cli.md) (Bash), **nie** MCP — so
-  funktionieren sie auch in Subagents/headless.
-- **Nie** einen Worker `plan` oder `explore` nennen (CC-reservierte Agent-Typen →
-  Shadowing).
+- Write via the [`anchored` CLI](../../core/cli/_cli.md) (Bash), **never** MCP — so
+  they also work in subagents/headless.
+- **Never** name a worker `plan` or `explore` (CC-reserved agent types →
+  shadowing).
 
-> Per-Worker-Seiten (Prompts/Detailverhalten) folgen mit dem Code — noch nicht
-> festgelegt (YAGNI).
+> Per-worker pages (prompts/detailed behavior) follow with the code — not yet
+> settled (YAGNI).

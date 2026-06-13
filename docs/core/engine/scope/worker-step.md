@@ -2,18 +2,18 @@
 
 # worker-step
 
-Helfer für einen Step mit `use:` — triggert einen AI-Worker über `deps.spawn`.
-Das ist die **einzige** Stelle, an der die Engine AI aufruft.
+Helper for a step with `use:` — triggers an AI worker via `deps.spawn`.
+This is the **only** place where the engine calls AI.
 
-## Was
+## What
 
-- Eingabe: ein Step mit `use: '<worker>'`, optional `type: agent|skill` (default
-  `agent`) und `instructions`. Ausgabe: das Worker-Ergebnis.
-- `type: agent` → isolierter Subagent; `type: skill` → in der Orchestrator-
-  Session. `instructions` werden an den Worker durchgereicht.
-- Läuft über `deps.spawn` → im Test durch ein Fake ersetzbar, ohne echtes Claude.
+- Input: a step with `use: '<worker>'`, optionally `type: agent|skill` (default
+  `agent`) and `instructions`. Output: the worker result.
+- `type: agent` → isolated subagent; `type: skill` → in the orchestrator
+  session. `instructions` are passed through to the worker.
+- Runs via `deps.spawn` → swappable for a fake in the test, without real Claude.
 
-## Wie
+## How
 
 ```mermaid
 flowchart LR
@@ -21,7 +21,7 @@ flowchart LR
     spawn --> r["worker result"]
 ```
 
-## Warum
+## Why
 
-`spawn` als injizierte Naht entkoppelt die Engine vom Ausführungs-Substrat —
-heute `claude -p`/Subagent, morgen austauschbar, ohne die Runner zu ändern.
+`spawn` as an injected seam decouples the engine from the execution substrate —
+today `claude -p`/subagent, tomorrow swappable, without changing the runner.

@@ -2,24 +2,23 @@
 
 # parse
 
-YAML → Node-Objekt, anschließend gegen das passende Schema validiert. **Zwei
-Profile**, weil die beiden Datei-Arten unterschiedliche Sicherheits-Ansprüche
-haben.
+YAML → node object, then validated against the matching schema. **Two
+profiles**, because the two file kinds have different security requirements.
 
-## Was
+## What
 
-- **Node-Files** (task/epic) → **no-alias**: YAML-Anchors/Aliasse sind geblockt
-  (Injection-Guard), weil diese Files (teils maschinell) breit verarbeitet werden.
-- **`anchored.yml`** → **alias-ok**: Anchors erlaubt, damit `_lib` wiederverwendbar
-  ist — user-authored Config, kein untrusted Input.
-- Nach dem Parse: Zod-Validierung gegen [schema](../schema/_schema.md).
+- **Node files** (task/epic) → **no-alias**: YAML anchors/aliases are blocked
+  (injection guard), because these files are processed broadly (partly by machine).
+- **`anchored.yml`** → **alias-ok**: anchors allowed, so that `_lib` is reusable
+  — user-authored config, not untrusted input.
+- After the parse: Zod validation against [schema](../schema/_schema.md).
 
-## Wie
+## How
 
 ```mermaid
 flowchart TB
-    in["YAML"] --> prof{"Profil?"}
-    prof -->|Node-File| na["no-alias parse"]
+    in["YAML"] --> prof{"Profile?"}
+    prof -->|Node file| na["no-alias parse"]
     prof -->|anchored.yml| al["alias-ok parse"]
     na --> v["Zod-validate"]
     al --> v

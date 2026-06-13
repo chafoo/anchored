@@ -1,72 +1,71 @@
-# Ticket: dogfood-fixings-4 — VCS-Provenance + Persistenz + CLI-Verben
+# Ticket: dogfood-fixings-4 — version-control provenance + persistence + CLI verbs
 
-**Quelle:** 3-Agent-Analyse des v0.1.13-Laufs (§3 Prozess-Reibung). App + Prozess
-liefen sauber, keine Bugs — das hier ist Reibung an der Naht zwischen Lebenszyklus
-und Git, nicht ein Defekt. Vier Punkte gehören zusammen (alle drehen sich um „wer
-befüllt die VCS-Wahrheit und wo lebt sie"), Punkt 5 ist optional/niedrigste Prio.
+**Source:** 3-agent analysis of the v0.1.13 run (§3 process friction). App + process
+ran cleanly, no bugs — this is friction at the seam between lifecycle
+and Git, not a defect. Four points belong together (they all revolve around "who
+fills the version-control truth and where it lives"), point 5 is optional/lowest priority.
 
-## Problem (vier zusammenhängende Reibungspunkte)
+## Problem (four interrelated friction points)
 
-**1. `commit_sha` zeigt auf den falschen Anker.** Das pro-Phase befüllte
-`commit_sha`-Feld zeigt aktuell auf den Commit im **Phase-Branch**, der beim
-task-Wrap-Merge (`--no-ff`) wieder **gelöscht** wird → der gespeicherte SHA ist nach
-dem Merge tot/unauffindbar. Semantik klären: entweder auf den **Merge-Commit** auf
-`develop` zeigen (überlebt) oder als „intermediate, im Audit ok"-Feld umbenennen
-(`phase_commit` o.ä.) und zusätzlich ein task-level `merge_commit` führen.
+**1. `commit_sha` points at the wrong anchor.** The per-phase-filled
+`commit_sha` field currently points at the commit in the **phase branch**, which is
+**deleted** again during the task wrap merge (`--no-ff`) → the stored SHA is
+dead/untraceable after the merge. Clarify semantics: either point at the **merge commit** on
+`develop` (survives) or rename it to an "intermediate, fine in the audit" field
+(`phase_commit` or similar) and additionally keep a task-level `merge_commit`.
 
-**2. VCS-Provenance ist manuell statt engine-befüllt.** Die commit/branch/merge-
-Schritte laufen heute als User-`run:`-Steps in der anchored.yml — der SHA landet nur
-im Feld, wenn der Step ihn brav per `set-field` zurückschreibt. Das ist fehleranfällig
-(F1 hat genau das schon mal getroffen). Überlegen: ein **engine-naher, optionaler
-VCS-Provenance-Mechanismus**, der den Merge-/Commit-SHA deterministisch einfängt und
-schreibt — Policy bleibt (commit-Strategie ist User-Config), aber das **Zurückschreiben
-der Provenance** sollte nicht jedes Mal hand-verdrahtet sein. Grenze zur
-[[fractal-substrate-integrity]] (Mechanismus vs. Policy) sauber ziehen: WAS committet
-wird = Policy; DASS der resultierende SHA verlässlich ins Feld kommt = darf Mechanismus
-sein.
+**2. version-control provenance is manual instead of engine-filled.** The commit/branch/merge
+steps run today as user `run:` steps in the anchored.yml — the SHA only lands
+in the field if the step dutifully writes it back via `set-field`. That is error-prone
+(F1 was hit by exactly this once). Consider: an **engine-near, optional
+version-control-provenance mechanism** that captures the merge/commit SHA deterministically and
+writes it — policy stays (commit strategy is user config), but the **writing-back
+of the provenance** should not be hand-wired every time. Draw the boundary to
+[[fractal-substrate-integrity]] (mechanism vs. policy) cleanly: WHAT gets committed
+= policy; THAT the resulting SHA reliably reaches the field = may be mechanism.
 
-**3. Task-File-State-Commit-Policy.** Der Evidence-Trail (das Task-File selbst, mit
-allen ACs/evidence/log) wird im Lauf **nicht mitcommittet** — die Phase-Commits fassen
-nur den Source an. Heißt: der wertvollste Audit-Artefakt (das `_task`/`_epic`-File) lebt
-uncommitted im Working-Tree, bis irgendwer manuell committet. Policy festlegen: committen
-wir das Task-File-State pro Phase mit (im selben Commit oder separat), und wenn ja —
-als Default-Template-Step oder als Mechanismus?
+**3. Task-file-state commit policy.** The evidence trail (the task file itself, with
+all ACs/evidence/log) is **not co-committed** during the run — the phase commits touch
+only the source. Meaning: the most valuable audit artifact (the `_task`/`_epic` file) lives
+uncommitted in the working tree until someone commits it manually. Set the policy: do we commit
+the task-file state per phase along with it (in the same commit or separately), and if so —
+as a default-template step or as mechanism?
 
-**4. CLI-Verben `archive` / `reset`.** Nach jedem Dogfood musste das anchored-test-Repo
-**manuell** zurückgesetzt werden (Branches gelöscht, Task-Files weg, develop/main
-zurückgespult). Es fehlt ein sauberes CLI-Verb-Paar: `anchored archive <slug>` (Lauf
-einfrieren/wegräumen) und `anchored reset <slug>` (Task-File + zugehörige Branches
-in Ausgangszustand). Spart die fehleranfällige Handarbeit und macht Dogfood/CI
-reproduzierbar.
+**4. CLI verbs `archive` / `reset`.** After every dogfood the anchored-test repo had to be
+**manually** reset (branches deleted, task files gone, develop/main
+rolled back). A clean CLI verb pair is missing: `anchored archive <slug>` (freeze/clean
+away a run) and `anchored reset <slug>` (task file + associated branches
+back to initial state). Saves the error-prone manual work and makes dogfood/CI
+reproducible.
 
-## Beobachtung aus dem Transkript (eigener Befund)
-Der Auto-Slug wurde im Lauf **erneut per rm + neu-anlegen umgangen** statt per
-`--slug`. Der plan-SKILL sollte beim Re-Plan denselben Slug **explizit via `--slug`**
-durchreichen, statt das File zu löschen und neu zu scaffolden (verliert sonst Historie/
-Provenance). Kleiner Fix, gehört aber thematisch hierher (Provenance-Verlust).
+## Observation from the transcript (own finding)
+The auto-slug was **again worked around via rm + recreate** during the run instead of via
+`--slug`. The plan SKILL should pass the same slug through **explicitly via `--slug`** on
+re-plan, instead of deleting the file and re-scaffolding it (otherwise it loses history/
+provenance). Small fix, but it belongs here thematically (provenance loss).
 
-## Optional / niedrigste Prio
-**5. plan-decompose Enforcement-ACs up front.** Die Enforcement-Themen (trim/
-whitespace, TDZ-freie Selektor-Scoping, etc.) könnten schon beim Zerlegen als
-explizite ACs emittiert werden, statt erst im Build aufzutauchen. Nice-to-have,
-nicht blockierend — separat halten, nicht mit 1–4 koppeln.
+## Optional / lowest priority
+**5. plan-decompose enforcement ACs up front.** The enforcement topics (trim/
+whitespace, TDZ-free selector scoping, etc.) could be emitted as
+explicit acceptance criteria already at decompose time, instead of only surfacing during the build. Nice-to-have,
+non-blocking — keep it separate, do not couple it with 1–4.
 
-## Betroffen
-- `core/` — `commit_sha`-Semantik / evtl. neues `merge_commit`-Feld; optionaler
-  VCS-Provenance-Mechanismus (Mechanismus-Seite, hinter `run`-Seam); CLI-Verben
+## Affected
+- `core/` — `commit_sha` semantics / possibly new `merge_commit` field; optional
+  version-control-provenance mechanism (mechanism side, behind `run` seam); CLI verbs
   `archive` + `reset` (cli/commands/).
-- `anchored.default.yml` / example-yml — Task-File-State-Commit-Step (Policy-Seite).
-- `plan/SKILL.md` — Re-Plan reicht `--slug` durch, kein rm+recreate.
+- `anchored.default.yml` / example-yml — task-file-state commit step (policy side).
+- `plan/SKILL.md` — re-plan passes `--slug` through, no rm+recreate.
 
-## Akzeptanz
-- a1: `commit_sha` (oder sein Nachfolger) zeigt nach dem task-Wrap auf einen
-  **überlebenden** Commit; Semantik dokumentiert.
-- a2: Die VCS-Provenance landet **verlässlich** im Feld, ohne dass jeder User-Step
-  das Zurückschreiben selbst korrekt verdrahten muss; Mechanismus-vs-Policy-Grenze
-  dokumentiert.
-- a3: Task-File-State-Commit-Policy ist entschieden + verdrahtet (Default-Template
-  oder Mechanismus), der Audit-Trail ist nach einem Lauf committet.
-- a4: `anchored archive <slug>` + `anchored reset <slug>` existieren, getestet, machen
-  die manuelle Repo-Rücksetzung überflüssig.
-- a5: Re-Plan nutzt `--slug` statt rm+recreate (kein Provenance-Verlust).
-- a6 (optional): plan-decompose kann Enforcement-ACs up front emittieren.
+## Acceptance
+- a1: `commit_sha` (or its successor) points after the task wrap at a
+  **surviving** commit; semantics documented.
+- a2: The version-control provenance lands **reliably** in the field, without each user step
+  having to wire the write-back correctly itself; mechanism-vs-policy boundary
+  documented.
+- a3: Task-file-state commit policy is decided + wired (default-template
+  or mechanism), the audit trail is committed after a run.
+- a4: `anchored archive <slug>` + `anchored reset <slug>` exist, tested, make
+  the manual repo reset unnecessary.
+- a5: Re-plan uses `--slug` instead of rm+recreate (no provenance loss).
+- a6 (optional): plan-decompose can emit enforcement ACs up front.

@@ -1,6 +1,6 @@
 ---
 name: refine-rules-check
-description: Shared refine worker (tier-parametrised): verifies each phase covers the applicable .claude/rules/ files. A missing rule-enforcement is AUTO-FIXED (adds an enforcing AC); only genuine architecture ambiguity becomes a question. Writes back via the anchored CLI.
+description: Shared refine worker (tier-parametrised): verifies each phase covers the applicable .claude/rules/ files. A missing rule-enforcement is AUTO-FIXED (adds an enforcing acceptance criterion); only genuine architecture ambiguity becomes a question. Writes back via the anchored CLI.
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---
@@ -21,9 +21,9 @@ missing coverage + conflicts. Read-only inspection.
 ## Write (self-write via CLI)
 - **Missing rule-enforcement → AUTO-FIX, not a question.** Project rules are
   framework requirements — they get enforced, not negotiated with the user. If a
-  rule applies to a phase but no AC enforces it, ADD the enforcing AC yourself:
+  rule applies to a phase but no acceptance criterion enforces it, ADD the enforcing criterion yourself:
   ```bash
-  anchored node add-ac <slug> <phase-slug> "<AC that enforces the rule, testable>"
+  anchored node add-ac <slug> <phase-slug> "<acceptance criterion that enforces the rule, testable>"
   ```
   (And attach the rule to the phase: `anchored node set-phase-rules <slug>
   <phase-slug> <rule-path> "<why>"`.)
@@ -37,8 +37,8 @@ missing coverage + conflicts. Read-only inspection.
   never a bare question:
   ```bash
   anchored node add-question <slug> "<the architecture ambiguity>
-  Empfehlung: <recommended answer, formed from the rules + code>.
-  Implikationen:
+  Recommendation: <recommended answer, formed from the rules + code>.
+  Implications:
   - <what each direction breaks/enables/costs>" high
   ```
 - Always record the rollup:

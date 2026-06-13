@@ -14,19 +14,20 @@ Partner voice in chat, machinery only in the audit trail — see
 
 | Avoid (machinery) | Prefer (partner) |
 |---|---|
-| "anchored plan epic … → node erstellt (status plan)" | "Lege das epic für `<slug>` an." |
-| "Spawne discover + decompose…" | "Lass uns das durchsprechen — was genau soll rein?" |
-| "ich fahre die zwei Plan-Steps: discover dann scaffold (Stubs + Abhängigkeits-Reihenfolge)" | "Ich schau kurz den Code an und skizzier die zwei Tasks." |
-| "Status-flip plan → drafted" | "Plan steht — N phasen, M Akzeptanz-Kriterien, K offene fragen. Run `/a:refine`." |
+| "anchored plan epic … → node created (status plan)" | "Setting up the epic for `<slug>`." |
+| "Spawning discover + decompose…" | "Let's talk it through — what exactly should go in?" |
+| "running the two plan steps: discover then scaffold (stubs + dependency order)" | "I'll skim the code and sketch the two tasks." |
+| "status flip plan → drafted" | "Plan's ready — N phases, M acceptance criteria, K open questions. Run `/a:refine`." |
 
-**Vor jeder user-facing Zeile** das Jargon-Mapping aus `communication-style.md`
-anwenden — Framework-Begriffe (scaffold, stub, seam, grounding, roll-up,
-outcome-AC, executor, der each-Loop, drafted/refined, concern, DAG/JIT) gehören
-nie in den Chat, nur ihr Klartext.
+**Before every user-facing line**, apply the jargon mapping from
+`communication-style.md` — framework terms (scaffold, stub, seam, grounding,
+roll-up, outcome acceptance criteria, executor, the each-loop, drafted/refined,
+concern, dependency graph, just-in-time) never belong in chat, only their plain
+words.
 
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns each plan agent itself via the **Task tool**. The
-agents self-write phases/ACs via `anchored node …` (see
+agents self-write phases/acceptance criteria via `anchored node …` (see
 `plugin/references/agent-contract.md`). The CLI never spawns agents — a headless
 subprocess can't reach the session's Task tool.
 
@@ -65,10 +66,10 @@ CLI lazy-inits a minimal one (deltas-only = all defaults) + the `Bash(anchored *
 allowlist on first use, so planning proceeds immediately. The FIRST time you see a
 project with no prior `anchored.yml`, after the node is created, mention in **one
 line** that anchored is running on defaults and offer to tune it together — a
-single `AskUserQuestion`: *"Jetzt kurz auf dein Projekt anpassen (test/lint-command,
-commit-per-phase, …) oder erstmal nur das Nötigste?"* → **Jetzt einrichten** routes
-to the `setup` skill; **nur das Nötigste** proceeds with defaults (`/a:setup` is
-there later). Partner voice, no funnel — never block planning on it.
+single `AskUserQuestion`: *"Want to tailor anchored to your project now (test/lint
+command, commit-per-phase, …) or just the essentials for now?"* → **Set it up now**
+routes to the `setup` skill; **just the essentials** proceeds with defaults (`/a:setup`
+is there later). Partner voice, no funnel — never block planning on it.
 
 `steps` is the resolved plan-stage
 pipeline: for a task `[discover, rules-scan, decompose]`, for an epic
@@ -84,11 +85,11 @@ instructions }`:
   `anchored node append-log <slug> plan learning "<affected paths / patterns>"`.
 - **rules-scan → plan-rules-scan** — collects applicable `.claude/rules/`:
   `anchored node append-log <slug> plan learning "<relevant rules>"`.
-- **decompose → plan-decompose** (task) — writes phases + testable ACs:
-  `anchored node add-phase <slug> <phase-slug> "<name>"` then
-  `anchored node add-ac <slug> <phase-slug> "<testable AC>"` (id auto-assigned).
+- **decompose → plan-decompose** (task) — writes phases + testable acceptance
+  criteria: `anchored node add-phase <slug> <phase-slug> "<name>"` then
+  `anchored node add-ac <slug> <phase-slug> "<testable acceptance criterion>"` (id auto-assigned).
 - **scaffold → epic-scaffold** (epic) — coarse task stubs:
-  `anchored node add-child <slug> <task-stub-slug>` (DAG via depends_on).
+  `anchored node add-child <slug> <task-stub-slug>` (dependency order via depends_on).
 
 ## Custom run/use steps (the config's own steps — research, scaffolding, …)
 
@@ -115,8 +116,8 @@ declaration order, at the position they sit in the plan:
 | `EPIC_SLUG` | the parent epic slug, or empty when not in an epic |
 
 Run a `run`-step as e.g. `TASK_SLUG='<slug>' EPIC_SLUG='' bash -c "$STEP_RUN"`.
-Keep the plumbing out of chat — narrate the outcome ("Research steht — Ergebnis im
-research-Feld."), not the command.
+Keep the plumbing out of chat — narrate the outcome ("Research's done — result's in
+the research field."), not the command.
 
 Surface generously: any ambiguity the decompose agent hits becomes an open
 question (`anchored node add-question <slug> "<q>" high`), NOT a silent decision —
@@ -124,7 +125,7 @@ question (`anchored node add-question <slug> "<q>" high`), NOT a silent decision
 implication bullets in its text (`plugin/references/question-style.md`) — never a
 bare question. The same applies to **every `AskUserQuestion` this skill itself
 raises** (the tier-classification confirm, the onboarding offer): recommended
-option first (`(Empfohlen)`), implications named.
+option first (`(Recommended)`), implications named.
 
 ## Failure-handling
 
@@ -141,5 +142,5 @@ anchored node set-field <slug> context.plan "<intro + the plan-trail summary>"
 anchored node set-status <slug> drafted
 ```
 (`set-field` supports the dotted path — `context.plan` is set nested.) Tell the
-user: *"Plan steht — N Phasen, M Akzeptanz-Kriterien, K offene Fragen. Run `/a:refine` als
-nächstes."* No MCP, no raw node-file edit.
+user: *"Plan's ready — N phases, M acceptance criteria, K open questions. Run `/a:refine`
+next."* No MCP, no raw node-file edit.

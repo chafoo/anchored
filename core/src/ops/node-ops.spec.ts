@@ -204,13 +204,13 @@ test('setChildFailures rejects a child AC (pending + failures, evidence kept)', 
     ],
   })
   const next = (await ops.setChildFailures(node, 'p1', 'a1', [
-    'gate: nicht erfüllt',
+    'gate: not met',
   ])) as unknown as {
     phases: { acceptance_criteria: { status: string; failures: string[]; evidence: string[] }[] }[]
   }
   const ac = next.phases[0]!.acceptance_criteria[0]!
   expect(ac.status).toBe('pending') // flipped back for the re-do
-  expect(ac.failures).toEqual(['gate: nicht erfüllt'])
+  expect(ac.failures).toEqual(['gate: not met'])
   expect(ac.evidence).toEqual(['x.ts:1 — proof']) // prior evidence kept as history
   // setChildAcStatus → done still requires evidence (invariant holds one tier down)
   await expect(

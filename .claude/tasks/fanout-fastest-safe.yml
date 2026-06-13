@@ -5,35 +5,35 @@ title: fanout-fastest-safe
 created: 2026-06-12
 status: done
 phases:
-  - name: "refine-SKILL: Default auf schnellsten sicheren Weg (workflow) + ephemere Praeferenz"
+  - name: "refine-SKILL: default to fastest safe path (workflow) + ephemeral preference"
     slug: flip-executor-default
     status: done
     acceptance_criteria:
       - id: a1
-        text: refine/SKILL.md waehlt workflow als Default sobald der Sicherheits-Floor (unabhaengige ACs) haelt; kein 'sequential, the default' mehr (grep).
+        text: refine/SKILL.md picks workflow as the default as soon as the safety floor (independent acceptance criteria) holds; no more 'sequential, the default' (grep).
         status: done
         evidence:
-          - "refine/SKILL.md: executor-Default auf 'fastest safe path' (workflow bei >=2 unabhaengigen ACs); 'sequential, the default' entfernt. guard: 2 Checks gruen."
+          - "refine/SKILL.md: executor default set to 'fastest safe path' (workflow at >=2 independent acceptance criteria); 'sequential, the default' removed. guard: 2 checks green."
       - id: a2
-        text: refine/SKILL.md fragt einmal die ephemere Tempo-vs-Zuschauen-Praeferenz mit 'Qualitaet ist identisch'-Disclaimer; der Sicherheits-Floor bleibt als Korrektheits-Schranke (nicht Tempo-vs-Qualitaet) (grep).
+        text: refine/SKILL.md asks once for the ephemeral speed-vs-watching preference with a 'quality is identical' disclaimer; the safety floor stays a correctness bound (not speed-vs-quality) (grep).
         status: done
         evidence:
-          - "refine/SKILL.md: ephemere Tempo-vs-Zuschauen-Praeferenz mit 'Qualitaet ist identisch'-Disclaimer; Sicherheits-Floor als Korrektheit (nicht Tempo-vs-Qualitaet) geframt. guard: 2 Checks gruen."
-  - name: "build-SKILL: Worktree-Isolation fuer Fan-out als Vorgabe (Phase- + Task-Level)"
+          - "refine/SKILL.md: ephemeral speed-vs-watching preference with 'quality is identical' disclaimer; safety floor framed as correctness (not speed-vs-quality). guard: 2 checks green."
+  - name: "build-SKILL: git-worktree isolation for fan-out as a directive (phase + task level)"
     slug: worktree-directive
     status: done
     acceptance_criteria:
       - id: a1
-        text: "build/SKILL.md formuliert git-Worktree-Isolation als Vorgabe (nicht 'caveat') fuer Fan-out-Worker auf Phase- und Task-Level (grep: Directive-Wortlaut, kein 'Fan-out caveat')."
+        text: "build/SKILL.md states git-worktree isolation as a directive (not a 'caveat') for fan-out workers at phase and task level (grep: directive wording, no 'Fan-out caveat')."
         status: done
         evidence:
-          - "build/SKILL.md: Worktree-Isolation als 'directive, not caveat' fuer Phase- + Task-Level Fan-out; Dispatch-Step nutzt isolation: 'worktree'; 'Fan-out caveat' entfernt. guard: 2 Checks gruen."
-  - name: guard-prose.sh um die fanout-Verdrahtung erweitern
+          - "build/SKILL.md: worktree isolation as 'directive, not caveat' for phase + task level fan-out; dispatch step uses isolation: 'worktree'; 'Fan-out caveat' removed. guard: 2 checks green."
+  - name: extend guard-prose.sh to cover the fanout wiring
     slug: guard
     status: done
     acceptance_criteria:
       - id: a1
-        text: guard-prose.sh prueft den fanout-Default + die Praeferenz + die Worktree-Vorgabe; echter Lauf gruen.
+        text: guard-prose.sh checks the fanout default + the preference + the worktree directive; real run green.
         status: done
         evidence:
-          - "guard-prose.sh um fanout-Block (6 Checks) erweitert. Echter Lauf: 'guard-prose: ALL GREEN', exit 0."
+          - "guard-prose.sh extended with a fanout block (6 checks). Real run: 'guard-prose: ALL GREEN', exit 0."

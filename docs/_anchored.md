@@ -1,11 +1,11 @@
-← Repo: [README](../README.md) · Design-Spec: [docs/design/](design/)
+← Repo: [README](../README.md) · Design spec: [docs/design/](design/)
 
 # anchored
 
-Fraktales Framework für AI-getriebene Arbeit: **eine** Lebenszyklus-Form
-(`plan → refine → build → wrap`) auf **vier selbstähnlichen Etagen**
-(`project ▸ epic ▸ task ▸ phase`). Zwei Pakete — **core** (die deterministische
-Engine + Substrat + CLI) und **plugin** (die Claude-Code-Integration, Namespace
+Fractal framework for AI-driven work: **one** lifecycle form
+(`plan → refine → build → wrap`) across **four self-similar tiers**
+(`project ▸ epic ▸ task ▸ phase`). Two packages — **core** (the deterministic
+engine + substrate + CLI) and **plugin** (the Claude Code integration, namespace
 `a`).
 
 ```mermaid
@@ -26,11 +26,11 @@ mindmap
       agents
 ```
 
-| Bereich | Verantwortung (Scope-Grenze) |
+| Area | Responsibility (scope boundary) |
 |---|---|
-| [core](core/_core.md) | Engine, Substrat (State/Schema/IO) und CLI. Die gesamte **deterministische** Mechanik — alles, was *nicht* AI ist, lebt hier. |
-| [plugin](plugin/_plugin.md) | Claude-Code-Integration (Namespace `a`): Skills (`/a:plan` …) + Agents (die AI-Worker). Dünne Schicht über der CLI. |
+| [core](core/_core.md) | Engine, substrate (state/schema/IO) and CLI. The entire **deterministic** mechanism — everything that is *not* AI lives here. |
+| [plugin](plugin/_plugin.md) | Claude Code integration (namespace `a`): skills (`/a:plan` …) + agents (the AI workers). Thin layer over the CLI. |
 
-> Das verbindliche Modell + die Architektur-Entscheidungen liegen in
-> [docs/design/](design/) (Fraktal-Modell, Engine, Default-Config, File-Struktur,
-> Entscheidungs-Record).
+> The binding model + the architecture decisions live in
+> [docs/design/](design/) (fractal model, engine, default config, file structure,
+> decision record).

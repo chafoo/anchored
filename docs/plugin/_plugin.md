@@ -2,10 +2,10 @@
 
 # plugin
 
-Die Claude-Code-Integration (Namespace **`a`**) — eine dünne Schicht über der
-`anchored`-CLI. **Skills** sind die Slash-Commands (`/a:plan` …), **Agents** sind
-die AI-Worker, die die Stages ausführen. Kein MCP — alle Mutationen laufen über
-die CLI via Bash (funktioniert in Main-Session *und* Subagents/headless).
+The Claude Code integration (namespace **`a`**) — a thin layer over the
+`anchored` CLI. **Skills** are the slash commands (`/a:plan` …), **agents** are
+the AI workers that run the stages. No MCP — all mutations go through the
+CLI via Bash (works in the main session *and* subagents/headless).
 
 ```mermaid
 mindmap
@@ -23,14 +23,14 @@ mindmap
       epic-
     references
       config.md
-      default.yml
+      anchored.default.yml
 ```
 
-| Bereich | Verantwortung (Scope-Grenze) |
+| Area | Responsibility (scope boundary) |
 |---|---|
-| [skills](skills/_skills.md) | Die vier Slash-Commands `/a:plan` `/a:refine` `/a:build` `/a:wrap`. Orchestrieren eine Stage, rufen `anchored …` via Bash. |
-| [agents](agents/_agents.md) | Die AI-Worker in Stage-Präfix-Buckets. Distinkte Worker; geteilte sind tier-parametrisiert. Schreiben via CLI, **nie** MCP. Nie `plan`/`explore` benennen (reservierte Agent-Typen). |
-| [references](references/_references.md) | Mitgelieferte Referenz-Artefakte: `anchored.yml`-Format, die Default-Config (Framework-Basis) + Beispiel-Nodes pro Tier. Nachschlage-Material, kein Code. |
+| [skills](skills/_skills.md) | The four slash commands `/a:plan` `/a:refine` `/a:build` `/a:wrap`. Orchestrate one stage, call `anchored …` via Bash. |
+| [agents](agents/_agents.md) | The AI workers in stage-prefix buckets. Distinct workers; shared ones are tier-parametrized. Write via CLI, **never** MCP. Never name them `plan`/`explore` (reserved agent types). |
+| [references](references/_references.md) | Shipped reference artifacts: the `anchored.yml` format, the default config (framework base) + example nodes per tier. Lookup material, not code. |
 
-> **YAGNI**: Detail in [docs/design/](../design/). Skill-/Agent-Seiten entstehen
-> mit dem Code.
+> **YAGNI**: detail in [docs/design/](../design/). Skill/agent pages emerge
+> with the code.

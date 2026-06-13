@@ -2,32 +2,32 @@
 
 # commands
 
-Die Verb-Fläche des `anchored`-Befehls. **Stage-Verben** treiben den Lifecycle über
-die [engine](../engine/_engine.md), **Node-Verben** sind direkte Ops (v.a. von
-Agents genutzt), dazu **Inspect-** und **Lifecycle-Verben**.
+The verb surface of the `anchored` command. **Stage verbs** drive the lifecycle via
+the [engine](../engine/_engine.md), **node verbs** are direct ops (used mainly by
+agents), plus **inspect** and **lifecycle verbs**.
 
-## Was
+## What
 
-- **Stage-Verben:**
-  - `anchored plan <epic|task|phase>? <prosa|path>` — strukturiert; ohne Tier →
+- **Stage verbs:**
+  - `anchored plan <epic|task|phase>? <prose|path>` — structured; without a tier →
     discover + classify.
   - `anchored refine <slug>` · `anchored build <slug>` · `anchored wrap <slug>` —
-    Tier wird aus dem Node abgeleitet.
-- **Inspect-Verben:**
-  - `anchored steps <tier> <stage>` — gibt den aufgelösten, config-getriebenen
-    Step-Plan einer Tier×Stage aus (was der Skill orchestriert).
-  - `anchored validate` — prüft die gemergte `anchored.yml`: löst jedes Tier×Stage
-    auf + listet die Custom-Felder.
-- **Lifecycle-Verben (nur Files, kein Git):**
-  - `anchored archive <slug>` — verschiebt das Task-File nach `archive/<slug>.yml`.
-  - `anchored reset <slug>` — entfernt das Task-File (Ausgangszustand).
-- **Node-Verben** (per-Tier-Surfaces über [node-ops](../ops/node-ops.md)):
+    the tier is derived from the node.
+- **Inspect verbs:**
+  - `anchored steps <tier> <stage>` — outputs the resolved, config-driven
+    step plan of a tier×stage (what the skill orchestrates).
+  - `anchored validate` — checks the merged `anchored.yml`: resolves each tier×stage
+    + lists the custom fields.
+- **Lifecycle verbs (files only, no git):**
+  - `anchored archive <slug>` — moves the task file to `archive/<slug>.yml`.
+  - `anchored reset <slug>` — removes the task file (initial state).
+- **Node verbs** (per-tier surfaces over [node-ops](../ops/node-ops.md)):
   `anchored task|epic|phase <read|set-status|add-evidence|append-log|…>`.
-- Alle geben JSON aus; Mutationen laufen ausschließlich hierüber (nicht via
-  direktem Edit am File). Git fasst der Befehl **nirgends** an — auch archive/reset
-  bewegen nur Files; VCS lebt in den `run`-Steps der `anchored.yml`.
+- All output JSON; mutations run exclusively through here (not via a
+  direct edit on the file). The command touches git **nowhere** — even archive/reset
+  only move files; version-control lives in the `run` steps of `anchored.yml`.
 
-## Wie
+## How
 
 ```mermaid
 flowchart TB

@@ -1,76 +1,74 @@
-# Ticket: Orchestrator führt eigene `run:`/`use:`-Steps aus (custom Build/Wrap-Steps)
+# Ticket: Orchestrator runs its own `run:`/`use:` steps (custom build/wrap steps)
 
-**Status:** implementiert + verifiziert (alle ACs done; Workflow-Gegenprüfung folgt)
-**Angelegt:** 2026-06-11
-**Quelle:** VCS-Strategie-Wunsch (pro Task ein Branch, pro Phase ein Commit,
-lokaler Merge auf `develop`) — beim Einbau in `anchored-test/anchored.yml`
-aufgefallen.
+**Status:** implemented + verified (all ACs done; workflow cross-check pending)
+**Created:** 2026-06-11
+**Source:** version-control strategy wish (one branch per task, one commit per phase,
+local merge onto `develop`) — surfaced when wiring it into `anchored-test/anchored.yml`.
 
 ## Problem
 
-Die Substrat-Seite kann custom Steps längst: `merge(default, user)` mergt
-`steps` keyed-by-name + extend-only, und `anchored steps <tier> <stage>` gibt
-einen `{name, run}`-Step bereits als `{kind:'run', run:'…'}` im Plan zurück
-(verifiziert). **Aber** der LIVE-Orchestrator ist im Plugin-Betrieb der
-SKILL (nicht die in-process-Engine — ein headless Subprozess erreicht das
-Task-Tool zum Agent-Spawnen nicht). Und `plugin/skills/build/SKILL.md` +
-`wrap/SKILL.md` beschrieben bisher nur das Spawnen der benannten Worker
-(implement/task-validate/code-validate, review/summarize) — die generische
-Ausführung von `kind:'run'`/`kind:'use'`-Steps war **nie geschrieben**.
+The substrate side has been able to do custom steps for a while: `merge(default, user)` merges
+`steps` keyed-by-name + extend-only, and `anchored steps <tier> <stage>` already returns
+a `{name, run}` step as `{kind:'run', run:'…'}` in the plan (verified). **But** the LIVE
+orchestrator in plugin operation is the SKILL (not the in-process engine — a headless
+subprocess can't reach the Task tool to spawn an agent). And `plugin/skills/build/SKILL.md` +
+`wrap/SKILL.md` so far only described spawning the named workers
+(implement/task-validate/code-validate, review/summarize) — the generic
+execution of `kind:'run'`/`kind:'use'` steps was **never written**.
 
-Folge: ein `commit`-Step in `phase.build.steps` stünde im Plan, würde vom
-Orchestrator aber stillschweigend übersprungen. Reine `anchored.yml`-Config
-reicht also nicht — der Orchestrator muss die Steps auch fahren.
+Consequence: a `commit` step in `phase.build.steps` would appear in the plan but be
+silently skipped by the orchestrator. Plain `anchored.yml` config therefore is not
+enough — the orchestrator has to actually run the steps too.
 
-**Kein Core-/Engine-/Factory-Code betroffen** — der Mangel liegt allein in der
-Orchestrator-Prosa (zwei SKILL.md-Dateien).
+**No core/engine/factory code affected** — the gap is solely in the
+orchestrator prose (two SKILL.md files).
 
-## Akzeptanz-Kriterien
+## Acceptance criteria
 
-- **a1** — `build/SKILL.md` führt `kind:'run'`-Steps der Phase-Pipeline via Bash
-  aus (in Deklarations-Reihenfolge; trailing nach den Gates, nur auf grüner
-  Phase) und `kind:'use'`-Steps als Subagent/Skill. **done**
-  → `plugin/skills/build/SKILL.md` Abschnitt „Custom run/use steps".
-- **a2** — Variablen-Kontrakt dokumentiert + als echte Umgebungsvariablen an
-  jeden `run:`-Step übergeben: `TASK_SLUG`, `PHASE_SLUG`, `PHASE_NAME`,
-  `EPIC_SLUG` (kein hand-String-Replace). **done**
-  → Tabelle + `TASK_SLUG='…' … bash -c "$STEP_RUN"`-Form im build-Skill.
-- **a3** — `wrap/SKILL.md` führt trailing `kind:'run'`-Steps (z.B. `merge`) nach
-  review+summarize aus, vor dem `done`-Flip; failter Step bleibt pre-`done`.
-  **done** → wrap-Skill Abschnitt „Custom run/use steps".
-- **a4** — Fan-out-Caveat dokumentiert: branch-per-task im parallelen
-  Task-Fan-out (Epic, q8) braucht git-worktree-Isolation, sonst sequentiell.
-  **done** → Hinweis im build-Skill.
-- **a5** — Grep-Tests sichern die Skill-Prosa (run-step-Dispatch + Variablen-
-  Kontrakt in beiden Skills). **done**
-  → `workflow-smoke.spec.ts`: „orchestrator dispatches custom run/use steps".
-- **a6** — Mechanik live bewiesen: in einem echten Test-Git-Repo erzeugt die
-  VCS-`anchored.yml` über `anchored steps` + Ausführung des run-Strings
-  tatsächlich Branch `task/<slug>` + zwei Phasen-Commits + `--no-ff`-Merge auf
-  `develop` (Variablen-Kontrakt expandiert korrekt). **done**
-- **a7** — Plugin-Version 0.1.3 → 0.1.4; alle 5 Gates grün (lint/format/
+- **a1** — `build/SKILL.md` runs `kind:'run'` steps of the phase pipeline via Bash
+  (in declaration order; trailing after the gates, only on a green
+  phase) and `kind:'use'` steps as subagent/skill. **done**
+  → `plugin/skills/build/SKILL.md` section "Custom run/use steps".
+- **a2** — variable contract documented + passed as real environment variables to
+  every `run:` step: `TASK_SLUG`, `PHASE_SLUG`, `PHASE_NAME`,
+  `EPIC_SLUG` (no hand-rolled string replace). **done**
+  → table + `TASK_SLUG='…' … bash -c "$STEP_RUN"` form in the build skill.
+- **a3** — `wrap/SKILL.md` runs trailing `kind:'run'` steps (e.g. `merge`) after
+  review+summarize, before the `done` flip; a failed step stays pre-`done`.
+  **done** → wrap skill section "Custom run/use steps".
+- **a4** — fan-out caveat documented: branch-per-task in parallel
+  task fan-out (epic, q8) needs git-worktree isolation, otherwise sequential.
+  **done** → note in the build skill.
+- **a5** — grep tests secure the skill prose (run-step dispatch + variable
+  contract in both skills). **done**
+  → `workflow-smoke.spec.ts`: "orchestrator dispatches custom run/use steps".
+- **a6** — mechanism proven live: in a real test git repo the
+  version-control `anchored.yml` actually produces, via `anchored steps` + execution of the run string,
+  branch `task/<slug>` + two phase commits + `--no-ff` merge onto
+  `develop` (variable contract expands correctly). **done**
+- **a7** — plugin version 0.1.3 → 0.1.4; all 5 gates green (lint/format/
   typecheck/test/build). **done**
 
-## Workflow-Gegenprüfung (2026-06-11, 4 Agents)
+## Workflow cross-check (2026-06-11, 4 agents)
 
-Verdikt: **funktioniert-mit-Lücken** — Mechanismus trägt (Branch + 2 Phasen-
-Commits + `--no-ff`-Merge live bewiesen, commit feuert nur auf grüner Phase,
-Merge bleibt pre-`done` bei Konflikt). Drei Doku-Funde gefixt:
+Verdict: **works-with-gaps** — the mechanism holds (branch + 2 phase
+commits + `--no-ff` merge proven live, commit fires only on a green phase,
+merge stays pre-`done` on conflict). Three documentation findings fixed:
 
-- **MAJOR-1** `config.md:93` lehrte `git commit -am "$SLUG"` — `$SLUG` undefiniert
-  → leere Commit-Message. Gefixt auf `${TASK_SLUG}` + autoritative Variablen-
-  Tabelle in `config.md` + Warnung im setup-Skill.
-- **MAJOR-2** `after:`/`before:`-Positionierung nirgends dokumentiert + stiller
-  Append bei falschem Anker. Gefixt: Positions-Subsection in `config.md` +
-  „Reihenfolge prüfen"-Hinweis im setup-Skill.
-- **MAJOR-3** git-Ref-D/F-Kollision bei Prefix-verwandten Epic-Kind-Slugs
-  (`task/x` vs `task/x/y`). Nicht im Framework gefixt (VCS-Branch-Ausdruck lebt
-  nur in `anchored-test/anchored.yml`) — Empfehlung an den User: im Branch-Namen
-  `tr '/' '-'` flachklopfen, falls Tasks Prefix-verwandte nested Slugs haben.
+- **MAJOR-1** `config.md:93` taught `git commit -am "$SLUG"` — `$SLUG` undefined
+  → empty commit message. Fixed to `${TASK_SLUG}` + authoritative variable
+  table in `config.md` + warning in the setup skill.
+- **MAJOR-2** `after:`/`before:` positioning documented nowhere + silent
+  append on a wrong anchor. Fixed: positioning subsection in `config.md` +
+  "check the order" note in the setup skill.
+- **MAJOR-3** git-ref D/F collision on prefix-related epic child slugs
+  (`task/x` vs `task/x/y`). Not fixed in the framework (the version-control branch expression lives
+  only in `anchored-test/anchored.yml`) — recommendation to the user: flatten in the branch name
+  with `tr '/' '-'`, in case tasks have prefix-related nested slugs.
 
-## Nicht-Ziele
+## Non-goals
 
-- Keine VCS-Meinung im Framework-Default — das Default-Template bleibt
-  VCS-agnostisch. Die VCS-Strategie lebt nur in `anchored-test/anchored.yml`
-  (vom User via `/a:setup` aufgebaut).
-- Keine Engine-/Core-Änderung — der steps-planner liefert run-Steps bereits.
+- No version-control opinion in the framework default — the default template stays
+  version-control-agnostic. The version-control strategy lives only in `anchored-test/anchored.yml`
+  (built by the user via `/a:setup`).
+- No engine/core change — the steps-planner already delivers run steps.

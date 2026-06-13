@@ -2,28 +2,28 @@
 
 # worker-dispatch
 
-Die **einzige Stelle, die Built-in-Step-Namen kennt** — mappt einen Step-`name`
-auf seinen Worker-Ref (`agent` | `skill`). Die Engine hardcodet *nie* Step-Namen;
-sie dispatcht config-getrieben und fragt hier nach dem Worker. Policy/Daten,
-injizierbar (Overrides).
+The **only place that knows built-in step names** — maps a step `name`
+to its worker ref (`agent` | `skill`). The engine *never* hardcodes step names;
+it dispatches config-driven and asks here for the worker. Policy/data,
+injectable (overrides).
 
-## Was
+## What
 
-- **`DEFAULT_WORKERS`** — die name→ref-Tabelle aus Default-Template + Agent-Roster:
+- **`DEFAULT_WORKERS`** — the name→ref table from the default template + agent roster:
   `implement→build-implement`, `task-validate→build-task-validate`,
   `code-validate→build-code-validate`, `discover→plan-discover`,
   `rules-scan→plan-rules-scan`, `decompose→plan-decompose`,
   `plan-check→refine-plan-check`, `rules-check→refine-rules-check`,
-  `walk→walk` (**type `skill`**, kein Agent), `review→wrap-review`,
+  `walk→walk` (**type `skill`**, no agent), `review→wrap-review`,
   `summarize→wrap-summarize`, `scaffold→epic-scaffold`, `roll-up→epic-roll-up`.
-- **`STRUCTURAL`** — `{ loop, run }`: vom Engine *selbst* gehandhabt, keine Worker.
-- Die Worker selbst sind Plugin-Agents (Task plugin-agents); hier liegt **nur** das
-  Name→Ref-Mapping.
+- **`STRUCTURAL`** — `{ loop, run }`: handled by the engine *itself*, no workers.
+- The workers themselves are plugin agents (Task plugin-agents); here lives **only** the
+  name→ref mapping.
 
-## Wie
+## How
 
 `createWorkerDispatch(overrides?) → { resolveWorker, isStructural, names }`. Overrides
-mergen über die Defaults (User gewinnt).
+merge over the defaults (user wins).
 
 ```mermaid
 flowchart LR
@@ -34,12 +34,12 @@ flowchart LR
     rw --> skill["type: skill → Session-Skill (walk)"]
 ```
 
-> Hinweis im Code: `rules-scan` (task.plan) mappt auf einen `plan-rules-scan`-Agent,
-> den der Agent-Roster noch ergänzen muss (er listet bisher nur `refine-rules-check`)
-> — für Task plugin-agents vorgemerkt.
+> Note in the code: `rules-scan` (task.plan) maps to a `plan-rules-scan` agent,
+> which the agent roster still has to add (so far it only lists `refine-rules-check`)
+> — flagged for Task plugin-agents.
 
-## Warum
+## Why
 
-Hält die Engine frei von konkreten Step-Namen ([resolve-steps](resolve-steps.md)
-setzt die Built-in-Defaults ein, dieses Modul kennt ihre Worker) — neue Built-ins
-ändern nur diese eine Tabelle, nicht den Kontrollfluss.
+Keeps the engine free of concrete step names ([resolve-steps](resolve-steps.md)
+inserts the built-in defaults, this module knows their workers) — new built-ins
+change only this one table, not the control flow.

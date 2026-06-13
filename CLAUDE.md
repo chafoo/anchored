@@ -1,54 +1,74 @@
 # CLAUDE.md — anchored v2
 
-anchored v2 ist ein **fraktaler Rewrite** von anchored. Das vollständige Design
-ist die verbindliche Spec — **lies zuerst `docs/design/`**, bevor du Code oder
-Doku anfasst:
+anchored v2 is a **fractal rewrite** of anchored. The complete design is the
+binding spec — **read `docs/design/` first**, before you touch code or docs:
 
-- `docs/design/fractal-lifecycle.md` — das Etagen-Modell (project▸epic▸task▸phase,
-  alle `plan→refine→build→wrap`; `build.each` = Rekursion; `phase` = Leaf).
-- `docs/design/engine-architecture.md` — die Factory-Function-Engine.
-- `docs/design/anchored.default.yml` — die vollständige Default-Config.
-- `docs/design/file-structure.md` — die autoritative File-Struktur (Doku + Build
-  folgen ihr).
-- `docs/design/fractal-redesign-notes.md` — Entscheidungs-Record (alle Items).
+- `docs/design/fractal-lifecycle.md` — the tier model (project▸epic▸task▸phase,
+  all `plan→refine→build→wrap`; `build.each` = recursion; `phase` = leaf).
+- `docs/design/engine-architecture.md` — the factory-function engine.
+- `docs/design/anchored.default.yml` — the complete default config.
+- `docs/design/file-structure.md` — the authoritative file structure (docs + build
+  follow it).
+- `docs/design/fractal-redesign-notes.md` — decision record (all items).
 
-## Nicht-verhandelbare Prinzipien
+## Non-negotiable principles
 
-1. **Fraktal**: eine Lebenszyklus-Form auf jeder Etage. `build.each: <tier>` ist
-   intrinsisch (nicht konfigurierbar). `phase` ist der Leaf (build ohne `each`).
-2. **Keine Built-ins** — alles ist ein Step. Das opinionierte Verhalten lebt im
-   Default-Template (`anchored.default.yml`), aktiv by default, überschreibbar.
-3. **Integrität im Substrat**: kein `ac` auf `done` ohne `evidence`. Erzwungen im
-   Datenmodell (`state/invariants.ts`), NICHT in einem Step.
-4. **CLI-only Transport**: alle Ops über die `anchored`-CLI via Bash. **Kein MCP.**
-   Funktioniert in Main-Session UND Subagents/headless. CLI gibt JSON aus.
-5. **Factory-Functions**: `createX(cfg, deps) → { run(input) → output }`,
-   Helfer in `scope/`. Engine = deterministischer Code; AI = Effekt hinter
-   `spawn` (default: `claude -p` pro Task-File, Phasen in-process).
-6. **anchored.yml = Base-Dependency**: `merge(default-template, user)` einmal beim
-   Bootstrap, injiziert als `deps.config`.
-7. **Mechanismus vs. Policy**: Engine/Substrat/Transitions/Invariante = Code;
-   Felder + Step-Sequenzen = Config/Template.
+1. **Fractal**: one lifecycle form on every tier. `build.each: <tier>` is
+   intrinsic (not configurable). `phase` is the leaf (build without `each`).
+2. **No built-ins** — everything is a step. The opinionated behaviour lives in the
+   default template (`anchored.default.yml`), active by default, overridable.
+3. **Integrity in the substrate**: no `ac` to `done` without `evidence`. Enforced
+   in the data model (`state/invariants.ts`), NOT in a step.
+4. **CLI-only transport**: all ops through the `anchored` CLI via Bash. **No MCP.**
+   Works in the main session AND subagents/headless. The CLI emits JSON.
+5. **Factory functions**: `createX(cfg, deps) → { run(input) → output }`,
+   helpers in `scope/`. The engine is deterministic code; AI is an effect behind
+   `spawn` (default: `claude -p` per task-file, phases in-process).
+6. **anchored.yml = base dependency**: `merge(default-template, user)` once at
+   bootstrap, injected as `deps.config`.
+7. **Mechanism vs. policy**: engine/substrate/transitions/invariant = code;
+   fields + step sequences = config/template.
 
-## Plugin / Commands
+## Plugin / commands
 
-- Plugin-Namespace **`a`** (Fallback `anc`). Commands sind Skills:
+- Plugin namespace **`a`** (fallback `anc`). Commands are skills:
   `/a:plan <tier?> <input>` · `/a:refine <slug>` · `/a:build <slug>` ·
-  `/a:wrap <slug>`. Keine separaten Tier-Entries — der Tier ist Argument von `plan`.
-- Agents: flach in `plugin/agents/`, Stage-Präfix-Buckets. **Nie** einen Agent
-  `plan` oder `explore` nennen (CC-reservierte Agent-Typen).
+  `/a:wrap <slug>`. No separate tier entries — the tier is an argument of `plan`.
+- Agents: flat in `plugin/agents/`, stage-prefix buckets. **Never** name an agent
+  `plan` or `explore` (Claude Code reserved agent types).
 
-## Build-Reihenfolge
+## Build order
 
-1. **pure-engine** — Factory-Engine + Substrat (state/parser/io/ops) + Config-
-   Bootstrap + CLI-Grundgerüst.
-2. **default-template** — `anchored.default.yml` als gemergte Basis; alle
-   Default-Steps als Template-Worker.
-3. **epic-tier** — epic als Etage (scaffold/walk/loop/roll-up), nested slugs,
+1. **pure-engine** — factory engine + substrate (state/parser/io/ops) + config
+   bootstrap + CLI skeleton.
+2. **default-template** — `anchored.default.yml` as the merged base; all default
+   steps as template workers.
+3. **epic-tier** — epic as a tier (scaffold/walk/loop/roll-up), nested slugs,
    classify.
 
-## Konventionen
+## Languages
 
-- Code liest sich wie der umgebende Code (Kommentar-Dichte, Naming, Idiom).
-- Quality-Gates pro Paket (lint/format/typecheck/test/build) — Tooling-Wahl wird
-  in `pure-engine` festgelegt.
+- **Code = English** — identifiers, comments, commit messages, everything in code.
+- **Docs = English** — `docs/`, the plugin (`plugin/**/*.md`: skills, agents,
+  references), READMEs. One language for everything that ships.
+- **Plugin chat = the plugin user's language** — what anchored writes into the user
+  chat at runtime (skills/agents) mirrors the plugin user's language; never
+  hardcoded to one language (see `plugin/references/communication-style.md`,
+  "match the project's prevailing language"). German is **not** privileged here.
+- **Our working language = German** — the conversation in **this** main instance,
+  while developing anchored, is in German. That is separate from the plugin chat
+  and applies only to us here. Technical terms and code identifiers stay in their
+  original form.
+
+**No abbreviations in the docs.** Jargon acronyms are spelled out:
+`just-in-time` instead of JIT, `fan-out` / `dependency graph` instead of DAG,
+`summary` instead of TL;DR, `acceptance criterion` / `acceptance criteria` instead
+of AC (in prose; code identifiers like `add-ac` stay), `version-control` instead
+of VCS, `test-driven development` instead of TDD. Established proper names stay
+(CLI, JSON, YAML, MCP, AI, PR, HTML/CSS/DOM, UI/UX, SHA).
+
+## Conventions
+
+- Code reads like the surrounding code (comment density, naming, idiom).
+- Quality gates per package (lint/format/typecheck/test/build) — the tooling choice
+  is fixed in `pure-engine`.

@@ -23,7 +23,7 @@ else
 fi
 
 # 2) The mapping table carries every listed framework term (left column).
-terms=(DAG JIT scaffold stub seam grounding "roll-up" "outcome-AC" executor "each:task" drafted refined concern)
+terms=("dependency graph" "just-in-time" scaffold stub seam grounding "roll-up" "outcome acceptance criterion" executor "each:task" drafted refined concern)
 missing=""
 for t in "${terms[@]}"; do
   # table rows look like:  | <term> ... | <plain language> |
@@ -35,17 +35,17 @@ else
   bad "mapping table missing term(s):$missing"
 fi
 
-# 3) No listed jargon leaks into a Prefer / Klartext cell (the LAST cell of any
+# 3) No listed jargon leaks into a Prefer / plain-words cell (the LAST cell of any
 #    table row) across communication-style.md + the four SKILLs. The left columns
 #    (Avoid demos + the mapping's own term column) may name jargon by design — we
 #    only scan the user-facing right-hand cell.
 jargon='refined|drafted|scaffold|[Ss]tub|seam|grounding|roll-up|outcome-AC|executor|each:task|concern|\bDAG\b|\bJIT\b'
 scan_prefer() {
   local file="$1"
-  # last content cell of pipe-table rows, minus the mapping table's own Klartext
+  # last content cell of pipe-table rows, minus the mapping table's own plain-words
   # (which paraphrases the terms in plain words and must stay readable).
   awk -F'|' 'NF>=3 && $0 ~ /^\|/ {print $(NF-1)}' "$file" \
-    | grep -vE 'der Plan ist geprüft|der Plan steht \(Entwurf\)' \
+    | grep -vE "the plan's ready \(a draft\)|the plan's been checked" \
     | grep -nE "$jargon"
 }
 leak=""
@@ -61,7 +61,7 @@ fi
 
 # 4) Each of the four SKILLs carries the mapping-apply line.
 for s in plan refine build wrap; do
-  if grep -q "Jargon-Mapping aus .communication-style.md." "$SKILLS/$s/SKILL.md"; then
+  if grep -q "apply the jargon mapping from" "$SKILLS/$s/SKILL.md"; then
     pass "$s/SKILL.md applies the jargon mapping"
   else
     bad "$s/SKILL.md missing the jargon-mapping line"
@@ -127,7 +127,7 @@ else
 fi
 
 # 3) the ephemeral speed-vs-watchability preference, explicitly never-a-quality-call.
-if grep -qF "die Qualität ist" "$RF" && grep -qF "Tempo vs. Zuschauen" "$RF"; then
+if grep -qF "the quality is identical" "$RF" && grep -qF "speed vs. watching" "$RF"; then
   pass "refine asks the speed-vs-watch preference (quality identical)"
 else
   bad "refine missing the speed-vs-watch preference"

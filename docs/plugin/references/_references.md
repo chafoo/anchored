@@ -2,26 +2,26 @@
 
 # references
 
-Die **mitgelieferten Referenz-Artefakte** des Plugins — die SSOT für das
-`anchored.yml`-Format, die vollständige Default-Config und je ein annotiertes
-Beispiel-Node pro Tier. Reine Nachschlage-Materialien: kein Code, keine Mutation —
-die Dateien, auf die `init`/`bootstrap` und die Skills verweisen.
+The **bundled reference artifacts** of the plugin — the SSOT for the
+`anchored.yml` format, the complete default config, and one annotated
+example node per tier. Pure lookup materials: no code, no mutation —
+the files that `init`/`bootstrap` and the skills point to.
 
 ```mermaid
 block-beta
     columns 2
-    cfg["config.md · Format-Referenz"]:2
-    def["default.yml · Framework-Basis"] usr["anchored.yml (User-Deltas)"]
+    cfg["config.md · format reference"]:2
+    def["anchored.default.yml · framework base"] usr["anchored.yml (user deltas)"]
     epic["epic.example.yml"] task["task.example.yml"]
 ```
 
-| Unit | Verantwortung (Scope-Grenze) |
+| Unit | Responsibility (scope boundary) |
 |---|---|
-| [config.md](../../../plugin/references/config.md) | Die Format-Referenz: Tiers × Stages × Steps, Built-in-Steps, `fields`, `each`/`stop`, `_lib`. Erklärt *wie man `anchored.yml` schreibt* — alles Format-Wissen gehört hierher. Selbst schon Prosa-Doku → direkt das Artefakt. |
-| [default.yml](../../../plugin/references/default.yml) | Die vollständige Default-Config (Framework-Basis). `bootstrap` merged sie mit den User-Deltas; `init` verweist nur darauf (kopiert sie nie). Daten-Artefakt — die erschöpfende Feld-/Step-Liste pro Tier ist micro. |
-| [epic.example.yml](../../../plugin/references/epic.example.yml) | Annotiertes `_epic.yml`-Beispiel: PM-Tier mit `tasks`-Stubs als Loop-Queue, ohne Phasen. Belegungs-Vorlage. |
-| [task.example.yml](../../../plugin/references/task.example.yml) | Annotiertes Task-File-Beispiel: die `context`-WWWW-Trails pro Stage, Phasen als Kinder, `each: phase`. Belegungs-Vorlage. |
+| [config.md](../../../plugin/references/config.md) | The format reference: tiers × stages × steps, built-in steps, `fields`, `each`/`stop`, `_lib`. Explains *how to write `anchored.yml`* — all format knowledge belongs here. Itself already prose docs → directly the artifact. |
+| [anchored.default.yml](../../../plugin/references/anchored.default.yml) | The complete default config (framework base). `bootstrap` merges it with the user deltas; `init` only points to it (never copies it). Data artifact — the exhaustive field/step list per tier is micro. |
+| [epic.example.yml](../../../plugin/references/epic.example.yml) | Annotated `_epic.yml` example: PM tier with `tasks` stubs as loop queue, without phases. Population template. |
+| [task.example.yml](../../../plugin/references/task.example.yml) | Annotated task-file example: the `context` WWWW trails per stage, phases as children, `each: phase`. Population template. |
 
-> `default.yml` ist **Daten**, kein Prosa-Dokument — sie wird gegen das
-> [config-Schema](../../core/schema/config.md) validiert und ist die Quelle, aus der
-> [bootstrap](../../core/config/bootstrap.md) die `effectiveConfig` baut.
+> `anchored.default.yml` is **data**, not a prose document — it is validated against the
+> [config schema](../../core/schema/config.md) and is the source from which
+> [bootstrap](../../core/config/bootstrap.md) builds the `effectiveConfig`.

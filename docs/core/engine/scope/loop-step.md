@@ -2,39 +2,39 @@
 
 # loop-step
 
-Helfer für einen Step mit `each: <tier>` — iteriert über die Kinder eines
-Knotens und fährt pro Kind die **Kind-Lifecycle**. Hier schließt sich die
-fraktale Rekursion (ruft den [tier-runner](../tier-runner.md) der Kind-Etage).
+Helper for a step with `each: <tier>` — iterates over the children of a
+node and runs the **child lifecycle** per child. This is where the fractal
+recursion closes (it calls the [tier-runner](../tier-runner.md) of the child tier).
 
-## Was
+## What
 
-- Eingabe: ein Step mit `each: <child-tier>` und optionalem `steps`-**Body**.
-- **Interleaved**: pro Kind läuft der ganze Body der Reihe nach, *dann* erst das
-  nächste Kind (A→body, B→body, …) — nicht erst Step-1 über alle Kinder.
-- Body-Default ist `[run]` = die Kind-Lifecycle fahren; der Body läuft über
-  denselben [step-runner](../step-runner.md) (fraktal, eine Ebene tiefer).
-- Nach jedem Kind: Status fortschreiben + `stop`-Check — built-in, kein User-Step.
-- Kind-Reihenfolge folgt dem DAG ([children](../../ops/scope/children.md)): erster
-  `pending`, dessen `depends_on` alle `done` sind. Erster Block → halt (v1
-  sequenziell).
+- Input: a step with `each: <child-tier>` and an optional `steps` **body**.
+- **Interleaved**: per child the whole body runs in order, *then* the
+  next child (A→body, B→body, …) — not step-1 over all children first.
+- The body default is `[run]` = run the child lifecycle; the body runs over
+  the same [step-runner](../step-runner.md) (fractal, one layer deeper).
+- After each child: advance status + `stop` check — built-in, no user step.
+- Child order follows the dependency graph ([children](../../ops/scope/children.md)): the first
+  `pending` whose `depends_on` are all `done`. First block → stop (v1
+  sequential).
 
-## Wie
+## How
 
-`each: <tier>` (Kurzform) ≙ `{ name: loop, each: <tier>, steps: [run] }`.
+`each: <tier>` (shorthand) ≙ `{ name: loop, each: <tier>, steps: [run] }`.
 
 ```mermaid
 flowchart TB
-    L["each: task"] --> A["Kind A · body-steps (step-runner)"]
+    L["each: task"] --> A["Child A · body-steps (step-runner)"]
     A --> A2["advance + stop-check"]
-    A2 --> B["Kind B · body-steps"]
+    A2 --> B["Child B · body-steps"]
     B --> B2["advance + stop-check"]
-    A -. "run-Body" .-> rec["tier-runner(child).run(...)"]
-    A2 -. "stop matched" .-> H["halt — Re-Run setzt fort"]
+    A -. "run-body" .-> rec["tier-runner(child).run(...)"]
+    A2 -. "stop matched" .-> H["stop — re-run resumes"]
 ```
 
-## Warum
+## Why
 
-Die Per-Kind-Mechanik (spawnen, fortschreiben, stop) gehört ins Built-in, damit
-sie atomar pro Iteration bleibt; custom Steps reihen sich im Body interleaved
-dazwischen. So ist „pro Task: fahren → committen" ausdrückbar, ohne die Integrität
-des Loops aufzugeben.
+The per-child mechanics (spawning, advancing, stop) belong in the built-in, so
+they stay atomic per iteration; custom steps slot in interleaved within the body.
+This makes "per task: run → commit" expressible without giving up the integrity
+of the loop.

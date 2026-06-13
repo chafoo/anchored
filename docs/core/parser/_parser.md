@@ -2,17 +2,17 @@
 
 # parser
 
-YAML ↔ Node. Liest Node-Files + `anchored.yml` ein und rendert Nodes zurück —
-mit zwei **Parse-Profilen** und einem Render-Contract (Schema-Directive +
-block-scalar für Prosa).
+YAML ↔ Node. Reads Node files + `anchored.yml` and renders Nodes back —
+with two **parse profiles** and a render contract (schema directive +
+block-scalar for prose).
 
 ```mermaid
 flowchart LR
-    f["YAML-Datei"] --> p["parse · Profil-abhängig"] --> node["Node-Objekt"]
-    node --> r["render · directive + block-scalar"] --> f2["YAML-Datei"]
+    f["YAML file"] --> p["parse · profile-dependent"] --> node["Node object"]
+    node --> r["render · directive + block-scalar"] --> f2["YAML file"]
 ```
 
-| Unit | Verantwortung |
+| Unit | Responsibility |
 |---|---|
-| [parse](parse.md) | YAML → Node. Zwei Profile: Node-Files no-alias (Injection-Guard), `anchored.yml` alias-ok (für `_lib`). |
-| [render](render.md) | Node → YAML: Schema-Directive Zeile 1 + block-scalar (`|`) für Markdown-Prosa. |
+| [parse](parse.md) | YAML → Node. Two profiles: Node files no-alias (injection guard), `anchored.yml` alias-ok (for `_lib`). |
+| [render](render.md) | Node → YAML: schema directive line 1 + block-scalar (`|`) for Markdown prose. |

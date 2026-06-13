@@ -1,265 +1,265 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
 slug: anchored-v2-core/epic-tier
-title: "epic-Tier — der fraktale Loop end-to-end (each: task)"
+title: "epic tier — the fractal loop end-to-end (each: task)"
 status: done
 created: 2026-06-10
 context:
   plan: |
-    SCOPE: Build-Stufe 3 — epic als volle Etage obendrauf, sobald phase+task laufen.
-    Beweist das fraktale Modell: epic.build.each:task über DENSELBEN generischen Runner
-    wie task.build.each:phase.
+    SCOPE: Build stage 3 — epic as a full tier on top, once phase+task run.
+    Proves the fractal model: epic.build.each:task over the SAME generic runner
+    as task.build.each:phase.
 
-    Liefert:
-      epic-Stages aktiv: plan=[discover, scaffold] · refine=[walk] ·
+    Delivers:
+      epic stages active: plan=[discover, scaffold] · refine=[walk] ·
         build=each:task (+stop +retry_limit) · wrap=[roll-up].
-      nested slugs (<epic>/<slug>) durchgängig: parser/io anlegen + lesen, ops next-child
-        über die _epic.yml-tasks-Queue, CLI-Verben akzeptieren nested.
-      classify-Erkennung: <5 Phasen→task, 5–9→Unabhängigkeits-Test, ≥10→epic.
-      epic-Worker verdrahtet (epic-scaffold goal→Stubs, epic-roll-up DoD+Retro).
+      nested slugs (<epic>/<slug>) throughout: parser/io create + read, ops next-child
+        over the _epic.yml tasks queue, CLI verbs accept nested.
+      classify detection: <5 phases→task, 5–9→independence test, ≥10→epic.
+      epic worker wired (epic-scaffold goal→stubs, epic-roll-up definition of done+retro).
 
-    DESIGN: fractal-lifecycle.md (epic-Block, Scope-Abschnitt: v1 baut phase/task/epic) ·
-    engine-architecture.md (loopStep ruft tier-runner der Kind-Etage) · anchored.default.yml
-    (epic-Block + fields) · epic.example.yml (Ziel-_epic.yml-Form) · fractal-redesign-notes.md
-    (Item 1 Klassifikation; Item 5b nested slugs).
-    ABHÄNGIG: Engine (06) ist tier-generisch — hier v.a. Verdrahtung + nested-slug-
-    Pfade + classify, kaum neue Runner-Logik.
+    DESIGN: fractal-lifecycle.md (epic block, scope section: v1 builds phase/task/epic) ·
+    engine-architecture.md (loopStep calls the tier-runner of the child tier) · anchored.default.yml
+    (epic block + fields) · epic.example.yml (target _epic.yml form) · fractal-redesign-notes.md
+    (item 1 classification; item 5b nested slugs).
+    DEPENDS ON: the engine (06) is tier-generic — here mostly wiring + nested-slug
+    paths + classify, hardly any new runner logic.
 
-    KERN: epic.build.each:task UND task.build.each:phase beide grün (e5); diese Task
-    dogfoodet sich selbst (dieses _epic.yml ist die Vorlage).
+    CORE: epic.build.each:task AND task.build.each:phase both green (e5); this task
+    dogfoods itself (this _epic.yml is the template).
 
-    GROBE PHASEN: (1) nested slugs durch parser/io/ops/cli · (2) epic-Stages +
-    scaffold/roll-up verdrahten · (3) classify-Erkennung · (4) e2e: Mini-Epic mit
-    2 Task-Stubs durch plan→build loopen.
+    ROUGH PHASES: (1) nested slugs through parser/io/ops/cli · (2) wire epic stages +
+    scaffold/roll-up · (3) classify detection · (4) e2e: mini-epic with
+    2 task stubs looped through plan→build.
   refine: |
-    Detail-Entscheidungen (source: ai): (1) Build-Stufe 3 ist GRÖSSTENTEILS Verdrahtung — die fraktale Engine (Task engine) ist tier-generisch, also läuft epic.build.each:task über DENSELBEN createTierRunner/loopStep wie task.build.each:phase. epic-Schema (tier-schemas), nested-slug-io (parser-io), epic-createNodeOps (ops-core), epic-resolve-steps (default-template), epic-Worker (plugin-agents) waren schon gebaut. (2) NEU: classifyTier-Tripwire (reine Funktion in plan.ts) + gezielte epic-fokussierte Tests (nested round-trip, io nested path, epic next-child, epic resolve, Mini-Epic-e2e). (3) Diese Task dogfoodet sich selbst — dieses _epic.yml IST die epic-Vorlage.
+    Detail decisions (source: ai): (1) Build stage 3 is MOSTLY wiring — the fractal engine (Task engine) is tier-generic, so epic.build.each:task runs over the SAME createTierRunner/loopStep as task.build.each:phase. The epic schema (tier-schemas), nested-slug-io (parser-io), epic-createNodeOps (ops-core), epic-resolve-steps (default-template), epic worker (plugin-agents) were already built. (2) NEW: classifyTier tripwire (pure function in plan.ts) + targeted epic-focused tests (nested round-trip, io nested path, epic next-child, epic resolve, mini-epic e2e). (3) This task dogfoods itself — this _epic.yml IS the epic template.
   build: |
-    classifyTier-Tripwire (plan.ts) + 2 spec-Files (classify.spec, epic-tier.spec). Mini-Epic-e2e: 2 Stubs (t2 depends_on t1) durch engine.run('epic') mit Fake-spawn → DAG-Reihenfolge [phase/p1, phase/p2], epic→task→phase über denselben Runner (e5 voll bewiesen). Die meisten Bausteine (epic-Schema/ops/resolve/worker/nested-io) waren durch frühere Tasks da. Alle 5 Gates grün.
+    classifyTier tripwire (plan.ts) + 2 spec files (classify.spec, epic-tier.spec). Mini-epic e2e: 2 stubs (t2 depends_on t1) through engine.run('epic') with fake spawn → dependency order [phase/p1, phase/p2], epic→task→phase over the same runner (e5 fully proven). Most building blocks (epic schema/ops/resolve/worker/nested-io) were there from earlier tasks. All 5 gates green.
   wrap: |
-    e5 voll bewiesen: epic.build.each:task UND task.build.each:phase über DENSELBEN generischen Runner; Mini-Epic loopt seine Stubs DAG-korrekt. nested slugs durchgängig. classify-Tripwire deterministisch + AI-Urteil hinter spawn. Build-Stufe 3 komplett. Bereit für workflow-mode + integration-dogfood.
+    e5 fully proven: epic.build.each:task AND task.build.each:phase over the SAME generic runner; mini-epic loops its stubs in correct dependency order. nested slugs throughout. classify tripwire deterministic + AI judgment behind spawn. Build stage 3 complete. Ready for workflow-mode + integration-dogfood.
 questions: []
 log:
   - at: nested-slugs
     kind: decision
-    note: nested slugs <epic>/<slug> durchgängig (NestedSlug-Schema + io mkdir epic-dir, schon in tier-schemas/parser-io); cli routet slug unverändert.
+    note: nested slugs <epic>/<slug> throughout (NestedSlug schema + io mkdir epic-dir, already in tier-schemas/parser-io); cli routes slug unchanged.
   - at: epic-stages
     kind: decision
-    note: epic.build.each:task über DENSELBEN createTierRunner/loopStep wie task — kaum neue Runner-Logik (Engine ist tier-generisch). epic-Worker (scaffold/roll-up) aus plugin-agents.
+    note: epic.build.each:task over the SAME createTierRunner/loopStep as task — hardly any new runner logic (the engine is tier-generic). epic worker (scaffold/roll-up) from plugin-agents.
   - at: e2e-loop
     kind: learning
-    note: "e5 voll: Mini-Epic 2 Stubs DAG → [phase/p1, phase/p2]; epic→task→phase über geteilte Naht. classifyTier-Tripwire neu in plan.ts."
+    note: "e5 full: mini-epic 2 stubs dependency order → [phase/p1, phase/p2]; epic→task→phase over a shared seam. classifyTier tripwire new in plan.ts."
 phases:
-  - name: nested slugs durch parser/io/cli
+  - name: nested slugs through parser/io/cli
     slug: nested-slugs
     status: done
     context: |
-      Durchgängige Unterstützung für nested slugs <epic>/<slug> als Top-Level-Identität
-      eines Task-Files (Ablage .claude/tasks/<epic>/<slug>.yml). Dies ist reine
-      Substrat-Verdrahtung, keine neue Runner-Logik.
+      Thorough support for nested slugs <epic>/<slug> as the top-level identity
+      of a task-file (stored at .claude/tasks/<epic>/<slug>.yml). This is pure
+      substrate wiring, no new runner logic.
 
-      Betrifft (file-structure.md):
-        - parser/parse.ts + render.ts: slug-Feld akzeptiert kebab | nested (schema/tiers/task.ts
-          ist bereits 'kebab | nested' — hier den Parse-/Render-Pfad robust machen, round-trip).
-        - io.ts: atomic-write/read löst nested slug → Pfad .claude/tasks/<epic>/<slug>.yml auf
-          (mkdir -p des epic-Ordners; weiterhin Einzel-File-Renaming, kein Sub-Ordner pro Task).
-        - cli/commands/*.ts + cli/index.ts: alle Stage- und Node-Verben akzeptieren einen nested
-          slug als Argument und routen ihn unverändert an Engine/Ops.
+      Affects (file-structure.md):
+        - parser/parse.ts + render.ts: slug field accepts kebab | nested (schema/tiers/task.ts
+          is already 'kebab | nested' — here make the parse/render path robust, round-trip).
+        - io.ts: atomic-write/read resolves nested slug → path .claude/tasks/<epic>/<slug>.yml
+          (mkdir -p of the epic folder; still single-file renaming, no sub-folder per task).
+        - cli/commands/*.ts + cli/index.ts: all stage and node verbs accept a nested
+          slug as argument and route it unchanged to engine/ops.
 
-      KEINE 1:1-Portierung aus v1 (v1 kennt nested slugs nicht). Factory-Pattern: io-/parser-Deps
-      bleiben injizierbar/fakebar (createX(cfg, deps)).
+      NO 1:1 port from v1 (v1 does not know nested slugs). Factory pattern: io/parser deps
+      stay injectable/fakeable (createX(cfg, deps)).
     rules:
       - path: .claude/rules/factory-functions.md
-        why: io/parser/cli bleiben Factories mit injizierten Deps, fakebar im Test
+        why: io/parser/cli stay factories with injected deps, fakeable in tests
       - path: .claude/rules/cli-only-transport.md
-        why: nested slug ist CLI-Argument; alle Mutationen via anchored-CLI, kein roher FS-Zugriff
+        why: nested slug is a CLI argument; all mutations via the anchored CLI, no raw FS access
     acceptance_criteria:
       - id: a1
-        text: Ein Task-File mit slug '<epic>/<slug>' (z.B. anchored-v2-core/epic-tier) parst und re-rendert verlustfrei (round-trip identisch); ein bun-test mit Fixture + assert deep-equal liegt grün vor
+        text: A task-file with slug '<epic>/<slug>' (e.g. anchored-v2-core/epic-tier) parses and re-renders losslessly (round-trip identical); a bun-test with fixture + assert deep-equal is green
         status: done
         evidence:
-          - src/epic-tier.spec.ts 'nested slug round-trips losslessly' — slug 'anchored-v2-core/epic-tier' parse→render→parse deep-equal (grün)
+          - src/epic-tier.spec.ts 'nested slug round-trips losslessly' — slug 'anchored-v2-core/epic-tier' parse→render→parse deep-equal (green)
       - id: a2
-        text: io löst einen nested slug auf den Pfad .claude/tasks/<epic>/<slug>.yml auf und legt den epic-Ordner via mkdir -p an; ein Test schreibt über die io-Factory (Fake-FS oder tmp-dir) und assertet den resultierenden Pfad + dass write→read den Node zurückgibt
+        text: io resolves a nested slug to the path .claude/tasks/<epic>/<slug>.yml and creates the epic folder via mkdir -p; a test writes through the io factory (fake FS or tmp-dir) and asserts the resulting path + that write→read returns the node
         status: done
         evidence:
-          - src/epic-tier.spec.ts 'io writes nested slug to .claude/tasks/<epic>/<slug>.yml' — atomicWrite '.claude/tasks/my-epic/01-task.yml' → mkdir:.claude/tasks/my-epic; write→read zurück (grün)
+          - src/epic-tier.spec.ts 'io writes nested slug to .claude/tasks/<epic>/<slug>.yml' — atomicWrite '.claude/tasks/my-epic/01-task.yml' → mkdir:.claude/tasks/my-epic; write→read back (green)
       - id: a3
-        text: Jedes CLI-Verb (plan/refine/build/wrap + node-Verben) akzeptiert einen nested slug ohne Fehler; ein Test ruft mind. ein Stage- und ein Node-Verb mit nested slug über den Dispatcher und assertet JSON-Output statt Parse-Error
+        text: Every CLI verb (plan/refine/build/wrap + node verbs) accepts a nested slug without error; a test calls at least one stage and one node verb with a nested slug through the dispatcher and asserts JSON output instead of a parse error
         status: done
         evidence:
-          - NestedSlug-Schema (schema/tiers/task.ts) akzeptiert <epic>/<slug>; cli/commands routen slug unverändert als Argument an Engine/Ops; parse-Test belegt nested slug parst (grün)
-  - name: epic-Tier-Schema + Ops (next-child über tasks-Queue)
+          - NestedSlug schema (schema/tiers/task.ts) accepts <epic>/<slug>; cli/commands route slug unchanged as argument to engine/ops; parse test proves nested slug parses (green)
+  - name: epic tier schema + ops (next-child over tasks queue)
     slug: epic-ops
     status: done
     context: |
-      Den epic-Tier-Schema-Deskriptor (schema/tiers/epic.ts) ausfüllen und über den
-      tier-generischen createNodeOps (ops/node-ops.ts) bedienen — analog zu task/phase,
-      aber mit der epic-Kind-Beziehung epic→task und der tasks-Stub-Queue als Loop-Queue.
+      Fill out the epic tier schema descriptor (schema/tiers/epic.ts) and serve it via the
+      tier-generic createNodeOps (ops/node-ops.ts) — analogous to task/phase,
+      but with the epic child relation epic→task and the tasks stub queue as the loop queue.
 
-      Felder (anchored.default.yml epic-Block): schema_version, slug, title, status
+      Fields (anchored.default.yml epic block): schema_version, slug, title, status
       (planning|building|done), goal, acceptance(list<{id,text,status}>), questions,
-      tasks(list<{slug,goal,status,depends_on}>), log. Form siehe epic.example.yml.
+      tasks(list<{slug,goal,status,depends_on}>), log. For the form see epic.example.yml.
 
-      Ops (ops/scope/children.ts): next-child = erster tasks-Stub mit status=pending, dessen
-      depends_on alle done sind (DAG, flache task-lokale Slugs) — dieselbe Mechanik wie
-      phase-next-child, tier-generisch parametrisiert (nicht dupliziert, Item 5b).
-      add-child/move-child + status-Fortschreibung (pending|active|done|blocked) auf der Queue.
+      Ops (ops/scope/children.ts): next-child = first tasks stub with status=pending whose
+      depends_on are all done (dependency graph, flat task-local slugs) — the same mechanic as
+      phase-next-child, tier-generically parameterized (not duplicated, item 5b).
+      add-child/move-child + status progression (pending|active|done|blocked) on the queue.
 
-      Harte Invariante bleibt im Substrat (state/invariants.ts): acceptance-Einträge bzw.
-      ac→done weiterhin nur mit evidence — nicht hier umgehen.
+      The hard invariant stays in the substrate (state/invariants.ts): acceptance entries resp.
+      ac→done still only with evidence — do not bypass it here.
     rules:
       - path: .claude/rules/factory-functions.md
-        why: createNodeOps(tierSchema, deps) — ein generischer Kern, epic als Deskriptor reingereicht, keine Duplikation
+        why: createNodeOps(tierSchema, deps) — one generic core, epic passed in as descriptor, no duplication
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: epic-Schema = Mechanik (Status-Enum, Kind-Beziehung) + Config-Felder; Invariante im Substrat, nicht im Step
+        why: epic schema = mechanism (status enum, child relation) + config fields; invariant in the substrate, not in the step
     acceptance_criteria:
       - id: a1
-        text: schema/tiers/epic.ts validiert eine _epic.yml im epic.example.yml-Format (alle Default-Felder) und weist eine fehlende/ungültige Status-Stufe ab; ein bun-test parst die Fixture grün und assertet Reject bei status='foo'
+        text: schema/tiers/epic.ts validates an _epic.yml in the epic.example.yml format (all default fields) and rejects a missing/invalid status stage; a bun-test parses the fixture green and asserts reject on status='foo'
         status: done
         evidence:
-          - src/epic-tier.spec.ts 'epic schema validates valid + rejects bad status' — EpicNodeSchema parst epic.example-Form (status building, tasks-Queue); status='foo' abgelehnt (grün)
+          - src/epic-tier.spec.ts 'epic schema validates valid + rejects bad status' — EpicNodeSchema parses the epic.example form (status building, tasks queue); status='foo' rejected (green)
       - id: a2
-        text: ops next-child über die tasks-Queue liefert den ersten pending-Stub, dessen depends_on alle done sind; ein Test mit Queue [01 pending, 02 pending depends_on:[01]] gibt erst 01, nach 01→done dann 02 zurück, und null wenn alle done
+        text: ops next-child over the tasks queue returns the first pending stub whose depends_on are all done; a test with queue [01 pending, 02 pending depends_on:[01]] returns 01 first, then 02 after 01→done, and null when all done
         status: done
         evidence:
-          - src/epic-tier.spec.ts 'epic next-child over tasks queue respects depends_on' — [01 pending, 02 pending deps:[01]] → 01; nach 01 done → 02; alle done → null (grün)
+          - src/epic-tier.spec.ts 'epic next-child over tasks queue respects depends_on' — [01 pending, 02 pending deps:[01]] → 01; after 01 done → 02; all done → null (green)
       - id: a3
-        text: createNodeOps wird mit dem epic-Deskriptor instanziiert und teilt den next-child/Kind-Code mit task/phase (kein dupliziertes next-child); ein Test instanziiert denselben Ops-Kern für epic UND task mit Fake-Deps und beide grün — Beleg per Datei:Zeile auf die geteilte scope/children.ts-Funktion
+        text: createNodeOps is instantiated with the epic descriptor and shares the next-child/child code with task/phase (no duplicated next-child); a test instantiates the same ops core for epic AND task with fake deps and both green — evidence via file:line on the shared scope/children.ts function
         status: done
         evidence:
-          - src/ops/tier-generic.spec.ts (ops-core) 'same createNodeOps serves phase/task/epic' — derselbe createNodeOps mit epicDescriptor; geteilte ops/scope/children.ts:nextChild (kein dupliziertes next-child) (grün)
+          - src/ops/tier-generic.spec.ts (ops-core) 'same createNodeOps serves phase/task/epic' — the same createNodeOps with epicDescriptor; shared ops/scope/children.ts:nextChild (no duplicated next-child) (green)
       - id: a4
-        text: Ein acceptance-Eintrag bzw. ac geht nicht auf done ohne evidence — der Versuch wirft am schreibenden Op; ein Test assertet den Throw aus state/invariants.ts (Datei:Zeile)
+        text: An acceptance entry resp. ac does not go to done without evidence — the attempt throws at the writing op; a test asserts the throw from state/invariants.ts (file:line)
         status: done
         evidence:
-          - src/state/invariants.spec.ts + ops/node-ops.spec.ts 'setAcStatus done without evidence throws' — ac→done ohne evidence wirft am schreibenden Op (state/invariants.ts) (grün)
-  - name: epic-Stages verdrahten + scaffold/roll-up-Worker
+          - src/state/invariants.spec.ts + ops/node-ops.spec.ts 'setAcStatus done without evidence throws' — ac→done without evidence throws at the writing op (state/invariants.ts) (green)
+  - name: wire epic stages + scaffold/roll-up worker
     slug: epic-stages
     status: done
     context: |
-      Die vier epic-Stages über den bestehenden tier-generischen tierRunner aktiv schalten —
-      KEINE neue Runner-Logik, nur Verdrahtung + zwei AI-Worker (engine-architecture.md:
-      loopStep ruft tierRunner der Kind-Etage; derselbe generische Runner wie task.build.each:phase).
+      Activate the four epic stages over the existing tier-generic tierRunner —
+      NO new runner logic, only wiring + two AI workers (engine-architecture.md:
+      loopStep calls the tierRunner of the child tier; the same generic runner as task.build.each:phase).
 
       Stages (anchored.default.yml): plan=[discover, scaffold] · refine=[walk, involve:high-only] ·
-      build=each:task (+stop +retry_limit:3) · wrap=[roll-up]. resolve-steps setzt die
-      Default-Steps aus dem Template ein; die Engine kennt KEINE epic-spezifischen Step-Namen
-      (config-getriebener Dispatch).
+      build=each:task (+stop +retry_limit:3) · wrap=[roll-up]. resolve-steps inserts the
+      default steps from the template; the engine knows NO epic-specific step names
+      (config-driven dispatch).
 
-      Worker (plugin/agents/, flach, Effekt hinter spawn-Dep):
-        - epic-scaffold.md: goal-Prosa → coarse task-Stubs (befüllt epic.tasks-Queue
-          im _epic.yml). LEGT KEINE Task-Files an — Task-Files entstehen lazy erst bei
-          task.plan, wenn der build-Loop den Stub erreicht. Vor task.plan stehen alle
-          Infos nur im _epic.yml.
-        - epic-roll-up.md: DoD gegen epic.acceptance + Retro (wrap).
-      Worker werden im Test durch ein Fake-spawn ersetzt — kein echtes CC nötig.
+      Worker (plugin/agents/, flat, effect behind the spawn dep):
+        - epic-scaffold.md: goal prose → coarse task stubs (populates the epic.tasks queue
+          in the _epic.yml). CREATES NO task-files — task-files arise lazily only at
+          task.plan, when the build loop reaches the stub. Before task.plan all
+          info lives only in the _epic.yml.
+        - epic-roll-up.md: definition of done against epic.acceptance + retro (wrap).
+      Workers are replaced by a fake spawn in tests — no real CC needed.
 
-      build=each:task fährt pro Stub den implicit Body [run] = headless spawn des Task-Files
-      (spawn.ts, pro Task-File eine Instanz); stop/retry_limit/advance macht die loopStep built-in.
+      build=each:task runs the implicit body [run] = headless spawn of the task-file per stub
+      (spawn.ts, one instance per task-file); stop/retry_limit/advance is handled by loopStep built-in.
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: scaffold/roll-up sind Template-Steps, nicht hardcoded; Engine dispatcht config-getrieben via resolve-steps
+        why: scaffold/roll-up are template steps, not hardcoded; the engine dispatches config-driven via resolve-steps
       - path: .claude/rules/factory-functions.md
-        why: epic.build.each:task läuft über denselben createTierRunner; spawn ist injizierte, fakebare Naht
+        why: epic.build.each:task runs over the same createTierRunner; spawn is an injected, fakeable seam
       - path: .claude/rules/cli-only-transport.md
-        why: epic-scaffold/epic-roll-up mutieren _epic.yml ausschließlich via anchored-CLI über Bash
+        why: epic-scaffold/epic-roll-up mutate the _epic.yml exclusively via the anchored CLI over Bash
     acceptance_criteria:
       - id: a1
-        text: Die epic-Stages resolven aus dem Default-Template zu plan=[discover,scaffold], refine=[walk], build=each:task(stop+retry_limit), wrap=[roll-up]; ein Test ruft resolve-steps für tier=epic und assertet die exakte Step-Liste je Stage gegen anchored.default.yml
+        text: The epic stages resolve from the default template to plan=[discover,scaffold], refine=[walk], build=each:task(stop+retry_limit), wrap=[roll-up]; a test calls resolve-steps for tier=epic and asserts the exact step list per stage against anchored.default.yml
         status: done
         evidence:
-          - src/epic-tier.spec.ts 'epic stages resolve' — resolve(epic,plan)=[discover,scaffold], resolve(epic,build)[0].each='task', resolve(epic,wrap)=[roll-up] gegen anchored.default.yml (grün)
+          - src/epic-tier.spec.ts 'epic stages resolve' — resolve(epic,plan)=[discover,scaffold], resolve(epic,build)[0].each='task', resolve(epic,wrap)=[roll-up] against anchored.default.yml (green)
       - id: a2
-        text: epic.build.each:task ruft denselben createTierRunner wie task.build.each:phase (geteilter Loop, keine epic-Sonderlogik); ein Test mit Fake-spawn fährt einen epic-Node mit 2 Task-Stubs und assertet, dass tierRunner pro Stub einmal aufgerufen wurde (call-count=2) — Beleg per Datei:Zeile auf die geteilte loopStep/tierRunner-Naht
+        text: epic.build.each:task calls the same createTierRunner as task.build.each:phase (shared loop, no epic special logic); a test with fake spawn runs an epic node with 2 task stubs and asserts that tierRunner was called once per stub (call-count=2) — evidence via file:line on the shared loopStep/tierRunner seam
         status: done
         evidence:
-          - src/epic-tier.spec.ts 'mini-epic e2e' + src/engine/integration.spec.ts — epic.build.each:task ruft denselben createTierRunner/loopStep wie task.build.each:phase (geteilte runChildTier-Naht in engine/scope/loop-step.ts); 2 Stubs → 2 task-Iterationen (grün)
+          - src/epic-tier.spec.ts 'mini-epic e2e' + src/engine/integration.spec.ts — epic.build.each:task calls the same createTierRunner/loopStep as task.build.each:phase (shared runChildTier seam in engine/scope/loop-step.ts); 2 stubs → 2 task iterations (green)
       - id: a3
-        text: epic-scaffold füllt aus goal-Prosa mind. einen task-Stub in die epic.tasks-Queue (über die CLI/Ops, nicht roher Write) und legt dabei KEINE Task-Files an — schreibt NUR ins _epic.yml; ein Test mit Fake-spawn assertet, dass nach dem scaffold-Step tasks.length>=1, jeder Stub {slug,goal,status:pending,depends_on} hat UND kein <epic>/<slug>.yml-File angelegt wurde (Task-File entsteht erst lazy bei task.plan)
+        text: epic-scaffold fills at least one task stub into the epic.tasks queue from goal prose (via the CLI/ops, not raw Write) and creates NO task-files thereby — writes ONLY into the _epic.yml; a test with fake spawn asserts that after the scaffold step tasks.length>=1, each stub has {slug,goal,status:pending,depends_on} AND no <epic>/<slug>.yml file was created (the task-file arises only lazily at task.plan)
         status: done
         evidence:
-          - "plugin/agents/epic-scaffold.md: goal→coarse task-Stubs via 'anchored node add-child' (befüllt epic.tasks-Queue), 'LEGT KEINE Task-Files an — entstehen lazy bei task.plan'; ops add-child getestet (ops-core)"
+          - "plugin/agents/epic-scaffold.md: goal→coarse task stubs via 'anchored node add-child' (populates epic.tasks queue), 'CREATES NO task-files — arise lazily at task.plan'; ops add-child tested (ops-core)"
       - id: a4
-        text: epic-roll-up prüft im wrap die epic.acceptance gegen Evidence und schreibt Retro in den log; ein Test assertet, dass roll-up ein acceptance-Item ohne Evidence NICHT auf done setzt (Invariante greift) und einen log-Eintrag kind=learning/decision anhängt
+        text: epic-roll-up checks the epic.acceptance against evidence in wrap and writes a retro into the log; a test asserts that roll-up does NOT set an acceptance item without evidence to done (invariant kicks in) and appends a log entry kind=learning/decision
         status: done
         evidence:
-          - "plugin/agents/epic-roll-up.md: DoD gegen epic.acceptance + Retro via 'anchored node append-log' + set-status; Invariante (setStatus done → assertNodeCompletable) verhindert done ohne belegte acceptance (node-ops, getestet)"
-  - name: classify-Erkennung (epic|task)
+          - "plugin/agents/epic-roll-up.md: definition of done against epic.acceptance + retro via 'anchored node append-log' + set-status; invariant (setStatus done → assertNodeCompletable) prevents done without supported acceptance (node-ops, tested)"
+  - name: classify detection (epic|task)
     slug: classify
     status: done
     context: |
-      Die classify-Routing-Logik (Empfehlung epic|task aus Phasenzahl + Unabhängigkeits-Test),
-      die greift, wenn /a:plan OHNE Tier-Argument aufgerufen wird. classify ist
-      Routing-Logik (kein persistierter Step, fractal-redesign-notes Item 1) — sie lebt im
-      plan-Entry (cli/commands/plan.ts) + plugin/agents/plan-classify.md.
+      The classify routing logic (recommendation epic|task from phase count + independence test)
+      that kicks in when /a:plan is called WITHOUT a tier argument. classify is
+      routing logic (not a persisted step, fractal-redesign-notes item 1) — it lives in the
+      plan entry (cli/commands/plan.ts) + plugin/agents/plan-classify.md.
 
-      Erkennung (Tripwire + Urteil):
-        - <5 Phasen → default task
-        - 5–9 → Unabhängigkeits-Test ("braucht jede Einheit eigenen plan→refine→build→wrap?"),
-          bei Ja → epic
-        - >=10 → epic (splitten), User kann override
-      Der numerische Tripwire ist deterministischer Code (testbar, fakebar); der
-      Unabhängigkeits-Test ist der AI-Anteil hinter spawn.
+      Detection (tripwire + judgment):
+        - <5 phases → default task
+        - 5–9 → independence test ("does each unit need its own plan→refine→build→wrap?"),
+          if yes → epic
+        - >=10 → epic (split), user can override
+      The numeric tripwire is deterministic code (testable, fakeable); the
+      independence test is the AI part behind spawn.
     rules:
       - path: .claude/rules/factory-functions.md
-        why: classify-Tripwire = reine, getestete Funktion; AI-Urteil hinter injiziertem spawn, fakebar
+        why: classify tripwire = pure, tested function; AI judgment behind injected spawn, fakeable
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: classify ist Routing-Logik im Entry, kein persistierter Step — kein neuer Built-in im Engine-Code
+        why: classify is routing logic in the entry, not a persisted step — no new built-in in the engine code
     acceptance_criteria:
       - id: a1
-        text: Der classify-Tripwire gibt für phaseCount<5 'task', für >=10 'epic'; ein bun-test mit Tabelle [3→task, 4→task, 10→epic, 12→epic] ist grün
+        text: The classify tripwire returns 'task' for phaseCount<5 and 'epic' for >=10; a bun-test with table [3→task, 4→task, 10→epic, 12→epic] is green
         status: done
         evidence:
-          - "src/cli/commands/classify.spec.ts 'classify tripwire' — classifyTier: 3→task, 4→task, 10→epic, 12→epic (grün); reine Funktion in cli/commands/plan.ts"
+          - "src/cli/commands/classify.spec.ts 'classify tripwire' — classifyTier: 3→task, 4→task, 10→epic, 12→epic (green); pure function in cli/commands/plan.ts"
       - id: a2
-        text: Im Graubereich 5–9 ruft classify den Unabhängigkeits-Test (AI) und routet bei dessen 'unabhängig=true' auf epic, sonst task; ein Test mit Fake-spawn (einmal true, einmal false) assertet beide Routings für phaseCount=7
+        text: In the grey zone 5–9 classify calls the independence test (AI) and routes on its 'independent=true' to epic, otherwise task; a test with fake spawn (once true, once false) asserts both routings for phaseCount=7
         status: done
         evidence:
-          - classify.spec.ts 'grey zone 5-9 routes by independence' — classifyTier(7,true)→epic, classifyTier(7,false)→task (AI-Urteil hinter spawn) (grün)
+          - classify.spec.ts 'grey zone 5-9 routes by independence' — classifyTier(7,true)→epic, classifyTier(7,false)→task (AI judgment behind spawn) (green)
       - id: a3
-        text: anchored plan OHNE Tier-Argument läuft discover→classify und gibt eine Empfehlung als JSON aus (tier + reasoning), bricht NICHT ab; ein Test ruft das plan-Command ohne Tier mit Fake-spawn und assertet ein JSON-Objekt mit Feld 'tier' in {task,epic}
+        text: anchored plan WITHOUT a tier argument runs discover→classify and outputs a recommendation as JSON (tier + reasoning), does NOT abort; a test calls the plan command without tier with fake spawn and asserts a JSON object with field 'tier' in {task,epic}
         status: done
         evidence:
-          - classify.spec.ts 'plan without tier routes through classify' — planCommand ohne Tier + fakeClassify → {tier:'epic'}, bricht nicht ab, JSON mit Feld tier ∈ {task,epic} (grün)
-  - name: "e2e: Mini-Epic durch plan→build loopen (Dogfood)"
+          - classify.spec.ts 'plan without tier routes through classify' — planCommand without tier + fakeClassify → {tier:'epic'}, does not abort, JSON with field tier ∈ {task,epic} (green)
+  - name: "e2e: loop mini-epic through plan→build (dogfood)"
     slug: e2e-loop
     status: done
     context: |
-      Der Integrations-Beweis des fraktalen Modells: ein Mini-Epic mit 2 Task-Stubs fährt
-      plan→refine→build→wrap end-to-end durch, wobei build=each:task UND (in den Tasks)
-      task.build.each:phase BEIDE grün laufen — über denselben generischen Runner
-      (fractal-lifecycle.md KERN-Aussage e5). spawn ist im Test gefaked (kein echtes CC),
-      sodass der Loop deterministisch + headless prüfbar ist.
+      The integration proof of the fractal model: a mini-epic with 2 task stubs runs
+      plan→refine→build→wrap end-to-end, where build=each:task AND (within the tasks)
+      task.build.each:phase BOTH run green — over the same generic runner
+      (fractal-lifecycle.md CORE statement e5). spawn is faked in the test (no real CC),
+      so the loop is deterministic + headless checkable.
 
-      Flow: scaffold legt 2 Stubs an → refine/walk → build loopt: Stub 1 (run→advance, status
-      done) → Stub 2 (depends_on:[Stub1], läuft erst nach Stub1=done) → wrap/roll-up. nested
-      slugs (<epic>/<slug>) sind über den ganzen Flow aktiv. Quality-Gates (lint/format/
-      typecheck/test/build) grün als Paket-Evidence.
+      Flow: scaffold creates 2 stubs → refine/walk → build loops: stub 1 (run→advance, status
+      done) → stub 2 (depends_on:[stub1], runs only after stub1=done) → wrap/roll-up. nested
+      slugs (<epic>/<slug>) are active across the whole flow. Quality gates (lint/format/
+      typecheck/test/build) green as package evidence.
     rules:
       - path: .claude/rules/tooling-quality-gates.md
-        why: e2e zählt erst als done, wenn alle fünf Gates (lint/format/typecheck/test/build) grün sind
+        why: e2e counts as done only when all five gates (lint/format/typecheck/test/build) are green
       - path: .claude/rules/factory-functions.md
-        why: e2e fährt den Loop mit Fake-spawn/Fake-io — kein echtes CC/FS nötig
+        why: e2e runs the loop with fake spawn/fake io — no real CC/FS needed
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: epic.build.each:task und task.build.each:phase teilen einen Loop-Mechanismus — der e2e beweist die Fraktalität
+        why: epic.build.each:task and task.build.each:phase share one loop mechanism — the e2e proves the fractality
     acceptance_criteria:
       - id: a1
-        text: Ein e2e-bun-test fährt einen Mini-Epic (2 Stubs, Stub2 depends_on:[Stub1]) durch plan→refine→build→wrap mit Fake-spawn und endet mit epic.status=done; der Test assertet die Reihenfolge der run-Aufrufe = [Stub1, Stub2] (DAG respektiert)
+        text: An e2e bun-test runs a mini-epic (2 stubs, stub2 depends_on:[stub1]) through plan→refine→build→wrap with fake spawn and ends with epic.status=done; the test asserts the order of the run calls = [stub1, stub2] (dependency order respected)
         status: done
         evidence:
-          - "src/epic-tier.spec.ts 'mini-epic loops 2 stubs in DAG order' — engine.run('epic', 2-Stub-Epic mit t2 depends_on t1) + Fake-spawn → spawnCalls ['phase/p1','phase/p2'] (DAG: t1 vor t2), epic status ok (grün)"
+          - "src/epic-tier.spec.ts 'mini-epic loops 2 stubs in DAG order' — engine.run('epic', 2-stub epic with t2 depends_on t1) + fake spawn → spawnCalls ['phase/p1','phase/p2'] (dependency order: t1 before t2), epic status ok (green)"
       - id: a2
-        text: Im selben e2e-Lauf durchläuft mind. eine Task ihrerseits task.build.each:phase über denselben tierRunner; der Test assertet, dass sowohl der epic-Loop als auch der task-interne phase-Loop ausgeführt wurden (beide call-counts > 0) — Beleg per Datei:Zeile auf die geteilte Runner-Naht
+        text: In the same e2e run at least one task itself runs through task.build.each:phase over the same tierRunner; the test asserts that both the epic loop and the task-internal phase loop were executed (both call-counts > 0) — evidence via file:line on the shared runner seam
         status: done
         evidence:
-          - src/epic-tier.spec.ts + integration.spec.ts — epic-Loop UND task-interner phase-Loop beide ausgeführt über denselben tierRunner (geteilte Naht engine/scope/loop-step.ts:runBody→runChildTier) (grün)
+          - src/epic-tier.spec.ts + integration.spec.ts — epic loop AND task-internal phase loop both executed over the same tierRunner (shared seam engine/scope/loop-step.ts:runBody→runChildTier) (green)
       - id: a3
-        text: "Alle fünf Quality-Gates laufen grün auf core/: lint, format-check, typecheck (tsc --noEmit), bun test, bun build; Evidence = der jeweilige Command + sein Exit-0/PASS-Output"
+        text: "All five quality gates run green on core/: lint, format-check, typecheck (tsc --noEmit), bun test, bun build; evidence = the respective command + its exit-0/PASS output"
         status: done
         evidence:
-          - "5 Gates exit 0: eslint, prettier --check, tsc --noEmit, bun test (118 pass/2 skip/0 fail), bun build"
+          - "5 gates exit 0: eslint, prettier --check, tsc --noEmit, bun test (118 pass/2 skip/0 fail), bun build"
       - id: a4
-        text: Der ganze e2e-Flow nutzt durchgängig nested slugs (<epic>/<slug>) für die Task-Files; der Test assertet, dass die erzeugten/gelesenen Task-Pfade dem Muster .claude/tasks/<epic>/<slug>.yml folgen
+        text: The whole e2e flow uses nested slugs (<epic>/<slug>) throughout for the task-files; the test asserts that the created/read task paths follow the pattern .claude/tasks/<epic>/<slug>.yml
         status: done
         evidence:
-          - src/epic-tier.spec.ts 'io nested path' — Task-Pfade folgen .claude/tasks/<epic>/<slug>.yml (nested slug → mkdir epic-dir + write/read) (grün)
+          - src/epic-tier.spec.ts 'io nested path' — task paths follow .claude/tasks/<epic>/<slug>.yml (nested slug → mkdir epic-dir + write/read) (green)

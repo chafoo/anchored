@@ -2,29 +2,29 @@
 
 # bootstrap
 
-Baut die effektive Config + die `deps` beim Start. `merge.ts` (deep-merge, User
-gewinnt) ist der Helfer dahinter — hier mitbeschrieben, da trivial.
+Builds the effective config + the `deps` at startup. `merge.ts` (deep merge, user
+wins) is the helper behind it — described here too, since it's trivial.
 
-## Was
+## What
 
-- `effectiveConfig = merge(anchored.default.yml [Basis], <project>/anchored.yml
-  [Deltas])`, dann gegen [schema/config](../schema/config.md) validiert.
-- Default-Template wird **nicht** ins User-Projekt kopiert — die Basis kommt aus
-  dem mitgelieferten `default-template/`. Darum reicht die minimale User-Datei.
-- Ergebnis-`deps` (`config`, `ops`, `spawn`, …) wird in `createEngine`/
-  `createNodeOps` injiziert.
+- `effectiveConfig = merge(anchored.default.yml [base], <project>/anchored.yml
+  [deltas])`, then validated against [schema/config](../schema/config.md).
+- The default template is **not** copied into the user project — the base comes
+  from the bundled `default-template/`. That's why the minimal user file suffices.
+- The resulting `deps` (`config`, `ops`, `spawn`, …) are injected into
+  `createEngine` / `createNodeOps`.
 
-## Wie
+## How
 
 ```mermaid
 flowchart LR
-    boot["bootstrap(projectRoot)"] --> load["default + user laden"]
-    load --> mg["merge (User gewinnt)"]
+    boot["bootstrap(projectRoot)"] --> load["load default + user"]
+    load --> mg["merge (user wins)"]
     mg --> val["validate"]
     val --> deps["deps { config, ops, spawn, … }"]
 ```
 
-## Warum
+## Why
 
-Eine Quelle der Wahrheit, einmal geladen: kein verstreutes Config-Lesen, und die
-Factories bekommen alles als Dep — testbar mit einer Fake-Config.
+A single source of truth, loaded once: no scattered config reads, and the
+factories get everything as a dep — testable with a fake config.

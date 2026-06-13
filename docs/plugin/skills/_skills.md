@@ -2,9 +2,9 @@
 
 # skills
 
-Die vier Slash-Commands des Plugins `a`. Jeder orchestriert **eine Stage** und ruft
-dafür die [`anchored`-CLI](../../core/cli/_cli.md) via Bash — die Skills halten
-keine eigene Mutations-Logik, sie sind die dünne Bedien-Schicht.
+The four slash commands of the `a` plugin. Each orchestrates **one stage** and
+calls the [`anchored` CLI](../../core/cli/_cli.md) via Bash for it — the skills hold
+no mutation logic of their own, they are the thin control layer.
 
 ```mermaid
 flowchart LR
@@ -13,9 +13,9 @@ flowchart LR
     cli --> eng["engine / ops"]
 ```
 
-| Command | Verantwortung |
+| Command | Responsibility |
 |---|---|
-| [/a:plan](plan.md) | Strukturiert eine Einheit. `<tier?> <prosa\|path>`; ohne Tier → discover + classify. |
-| [/a:refine](refine.md) | `<slug>` — plan-check + rules-check + Q&A-walk. |
-| [/a:build](build.md) | `<slug>` — fraktaler build (Loop bzw. Leaf-Arbeit). |
-| [/a:wrap](wrap.md) | `<slug>` — review + summarize bzw. roll-up. |
+| [/a:plan](plan.md) | Structures a unit. `<tier?> <prose\|path>`; without tier → discover + classify. |
+| [/a:refine](refine.md) | `<slug>` — plan-check + rules-check + Q&A walk. |
+| [/a:build](build.md) | `<slug>` — fractal build (loop or leaf work). |
+| [/a:wrap](wrap.md) | `<slug>` — review + summarize or roll-up. |

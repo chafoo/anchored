@@ -1,43 +1,43 @@
-# Rule: CLI-only Transport — kein MCP
+# Rule: CLI-only Transport — no MCP
 
-> Geltung: CLI, Plugin-Skills, alle Agents, jede Ops-Mutation. Nicht-verhandelbar.
+> Scope: CLI, plugin skills, all agents, every ops mutation. Non-negotiable.
 
-## Die Regel
+## The Rule
 
-**Alle Ops laufen über die `anchored`-CLI, aufgerufen via Bash.** Kein MCP.
-Ein Transport, ein Mental-Modell — funktioniert in der Main-Session UND in
-Subagents/headless gleichermaßen. Ein CLI-über-Bash verhält sich faktisch wie
-ein CC-Built-in.
+**All ops run through the `anchored` CLI, invoked via Bash.** No MCP.
+One transport, one mental model — works in the main session AND in
+subagents/headless alike. A CLI-over-Bash behaves effectively like
+a CC built-in.
 
-## Immer
+## Always
 
-- **Mutationen + Reads gehen durch `anchored <verb>`** — Stage-Verben
-  (`plan`/`refine`/`build`/`wrap`) fahren die Engine; generische node-Verben
-  (read/set-status/add-evidence/log …) fahren die Ops.
-- **CLI gibt JSON aus** — strukturiert, maschinen-parsebar, für Skills + Agents.
-- **Agents lesen + schreiben direkt via CLI** — kein pure-thinker-Workaround mehr
-  (der war ein v1-MCP-Bug-Workaround). Agent ruft `anchored …` über Bash.
-- **lazy-init** ergänzt `Bash(anchored *)` in `.claude/settings.local.json`, damit
-  die Calls ohne Prompt durchlaufen.
+- **Mutations + reads go through `anchored <verb>`** — stage verbs
+  (`plan`/`refine`/`build`/`wrap`) drive the engine; generic node verbs
+  (read/set-status/add-evidence/log …) drive the ops.
+- **CLI outputs JSON** — structured, machine-parsable, for skills + agents.
+- **Agents read + write directly via CLI** — no more pure-thinker workaround
+  (that was a v1 MCP bug workaround). The agent calls `anchored …` over Bash.
+- **lazy-init** adds `Bash(anchored *)` to `.claude/settings.local.json`, so that
+  the calls run through without a prompt.
 
-## Nie
+## Never
 
-- **Kein MCP-Server, keine MCP-Tools.** MCP-in-Subagents ist kaputt (#13605, kein
-  Fix); CC-Built-ins sind für Plugins nicht erweiterbar. Bash ist das einzige
-  ubiquitäre Tool.
-- **Keine rohen `Write`/`Edit` auf Task-Files / `_epic.yml`** im Engine-Betrieb —
-  alle Mutationen gehen durch die validierende CLI (sonst umgeht man Invariante +
-  atomic-write). (Manuelles Editieren in der Design-/Planungsphase ist davon
-  unberührt.)
+- **No MCP server, no MCP tools.** MCP-in-subagents is broken (#13605, no
+  fix); CC built-ins aren't extensible for plugins. Bash is the only
+  ubiquitous tool.
+- **No raw `Write`/`Edit` on task-files / `_epic.yml`** during engine operation —
+  all mutations go through the validating CLI (otherwise you bypass the invariant +
+  atomic-write). (Manual editing during the design/planning phase is unaffected by
+  this.)
 
-## Warum
+## Why
 
-CI-/headless-fähig, ein einziges Transport-Modell, keine Subagent-MCP-Bugs. Die
-Core-Factory (Schema, State-Machine, atomic-writes, Invariante) bleibt der Wert —
-nur transport-agnostisch hinter der CLI. Siehe
-`docs/design/fractal-redesign-notes.md` → „Transport: CLI-über-Bash".
+CI-/headless-capable, a single transport model, no subagent MCP bugs. The
+core factory (schema, state machine, atomic-writes, invariant) remains the value —
+just transport-agnostic behind the CLI. See
+`docs/design/fractal-redesign-notes.md` → "Transport: CLI-over-Bash".
 
-## Referenz
+## Reference
 
 `docs/design/file-structure.md` (cli/), `docs/design/fractal-redesign-notes.md`.
 [[factory-functions]], [[fractal-substrate-integrity]].

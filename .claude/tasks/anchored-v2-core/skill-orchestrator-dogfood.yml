@@ -1,307 +1,307 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
 slug: anchored-v2-core/skill-orchestrator-dogfood
-title: Skill-orchestrierter Runtime + Dogfood-Eval (die letzte Meile)
+title: Skill-orchestrated runtime + dogfood eval (the last mile)
 created: 2026-06-11
 status: build
 context:
   plan: |
-    SCOPE: Die „letzte Meile" verdrahten, die der skill-creator-Eval (e8) sofort
-    freigelegt hat — und dann real validieren. Der deterministische Core (Engine,
-    Substrat, Ops, Invariante, CLI) ist gebaut + 160 Tests grün, ABER es ist nie
-    ein echter plan→refine→build→wrap gelaufen: die AI-Naht (wie `anchored <stage>`
-    die Plugin-Agents tatsächlich startet) war nur in Tests gefakt (`fakeSpawn`),
-    nie verdrahtet.
+    SCOPE: Wire the "last mile" that the skill-creator eval (e8) immediately
+    exposed — and then validate it for real. The deterministic core (engine,
+    substrate, ops, invariant, CLI) is built + 160 tests green, BUT a real
+    plan→refine→build→wrap has never run: the AI seam (how `anchored <stage>`
+    actually starts the plugin agents) was only faked in tests (`fakeSpawn`),
+    never wired.
 
-    BEFUND (Smoke-Test in frischem tmp-Projekt, 2026-06-11):
-      - `anchored plan` → status:failed, Task-File OHNE Phasen. Grund: der bin-Entry
-        verdrahtet `createSpawn(config, {})` ohne exec/agent-Naht, und ein nackter
-        Node-Subprozess kann KEINE Claude-Code-Agents starten (die existieren nur
-        in einer CC-Session, Task-Tool). Jede Stage mit Worker-Steps scheitert am
-        ersten Worker.
-      - P0: lazy-init schrieb eine Kommentar-only anchored.yml → Bootstrap crashte
-        beim Zurücklesen (YAML→null, ConfigSchema „expected object, received null").
+    FINDING (smoke test in a fresh tmp project, 2026-06-11):
+      - `anchored plan` → status:failed, task-file WITHOUT phases. Reason: the bin
+        entry wires `createSpawn(config, {})` without an exec/agent seam, and a bare
+        Node subprocess CANNOT start Claude Code agents (those only exist in a CC
+        session, Task tool). Every stage with worker steps fails at the first
+        worker.
+      - P0: lazy-init wrote a comments-only anchored.yml → bootstrap crashed
+        when reading it back (YAML→null, ConfigSchema "expected object, received null").
 
-    ENTSCHEIDUNG (User, 2026-06-11): AI-Naht = SKILL-ORCHESTRIERT, in-session.
-    Die Skills (haben Plugin+Agents geladen) sind die Dirigenten: sie spawnen jeden
-    Worker via Task-Tool in der Session; die Agents self-writen via `anchored node`;
-    die CLI liefert (a) alle Ops + (b) den config-getriebenen Step-Plan (`anchored
-    steps <tier> <stage>`). Die Engine mit `spawn` bleibt für den headless-Pfad
-    erhalten, ist aber NICHT der Skill-Pfad. Heißt: die v2-Skills müssen so „dick"
-    werden wie die v1-Skills (orchestrieren), nur mit CLI statt MCP als Transport.
+    DECISION (user, 2026-06-11): AI seam = SKILL-ORCHESTRATED, in-session.
+    The skills (which have plugin+agents loaded) are the conductors: they spawn each
+    worker via the Task tool in the session; the agents self-write via `anchored node`;
+    the CLI provides (a) all ops + (b) the config-driven step plan (`anchored
+    steps <tier> <stage>`). The engine with `spawn` is kept for the headless path,
+    but is NOT the skill path. Meaning: the v2 skills must become as "thick"
+    as the v1 skills (orchestrate), only with CLI instead of MCP as the transport.
 
-    DOGFOOD-ZIEL (User): beides nacheinander — erst ein Task-Feature end-to-end
-    grün (anchored-test „clear-completed button"), dann ein Epic-Lauf (mehrere
-    Tasks, epic.build.each:task, rolling-wave). Sandbox: ~/Dev/anchored-test
-    (Vanilla-JS-Todo, 3 Rules intakt, für v2 zurückgesetzt; v1-`.mcp.json` archiviert).
+    DOGFOOD GOAL (user): both in sequence — first a task feature end-to-end
+    green (anchored-test "clear-completed button"), then an epic run (multiple
+    tasks, epic.build.each:task, rolling-wave). Sandbox: ~/Dev/anchored-test
+    (vanilla-JS todo, 3 rules intact, reset for v2; v1 `.mcp.json` archived).
 
-    REF: ~/Dev/anchored/evals (v1-Eval-Setup: evals.json 6 Lifecycle-Prompts +
-    runner.md /loop-driven; war MCP + lifecycle-only, kein epic) als KONZEPT-Vorlage.
-    Schließt e6 (Skills rufen CLI, Agent-Roster vollständig) + e8 (skill-creator-Eval)
-    des Epics ab. [[full-build-no-mvp]], [[plugin-skill-eval]], [[workflow-compat]].
+    REF: ~/Dev/anchored/evals (v1 eval setup: evals.json 6 lifecycle prompts +
+    runner.md /loop-driven; was MCP + lifecycle-only, no epic) as a CONCEPT template.
+    Closes e6 (skills call CLI, agent roster complete) + e8 (skill-creator eval)
+    of the epic. [[full-build-no-mvp]], [[plugin-skill-eval]], [[workflow-compat]].
 
-    GROBE PHASEN: (1) CLI/Substrat-Fundament [DONE] · (2) 4 Skills → Orchestratoren ·
-    (3) 13 Agent-Docs auf reale Verben angleichen · (4) Dogfood Task end-to-end ·
-    (5) Dogfood Epic end-to-end · (6) skill-creator-Eval (Triggering + Verhalten).
+    ROUGH PHASES: (1) CLI/substrate foundation [DONE] · (2) 4 skills → orchestrators ·
+    (3) align 13 agent docs to real verbs · (4) dogfood task end-to-end ·
+    (5) dogfood epic end-to-end · (6) skill-creator eval (triggering + behavior).
 questions: []
 log:
   - at: skill-orchestrator-dogfood
     kind: decision
-    note: AI-Naht = skill-orchestriert in-session (nicht headless claude -p). Skills werden Dirigenten, CLI liefert steps-Plan + Ops, Agents self-writen via anchored node.
+    note: AI seam = skill-orchestrated in-session (not headless claude -p). Skills become conductors, CLI provides steps plan + ops, agents self-write via anchored node.
   - at: skill-orchestrator-dogfood
     kind: learning
-    note: "Der e2e-Dogfood (Task integration-dogfood) war grün, weil er fakeSpawn injizierte — er hat die AI-Naht-Lücke maskiert. Echtes Dogfood gegen die verlinkte CLI deckt sie auf. Lehre: mind. ein Lauf gegen das ECHTE Binary, nicht nur fakeSpawn."
+    note: "The e2e dogfood (task integration-dogfood) was green because it injected fakeSpawn — it masked the AI-seam gap. A real dogfood against the linked CLI exposes it. Lesson: at least one run against the REAL binary, not just fakeSpawn."
   - at: skill-orchestrator-dogfood
     kind: decision
-    note: "Review-Pass 2026-06-11 (impl-plan update-mode): 5 Lücken eingearbeitet — neue Phase dogfood-harness-setup (wie lädt anchored-test das Plugin, Showstopper-Precondition); agents-reconcile VOR skills-orchestrate gezogen + Spawn-Input-Vertrag-AC (a3); skills-orchestrate +Failure-Handling-AC (a5) +Stage-Verben-Auflösung-AC (a6) +in-progress-Transition in a2. Phase 1 (done) unangetastet. Status build→drafted (Plan materiell geändert, re-refine-würdig)."
+    note: "Review pass 2026-06-11 (impl-plan update-mode): 5 gaps incorporated — new phase dogfood-harness-setup (how does anchored-test load the plugin, showstopper precondition); agents-reconcile pulled BEFORE skills-orchestrate + spawn-input-contract AC (a3); skills-orchestrate +failure-handling AC (a5) +stage-verb-resolution AC (a6) +in-progress transition in a2. Phase 1 (done) untouched. Status build→drafted (plan materially changed, worth re-refining)."
   - at: skill-orchestrator-dogfood
     kind: learning
-    note: "refine plan-check 2026-06-11 (verdict drift-found): Annahmen bestätigt — Skills sind thin (plan/SKILL.md:27 etc. delegieren an `anchored <stage>`), Phase-1-done-Claims akkurat (steps-planner.ts, node-ops-Verben, bootstrap-null-fix alle real), anchored-test plugin-loading fehlt (keine .claude/skills, .claude/agents, settings.local.json). DRIFT korrigiert: '13 Agents mismatched' war überzogen — real ~3 (build-implement add-evidence/set-status, wrap-summarize set-field-nested); plan-decompose/add-child/append-log schon korrekt; stale 'OPEN'-Note in plan-decompose.md. Eingearbeitet in agents-reconcile a1/a2/a3 + harness-setup a2."
+    note: "refine plan-check 2026-06-11 (verdict drift-found): assumptions confirmed — skills are thin (plan/SKILL.md:27 etc. delegate to `anchored <stage>`), phase-1-done claims accurate (steps-planner.ts, node-ops verbs, bootstrap-null-fix all real), anchored-test plugin loading missing (no .claude/skills, .claude/agents, settings.local.json). DRIFT corrected: '13 agents mismatched' was overstated — real ~3 (build-implement add-evidence/set-status, wrap-summarize set-field-nested); plan-decompose/add-child/append-log already correct; stale 'OPEN' note in plan-decompose.md. Incorporated into agents-reconcile a1/a2/a3 + harness-setup a2."
   - at: skill-orchestrator-dogfood
     kind: blocker
-    note: "NEUER HIGH-Blocker (plan-check-Fund, im Original-Ticket übersehen): Root /Users/jack/Dev/anchored-v2/anchored.yml (trader-carried dev-config, Commit 3141542) deklariert phase.fields als LISTE (- {name: commit}), v2 ConfigSchema erwartet eine MAP/record → JEDER `anchored`-Aufruf aus dem Repo-cwd crasht mit ConfigError 'expected record, received array' an phase.fields. Bricht 'aus jedem cwd aufrufbar' wenn cwd=Repo + den agents-reconcile-Trockenlauf. FIX-Optionen: fields auf Map umstellen ODER als bekannte dev-config-Schuld scopen (Trockenläufe aus tmp-dir). Offen für User-Entscheid bei Phase-Start."
+    note: "NEW HIGH blocker (plan-check finding, missed in the original ticket): root /Users/jack/Dev/anchored-v2/anchored.yml (trader-carried dev config, commit 3141542) declares phase.fields as a LIST (- {name: commit}), v2 ConfigSchema expects a MAP/record → EVERY `anchored` call from the repo cwd crashes with ConfigError 'expected record, received array' at phase.fields. Breaks 'callable from any cwd' when cwd=repo + the agents-reconcile dry run. FIX options: switch fields to a map OR scope it as known dev-config debt (dry runs from tmp-dir). Open for user decision at phase start."
   - at: skill-orchestrator-dogfood
     kind: learning
-    note: "refine rules-check 2026-06-11 (verdict gaps-found): Coverage solide, keine Orphans (alle 11 rule-Pfade existieren). Eine Lücke gefixt — cli-foundation referenziert jetzt tooling-quality-gates (sie baute core/-Code + bewies sich via 5 Gates). Zwei spirit-level Stretches (factory-functions@agents-reconcile, tooling-quality-gates@dogfood-task) bleiben (Begründung tragfähig)."
+    note: "refine rules-check 2026-06-11 (verdict gaps-found): coverage solid, no orphans (all 11 rule paths exist). One gap fixed — cli-foundation now references tooling-quality-gates (it built core/ code + proved itself via 5 gates). Two spirit-level stretches (factory-functions@agents-reconcile, tooling-quality-gates@dogfood-task) remain (justification sound)."
   - at: build
     kind: blocker
-    note: "dogfood-harness-setup a1 (live: /a:plan triggert + Agent spawnbar) braucht eine Session mit cwd anchored-test + Plugin geladen — kann aus der anchored-v2-Session nicht belegt werden (interaktive /plugin-Commands + Plugin-Runtime). Handoff an User: anchored-test öffnen → /reload-plugins → /plugin list (a@anchored-v2-dev enabled) → /a:plan triggert. Echte Install (settings.json projekt-scoped), kein Symlink."
+    note: "dogfood-harness-setup a1 (live: /a:plan triggers + agent spawnable) needs a session with cwd anchored-test + plugin loaded — cannot be proven from the anchored-v2 session (interactive /plugin commands + plugin runtime). Handoff to user: open anchored-test → /reload-plugins → /plugin list (a@anchored-v2-dev enabled) → /a:plan triggers. Real install (settings.json project-scoped), no symlink."
   - at: build
     kind: blocker
-    note: "dogfood-epic BLOCKIERT auf F13 (Epic-Tier durch CLI nicht funktionsfähig: plan epic reicht tier nicht an create, tierForSlug defaultet task → Epic-Node wird Task; scaffold fiel auf add-phase statt add-child zurück) + F14 (Slug-Trailing-Dash → Duplikat-Node). Echter Dogfood-Fund, im Engine-Test (epic-tier.spec, In-Memory) maskiert. dogfood-epic bleibt pending bis Fix. Doku: .claude/temp/dogfood-findings.md F13/F14."
+    note: "dogfood-epic BLOCKED on F13 (epic tier not functional via CLI: plan epic doesn't pass tier to create, tierForSlug defaults to task → epic node becomes task; scaffold fell back to add-phase instead of add-child) + F14 (slug trailing-dash → duplicate node). A real dogfood finding, masked in the engine test (epic-tier.spec, in-memory). dogfood-epic stays pending until fixed. Docs: .claude/temp/dogfood-findings.md F13/F14."
 phases:
-  - name: CLI/Substrat-Fundament für Skill-Orchestrierung
+  - name: CLI/substrate foundation for skill orchestration
     slug: cli-foundation
     status: done
     context: |
-      Die Bausteine, die die orchestrierten Skills brauchen, damit sie überhaupt
-      etwas zu dirigieren haben. Diese Phase wurde am 2026-06-11 gebaut + end-to-end
-      über das verlinkte `anchored`-Binary verifiziert (nicht nur Unit-Test).
+      The building blocks the orchestrated skills need so they have something to
+      conduct at all. This phase was built on 2026-06-11 + verified end-to-end
+      over the linked `anchored` binary (not just unit test).
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: neue Verben + steps-Planner laufen über die anchored-CLI, JSON-Output; aus Main-Session + Subagents gleich
+        why: new verbs + steps planner run over the anchored CLI, JSON output; same from main session + subagents
       - path: .claude/rules/factory-functions.md
-        why: steps-Planner als createStepsPlanner(cfg) über resolve-steps + worker-dispatch; injiziert in createCli; fakebar
+        why: steps planner as createStepsPlanner(cfg) over resolve-steps + worker-dispatch; injected into createCli; fakeable
       - path: .claude/rules/tooling-quality-gates.md
-        why: Phase baut core/-Code (steps-planner, node-ops, bootstrap) + belegt Abschluss über die 5 Gates (lint/format/typecheck/test 160 grün/build) — das IST die Gate-Garantie (rules-check 2026-06-11)
+        why: phase builds core/ code (steps-planner, node-ops, bootstrap) + proves completion via the 5 gates (lint/format/typecheck/test 160 green/build) — that IS the gate guarantee (rules-check 2026-06-11)
     acceptance_criteria:
       - id: a1
-        text: "`anchored steps <tier> <stage>` liefert den config-getriebenen Step-Plan als JSON (worker→Agent-Ref, run, loop→each/stop/retry_limit). Beweis: core/src/ops/steps-planner.ts + steps-planner.spec.ts (4 Tests grün); CLI-Smoke `anchored steps task plan` → discover/rules-scan/decompose-Agents, `phase build` → implement+2 Gates, `task build` → loop each:phase stop retry_limit:3."
+        text: "`anchored steps <tier> <stage>` returns the config-driven step plan as JSON (worker→agent-ref, run, loop→each/stop/retry_limit). Evidence: core/src/ops/steps-planner.ts + steps-planner.spec.ts (4 tests green); CLI smoke `anchored steps task plan` → discover/rules-scan/decompose agents, `phase build` → implement+2 gates, `task build` → loop each:phase stop retry_limit:3."
         status: done
         evidence:
-          - core/src/ops/steps-planner.ts:createStepsPlanner + core/src/cli/commands/steps.ts (Verb 'steps'); steps-planner.spec.ts 4 pass; verifiziert via verlinktes Binary in frischem tmp-Projekt (JSON ok:true mit korrekten Agent-Refs)
+          - core/src/ops/steps-planner.ts:createStepsPlanner + core/src/cli/commands/steps.ts (verb 'steps'); steps-planner.spec.ts 4 pass; verified via linked binary in fresh tmp project (JSON ok:true with correct agent refs)
       - id: a2
-        text: "Die Node-Verben, die der Task-Lebenszyklus braucht, laufen end-to-end über die echte CLI: add-phase, add-ac (auto-id a1,a2…), add-phase-evidence (flippt phase-ac auf done MIT evidence), set-child-status, set-status, next-child, append-log, set-field. Beweis: CLI-Smoke-Sequenz create→add-phase→add-ac(a1)→add-ac(a2)→add-phase-evidence(done+ev)→set-child-status(done) alle ok:true; node-ops + node-cli Specs grün."
+        text: "The node verbs the task lifecycle needs run end-to-end over the real CLI: add-phase, add-ac (auto-id a1,a2…), add-phase-evidence (flips phase-ac to done WITH evidence), set-child-status, set-status, next-child, append-log, set-field. Evidence: CLI smoke sequence create→add-phase→add-ac(a1)→add-ac(a2)→add-phase-evidence(done+ev)→set-child-status(done) all ok:true; node-ops + node-cli specs green."
         status: done
         evidence:
-          - "core/src/ops/node-ops.ts (addPhase/addAc/addChildEvidence/setChildStatus) + facade.ts (auto-id nextAcId + setChildStatus) + cli/commands/node.ts (Verben add-phase/add-ac/add-phase-evidence/set-child-status); Smoke in tmp: add-ac→a1, zweites→a2, add-phase-evidence→status done+evidence, set-child-status→done"
+          - "core/src/ops/node-ops.ts (addPhase/addAc/addChildEvidence/setChildStatus) + facade.ts (auto-id nextAcId + setChildStatus) + cli/commands/node.ts (verbs add-phase/add-ac/add-phase-evidence/set-child-status); smoke in tmp: add-ac→a1, second→a2, add-phase-evidence→status done+evidence, set-child-status→done"
       - id: a3
-        text: "P0-lazy-init-Crash behoben: eine Kommentar-only anchored.yml (parst zu null) wird als zero-config behandelt, nicht als ConfigError. Beweis: core/src/config/bootstrap.ts (validate(parsed ?? {})) + bootstrap.spec.ts a6 (comments-only → full default, kein throw); `anchored plan` läuft ohne Crash in frischem Projekt."
+        text: "P0 lazy-init crash fixed: a comments-only anchored.yml (parses to null) is treated as zero-config, not as a ConfigError. Evidence: core/src/config/bootstrap.ts (validate(parsed ?? {})) + bootstrap.spec.ts a6 (comments-only → full default, no throw); `anchored plan` runs without crash in a fresh project."
         status: done
         evidence:
-          - "core/src/config/bootstrap.ts:validate(parsed ?? {}) + bootstrap.spec.ts:'comments-only anchored.yml … zero-config'; re-Smoke: anchored plan schreibt Task-File ohne Crash"
+          - "core/src/config/bootstrap.ts:validate(parsed ?? {}) + bootstrap.spec.ts:'comments-only anchored.yml … zero-config'; re-smoke: anchored plan writes task-file without crash"
       - id: a4
-        text: "`anchored` ist global verlinkt + aus jedem cwd aufrufbar (Skills rufen es via Bash). Beweis: `npm link` in core/, `which anchored` → ~/.nvm/.../bin/anchored, `anchored steps task plan` aus beliebigem cwd liefert JSON. Gesamtpaket: 160 Tests / 5 Gates grün."
+        text: "`anchored` is globally linked + callable from any cwd (skills call it via Bash). Evidence: `npm link` in core/, `which anchored` → ~/.nvm/.../bin/anchored, `anchored steps task plan` from any cwd returns JSON. Whole package: 160 tests / 5 gates green."
         status: done
         evidence:
-          - npm link in core/ → /Users/jack/.nvm/versions/node/v24.8.0/bin/anchored; anchored steps task plan ok aus tmp-cwd; bun test 160 pass/0 fail, lint+format+typecheck+build grün
-  - name: 13 Agent-Docs auf reale CLI-Verben angleichen + Spawn-Input-Vertrag
+          - npm link in core/ → /Users/jack/.nvm/versions/node/v24.8.0/bin/anchored; anchored steps task plan ok from tmp-cwd; bun test 160 pass/0 fail, lint+format+typecheck+build green
+  - name: Align 13 agent docs to real CLI verbs + spawn-input contract
     slug: agents-reconcile
     status: done
     context: |
-      ZUERST (vor skills-orchestrate): der Agent-Vertrag muss stehen, bevor die Skill
-      ihn aufruft. Zwei Teile:
-      (A) Die 13 Agent-Definitionen (plugin/agents/*.md) auditieren + angleichen.
-      KORREKTUR durch plan-check (2026-06-11): die meisten Agents rufen schon korrekte
-      Verben (add-ac IST jetzt text-basiert+auto-id = was plan-decompose aufruft;
-      add-child, append-log, epic-roll-up set-status passen). Die REALEN Mismatches sind
-      ~3, konzentriert in:
-        - build-implement: `add-evidence <slug> <ac>` → muss `add-phase-evidence <task>
-          <phase> <ac> <text>` sein (eine Phase ist ein KIND im Task-File, kein
-          Standalone-Node); UND `set-status <slug> done` auf eine Phase → muss
-          `set-child-status <task> <phase> done` sein.
-        - wrap-summarize: `set-field <slug> context.wrap "…"` setzt einen FLACHEN
-          Top-Level-Key namens "context.wrap" (kein nested-path-Support in setField) —
-          braucht entweder dotted-path-Support (Mechanismus = Code) oder eine eigene Op.
-        - STALE-Note löschen: plan-decompose.md trägt einen „OPEN: add-phase/add-ac noch
-          keine CLI-Surfaces"-Kommentar — die Verben sind seit Phase 1 verdrahtet.
-      (B) Der Spawn-Input-Vertrag: was reicht die Skill jedem Agent durch? Festnageln,
-      sodass Skill und Agent nicht aneinander vorbeiraten — mind.: { task-slug, phase-slug,
-      tier, stage, phase-context, rules, + die EXAKTEN `anchored node`-self-write-Befehle }.
-      WICHTIG (Phasen-Adressierung): da Phasen Kinder im Task-File sind, adressiert der
-      Agent sie über TASK-slug + phase-slug (add-phase-evidence/set-child-status), NICHT
-      als eigenständigen Node. Beide Seiten referenzieren denselben Vertrag.
+      FIRST (before skills-orchestrate): the agent contract must stand before the skill
+      calls it. Two parts:
+      (A) Audit + align the 13 agent definitions (plugin/agents/*.md).
+      CORRECTION via plan-check (2026-06-11): most agents already call correct
+      verbs (add-ac IS now text-based+auto-id = what plan-decompose calls;
+      add-child, append-log, epic-roll-up set-status fit). The REAL mismatches are
+      ~3, concentrated in:
+        - build-implement: `add-evidence <slug> <ac>` → must be `add-phase-evidence <task>
+          <phase> <ac> <text>` (a phase is a CHILD in the task-file, not a
+          standalone node); AND `set-status <slug> done` on a phase → must be
+          `set-child-status <task> <phase> done`.
+        - wrap-summarize: `set-field <slug> context.wrap "…"` sets a FLAT
+          top-level key named "context.wrap" (no nested-path support in setField) —
+          needs either dotted-path support (mechanism = code) or a dedicated op.
+        - delete STALE note: plan-decompose.md carries an "OPEN: add-phase/add-ac no
+          CLI surfaces yet" comment — the verbs have been wired since phase 1.
+      (B) The spawn-input contract: what does the skill pass through to each agent? Pin down,
+      so skill and agent don't guess past each other — at least: { task-slug, phase-slug,
+      tier, stage, phase-context, rules, + the EXACT `anchored node` self-write commands }.
+      IMPORTANT (phase addressing): since phases are children in the task-file, the
+      agent addresses them via TASK-slug + phase-slug (add-phase-evidence/set-child-status), NOT
+      as a standalone node. Both sides reference the same contract.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: Agents schreiben Evidence/Phasen self via die validierende anchored-CLI; keine rohen Write/Edit auf Task-Files
+        why: agents self-write evidence/phases via the validating anchored CLI; no raw Write/Edit on task-files
       - path: .claude/rules/factory-functions.md
-        why: der Spawn-Input-Vertrag ist die input/output-Naht zwischen Skill (Dirigent) und Agent (Effekt); klar definiert, fakebar
+        why: the spawn-input contract is the input/output seam between skill (conductor) and agent (effect); clearly defined, fakeable
     acceptance_criteria:
       - id: a1
-        text: "Bestandsaufnahme: pro Agent die aufgerufenen `anchored node …`-Verben + Args den real verfügbaren CLI-Verben (node.ts switch) gegenübergestellt; ALLE Mismatches gelistet (plan-check-Basis: build-implement add-evidence→add-phase-evidence + set-status→set-child-status; wrap-summarize set-field-nested; plan-decompose stale-OPEN-Note). Beweis: eine Mismatch-Tabelle (Agent → falsches Verb/Sig → korrektes Verb/Sig), die mind. diese 3 abdeckt."
+        text: "Inventory: per agent, the called `anchored node …` verbs + args contrasted against the actually available CLI verbs (node.ts switch); ALL mismatches listed (plan-check basis: build-implement add-evidence→add-phase-evidence + set-status→set-child-status; wrap-summarize set-field-nested; plan-decompose stale-OPEN note). Evidence: a mismatch table (agent → wrong verb/sig → correct verb/sig) covering at least these 3."
         status: done
         evidence:
-          - "Mismatch-Tabelle: grep-Survey aller 13 Agents (anchored node-Aufrufe) → 3 echte Mismatches (build-implement add-evidence→add-phase-evidence + set-status→set-child-status; wrap-summarize set-field-nested; plan-decompose stale OPEN-Note); übrige 10 (add-child/append-log/add-ac/epic set-status) bestätigt korrekt"
+          - "Mismatch table: grep survey of all 13 agents (anchored node calls) → 3 real mismatches (build-implement add-evidence→add-phase-evidence + set-status→set-child-status; wrap-summarize set-field-nested; plan-decompose stale OPEN note); remaining 10 (add-child/append-log/add-ac/epic set-status) confirmed correct"
       - id: a2
-        text: "Alle Agent-Docs angeglichen: build-implement nutzt add-phase-evidence + set-child-status, wrap-summarize schreibt context.wrap korrekt (dotted-path-Op oder eigene Op — Mechanismus-Entscheidung dokumentiert), plan-decompose stale-Note gelöscht; alle übrigen bestätigt korrekt. Beweis: grep über plugin/agents/*.md zeigt nur real existierende Verben/Signaturen; ein Trockenlauf jedes self-write-Befehls gegen die CLI gibt ok:true. PRECONDITION: Trockenlauf NICHT aus dem anchored-v2-Repo-cwd (Root-anchored.yml crasht Bootstrap, s. log) — aus clean tmp-dir laufen."
+        text: "All agent docs aligned: build-implement uses add-phase-evidence + set-child-status, wrap-summarize writes context.wrap correctly (dotted-path op or dedicated op — mechanism decision documented), plan-decompose stale note deleted; all others confirmed correct. Evidence: grep over plugin/agents/*.md shows only really existing verbs/signatures; a dry run of each self-write command against the CLI returns ok:true. PRECONDITION: dry run NOT from the anchored-v2 repo cwd (root anchored.yml crashes bootstrap, see log) — run from a clean tmp-dir."
         status: done
         evidence:
-          - "Fixes: build-implement.md nutzt add-phase-evidence+set-child-status (grep zeigt nur reale Verben); plan-decompose stale-Note gelöscht (grep -c=0); context.wrap-Mechanismus = dotted-path set-field (core/src/ops/node-ops.ts setNested + setField, node-ops.spec dotted-path-Test grün, CLI-Smoke context.wrap nested + plan erhalten); Trockenlauf add-phase-evidence/set-child-status gegen echte CLI ok:true; bun test 161 pass"
+          - "Fixes: build-implement.md uses add-phase-evidence+set-child-status (grep shows only real verbs); plan-decompose stale note deleted (grep -c=0); context.wrap mechanism = dotted-path set-field (core/src/ops/node-ops.ts setNested + setField, node-ops.spec dotted-path test green, CLI smoke context.wrap nested + plan preserved); dry run add-phase-evidence/set-child-status against the real CLI ok:true; bun test 161 pass"
       - id: a3
-        text: "Der Spawn-Input-Vertrag ist explizit dokumentiert + von beiden Seiten referenziert: die Skill reicht { task-slug, phase-slug, tier, stage, context, rules, self-write-Befehle } durch; jeder Agent-Doc nennt am Kopf, welche Felder er erwartet + welche `anchored node`-Befehle er ausführt; Phasen werden über TASK-slug+phase-slug adressiert (nicht als Standalone-Node). Beweis: ein Vertrag-Abschnitt (references/-Datei oder pro Agent-Kopf) + Quer-Check, dass plugin/skills die gleichen Felder spawnen, die plugin/agents erwarten."
+        text: "The spawn-input contract is explicitly documented + referenced by both sides: the skill passes through { task-slug, phase-slug, tier, stage, context, rules, self-write commands }; each agent doc names at the top which fields it expects + which `anchored node` commands it runs; phases are addressed via TASK-slug+phase-slug (not as a standalone node). Evidence: a contract section (references/ file or per-agent header) + cross-check that plugin/skills spawn the same fields plugin/agents expect."
         status: done
         evidence:
-          - "Spawn-Input-Vertrag: plugin/references/agent-contract.md (Input-Felder task-slug/phase-slug/tier/stage/context/rules + self-write-Tabelle pro Rolle + Phasen-Adressierung task-slug+phase-slug); von build-implement.md referenziert (grep -c=1)"
-  - name: Die 4 Skills zu Orchestratoren umschreiben
+          - "Spawn-input contract: plugin/references/agent-contract.md (input fields task-slug/phase-slug/tier/stage/context/rules + self-write table per role + phase addressing task-slug+phase-slug); referenced by build-implement.md (grep -c=1)"
+  - name: Rewrite the 4 skills into orchestrators
     slug: skills-orchestrate
     status: done
     context: |
-      Die SKILL.md-Bodies von /a:plan /a:refine /a:build /a:wrap von „dünner Relay"
-      (`anchored <stage>` aufrufen + JSON zeigen) auf ORCHESTRATOR umschreiben: pro
-      Stage `anchored steps` lesen → je Worker-Step den Agent via Task-Tool spawnen
-      (Spawn-Input-Vertrag aus agents-reconcile) → Agent self-writet via `anchored
-      node …` → State via CLI advancen. Inkl. der fraktalen Loop-Mechanik in der Skill:
-      build auf task loopt Phasen (next-child; pro Phase erst set-child-status
-      in-progress, dann implement, dann Gates, dann done), build auf epic loopt Tasks;
-      pro Iteration Gates (task-/code-validate), retry bis retry_limit, stop-Check;
-      Transitions plan→drafted→refined→build→wrap→done. Das opinionierte Verhalten
-      bleibt im Default-Template (steps), die Skill ist der generische Dirigent, der
-      den steps-Plan ausführt — sie kennt keine konkreten Agent-Namen hardcoded.
+      Rewrite the SKILL.md bodies of /a:plan /a:refine /a:build /a:wrap from "thin relay"
+      (call `anchored <stage>` + show JSON) into ORCHESTRATOR: per
+      stage read `anchored steps` → for each worker step spawn the agent via the Task tool
+      (spawn-input contract from agents-reconcile) → agent self-writes via `anchored
+      node …` → advance state via CLI. Including the fractal loop mechanics in the skill:
+      build on task loops phases (next-child; per phase first set-child-status
+      in-progress, then implement, then gates, then done), build on epic loops tasks;
+      per iteration gates (task-/code-validate), retry until retry_limit, stop check;
+      transitions plan→drafted→refined→build→wrap→done. The opinionated behavior
+      stays in the default template (steps), the skill is the generic conductor that
+      executes the steps plan — it knows no concrete agent names hardcoded.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: Skills + Agents lesen/schreiben ausschließlich via anchored-CLI; kein MCP, keine rohen Write/Edit auf Task-Files
+        why: skills + agents read/write exclusively via the anchored CLI; no MCP, no raw Write/Edit on task-files
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: Skill = Policy-Dirigent (führt config-Steps aus), kennt keine hardcoded Agent-Namen; Mechanik (loop/stop/retry/Transitions) folgt dem steps-Plan + den Ops
+        why: skill = policy conductor (executes config steps), knows no hardcoded agent names; mechanics (loop/stop/retry/transitions) follow the steps plan + the ops
     acceptance_criteria:
       - id: a1
-        text: "/a:plan ist Orchestrator: liest `anchored steps <tier> plan`, spawnt discover→plan-discover, rules-scan→plan-rules-scan, decompose→plan-decompose via Task-Tool; Agents schreiben Phasen+ACs via anchored node add-phase/add-ac; klassifiziert den Tier wenn weggelassen; flippt am Ende status→drafted. Beweis: plan/SKILL.md zeigt den steps-getriebenen Spawn-Loop (kein roher `anchored plan`-Delegat mehr); Dry-Read der Skill belegt jeden Schritt."
+        text: "/a:plan is an orchestrator: reads `anchored steps <tier> plan`, spawns discover→plan-discover, rules-scan→plan-rules-scan, decompose→plan-decompose via the Task tool; agents write phases+ACs via anchored node add-phase/add-ac; classifies the tier when omitted; flips status→drafted at the end. Evidence: plan/SKILL.md shows the steps-driven spawn loop (no raw `anchored plan` delegate anymore); a dry-read of the skill proves each step."
         status: done
         evidence:
-          - "plugin/skills/plan/SKILL.md: Orchestrator — classify→anchored plan (gibt node+steps)→Task-Tool spawnt discover/rules-scan/decompose mit agent-contract-Input→Agents self-writen add-phase/add-ac→set-status drafted. grep: Task-tool×4, agent-contract×2"
+          - "plugin/skills/plan/SKILL.md: orchestrator — classify→anchored plan (returns node+steps)→Task tool spawns discover/rules-scan/decompose with agent-contract input→agents self-write add-phase/add-ac→set-status drafted. grep: Task-tool×4, agent-contract×2"
       - id: a2
-        text: "/a:build ist Orchestrator: loopt Phasen via next-child; pro Phase set-child-status in-progress → liest `anchored steps phase build` → spawnt implement→build-implement (self-writet evidence via add-phase-evidence), dann die Gates task-validate+code-validate; bei failures retry bis retry_limit, bei stop-Match Halt+Eskalation; set-child-status done je Phase; am Ende status→wrap. Für epic loopt es Tasks (epic.build.each:task). Beweis: build/SKILL.md zeigt den vollständigen Loop (in-progress→implement→Gates→retry/stop→done)-Ablauf."
+        text: "/a:build is an orchestrator: loops phases via next-child; per phase set-child-status in-progress → reads `anchored steps phase build` → spawns implement→build-implement (self-writes evidence via add-phase-evidence), then the gates task-validate+code-validate; on failures retry until retry_limit, on stop match halt+escalation; set-child-status done per phase; at the end status→wrap. For epic it loops tasks (epic.build.each:task). Evidence: build/SKILL.md shows the complete loop (in-progress→implement→gates→retry/stop→done) flow."
         status: done
         evidence:
-          - "plugin/skills/build/SKILL.md: Orchestrator — loop via next-child; pro Phase set-child-status in-progress→anchored steps phase build→Task-Tool build-implement (self-write add-phase-evidence)→Gates parallel→re-do-loop bei failures→set-child-status done; epic loopt tasks; Termination→set-status wrap. grep Task-tool×3"
+          - "plugin/skills/build/SKILL.md: orchestrator — loop via next-child; per phase set-child-status in-progress→anchored steps phase build→Task tool build-implement (self-write add-phase-evidence)→gates parallel→re-do loop on failures→set-child-status done; epic loops tasks; termination→set-status wrap. grep Task-tool×3"
       - id: a3
-        text: "/a:refine + /a:wrap sind Orchestratoren: refine spawnt plan-check+rules-check + fährt den Q&A-Walk (resolve-question), flippt drafted→refined; wrap spawnt review+summarize (leaf/task) bzw. roll-up (epic), flippt wrap→done. Beweis: refine/SKILL.md + wrap/SKILL.md zeigen den steps-getriebenen Spawn + die korrekten Transitions."
+        text: "/a:refine + /a:wrap are orchestrators: refine spawns plan-check+rules-check + runs the Q&A walk (resolve-question), flips drafted→refined; wrap spawns review+summarize (leaf/task) or roll-up (epic), flips wrap→done. Evidence: refine/SKILL.md + wrap/SKILL.md show the steps-driven spawn + the correct transitions."
         status: done
         evidence:
-          - plugin/skills/refine/SKILL.md (plan-check+rules-check+walk→resolve-question→refined) + wrap/SKILL.md (review+summarize/roll-up→set-status done) als Orchestratoren; korrekte Transitions. grep refine Task-tool×2, wrap Task-tool×2
+          - plugin/skills/refine/SKILL.md (plan-check+rules-check+walk→resolve-question→refined) + wrap/SKILL.md (review+summarize/roll-up→set-status done) as orchestrators; correct transitions. grep refine Task-tool×2, wrap Task-tool×2
       - id: a4
-        text: "Keine Skill ruft mehr einen spawnenden `anchored plan|refine|build|wrap` als Black-Box (der headless nicht spawnen kann); alle vier nutzen `anchored steps` + Task-Tool + `anchored node`. Beweis: grep über plugin/skills/*/SKILL.md zeigt `anchored steps` + Task-Spawn in jeder, und KEINEN Delegat auf das spawnende Stage-Verb als alleinigen Mechanismus."
+        text: "No skill calls a spawning `anchored plan|refine|build|wrap` as a black box anymore (which can't spawn headless); all four use `anchored steps` + Task tool + `anchored node`. Evidence: grep over plugin/skills/*/SKILL.md shows `anchored steps` + Task spawn in each, and NO delegate to the spawning stage verb as the sole mechanism."
         status: done
         evidence:
-          - "Alle 4 Skills nutzen Task-Tool-Spawn + agent-contract, KEINE delegiert mehr an ein spawnendes Stage-Verb als alleinigen Mechanismus (die Stage-Verben geben nach a6 nur den Plan zurück). grep: plan/refine/build/wrap je Task-tool≥2 + spawn≥3"
+          - "All 4 skills use Task-tool spawn + agent-contract, NONE delegates to a spawning stage verb as the sole mechanism anymore (the stage verbs only return the plan after a6). grep: plan/refine/build/wrap each Task-tool≥2 + spawn≥3"
       - id: a5
-        text: "Failure-Handling im Orchestrator ist spezifiziert (nicht nur Happy-Path): ein Agent ohne/mit Fehler-Rückgabe → failures am Knoten + retry; retry_limit erschöpft → Phase blocked + Eskalation an den User; stop-Match → Halt + offene Frage. Beweis: jede Skill-Doc nennt explizit, was bei Agent-Fail / retry-erschöpft / stop passiert (kein stilles Weiterlaufen)."
+        text: "Failure handling in the orchestrator is specified (not just happy-path): an agent with no/error return → failures at the node + retry; retry_limit exhausted → phase blocked + escalation to the user; stop match → halt + open question. Evidence: each skill doc explicitly names what happens on agent fail / retry exhausted / stop (no silent continuation)."
         status: done
         evidence:
-          - "build/SKILL.md '## Failure-handling (never silent — a5)': Agent-Fail→failures+retry; retry_limit exhausted→set-child-status blocked+append-log blocker+continue; stop-condition→halt+append-log decision+walk. Kein stilles Weiterlaufen"
+          - "build/SKILL.md '## Failure-handling (never silent — a5)': agent fail→failures+retry; retry_limit exhausted→set-child-status blocked+append-log blocker+continue; stop-condition→halt+append-log decision+walk. No silent continuation"
       - id: a6
-        text: "Die hängenden Spawn-Stage-Verben sind aufgelöst: `anchored plan|refine|build|wrap` (Volllauf via unverdrahtete Engine) werden entweder entfernt, oder auf 'gib den steps-Plan zurück statt zu spawnen' umgewidmet, oder als headless-only klar markiert — sodass kein Verb existiert, das scheinbar läuft aber leer scheitert. Beweis: Entscheidung im log dokumentiert + im Code/CLI umgesetzt (Test grün); `anchored build <slug>` verhält sich vorhersagbar (kein irreführendes status:failed mehr)."
+        text: "The dangling spawn stage verbs are resolved: `anchored plan|refine|build|wrap` (full run via unwired engine) are either removed, or repurposed to 'return the steps plan instead of spawning', or clearly marked headless-only — so no verb exists that seems to run but fails empty. Evidence: decision documented in the log + implemented in the code/CLI (test green); `anchored build <slug>` behaves predictably (no misleading status:failed anymore)."
         status: done
         evidence:
-          - "Stage-Verben aufgelöst: core/src/cli/commands/refine.ts runStage + plan.ts geben { stage,tier,node,steps } zurück statt unverdrahtete engine.run; stage.spec auf Plan-Contract umgeschrieben (engineRan===false), 161 Tests grün; CLI-Smoke 'anchored build <ticket>' → {stage:build,tier:task,steps:[loop]} (kein status:failed mehr)"
-  - name: "Dogfood-Harness-Setup: anchored-test lädt das v2-Plugin"
+          - "Stage verbs resolved: core/src/cli/commands/refine.ts runStage + plan.ts return { stage,tier,node,steps } instead of an unwired engine.run; stage.spec rewritten to the plan contract (engineRan===false), 161 tests green; CLI smoke 'anchored build <ticket>' → {stage:build,tier:task,steps:[loop]} (no status:failed anymore)"
+  - name: "Dogfood harness setup: anchored-test loads the v2 plugin"
     slug: dogfood-harness-setup
     status: done
     context: |
-      PRECONDITION für die Dogfood-Läufe (sonst Showstopper): in der `anchored-test`-
-      Session müssen die v2-Plugin-Skills (/a:plan…) UND die 13 Agents verfügbar sein,
-      die CLI auf dem PATH, und `Bash(anchored *)` allowlisted. In v1 lief das über
-      Symlinks (.claude/skills→plugin/skills, .claude/agents→plugin/agents) im Sandbox
-      — die sind weg. Klären + herstellen: wie lädt eine Claude-Code-Session in
-      ~/Dev/anchored-test das `a`-Plugin (Marketplace/lokales Plugin-Config ODER
-      Projekt-Symlinks .claude/skills + .claude/agents)? Plus: sauberer Reset-Stand
-      (Source-Scaffold, alte Tasks archiviert, 3 Rules intakt) für reproduzierbare Läufe.
+      PRECONDITION for the dogfood runs (otherwise a showstopper): in the `anchored-test`
+      session the v2 plugin skills (/a:plan…) AND the 13 agents must be available,
+      the CLI on the PATH, and `Bash(anchored *)` allowlisted. In v1 this ran via
+      symlinks (.claude/skills→plugin/skills, .claude/agents→plugin/agents) in the sandbox
+      — those are gone. Clarify + establish: how does a Claude Code session in
+      ~/Dev/anchored-test load the `a` plugin (marketplace/local plugin config OR
+      project symlinks .claude/skills + .claude/agents)? Plus: a clean reset state
+      (source scaffold, old tasks archived, 3 rules intact) for reproducible runs.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: Allowlist Bash(anchored *) ist Precondition (sonst hängt jeder CLI-Call / Background-Workflow am Permission-Prompt)
+        why: allowlisting Bash(anchored *) is a precondition (otherwise every CLI call / background workflow hangs on the permission prompt)
     acceptance_criteria:
       - id: a1
-        text: "In einer Session mit cwd ~/Dev/anchored-test sind die 4 Skills (/a:plan /a:refine /a:build /a:wrap) UND die 13 Agents auflösbar (über lokale Plugin-Config oder .claude/skills + .claude/agents-Symlinks auf plugin/). Beweis: dokumentierter Setup-Weg + ein Beleg, dass /a:plan dort triggert und ein Agent spawnbar ist."
+        text: "In a session with cwd ~/Dev/anchored-test the 4 skills (/a:plan /a:refine /a:build /a:wrap) AND the 13 agents are resolvable (via local plugin config or .claude/skills + .claude/agents symlinks to plugin/). Evidence: documented setup path + proof that /a:plan triggers there and an agent is spawnable."
         status: done
         evidence:
-          - "LIVE bestätigt in anchored-test-Session (User, 2026-06-11): /plugin marketplace add /Users/jack/Dev/anchored-v2 → ok; /plugin install a@anchored-v2-dev → installed; /plugin list → 'a@anchored-v2-dev (v0.0.0, local) ✔ enabled'; /a:plan EPIC.md TRIGGERT → Plan-Skill orchestriert live (las EPIC.md, wandte Tier-Tripwire an → epic, legte Tier-Gabel vor); anchored-CLI antwortet auf PATH (JSON-Verb-Liste). Echte Marketplace-Installation, kein Symlink"
+          - "LIVE confirmed in the anchored-test session (user, 2026-06-11): /plugin marketplace add /Users/jack/Dev/anchored-v2 → ok; /plugin install a@anchored-v2-dev → installed; /plugin list → 'a@anchored-v2-dev (v0.0.0, local) ✔ enabled'; /a:plan EPIC.md TRIGGERS → plan skill orchestrates live (read EPIC.md, applied the tier tripwire → epic, presented the tier fork); anchored CLI responds on PATH (JSON verb list). Real marketplace install, no symlink"
       - id: a2
-        text: "Precondition-Stand hergestellt. KLARSTELLUNG (plan-check): in anchored-test existieren .claude/skills, .claude/agents UND settings.local.json aktuell GAR NICHT — alle drei von Grund auf ANLEGEN (nicht 'wiederherstellen'); nur die 3 Rules + archivierte Tasks sind schon da. Zielzustand: `anchored` auf PATH (verlinkt ✓), `.claude/settings.local.json` mit `Bash(anchored *)` neu angelegt, Skills+Agents verfügbar gemacht (Symlink/Plugin-Config), Source clean Scaffold, alte Tasks archiviert (✓), 3 Rules intakt (✓). Beweis: ls/cat-Beleg + `anchored steps task plan` läuft dort grün."
+        text: "Precondition state established. CLARIFICATION (plan-check): in anchored-test the .claude/skills, .claude/agents AND settings.local.json currently DO NOT exist at all — create all three from scratch (not 'restore'); only the 3 rules + archived tasks are already there. Target state: `anchored` on PATH (linked ✓), `.claude/settings.local.json` with `Bash(anchored *)` newly created, skills+agents made available (symlink/plugin config), source clean scaffold, old tasks archived (✓), 3 rules intact (✓). Evidence: ls/cat proof + `anchored steps task plan` runs green there."
         status: done
         evidence:
-          - "Precondition-Stand hergestellt (von hier verifizierbar): anchored-v2/.claude-plugin/marketplace.json (anchored-v2-dev → plugin a, source ./plugin → plugin.json existiert); anchored-test/.claude/settings.json (extraKnownMarketplaces anchored-v2-dev→/Users/jack/Dev/anchored-v2 + enabledPlugins a@anchored-v2-dev:true) + settings.local.json (Bash(anchored *)); anchored auf PATH + läuft aus anchored-test cwd (steps ok:true); 3 Rules + scaffold intakt; ANCHORED-V2-DOGFOOD.md dokumentiert Install+Verify. Alle JSON valide"
-  - name: "Dogfood-Lauf: Task end-to-end in anchored-test"
+          - "Precondition state established (verifiable from here): anchored-v2/.claude-plugin/marketplace.json (anchored-v2-dev → plugin a, source ./plugin → plugin.json exists); anchored-test/.claude/settings.json (extraKnownMarketplaces anchored-v2-dev→/Users/jack/Dev/anchored-v2 + enabledPlugins a@anchored-v2-dev:true) + settings.local.json (Bash(anchored *)); anchored on PATH + runs from anchored-test cwd (steps ok:true); 3 rules + scaffold intact; ANCHORED-V2-DOGFOOD.md documents install+verify. All JSON valid"
+  - name: "Dogfood run: task end-to-end in anchored-test"
     slug: dogfood-task
     status: done
     context: |
-      Der erste echte Lauf: ein Task-Feature („clear-completed button" — löscht alle
-      erledigten Todos, disabled wenn keine da; wie im v1-Eval) end-to-end durch die
-      orchestrierten Skills gegen ~/Dev/anchored-test mit der verlinkten CLI + echten
-      Task-Tool-Agents (kein fakeSpawn). plan→refine→build→wrap, Bugs iterativ fixen.
-      Validiert: Task-File-Evolution, harte Invariante real, Gates, Transitions, und
-      dass am Ende echter Code im Sandbox steht (git diff).
+      The first real run: a task feature ("clear-completed button" — clears all
+      completed todos, disabled when there are none; like in the v1 eval) end-to-end through the
+      orchestrated skills against ~/Dev/anchored-test with the linked CLI + real
+      Task-tool agents (no fakeSpawn). plan→refine→build→wrap, fixing bugs iteratively.
+      Validates: task-file evolution, the hard invariant for real, gates, transitions, and
+      that real code stands in the sandbox at the end (git diff).
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: der ganze Lauf über die verlinkte CLI + Task-Tool-Agents; ein Transport-Modell, headless-fähig
+        why: the whole run over the linked CLI + Task-tool agents; one transport model, headless-capable
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: Lauf gegen echtes Substrat beweist die Invariante (kein ac→done ohne evidence) am schreibenden Op
+        why: a run against the real substrate proves the invariant (no ac→done without evidence) at the writing op
       - path: .claude/rules/tooling-quality-gates.md
-        why: Lauf erst grün, wenn ACs mit echter evidence done + Status terminal + Code im Sandbox lauffähig
+        why: the run is only green when ACs are done with real evidence + status terminal + code runnable in the sandbox
     acceptance_criteria:
       - id: a1
-        text: "/a:plan task 'clear-completed…' erzeugt in anchored-test ein Task-File mit >=2 Phasen + testbaren ACs + ggf. offenen Fragen, status drafted. Beweis: .claude/tasks/<slug>.yml im Sandbox mit Phasen/ACs (real von den Agents geschrieben, nicht von Hand)."
+        text: "/a:plan task 'clear-completed…' creates in anchored-test a task-file with >=2 phases + testable ACs + possibly open questions, status drafted. Evidence: .claude/tasks/<slug>.yml in the sandbox with phases/ACs (really written by the agents, not by hand)."
         status: done
         evidence:
-          - anchored-test /a:plan task core-list → 3 Phasen (pure-core/shell-render/persistence), 10 ACs testbar+rule-bewusst, 0 Fragen, status drafted (real von plan-decompose via CLI geschrieben)
+          - anchored-test /a:plan task core-list → 3 phases (pure-core/shell-render/persistence), 10 ACs testable+rule-aware, 0 questions, status drafted (really written by plan-decompose via CLI)
       - id: a2
-        text: "/a:refine + /a:build fahren den Task zu terminal: alle Phasen-ACs mit echter evidence (datei:zeile / test-output) done, Phasen done, status build→wrap→done; ein Read-Roundtrip liest den Endzustand zurück. Beweis: Task-File terminal + `git -C anchored-test diff` zeigt echten, lauffähigen Feature-Code."
+        text: "/a:refine + /a:build drive the task to terminal: all phase ACs with real evidence (file:line / test output) done, phases done, status build→wrap→done; a read roundtrip reads the end state back. Evidence: task-file terminal + `git -C anchored-test diff` shows real, runnable feature code."
         status: done
         evidence:
-          - "/a:refine (2 Gates, 4 Fragen geklärt, +1 AC) → refined; /a:build (3 Phasen, 11 ACs, beide Gates je Phase, 0 retries/0 blocked) → wrap; /a:wrap (review PASS, summarize → context.wrap via dotted-path) → done. app.js 9→141 Zeilen echter Feature-Code, nur app.js geändert; Read-Roundtrip: status done, alle Phasen done"
+          - "/a:refine (2 gates, 4 questions clarified, +1 AC) → refined; /a:build (3 phases, 11 ACs, both gates per phase, 0 retries/0 blocked) → wrap; /a:wrap (review PASS, summarize → context.wrap via dotted-path) → done. app.js 9→141 lines of real feature code, only app.js changed; read roundtrip: status done, all phases done"
       - id: a3
-        text: "Die harte Invariante greift real: kein Versuch, ein ac ohne evidence auf done zu setzen, gelingt (am schreibenden Op abgewiesen); ein Gate-Failure führt zu retry, nicht zu Fake-done. Beweis: Beleg aus dem Lauf (CLI-Fehler bei done-ohne-evidence ODER ein dokumentierter retry nach Gate-Failure)."
+        text: "The hard invariant bites for real: no attempt to set an ac to done without evidence succeeds (rejected at the writing op); a gate failure leads to retry, not to fake-done. Evidence: proof from the run (CLI error on done-without-evidence OR a documented retry after a gate failure)."
         status: done
         evidence:
-          - "Invariante hielt real: 0 Verletzungen über alle 11 ACs (Script-Check: kein done ohne Evidence), Evidence konkret datei:zeile ('app.js:22-28 — createTask…'); kein Gate-Failure→kein Fake-done nötig; build-implement self-writete via anchored node add-phase-evidence (CLI), nicht roh"
-  - name: "Dogfood-Lauf: Epic end-to-end in anchored-test"
+          - "Invariant held for real: 0 violations across all 11 ACs (script check: no done without evidence), evidence concrete file:line ('app.js:22-28 — createTask…'); no gate failure→no fake-done needed; build-implement self-wrote via anchored node add-phase-evidence (CLI), not raw"
+  - name: "Dogfood run: epic end-to-end in anchored-test"
     slug: dogfood-epic
     status: pending
     context: |
-      Der fraktale Beweis eine Etage höher: ein EPIC (mehrere Feature-Tasks mit
-      depends_on-DAG) via /a:plan epic → /a:build (epic.build.each:task loopt die
-      Tasks) → /a:wrap (roll-up gegen epic.acceptance). Validiert die Epic-Funktion,
-      die im alten v1-Eval noch gar nicht existierte: rolling-wave (JIT task.plan
-      pro Task), nested slugs, scaffold→walk→loop→roll-up, Re-Sync zwischen Tasks.
+      The fractal proof one tier up: an EPIC (multiple feature tasks with a
+      depends_on dependency graph) via /a:plan epic → /a:build (epic.build.each:task loops the
+      tasks) → /a:wrap (roll-up against epic.acceptance). Validates the epic function
+      that didn't even exist in the old v1 eval: rolling-wave (just-in-time task.plan
+      per task), nested slugs, scaffold→walk→loop→roll-up, re-sync between tasks.
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
-        why: epic = volle Etage, gleiche Form; build.each:task ist intrinsisch; Loop/stop/retry = Mechanismus
+        why: epic = full tier, same form; build.each:task is intrinsic; loop/stop/retry = mechanism
       - path: .claude/rules/cli-only-transport.md
-        why: epic-Ops (scaffold add-child, next-child über Tasks, roll-up) über die CLI
+        why: epic ops (scaffold add-child, next-child over tasks, roll-up) over the CLI
     acceptance_criteria:
       - id: a1
-        text: "/a:plan epic '…' scaffoldet ein _epic.yml mit >=2 Task-Stubs (slug, goal, depends_on-DAG), status planning->building; KEINE Task-Files vorab (lazy bei task.plan). Beweis: _epic.yml im Sandbox mit Task-Stubs + DAG."
+        text: "/a:plan epic '…' scaffolds an _epic.yml with >=2 task stubs (slug, goal, depends_on dependency graph), status planning->building; NO task-files upfront (lazy at task.plan). Evidence: _epic.yml in the sandbox with task stubs + dependency graph."
         status: pending
       - id: a2
-        text: "/a:build auf das Epic loopt die Tasks in DAG-Reihenfolge (epic.build.each:task): pro Task JIT task.plan→refine→build→wrap, Stub-Status fortgeschrieben; ein blockierter Task hält sauber. Beweis: nach dem Lauf alle Task-Stubs done (oder dokumentiert blockiert) + die zugehörigen Task-Files terminal."
+        text: "/a:build on the epic loops the tasks in dependency order (epic.build.each:task): per task just-in-time task.plan→refine→build→wrap, stub status updated; a blocked task halts cleanly. Evidence: after the run all task stubs done (or documented blocked) + the associated task-files terminal."
         status: pending
       - id: a3
-        text: "/a:wrap auf das Epic fährt den roll-up: Definition-of-Done gegen epic.acceptance, Retro. Beweis: epic status→done mit roll-up-Belegen im _epic.yml; Sandbox enthält den über alle Tasks gebauten Code."
+        text: "/a:wrap on the epic runs the roll-up: definition of done against epic.acceptance, retro. Evidence: epic status→done with roll-up proof in the _epic.yml; sandbox contains the code built across all tasks."
         status: pending
-  - name: skill-creator-Eval (Triggering + Verhalten)
+  - name: skill-creator eval (triggering + behavior)
     slug: skill-creator-eval
     status: pending
     context: |
-      Erst wenn der Lebenszyklus real läuft, hat der eigentliche skill-creator-Eval
-      Sinn (e8): (a) Triggering — Description-Optimierung der 4 SKILL.md-Descriptions
-      (trigger-eval-Queries should/should-not, run_loop.py); (b) Verhalten — die
-      v1-Eval-Prompts (evals.json) als Vorlage, adaptiert auf v2 + epic, mit
-      with-skill-Subagents + Benchmark + Review-Viewer. Schließt e8 + e6 ab.
+      Only once the lifecycle runs for real does the actual skill-creator eval
+      make sense (e8): (a) triggering — description optimization of the 4 SKILL.md descriptions
+      (trigger-eval queries should/should-not, run_loop.py); (b) behavior — the
+      v1 eval prompts (evals.json) as a template, adapted to v2 + epic, with
+      with-skill subagents + benchmark + review viewer. Closes e8 + e6.
     rules:
       - path: .claude/rules/cli-only-transport.md
-        why: die evaluierten Skills fahren die CLI; Eval-Subagents brauchen Bash(anchored *) allowlist
+        why: the evaluated skills run the CLI; eval subagents need the Bash(anchored *) allowlist
     acceptance_criteria:
       - id: a1
-        text: "Triggering-Eval: 4 Descriptions via trigger-eval-Queries (should/should-not, near-misses) optimiert; best_description je Skill nach held-out-Test gewählt + in die SKILL.md übernommen. Beweis: Report mit Trigger-Raten vorher/nachher pro Skill."
+        text: "Triggering eval: 4 descriptions optimized via trigger-eval queries (should/should-not, near-misses); best_description per skill chosen after a held-out test + adopted into the SKILL.md. Evidence: report with trigger rates before/after per skill."
         status: pending
       - id: a2
-        text: "Verhaltens-Eval: ≥4 Lifecycle-Prompts (plan/refine/build/wrap, + ein autopilot + ein epic) als with-skill-Subagents gegen anchored-test gelaufen, gegen Assertions gegradet, Benchmark + Review-Viewer für den User. Beweis: benchmark.json/md + feedback-Runde; e8 + e6 im _epic.yml auf done."
+        text: "Behavior eval: ≥4 lifecycle prompts (plan/refine/build/wrap, + one autopilot + one epic) run as with-skill subagents against anchored-test, graded against assertions, benchmark + review viewer for the user. Evidence: benchmark.json/md + feedback round; e8 + e6 in the _epic.yml on done."
         status: pending

@@ -1,139 +1,139 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task.schema.json
 schema_version: 2
 slug:    anchored-v2-core/package-scaffold
-title:   "core/ Paket-Scaffold + Quality-Gate-Tooling"
+title:   "core/ package scaffold + quality-gate tooling"
 status:  done
 created: 2026-06-10
 
 context:
   plan: |
-    SCOPE: Das core/-npm-Paket aufsetzen, bevor Code entsteht. CLAUDE.md:
-    "Tooling-Wahl wird in pure-engine festgelegt" — diese Task legt sie fest.
-    Liefert: package.json (@chaafoo/anchored, bin: anchored), tsconfig, 5 Quality-Gates
-    als npm-Scripts, leeres src/-Skelett nach file-structure.md.
+    SCOPE: Set up the core/ npm package before any code exists. CLAUDE.md:
+    "tooling choice is fixed in pure-engine" — this task fixes it.
+    Delivers: package.json (@chaafoo/anchored, bin: anchored), tsconfig, 5 quality gates
+    as npm scripts, empty src/ skeleton per file-structure.md.
   refine: |
-    Detail-Entscheidungen aus Rule + Standard abgeleitet (source: ai):
-    - build-Gate = `tsc` (emit), NICHT `bun build` — bun build erzeugt kein .d.ts;
-      Node-Publish-Artefakt braucht Types. bun für install/test, tsc für typecheck+build.
-    - module=NodeNext + .js-Import-Extensions — korrekt für publiziertes Node-ESM
-      (tsc rewritet keine Extensions). Konvention für ALLE Folge-Tasks.
-    - Tests: bun:test, co-located *.spec.ts; @types/bun für tsc; *.spec.ts aus build-Emit
-      ausgeschlossen (tsconfig.build.json).
+    Detailed decisions derived from rule + default (source: ai):
+    - build gate = `tsc` (emit), NOT `bun build` — bun build emits no .d.ts;
+      the Node publish artifact needs types. bun for install/test, tsc for typecheck+build.
+    - module=NodeNext + .js import extensions — correct for published Node-ESM
+      (tsc does not rewrite extensions). Convention for ALL follow-up tasks.
+    - Tests: bun:test, co-located *.spec.ts; @types/bun for tsc; *.spec.ts excluded from
+      the build emit (tsconfig.build.json).
     - Lint: eslint flat config (eslint.config.mjs) + typescript-eslint v8 + eslint-config-prettier
-      (Format-Trennung prettier vs eslint).
-    Keine offenen Fragen an den User — alles aus tooling-quality-gates.md + Stack-Entscheid q1 ableitbar.
+      (format separation prettier vs eslint).
+    No open questions for the user — everything derivable from tooling-quality-gates.md + stack decision q1.
   build: |
     package.json + tsconfig.json + tsconfig.build.json + eslint.config.mjs +
-    .prettierrc.json + .prettierignore + .gitignore angelegt. Deps via `bun add`
-    real gepinnt: yaml@2.9, zod@4.4, proper-lockfile@4.1, commander@15; dev: eslint@10,
-    typescript@6, typescript-eslint@8.61, prettier@3.8, @types/bun. 34 src-Stubs +
-    default-template/anchored.default.yml (aus docs/design kopiert). Alle 5 Gates grün.
+    .prettierrc.json + .prettierignore + .gitignore created. Deps pinned for real via `bun add`:
+    yaml@2.9, zod@4.4, proper-lockfile@4.1, commander@15; dev: eslint@10,
+    typescript@6, typescript-eslint@8.61, prettier@3.8, @types/bun. 34 src stubs +
+    default-template/anchored.default.yml (copied from docs/design). All 5 gates green.
   wrap: |
-    Skelett kompiliert leer-aber-sauber durch alle 5 Gates. Factory-Stub-Konvention
-    etabliert (createX(): never), keine Klassen, keine Top-Level-Effekte. default-template
-    aus prettier ignoriert (gelieferte Referenz-Daten, nicht unser Code-Stil). Fundament
-    steht — bereit für tier-schemas.
+    Skeleton compiles empty-but-clean through all 5 gates. Factory-stub convention
+    established (createX(): never), no classes, no top-level effects. default-template
+    ignored by prettier (delivered reference data, not our code style). Foundation
+    stands — ready for tier-schemas.
 
 questions: []
 
 log:
-  - { at: package-manifest, kind: decision, note: "build-Gate = tsc-emit statt bun build (.d.ts-Emit für Node-Publish); bun nur install/test. NodeNext + .js-Extensions als Folge-Konvention." }
-  - { at: quality-gates, kind: learning, note: "Reale Versionen via bun add gepinnt: zod 4, typescript 6, eslint 10, typescript-eslint 8.61. default-template/anchored.default.yml in .prettierignore (Referenz-Daten, keine Code-Format-Quelle)." }
-  - { at: src-skeleton, kind: decision, note: "Factory-Stubs als createX(): never (throw not-implemented) — kompiliert unter strict + noUnused*, klar als unimplementiert markiert, in Folge-Tasks ersetzt." }
+  - { at: package-manifest, kind: decision, note: "build gate = tsc-emit instead of bun build (.d.ts emit for Node publish); bun only install/test. NodeNext + .js extensions as a follow-up convention." }
+  - { at: quality-gates, kind: learning, note: "Real versions pinned via bun add: zod 4, typescript 6, eslint 10, typescript-eslint 8.61. default-template/anchored.default.yml in .prettierignore (reference data, not a code-format source)." }
+  - { at: src-skeleton, kind: decision, note: "Factory stubs as createX(): never (throw not-implemented) — compiles under strict + noUnused*, clearly marked as unimplemented, replaced in follow-up tasks." }
 
 phases:
-  - name: "package.json + tsconfig + bin-Eintrag"
+  - name: "package.json + tsconfig + bin entry"
     slug: package-manifest
     status: done
     context: |
       core/package.json (@chaafoo/anchored, type module, engines.node >=20,
-      bin.anchored → ./dist/cli/index.js, bin-shebang publish-tauglich). tsconfig:
+      bin.anchored → ./dist/cli/index.js, bin-shebang publish-ready). tsconfig:
       strict, noUncheckedIndexedAccess, declaration (.d.ts), module/moduleResolution
-      NodeNext, outDir dist / rootDir src. Runtime-Deps yaml/zod/proper-lockfile/commander.
+      NodeNext, outDir dist / rootDir src. Runtime deps yaml/zod/proper-lockfile/commander.
     rules:
-      - { path: .claude/rules/tooling-quality-gates.md, why: "Node-Kompatibilität, bin-shebang, tsc --noEmit + .d.ts-Emit" }
+      - { path: .claude/rules/tooling-quality-gates.md, why: "Node compatibility, bin-shebang, tsc --noEmit + .d.ts emit" }
       - { path: docs/design/file-structure.md, why: "core/package.json @chaafoo/anchored · bin: anchored" }
     acceptance_criteria:
       - id: a1
-        text: "core/package.json existiert mit name '@chaafoo/anchored', type 'module', engines.node '>=20' und bin.anchored zeigend auf den kompilierten cli-Entry"
+        text: "core/package.json exists with name '@chaafoo/anchored', type 'module', engines.node '>=20' and bin.anchored pointing to the compiled cli entry"
         status: done
         evidence:
-          - "core/package.json — node -e Dump: name '@chaafoo/anchored', type 'module', engines.node '>=20', bin.anchored './dist/cli/index.js'"
+          - "core/package.json — node -e dump: name '@chaafoo/anchored', type 'module', engines.node '>=20', bin.anchored './dist/cli/index.js'"
       - id: a2
-        text: "Runtime-Deps yaml, zod, proper-lockfile und commander sind in package.json.dependencies eingetragen (Versionen gepinnt)"
+        text: "Runtime deps yaml, zod, proper-lockfile and commander are listed in package.json.dependencies (versions pinned)"
         status: done
         evidence:
-          - "core/package.json dependencies: yaml@^2.9.0, zod@^4.4.3, proper-lockfile@^4.1.2, commander@^15.0.0 (via bun add real installiert+gepinnt)"
+          - "core/package.json dependencies: yaml@^2.9.0, zod@^4.4.3, proper-lockfile@^4.1.2, commander@^15.0.0 (installed+pinned for real via bun add)"
       - id: a3
-        text: "core/tsconfig.json hat compilerOptions.strict true, noUncheckedIndexedAccess true, declaration true, outDir './dist', rootDir './src'"
+        text: "core/tsconfig.json has compilerOptions.strict true, noUncheckedIndexedAccess true, declaration true, outDir './dist', rootDir './src'"
         status: done
         evidence:
-          - "core/tsconfig.json — node -e Dump: strict true, noUncheckedIndexedAccess true, declaration true, outDir './dist', rootDir './src'"
+          - "core/tsconfig.json — node -e dump: strict true, noUncheckedIndexedAccess true, declaration true, outDir './dist', rootDir './src'"
       - id: a4
-        text: "Der publizierte bin-Entrypoint trägt die Shebang '#!/usr/bin/env node' in Zeile 1"
+        text: "The published bin entrypoint carries the shebang '#!/usr/bin/env node' on line 1"
         status: done
         evidence:
-          - "core/src/cli/index.ts:1 — '#!/usr/bin/env node' (head -1 bestätigt; kompiliert nach dist/cli/index.js, bin-Ziel)"
+          - "core/src/cli/index.ts:1 — '#!/usr/bin/env node' (head -1 confirmed; compiles to dist/cli/index.js, the bin target)"
 
-  - name: "Quality-Gate-Scripts + Tool-Configs"
+  - name: "Quality-gate scripts + tool configs"
     slug: quality-gates
     status: done
     context: |
-      Stack ENTSCHIEDEN (tooling-quality-gates.md): Bun all-in (install/test/build),
-      eslint + typescript-eslint, prettier, tsc --noEmit. 5 Gates als npm-Scripts;
-      roter Gate blockiert mit non-zero exit (Evidence-Honesty auf Paket-Ebene).
+      Stack DECIDED (tooling-quality-gates.md): Bun all-in (install/test/build),
+      eslint + typescript-eslint, prettier, tsc --noEmit. 5 gates as npm scripts;
+      a red gate blocks with a non-zero exit (evidence-honesty at the package level).
     rules:
-      - { path: .claude/rules/tooling-quality-gates.md, why: "Stack ENTSCHIEDEN: Bun+eslint+prettier+tsc; 5 Gates als npm-Scripts; roter Gate blockiert" }
+      - { path: .claude/rules/tooling-quality-gates.md, why: "Stack DECIDED: Bun+eslint+prettier+tsc; 5 gates as npm scripts; red gate blocks" }
     acceptance_criteria:
       - id: a1
-        text: "package.json.scripts enthält alle fünf Gate-Scripts: lint, format, typecheck, test, build"
+        text: "package.json.scripts contains all five gate scripts: lint, format, typecheck, test, build"
         status: done
         evidence:
           - "core/package.json scripts: lint='eslint .', format='prettier --check .', typecheck='tsc --noEmit', test='bun test', build='tsc -p tsconfig.build.json'"
       - id: a2
-        text: "Lint-Stack ist eslint + typescript-eslint, Format ist prettier, typecheck nutzt 'tsc --noEmit'"
+        text: "Lint stack is eslint + typescript-eslint, format is prettier, typecheck uses 'tsc --noEmit'"
         status: done
         evidence:
-          - "scripts lint enthält 'eslint', typecheck enthält 'tsc --noEmit'; devDependencies: eslint@^10.4.1, typescript-eslint@^8.61.0, prettier@^3.8.4, typescript@^6.0.3, @eslint/js, eslint-config-prettier"
+          - "scripts lint contains 'eslint', typecheck contains 'tsc --noEmit'; devDependencies: eslint@^10.4.1, typescript-eslint@^8.61.0, prettier@^3.8.4, typescript@^6.0.3, @eslint/js, eslint-config-prettier"
       - id: a3
-        text: "eslint-Flat-Config (eslint.config.*) und prettier-Config existieren im core/ und werden von den Scripts aufgelöst"
+        text: "eslint flat config (eslint.config.*) and prettier config exist in core/ and are resolved by the scripts"
         status: done
         evidence:
-          - "core/eslint.config.mjs (flat: js.recommended + tseslint.recommended + prettier) + core/.prettierrc.json; bun run lint + bun run format laufen ohne Config-Fehler (exit 0)"
+          - "core/eslint.config.mjs (flat: js.recommended + tseslint.recommended + prettier) + core/.prettierrc.json; bun run lint + bun run format run without config errors (exit 0)"
       - id: a4
-        text: "Ein gezielt eingeschleuster Fehler lässt den jeweiligen Gate mit non-zero exit-code scheitern"
+        text: "A deliberately injected error makes the respective gate fail with a non-zero exit code"
         status: done
         evidence:
-          - "src/_redgate.ts mit `const unused = 42` → `bun run lint` exit 1; nach rm → exit 0 (roter Gate blockiert, dann grün)"
+          - "src/_redgate.ts with `const unused = 42` → `bun run lint` exit 1; after rm → exit 0 (red gate blocks, then green)"
 
-  - name: "src/-Ordnerskelett + grüner Smoke-Build"
+  - name: "src/ folder skeleton + green smoke build"
     slug: src-skeleton
     status: done
     context: |
-      Leeres src/-Skelett exakt nach file-structure.md. Stubs als Factory-Functions
-      (createX), keine Klassen, keine Top-Level-Effekte. Alle 5 Gates grün über das Skelett.
+      Empty src/ skeleton exactly per file-structure.md. Stubs as factory functions
+      (createX), no classes, no top-level effects. All 5 gates green over the skeleton.
     rules:
-      - { path: docs/design/file-structure.md, why: "autoritativer core/-Baum: jede Datei/Ordner exakt nach dieser Karte" }
-      - { path: .claude/rules/factory-functions.md, why: "Stubs als createX(cfg,deps)→{...}, keine Klassen, keine Top-Level-Seiteneffekte" }
+      - { path: docs/design/file-structure.md, why: "authoritative core/ tree: every file/folder exactly per this map" }
+      - { path: .claude/rules/factory-functions.md, why: "stubs as createX(cfg,deps)→{...}, no classes, no top-level side effects" }
     acceptance_criteria:
       - id: a1
-        text: "Alle in file-structure.md gelisteten src/-Dateien und -Ordner existieren"
+        text: "All src/ files and folders listed in file-structure.md exist"
         status: done
         evidence:
-          - "find core/src -type f → 34 Files: cli/index.ts + cli/commands/{plan,refine,build,wrap,node}.ts, config/{bootstrap,merge}.ts, engine/{engine,tier-runner,stage-runner,step-runner}.ts + engine/scope/{run-step,worker-step,loop-step,resolve-steps}.ts, ops/node-ops.ts + ops/scope/{children,questions,log}.ts, schema/{step,config}.ts + schema/tiers/{phase,task,epic,project}.ts, state/{transitions,invariants}.ts, parser/{parse,render}.ts, io.ts, spawn.ts, index.ts (+ skeleton.spec.ts)"
+          - "find core/src -type f → 34 files: cli/index.ts + cli/commands/{plan,refine,build,wrap,node}.ts, config/{bootstrap,merge}.ts, engine/{engine,tier-runner,stage-runner,step-runner}.ts + engine/scope/{run-step,worker-step,loop-step,resolve-steps}.ts, ops/node-ops.ts + ops/scope/{children,questions,log}.ts, schema/{step,config}.ts + schema/tiers/{phase,task,epic,project}.ts, state/{transitions,invariants}.ts, parser/{parse,render}.ts, io.ts, spawn.ts, index.ts (+ skeleton.spec.ts)"
       - id: a2
-        text: "default-template/anchored.default.yml existiert (vorerst Referenz-Stub)"
+        text: "default-template/anchored.default.yml exists (a reference stub for now)"
         status: done
         evidence:
-          - "core/default-template/anchored.default.yml — aus docs/design/anchored.default.yml kopiert (test -f exit 0)"
+          - "core/default-template/anchored.default.yml — copied from docs/design/anchored.default.yml (test -f exit 0)"
       - id: a3
-        text: "Module die später eine Factory exportieren tragen das Stub-Pattern createX (keine class, kein Top-Level-Effekt)"
+        text: "Modules that later export a factory carry the stub pattern createX (no class, no top-level effect)"
         status: done
         evidence:
-          - "grep 'export function create' src → 12 Module: io, spawn, config/{bootstrap,merge}, engine/{engine,tier-runner,stage-runner,step-runner}, ops/node-ops, parser/{parse,render}, cli/index"
-          - "grep 'class ' src → leer (keine Klassen)"
+          - "grep 'export function create' src → 12 modules: io, spawn, config/{bootstrap,merge}, engine/{engine,tier-runner,stage-runner,step-runner}, ops/node-ops, parser/{parse,render}, cli/index"
+          - "grep 'class ' src → empty (no classes)"
       - id: a4
-        text: "Alle fünf Quality-Gates laufen über das leere Skelett grün"
+        text: "All five quality gates run green over the empty skeleton"
         status: done
         evidence:
           - "bun run typecheck (tsc --noEmit) exit 0 · bun run build (tsc emit → dist) exit 0 · bun test 1 pass exit 0 · bun run lint exit 0 · bun run format (prettier --check) exit 0"

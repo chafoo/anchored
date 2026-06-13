@@ -1,16 +1,16 @@
-# anchored.yml — Konfigurations-Format
+# anchored.yml — configuration format
 
-> Referenz für das `anchored.yml`-Format. Die vollständige Default-Config liegt in
-> [`default.yml`](default.yml) (von dort liest anchored alle Defaults). Eine echte
-> User-`anchored.yml` enthält **nur Deltas** — was sie nicht überschreibt, kommt
-> aus der gemergten Default-Basis. Beispiel-Nodes: [`task.example.yml`](task.example.yml),
+> Reference for the `anchored.yml` format. The full default config lives in
+> [`anchored.default.yml`](anchored.default.yml) (anchored reads all defaults from there). A real
+> user `anchored.yml` contains **deltas only** — whatever it does not override comes
+> from the merged default base. Example nodes: [`task.example.yml`](task.example.yml),
 > [`epic.example.yml`](epic.example.yml).
 
-## Aufbau: Tiers × Stages × Steps
+## Structure: tiers × stages × steps
 
-Top-Level sind die **Tiers** (`phase` · `task` · `epic` · `project`). Jeder Tier
-hat dieselben vier **Stages** (`plan` · `refine` · `build` · `wrap`), jede Stage
-eine geordnete `steps`-Liste.
+The top level is the **tiers** (`phase` · `task` · `epic` · `project`). Every tier
+has the same four **stages** (`plan` · `refine` · `build` · `wrap`), and each stage
+has an ordered `steps` list.
 
 ```yaml
 task:
@@ -20,211 +20,208 @@ task:
   wrap:    { steps: [ … ] }
 ```
 
-- **`build`** trägt zusätzlich `each` / `stop` / `retry_limit` als Geschwister von
-  `steps` (siehe unten).
-- Lässt du eine Stage oder `steps` weg → die Built-in-Defaults laufen.
-- Top-Level ist **strict**: unbekannte Keys → Fehler.
+- **`build`** additionally carries `each` / `stop` / `retry_limit` as siblings of
+  `steps` (see below).
+- Omit a stage or its `steps` → the built-in defaults run.
+- The top level is **strict**: unknown keys → error.
 
-## Ein Step
+## A step
 
-Ein Step ist ein Eintrag in `steps`. Pflicht ist `name`; alles andere hängt vom
-Typ ab.
+A step is an entry in `steps`. `name` is required; everything else depends on the
+type.
 
-| Feld | Built-in step | Custom `run:` step | Custom `use:` step |
+| Field | Built-in step | Custom `run:` step | Custom `use:` step |
 |---|---|---|---|
-| `name` | **Pflicht** (reservierter Name) | **Pflicht** | **Pflicht** |
-| `run` | ✗ | **Pflicht** (Shell/Prosa) | ✗ |
-| `use` | ✗ | ✗ | **Pflicht** (Worker) |
+| `name` | **required** (reserved name) | **required** | **required** |
+| `run` | ✗ | **required** (shell/prose) | ✗ |
+| `use` | ✗ | ✗ | **required** (worker) |
 | `type` | ✗ | ✗ | optional · `agent` (default) \| `skill` |
-| `instructions` | optional (steuert den Built-in) | optional (leitet das `run:` an) | optional (an den Worker) |
-| `involve` | nur auf `walk` · `all`\|`high-only`\|`none` | ✗ | ✗ |
-| `each` (+`steps`) | nur auf `loop` (siehe unten) | ✗ | ✗ |
+| `instructions` | optional (steers the built-in) | optional (guides the `run:`) | optional (to the worker) |
+| `involve` | on `walk` only · `all`\|`high-only`\|`none` | ✗ | ✗ |
+| `each` (+`steps`) | on `loop` only (see below) | ✗ | ✗ |
 
-**Invarianten:** `run` **XOR** `use` (nie beides) · `type` nur mit `use` ·
-`instructions` ist auf **jedem** Step erlaubt (run/use/Built-in) · Built-ins haben
-weder `run` noch `use` (dispatchen sich selbst) · Built-ins
-sind **nicht entfernbar/umsortierbar** — nur per `instructions` erweiterbar (append).
+**Invariants:** `run` **XOR** `use` (never both) · `type` only with `use` ·
+`instructions` is allowed on **every** step (run/use/built-in) · built-ins carry
+neither `run` nor `use` (they dispatch themselves) · built-ins are
+**not removable / not reorderable** — only extendable via `instructions` (append).
 
 ```yaml
-# Built-in, nur gesteuert:
-- { name: implement, instructions: "always TDD: red → green → refactor" }
+# Built-in, steered only:
+- { name: implement, instructions: "always test-driven development: red → green → refactor" }
 
-# Built-in walk mit involve:
+# Built-in walk with involve:
 - { name: walk, involve: high-only }
 
-# Custom run-step (Shell):
+# Custom run-step (shell):
 - { name: lint, run: 'npm run check' }
 
-# Custom use-step, isolierter Subagent (default):
+# Custom use-step, isolated subagent (default):
 - { name: docu-scan, use: docu-scan }
 
-# Custom use-step, Skill in der Session, mit Instruktion:
+# Custom use-step, in-session skill, with instruction:
 - { name: pr-review, use: pr-reviewer, type: skill, instructions: 're-scan touched modules only' }
 ```
 
-> **`instructions:` ist auf JEDEM Step erlaubt** — Prosa, die die AI befolgt, wenn
-> sie den Step ausführt bzw. dispatcht. Uniform über `run` / `use` / Worker: bei
-> einem `run:`-Step leitet sie an, WIE die AI den Befehl fährt (Bedingungen, Umgang
-> mit Output/Fehlern, Reihenfolge — z.B. *"führe das aus, NACHDEM die Task auf done
-> geflippt ist"*); bei einem `use:`-Step wird sie an den Worker durchgereicht; bei
-> einem Built-in erweitert sie dessen Verhalten (append). Es gibt kein
-> Sonder-Flag für „nach done" — die Reihenfolge steht in den `instructions`.
+> **`instructions:` is allowed on EVERY step** — prose the AI follows when it runs
+> or dispatches the step. Uniform across `run` / `use` / worker: on a `run:` step it
+> guides HOW the AI runs the command (conditions, how to treat output/errors,
+> ordering — e.g. *"run this AFTER the task has flipped to done"*); on a `use:` step
+> it is passed through to the worker; on a built-in it extends its behaviour
+> (append). There is no special flag for "after done" — the ordering lives in the
+> `instructions`.
 
-### Variablen in `run:`-Steps
+### Variables in `run:` steps
 
-Der Orchestrator übergibt jedem `run:`-Step diese Werte als **echte
-Umgebungsvariablen** (`${NAME}` im Shell-Command expandiert; nie selbst
-hineintexten). Welche verfügbar sind, hängt von der Stage ab:
+The orchestrator passes every `run:` step these values as **real environment
+variables** (`${NAME}` expands in the shell command; never text them in by hand).
+Which are available depends on the stage:
 
-| Variable | Wert | Verfügbar in |
+| Variable | Value | Available in |
 |---|---|---|
-| `TASK_SLUG` | der Task (das Task-File); bei einem Epic-Kind der Kind-Slug | allen build/wrap-`run:`-Steps |
-| `PHASE_SLUG` | die gerade gebaute Phase | nur `phase.build` |
-| `PHASE_NAME` | der Klartext-Name der Phase | nur `phase.build` |
-| `EPIC_SLUG` | der Eltern-Epic-Slug, sonst leer | allen build/wrap-`run:`-Steps |
+| `TASK_SLUG` | the task (the task-file); for an epic child, the child slug | all build/wrap `run:` steps |
+| `PHASE_SLUG` | the phase just built | `phase.build` only |
+| `PHASE_NAME` | the phase's plain-text name | `phase.build` only |
+| `EPIC_SLUG` | the parent epic slug, otherwise empty | all build/wrap `run:` steps |
 
-Es gibt **kein** `$SLUG` — der korrekte Name ist immer `${TASK_SLUG}`. Eine
-Commit-Message wie `git commit -am "$SLUG"` committet still mit **leerer**
-Message.
+There is **no** `$SLUG` — the correct name is always `${TASK_SLUG}`. A commit
+message like `git commit -am "$SLUG"` silently commits with an **empty** message.
 
-> **branch-per-task — Slug flachklopfen:** ein Epic-Kind-Slug ist *nested*
-> (`myepic/core-list`). Ein roher Branch `task/${TASK_SLUG}` kann mit einem
-> prefix-verwandten Geschwister kollidieren (git-Ref-D/F: `task/x` vs `task/x/y`).
-> Im Branch-Namen Slashes zu `-` machen, dann ist der Name kollisionssicher:
+> **branch-per-task — flatten the slug:** an epic child slug is *nested*
+> (`myepic/core-list`). A raw branch `task/${TASK_SLUG}` can collide with a
+> prefix-related sibling (git ref dir/file conflict: `task/x` vs `task/x/y`).
+> Turn slashes into `-` in the branch name and it becomes collision-safe:
 > ```bash
 > BRANCH="task/$(printf '%s' "${TASK_SLUG}" | tr '/' '-')"   # myepic/core-list → task/myepic-core-list
 > ```
 
 ### Position: `after:` / `before:`
 
-Ein Custom-Step wird per `after: <step-name>` oder `before: <step-name>` relativ
-zu einem bestehenden (Built-in-)Step einsortiert; ohne Anker wird er **ans Ende
-angehängt**. Beim Merge mit dem Default-Template gilt: Steps mergen *keyed by
-name* + extend-only — ein neuer Name landet an der Anker-Position, ein bekannter
-Name erweitert den bestehenden Step in-place.
+A custom step is placed via `after: <step-name>` or `before: <step-name>` relative
+to an existing (built-in) step; without an anchor it is **appended at the end**. When
+merging with the default template: steps merge *keyed by name* + extend-only — a new
+name lands at the anchor position, a known name extends the existing step in place.
 
 ```yaml
 phase:
   build:
     steps:
-      - { name: commit, after: code-validate, run: '…' }   # NACH den Gates, auf grüner Phase
-      - { name: lint,   before: task-validate, run: '…' }  # VOR dem Evidence-Gate
+      - { name: commit, after: code-validate, run: '…' }   # AFTER the gates, on a green phase
+      - { name: lint,   before: task-validate, run: '…' }  # BEFORE the evidence gate
 ```
 
-> **Achtung — stiller Append:** zeigt `after:`/`before:` auf einen Namen, den es
-> in der Stage nicht gibt, schlägt das **nicht** fehl — der Step landet kommentarlos
-> am Ende (`ok:true`). Nach dem Editieren mit `anchored steps <tier> <stage>` die
-> tatsächliche **Reihenfolge** prüfen, nicht nur die Präsenz.
+> **Caution — silent append:** if `after:`/`before:` points at a name that does not
+> exist in the stage, it does **not** fail — the step lands silently at the end
+> (`ok:true`). After editing, check the actual **order** with
+> `anchored steps <tier> <stage>`, not just presence.
 
-## Built-in-Steps pro Stage
+## Built-in steps per stage
 
-Reservierte `name`-Werte, vom Framework erkannt (nicht entfernbar):
+Reserved `name` values, recognised by the framework (not removable):
 
-| Stage | phase (Leaf) | task | epic |
+| Stage | phase (leaf) | task | epic |
 |---|---|---|---|
 | `plan` | — | `discover` · `rules-scan` · `decompose` | `discover` · `scaffold` |
 | `refine` | — | `plan-check` · `rules-check` · `walk` | `walk` |
 | `build` | `implement` · `task-validate` · `code-validate` | `each: phase` | `each: task` |
 | `wrap` | — | `review` · `summarize` | `roll-up` |
 
-> Reserviert/Tabu für *eigene* Worker-Namen: `plan`, `explore` (CC-interne
-> Agent-Typen).
+> Reserved/off-limits for your *own* worker names: `plan`, `explore` (Claude
+> Code internal agent types).
 
-## `each`, der Loop-Step
+## `each`, the loop step
 
-Ein `build`, der Kinder iteriert, nutzt einen `loop`-Step mit `each: <tier>`. Der
-Loop hat einen **Body** (`steps`), der **interleaved** pro Kind läuft (Kind A
-komplett, dann Kind B …):
+A `build` that iterates children uses a `loop` step with `each: <tier>`. The loop has
+a **body** (`steps`) that runs **interleaved** per child (child A fully, then child B
+…):
 
 ```yaml
 epic:
   build:
     steps:
-      - { name: notify-start, run: '…' }      # einmal, vor dem Loop
+      - { name: notify-start, run: '…' }      # once, before the loop
       - name: loop
-        each: task                            # Loop-Body = die task-Etage, pro Stub
+        each: task                            # loop body = the task tier, per stub
         steps:
-          - { name: run }                      # built-in: diese Einheit fahren
-          - { name: commit, run: 'git commit -am "${TASK_SLUG}"' }  # direkt danach, pro Task
-      - { name: report, run: '…' }            # einmal, danach
+          - { name: run }                      # built-in: run this unit
+          - { name: commit, run: 'git commit -am "${TASK_SLUG}"' }  # right after, per task
+      - { name: report, run: '…' }            # once, afterwards
 ```
 
-- **Kurzform** `build: { each: task }` ≙ `steps: [{ name: loop, each: task, steps: [run] }]`.
-- `each` ist **intrinsisch** (pro Tier fix: task→phase, epic→task, project→epic) —
-  nur Doku, nicht frei wählbar.
-- Per-Iteration-Mechanik (Status fortschreiben, log, `stop`-Check) ist built-in.
+- **Short form** `build: { each: task }` ≙ `steps: [{ name: loop, each: task, steps: [run] }]`.
+- `each` is **intrinsic** (fixed per tier: task→phase, epic→task, project→epic) —
+  documentation only, not freely choosable.
+- The per-iteration mechanics (advance status, log, `stop` check) are built in.
 
 ### `stop` + `retry_limit`
 
-Geschwister von `steps` im `build` (Policy des Loops, keine Steps):
+Siblings of `steps` inside `build` (the loop's policy, not steps):
 
 ```yaml
 build:
   each: task
-  stop:                                       # natürlichsprachige Halt-Conditions; hält beim ersten Match
-    - 'an architectural boundary is crossed (layer, DAG, contract)'
-  retry_limit: 3                              # so oft wird eine fehlschlagende Einheit neu gefahren
+  stop:                                       # natural-language halt conditions; halts on the first match
+    - 'an architectural boundary is crossed (layer, dependency graph, contract)'
+  retry_limit: 3                              # how many times a failing unit is re-run
 ```
 
-## Felder (`fields`)
+## Fields (`fields`)
 
-Jeder Tier trägt ein Daten-Modell. Die **Default-Felder** pro Tier stehen in
-[`default.yml`](default.yml) (Shape) — die Mechanik (Status-Enum, Transitions) ist
-fix im Code. Beispiel-Belegung: [`task.example.yml`](task.example.yml) /
+Every tier carries a data model. The **default fields** per tier live in
+[`anchored.default.yml`](anchored.default.yml) (shape) — the mechanics (status enum, transitions) are
+fixed in code. Example values: [`task.example.yml`](task.example.yml) /
 [`epic.example.yml`](epic.example.yml).
 
-> **Harte Invariante (nicht abschaltbar):** ein `ac` geht nur auf `done`, wenn
-> `evidence` vorliegt. *Wie* die Evidence entsteht, konfigurierst du frei.
+> **Hard invariant (not switchable off):** an `ac` only goes to `done` when
+> `evidence` is present. *How* the evidence is produced is yours to configure freely.
 
-### Ein eigenes Feld hinzufügen
+### Adding your own field
 
-Custom-Felder werden an der **Etage** deklariert, der sie gehören — unter deren
-`fields`, als **Record** (`name: typ`, KEINE Liste von `{name, type}`):
+Custom fields are declared at the **tier** they belong to — under its `fields`, as a
+**record** (`name: type`, NOT a list of `{name, type}`):
 
 ```yaml
 phase:
-  fields:                                     # Custom-Felder der phase-Etage
-    coverage_pct: number                      # z.B. eine Zahl pro Phase
+  fields:                                     # custom fields of the phase tier
+    coverage_pct: number                      # e.g. one number per phase
 
 task:
   fields:
-    commit_sha: string                        # Custom-Feld auf dem Task-File
+    commit_sha: string                        # custom field on the task-file
     ticket_url: string
 ```
 
-- **Record-Form, nicht Liste:** `commit_sha: string` ✓ — `- { name: commit_sha,
-  type: string }` ✗ (das Schema erwartet eine Map `name → typ`).
-- `typ`: `string` | `number` | `boolean` (skalar getypt) — alles andere wird als
-  `unknown` durchgelassen (permissiv, aber persistiert).
-- Default-Felder werden **nicht** hier wiederholt — `fields` ist **additiv**
-  (die Basis kommt aus `default.yml`); ein Custom-Name landet zusätzlich im
-  Node-Schema, ein **un**deklarierter Key wird beim Schreiben weiterhin abgelehnt.
-- Setzen/Lesen zur Laufzeit: `anchored node set-field <slug> <name> <value>`.
-  Auf einem **Kind** (Stub/Phase): `anchored node set-child-field <slug> <child>
-  <name> <value>`.
+- **Record form, not list:** `commit_sha: string` ✓ — `- { name: commit_sha,
+  type: string }` ✗ (the schema expects a map `name → type`).
+- `type`: `string` | `number` | `boolean` (scalar-typed) — everything else passes
+  through as `unknown` (permissive, but persisted).
+- Default fields are **not** repeated here — `fields` is **additive** (the base comes
+  from `anchored.default.yml`); a custom name lands additionally in the node schema, while an
+  **un**declared key is still rejected on write.
+- Set/read at runtime: `anchored node set-field <slug> <name> <value>`. On a
+  **child** (stub/phase): `anchored node set-child-field <slug> <child> <name> <value>`.
 
-### Commit-Anchors: `commit_sha` vs. `merge_commit` (Zwei-Anker-Semantik)
+### Commit anchors: `commit_sha` vs. `merge_commit` (two-anchor semantics)
 
-Wenn du Commit-Wiring nutzt (siehe
-[`anchored.example-comprehensive.yml`](anchored.example-comprehensive.yml)),
-trägt das Task-File **zwei** Anker — additiv, keine Umbenennung (bestehende Specs/
-Docs bleiben intakt):
+When you use commit wiring (see
+[`anchored.example-comprehensive.yml`](anchored.example-comprehensive.yml)), the
+task-file carries **two** anchors — additive, no rename (existing specs/docs stay
+intact):
 
-- **`commit_sha`** = **Per-Phase-Anker** (Interim). Dein per-Phase-Commit-Step
-  schreibt nach jeder Phase den `HEAD`-SHA selbst hierher (`anchored node set-field
-  … "$(git rev-parse HEAD)"` im `run:`). Achtung: Der Phasen-Branch,
-  auf den dieser SHA zeigt, **kann vom Task-Wrap-`--no-ff`-Merge gelöscht werden** —
-  `commit_sha` ist dann ein verwaister (interimsmäßiger) Zeiger.
-- **`merge_commit`** = der **überlebende Task-Level-Merge-Commit**. Das ist der
-  stabile Anker auf `develop`/`main`, der nach dem Wrap-Merge bestehen bleibt
-  (während der Phasen-Anchor verschwinden kann).
+- **`commit_sha`** = the **per-phase anchor** (interim). Your per-phase commit step
+  writes the `HEAD` SHA here itself after each phase (`anchored node set-field …
+  "$(git rev-parse HEAD)"` inside `run:`). Caution: the phase branch this SHA points
+  at **can be deleted by the task-wrap `--no-ff` merge** — `commit_sha` is then an
+  orphaned (interim) pointer.
+- **`merge_commit`** = the **surviving task-level merge commit**. This is the stable
+  anchor on `develop`/`main` that persists after the wrap merge (while the per-phase
+  anchor can vanish).
 
-Beide sind gewöhnliche Custom-Felder (`string`), additiv deklariert.
+Both are ordinary custom fields (`string`), additively declared.
 
-#### SHA-Anker: selbst im `run:`-Step verdrahten
+#### SHA anchors: wire them yourself in the `run:` step
 
-Das Framework füllt diese Felder **nicht** automatisch — git ist komplett deine
-Sache. In deinem eigenen Commit-Step schreibst du den SHA per `set-field` selbst:
+The framework does **not** fill these fields automatically — git is entirely yours.
+In your own commit step you write the SHA via `set-field` yourself:
 
 ```yaml
 - name: commit
@@ -235,32 +232,32 @@ Sache. In deinem eigenen Commit-Step schreibst du den SHA per `set-field` selbst
     anchored node set-field "${TASK_SLUG}" commit_sha "$(git rev-parse HEAD)"
 ```
 
-Das Framework schreibt ausschließlich ins Task-File (über die CLI, die du im `run:`
-aufrufst) — es führt **nie** git für dich aus. WAS committet wird, WELCHES Feld den
-SHA bekommt und WANN: alles **Policy** in deinem `run:`. Siehe
+The framework writes only to the task-file (via the CLI you call inside `run:`) — it
+**never** runs git for you. WHAT gets committed, WHICH field receives the SHA, and
+WHEN: all **policy** in your `run:`. See
 [`anchored.example-comprehensive.yml`](anchored.example-comprehensive.yml).
 
-## `_lib` — wiederverwendbare Steps (nur `anchored.yml`)
+## `_lib` — reusable steps (`anchored.yml` only)
 
-YAML-Anchors sind **auf dem `anchored.yml`-Pfad erlaubt** (user-authored Config),
-um Steps wiederzuverwenden. Node-Files bleiben no-alias.
+YAML anchors are **allowed on the `anchored.yml` path** (user-authored config) to
+reuse steps. Node-files stay alias-free.
 
 ```yaml
 _lib:
   research: &research
     name: research-best-practices
     use: researcher
-    instructions: "Aktueller Code zuerst (.claude/rules + docs), dann online."
+    instructions: "Current code first (.claude/rules + docs), then online."
 
 epic:
   plan:
     steps:
-      - *research                             # per Alias wiederverwendet
+      - *research                             # reused via alias
       - { name: scaffold }
 ```
 
-## Woher die Defaults kommen
+## Where the defaults come from
 
-`effectiveConfig = merge(default.yml [Framework-Basis], <project>/anchored.yml
-[Deltas])` — einmal beim Bootstrap geladen, als `deps.config` in die Engine
-injiziert. Darum reicht eine minimale User-Datei.
+`effectiveConfig = merge(anchored.default.yml [framework base], <project>/anchored.yml
+[deltas])` — loaded once at bootstrap, injected into the engine as `deps.config`.
+That is why a minimal user file suffices.

@@ -2,20 +2,20 @@
 
 # log
 
-Das **append-only** Notizbuch eines Knotens (v.a. epic-PM-Log). Einträge werden
-nur angehängt, nie mutiert oder entfernt.
+The **append-only** notebook of a node (primarily the epic PM log). Entries are
+only appended, never mutated or removed.
 
-## Was
+## What
 
 - `append-log` (`{ at, kind, note }`); `kind ∈ decision | reorder | learning |
-  blocker` (geschlossenes Enum).
-- Append-only ist eine **Op-Invariante** (in dieser Op erzwungen), nicht in
-  [state](../../state/_state.md) — analog zu append-only Context-Ops.
+  blocker` (closed enum).
+- Append-only is an **op invariant** (enforced in this op), not in
+  [state](../../state/_state.md) — analogous to the append-only context ops.
 
-## Wie
+## How
 
 ```mermaid
 flowchart LR
-    e["append-log({at,kind,note})"] --> tail["ans Log-Ende"]
-    x["mutate/remove"] -. "nicht erlaubt" .-> block["throw"]
+    e["append-log({at,kind,note})"] --> tail["to the end of the log"]
+    x["mutate/remove"] -. "not allowed" .-> block["throw"]
 ```
