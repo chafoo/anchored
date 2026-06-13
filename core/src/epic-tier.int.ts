@@ -4,9 +4,9 @@ import { parse, stringify } from 'yaml'
 import { createParser } from './parser/parse/parse.js'
 import { createRenderer, defaultSchemaUrl } from './parser/render/render.js'
 import { createIo, type IoDeps } from './io/io.js'
-import { createResolveSteps } from './engine/scope/resolve-steps/resolve-steps.js'
-import { EpicNodeSchema } from './schema/tiers/epic.js'
-import { TaskNodeSchema } from './schema/tiers/task.js'
+import { createResolveSteps } from './domain/steps/resolve-steps/resolve-steps.js'
+import { EpicNodeSchema } from './domain/tiers/epic.js'
+import { TaskNodeSchema } from './domain/tiers/task.js'
 import { nextChild as realNextChild } from './ops/scope/children/children.js'
 
 // nested-slugs a1 — a nested slug task-file round-trips losslessly
