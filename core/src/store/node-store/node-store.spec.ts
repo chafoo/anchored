@@ -1,11 +1,11 @@
 import { test, expect } from 'bun:test'
 import { parse as yamlParse, stringify as yamlStringify } from 'yaml'
-import { createNodeOps, type NodeOpsDeps } from './node-ops.js'
+import { createNodeOps, type NodeOpsDeps } from './node-store.js'
 import { phaseDescriptor } from '../../domain/tiers/phase.js'
 import { taskDescriptor, TaskNodeSchema } from '../../domain/tiers/task.js'
 import { epicDescriptor } from '../../domain/tiers/epic.js'
-import { createParser } from '../../parser/parse/parse.js'
-import { createRenderer, defaultSchemaUrl } from '../../parser/render/render.js'
+import { createParser } from '../codec/parse/parse.js'
+import { createRenderer, defaultSchemaUrl } from '../codec/render/render.js'
 
 function makeDeps() {
   const writes: { path: string; content: string }[] = []

@@ -1,4 +1,4 @@
-// ops/node-ops/node-ops.ts — createNodeOps(tierSchema, deps): ONE tier-generic op kernel,
+// store/node-store/node-store.ts — createNodeOps(tierSchema, deps): ONE tier-generic op kernel,
 // parametrised over the tier descriptor (no per-tier duplication). Every mutation
 // is read-modify-write through the injected io.atomicWrite seam (no partial state).
 // The hard invariant (no ac→done without evidence) and forward-only transitions
@@ -18,15 +18,15 @@ import {
   addChild as addChildOf,
   moveChild as moveChildOf,
   type ChildLike,
-} from '../scope/children/children.js'
+} from '../children/children.js'
 import {
   addQuestion as addQuestionOf,
   resolveQuestion as resolveQuestionOf,
   type QuestionInit,
   type QuestionResolution,
   type Question,
-} from '../scope/questions/questions.js'
-import { appendLog as appendLogOf, type LogEntry } from '../scope/log.js'
+} from '../questions/questions.js'
+import { appendLog as appendLogOf, type LogEntry } from '../log.js'
 import { phaseExecutorValues, phaseStatusValues } from '../../domain/tiers/phase.js'
 import { stubStatusValues } from '../../domain/tiers/epic.js'
 

@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { createNodeOps, type NodeOpsDeps, type TierDescriptor } from './node-ops.js'
+import { createNodeOps, type NodeOpsDeps, type TierDescriptor } from './node-store.js'
 import { phaseDescriptor } from '../../domain/tiers/phase.js'
 import { taskDescriptor } from '../../domain/tiers/task.js'
 import { epicDescriptor } from '../../domain/tiers/epic.js'
