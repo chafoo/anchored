@@ -11,8 +11,9 @@ Node effects into `createAnchored` and drives the CLI — that is precisely what
 ## What
 
 - **`index.ts` — `createAnchored(deps) → { cli, ops, config }`:** bootstraps
-  the merged config **exactly once** (base dependency) and wires the substrate
-  in **deps-graph order**: `parser/render/io → ops → cli`. No top-level side
+  the merged config **exactly once** (base dependency) and wires the layers
+  in **deps-graph order**: `store (codec/io → node-store → node-router) →
+  orchestration → cli`. No top-level side
   effect, no classes, no runtime access. Every effect (fs, yaml, merge) comes
   through an injected seam → the whole graph is fakeable (wiring tests inject
   spy sub-factories via `deps.wiring`). There is no engine in the graph: the
@@ -34,15 +35,15 @@ flowchart TB
         init --> ca["createAnchored(deps)"]
     end
     subgraph idx["index.ts · pure factory"]
-        boot["bootstrap.load → config (1×)"] --> ops["buildSubstrate → node-ops + facade"]
-        ops --> cli["createCli (ops + steps-planner injected)"]
+        boot["bootstrap.load → config (1×)"] --> store["buildSubstrate → node-store + node-router"]
+        store --> cli["createCli (ops + steps-planner injected)"]
     end
     ca --> boot
     cli --> run["cli.run(argv) → exit-code"]
 ```
 
-Order is a contract: config first, then substrate → ops → cli; each stage is
-fed the previous one as a dep. `createAnchoredFn` overrides
+Order is a contract: config first, then store → orchestration → cli; each stage
+is fed the previous one as a dep. `createAnchoredFn` overrides
 (`merge`/`createNodeOps`/`createCli`) allow spy injection.
 
 ## Why
@@ -50,5 +51,5 @@ fed the previous one as a dep. `createAnchoredFn` overrides
 Makes the top-level architecture principle concrete: [Factory-Functions](../../.claude/rules/factory-functions.md)
 everywhere, effects behind seams. By isolating **all** `process.*`/`fs`/top-level-await in
 `bin.ts`, `index.ts` stays a deterministic, fully
-fakeable graph — the foundation that lets the [facade](ops/facade.md) carry its
-await glue, while `index.ts` may not.
+fakeable graph — the foundation that lets the [node-router](store/node-router/node-router.md)
+carry its await glue, while `index.ts` may not.

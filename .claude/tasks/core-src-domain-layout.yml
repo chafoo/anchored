@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
 schema_version: 2
 slug: core-src-domain-layout
-status: build
+status: wrap
 created: 2026-06-13
 title: Domain-Oriented Layout for core/src
 context:
@@ -120,6 +120,19 @@ context:
       requireNode→lifecycle/require-node.ts), not an architecture concern. One non-blocking
       stylistic note (no action): runStage is exported from refine.ts rather than a neutral
       commands/stage/run-stage.ts — defensible, optional future tidy.
+
+      - docs-and-final-verification (attempt 1) — verdict: PASS. task-validate: 4/4 ACs accepted,
+      gates re-run independently (lint 0, prettier clean, tsc 0, build 0, bun test 210 pass/0 fail
+      [146 unit + 4 e2e + 60 int]); discovery counts independently confirmed 31 spec / 6 int / 2 e2e
+      == baseline; named behavior suites present in the run (dogfood.e2e, cli.e2e,
+      extensibility-matrix.int, epic-tier.int ×2, archive-reset.int). code-validate: PASS (3/3 rules
+      clean, no build.stop flip); the 3 comment fixes confirmed behavior-neutral via git show (only
+      1-line header relabels; invariant code untouched); remaining dissolved-folder tokens are
+      benign past-tense notes + prose concept-lists, not live source-path examples. Minor
+      non-blocking note: bin.ts lives at src/bin.ts (not src/cli/bin.ts as an AC text aside stated)
+      — evidence verifies regardless. Migration complete: all 5 phases done, core/src now
+      domain/store/orchestration/config/cli, ops/engine/parser/schema/state fully dissolved, public
+      surface byte-stable, 210/210 green end-to-end.
     Implement: >-
       - orchestration-and-dissolve-ops / Orchestration Layer + Dissolve ops/: pure move +
       import-path-rewrite migration, no behavior change. ops/steps-planner →
@@ -152,6 +165,55 @@ context:
       index.ts under cli/, no barrels. No architecture deviation; no build.stop match. Gates green:
       lint 0, prettier clean, tsc 0, build 0 (dist/bin.js+index.js+index.d.ts), bun test 210 pass/0
       fail (146 unit + 4 e2e + 60 int == baseline).
+
+      - docs-and-final-verification / Docs Sync + Final Verification: docs/markdown + 3 cosmetic
+      comments only, no source-logic change. docs/design/file-structure.md rewritten to the new
+      domain/store/orchestration/config/cli tree (grounded against `find core/src`);
+      Mechanism-vs-Policy section repointed; one past-tense "were dissolved" note kept as
+      decision-record. Rule cross-ref sweep (q13, all 6 rule files): colocation-and-naming.md,
+      factory-functions.md, fractal-substrate-integrity.md, test-file-naming.md + CLAUDE.md
+      repointed to new paths; cli-only-transport.md + tooling-quality-gates.md already clean. The 3
+      stale path-comments fixed (invariants.ts:1, resolve-steps.ts:1, bin.ts:54). q14 honored:
+      bunfig.toml/tsconfig globs NOT edited (owned by test-file-naming instance), only verified —
+      discovery counts 31 spec / 6 int / 2 e2e == baseline. Full verification green: lint 0,
+      prettier clean, tsc 0, build 0, bun test 210 pass/0 fail; named e2e/int behavior suites
+      individually confirmed (dogfood 3, lifecycle-e2e/cli.e2e 1, extensibility-matrix 29, epic-tier
+      5+16, archive-reset 5, all 0 fail). No architecture deviation; no build.stop match.
+  wrap:
+    subsections:
+      docs-todo: >-
+        User-Auftrag für /impl-wrap (docu-scan): Nicht nur den Struktur-BAUM in
+        docs/design/file-structure.md festhalten, sondern auch die VERANTWORTUNGS-Erzählung pro
+        src-Ordner — was jede Schicht tut + WARUM so geschnitten. Inhalte:
+
+
+        - domain/ = Definitionsschicht (reines Wissen, keine Effekte): tiers/ (Tier-Definitionen +
+        vereinte Ableitung tierOfNode/makeTierFor), lifecycle/ (stages.ts kanonisches STAGES +
+        transitions/ forward-only Statemaschine), steps/ (Step-Grammar + resolve-steps), invariants/
+        (harte Substrat-Invariante, bewusst im Datenmodell statt in einem Step), config-schema/
+        (Definition der Config-Form).
+
+        - store/ = Mechanismus-Schicht (persist + mutate Herz): node-store/
+        (Read-Modify-Write-Kernel), node-router/ (Slug→Tier→Op-Router, definiert NodeOpsFacade),
+        children/questions/log.ts (Sub-Ops), validate/ (Validierungs-Oberfläche), codec/ (YAML↔Node
+        parse+render), io/ (atomares FS-Schreiben).
+
+        - orchestration/ = Ablauf-Schicht: steps-planner/ (Tier/Stage→Step-Sequenz),
+        worker-dispatch/ (Step→Agent-Ref, config-getriebenes DEFAULT_WORKERS).
+
+        - config/ = Lade-Layer (I/O-nah): bootstrap/merge/init der effectiveConfig (deps.config).
+        Bewusst getrennt von domain/config-schema (Laden vs. Definition).
+
+        - cli/ = Transport-Schicht (reines JSON): cli.ts Dispatch+Envelope,
+        commands/{stage,node,lifecycle}/.
+
+
+        Die drei Trennlinien als WHY dokumentieren: (1) Definition vs. Wiring (config-schema vs.
+        config), (2) Mechanismus (Code, fix) vs. Policy (Template/anchored.yml, swappable), (3)
+        Effekte hinter Seams (spawn/io/cli) → tiefe Schichten effektfrei + pur testbar. Plus die
+        Abhängigkeitsrichtung cli → orchestration/store → domain (forward-only, domain weiß von
+        niemandem). Ggf. als eigener „Layer responsibilities"-Abschnitt in file-structure.md oder
+        als macro-Doc, nicht nur als Baum.
 phases:
   - name: Domain Layer + Unified Tier Derivation
     slug: domain-layer
@@ -510,7 +572,7 @@ phases:
             dist/index.d.ts present."
   - name: Docs Sync + Final Verification
     slug: docs-and-final-verification
-    status: in-progress
+    status: done
     context: "Bring docs/design/file-structure.md (authoritative, describes today's structure) in line
       with the new §4 layout, and update rule cross-references that name old paths (e.g.
       colocation-and-naming.md's examples referencing engine/scope, ops/, parser/;
