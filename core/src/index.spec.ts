@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { createAnchored, tierOfNode, type AnchoredDeps } from './index.js'
-import type { Config } from './schema/config/config.js'
+import type { Config } from './domain/config-schema/config.js'
 
 function baseDeps(over: Partial<AnchoredDeps> = {}): AnchoredDeps {
   return {

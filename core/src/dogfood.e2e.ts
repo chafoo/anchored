@@ -7,7 +7,7 @@ import { parse } from 'yaml'
 import { createAnchored } from './index.js'
 import { createNodeOps } from './ops/node-ops/node-ops.js'
 import { createIo } from './io/io.js'
-import { phaseDescriptor } from './schema/tiers/phase.js'
+import { phaseDescriptor } from './domain/tiers/phase.js'
 
 const DEFAULT_YML = readFileSync(
   new URL('../default-template/anchored.default.yml', import.meta.url),

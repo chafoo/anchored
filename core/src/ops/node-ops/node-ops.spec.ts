@@ -1,9 +1,9 @@
 import { test, expect } from 'bun:test'
 import { parse as yamlParse, stringify as yamlStringify } from 'yaml'
 import { createNodeOps, type NodeOpsDeps } from './node-ops.js'
-import { phaseDescriptor } from '../../schema/tiers/phase.js'
-import { taskDescriptor, TaskNodeSchema } from '../../schema/tiers/task.js'
-import { epicDescriptor } from '../../schema/tiers/epic.js'
+import { phaseDescriptor } from '../../domain/tiers/phase.js'
+import { taskDescriptor, TaskNodeSchema } from '../../domain/tiers/task.js'
+import { epicDescriptor } from '../../domain/tiers/epic.js'
 import { createParser } from '../../parser/parse/parse.js'
 import { createRenderer, defaultSchemaUrl } from '../../parser/render/render.js'
 

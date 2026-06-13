@@ -1,7 +1,7 @@
 // ops/scope/questions.ts — question helpers (pure). add assigns a sequential id +
 // status open; resolve sets answer/source/reasoning + status resolved. An
 // AI-resolved question MUST carry reasoning (the decision-trail invariant).
-import { anchoredError } from '../../../state/invariants/invariants.js'
+import { anchoredError } from '../../../domain/invariants/invariants.js'
 
 export interface Question {
   id: string

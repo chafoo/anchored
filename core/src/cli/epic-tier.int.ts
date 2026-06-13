@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test'
 import { parse, stringify } from 'yaml'
 import { buildCli } from '../index.js'
-import { makeTierFor } from '../ops/tier-derive.js'
+import { makeTierFor } from '../domain/tiers/tiers.js'
 import type { IoDeps } from '../io/io.js'
 
 // in-memory io + a cli wired to it (the real facade + tier-derivation)

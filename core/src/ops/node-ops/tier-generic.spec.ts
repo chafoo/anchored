@@ -1,8 +1,8 @@
 import { test, expect } from 'bun:test'
 import { createNodeOps, type NodeOpsDeps, type TierDescriptor } from './node-ops.js'
-import { phaseDescriptor } from '../../schema/tiers/phase.js'
-import { taskDescriptor } from '../../schema/tiers/task.js'
-import { epicDescriptor } from '../../schema/tiers/epic.js'
+import { phaseDescriptor } from '../../domain/tiers/phase.js'
+import { taskDescriptor } from '../../domain/tiers/task.js'
+import { epicDescriptor } from '../../domain/tiers/epic.js'
 
 function makeDeps() {
   const store = new Map<string, string>()
