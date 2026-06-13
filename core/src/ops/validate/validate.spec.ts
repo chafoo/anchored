@@ -3,6 +3,7 @@
 import { test, expect } from 'bun:test'
 import { createValidator } from './validate.js'
 import type { StepPlan } from '../../cli/commands/steps.js'
+import { STAGES } from '../../domain/lifecycle/stages.js'
 
 test('validate reports every tier×stage + the declared custom fields', () => {
   const config = {
@@ -20,7 +21,7 @@ test('validate reports every tier×stage + the declared custom fields', () => {
   expect(report.valid).toBe(true)
   // all three tiers × four stages present
   for (const tier of ['phase', 'task', 'epic']) {
-    for (const stage of ['plan', 'refine', 'build', 'wrap']) {
+    for (const stage of STAGES) {
       expect(report.tiers[tier]!.stages[stage]).toEqual([
         { name: `${tier}-${stage}-step`, kind: 'run' },
       ])

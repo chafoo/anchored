@@ -2,7 +2,8 @@ import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { createWorkerDispatch } from './worker-dispatch.js'
-import { createResolveSteps } from '../../../engine/scope/resolve-steps/resolve-steps.js'
+import { createResolveSteps } from '../../../domain/steps/resolve-steps/resolve-steps.js'
+import { STAGES } from '../../../domain/lifecycle/stages.js'
 
 const NAMES = [
   'implement',
@@ -52,7 +53,7 @@ test('no default worker-step is left unmapped across all tiers', () => {
   const dispatch = createWorkerDispatch()
   const unmapped: string[] = []
   for (const tier of ['phase', 'task', 'epic']) {
-    for (const stage of ['plan', 'refine', 'build', 'wrap']) {
+    for (const stage of STAGES) {
       for (const step of resolve.resolve(tier, stage)) {
         if (dispatch.isStructural(step.name)) continue
         if (step.run !== undefined || step.each !== undefined) continue

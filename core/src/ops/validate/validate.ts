@@ -6,9 +6,9 @@
 // (possibly very large) yml actually expands to — the verifier the setup-skill runs
 // as its final check.
 import type { StepPlan } from '../../cli/commands/steps.js'
+import { STAGES } from '../../domain/lifecycle/stages.js'
 
 const TIERS = ['phase', 'task', 'epic'] as const
-const STAGES = ['plan', 'refine', 'build', 'wrap'] as const
 
 export interface TierReport {
   fields: string[]

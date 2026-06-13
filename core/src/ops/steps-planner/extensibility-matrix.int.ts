@@ -9,14 +9,14 @@ import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { createStepsPlanner } from './steps-planner.js'
 import { merge } from '../../config/merge.js'
-import { ConfigSchema } from '../../schema/config/config.js'
-import { extendSchemaWithFields } from '../../schema/custom-fields/custom-fields.js'
-import { PhaseNodeSchema } from '../../schema/tiers/phase.js'
-import { TaskNodeSchema } from '../../schema/tiers/task.js'
-import { EpicNodeSchema } from '../../schema/tiers/epic.js'
+import { ConfigSchema } from '../../domain/config-schema/config.js'
+import { extendSchemaWithFields } from '../../domain/config-schema/custom-fields.js'
+import { PhaseNodeSchema } from '../../domain/tiers/phase.js'
+import { TaskNodeSchema } from '../../domain/tiers/task.js'
+import { EpicNodeSchema } from '../../domain/tiers/epic.js'
+import { STAGES } from '../../domain/lifecycle/stages.js'
 
 const TIERS = ['phase', 'task', 'epic'] as const
-const STAGES = ['plan', 'refine', 'build', 'wrap'] as const
 
 describe('custom run-step resolves in every tier × stage', () => {
   for (const tier of TIERS) {
