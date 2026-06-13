@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
 schema_version: 2
 slug: test-file-naming-convention
-status: wrap
+status: done
 created: 2026-06-13
 title: Unified Test-File Naming Convention (.spec / .e2e / .int)
 context:
@@ -286,6 +286,75 @@ context:
       suffixes + spelled-out 'end-to-end'/'integration'). House voice/box-drawing/rule format
       preserved. factory-functions / cli-only-transport / fractal-substrate-integrity all correctly
       N/A for a markdown-only change. 4/4 ACs accepted.
+  wrap:
+    intro: >-
+      ## Wrap-up summary
+
+
+      **Shipped**: 4 of 4 phases done — author-naming-rule (cd077c9), configure-runner-and-build
+      (82739b6), migrate-and-classify (d9bf70c), update-references (6b7e87c). Task-file state
+      committed at wrap (8554c6a).
+
+
+      **Blocked/Deferred**: none.
+
+
+      **ACs with evidence**: 19 of 19 (100% honest completion — 4 + 5 + 6 + 4). Both quality gates
+      (task-validate + code-validate) passed every phase on the first attempt, 0 retries.
+
+
+      **Autonomous decisions (review these)**: 8 questions the AI resolved on its own (source='ai');
+      the user answered the other 4 high-stakes ones (q1 standalone-rule, q2 literal suffixes, q3
+      dissolve e2e/, q5 reclassification-confirm). Grouped by phase:
+
+        author-naming-rule
+        - q6 — Rule defines explicit hard criteria (unit = single faked module; int = multi-module in-memory; e2e = real fs/spawn). Reason: deterministic, reviewable, and the migrate phase depends on them.
+        - q12 — A standalone .claude/rules/ file is the right home (not docs/design or a lint rule). Reason: it's a code-authoring convention like colocation-and-naming.md; orthogonal to the engine mechanism-vs-policy axis.
+
+        configure-runner-and-build
+        - q8 — bunfig.toml [test] block as the declarative suffix-SSOT; thin per-tier npm scripts. Reason: single source of truth beats glob args scattered across scripts.
+        - q9 — Baseline unit count is 38, not the intro's 37 (47 − 9 = 38; skeleton stays a unit spec). Reason: arithmetic once q4 settled. (Later superseded to 31 by the concurrent-task re-grounding — see Outcome.)
+        - q10 — Replace the raw count gate with a name-set / per-suffix-distribution diff. Reason: git mv preserves the total by construction, so count-equality can never catch a misclassification.
+
+        migrate-and-classify
+        - q4 — skeleton stays a unit .spec.ts, relocated out of the dissolving e2e/ to the package root. Reason: it's a wiring smoke (a unit), and q3 dissolved its folder.
+        - q7 — name-set diff gate (the migration-phase echo of q10). Reason: same — strictly stronger than a count.
+        - q11 — skeleton is not left behind in e2e/ (moot once the folder is dissolved). Reason: consistent with q3 + q4.
+
+      **Notable findings during build**:
+
+      - A CONCURRENT `remove-headless-engine-path` task committed to the same repo mid-build
+      (7475747/bf07475/fe6f0d6), deleting 8 engine test files (47→39 .spec.ts) and removing 2 of the
+      9 original migration targets. The build HALTED, surfaced it to the user, re-grounded the plan
+      against the live tree (baseline.md rewritten), and continued — not silently barreled through.
+
+      - Two content-driven reclassifications during migration (the rule's own criteria, per the q5
+      per-file confirm-by-reading): custom-field-e2e AND old e2e/epic-tier.e2e are in-memory
+      fake-io, not real fs → reclassified .e2e→.int. code-validate independently confirmed via an
+      `mkdtemp|node:fs/promises` sweep showing zero real-fs leak into any non-e2e suffix.
+
+
+      **Notable findings from review**: no separate review step is configured in this project's
+      wrap.steps (docu-scan + docs-commit replace it); the per-phase task-validate + code-validate
+      gates are the review surface, all green.
+
+
+      **docu-scan**: no-op — 0 filled, 0 drift, 0 new questions. The changed paths were test-file
+      renames (not macro/medio/micro units), build-config (not documented as a unit), and a
+      governance rule (lives in .claude/rules/, not a non-existent docs/_patterns/ bucket);
+      docs/design/file-structure.md was already synced in the update-references phase. A grep over
+      the mirrored docs tree confirmed zero stale test/suffix/e2e/bunfig references.
+
+
+      **Outcome vs plan**: The goal landed exactly — one convention (.spec=unit / .int=integration /
+      .e2e=end-to-end), authored as a governing rule FIRST, then runner-config to defeat the
+      silent-failure risk (bun's matcher only finds .spec/.test, so the bare suffixes need explicit
+      path-collecting scripts), then the migration, then docs. Two pivots from the original plan,
+      both handled in-flight and documented: (1) the concurrent-task re-grounding shifted the
+      baseline from the planned 47-file / 38-5-4 premise to 39-file / 31-4-4; (2) the per-file reads
+      during migration moved the final distribution to 31 spec / 2 e2e / 6 int (only cli/cli.e2e +
+      dogfood are truly real-fs e2e). Total tests preserved 1:1 at 210 across 39 files, name-set
+      exact, all five quality gates green throughout.
 phases:
   - name: Author the Three-Suffix Naming Rule
     slug: author-naming-rule
