@@ -1,0 +1,439 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
+schema_version: 2
+slug: test-file-naming-convention
+status: refined
+created: 2026-06-13
+title: Unified Test-File Naming Convention (.spec / .e2e / .int)
+context:
+  intro: "core/src/ currently has 47 test files across five competing naming patterns: 37 genuine unit
+    tests as *.spec.ts, plus a mix of *.e2e.spec.ts, hyphenated -e2e.spec.ts, and several files
+    living in core/src/e2e/ that are actually integration tests, not end-to-end. The user wants ONE
+    convention: *.spec.ts for unit, *.e2e.ts for end-to-end, *.int.ts for integration — with the
+    e2e/int suffixes deliberately carrying NO .spec infix. Two hard constraints make this more than
+    a rename: (1) there is no bunfig.toml anywhere, and bun's default matcher only discovers
+    *.spec.ts / *.test.ts — so renamed *.e2e.ts / *.int.ts files would silently stop running and
+    \"pass\" by not executing; (2) tsconfig.build.json excludes only *.spec.ts / *.test.ts, so the
+    new suffixes would leak into the production build. The repo governs conventions through
+    .claude/rules/, and the existing colocation-and-naming.md rule already mandates \"spec next to
+    its subject\" — the new convention must be authored as a governing rule FIRST and reconciled
+    with that placement rule, before any file moves. In-repo references in
+    docs/design/file-structure.md (which lists the e2e/ files by old name and documents the
+    colocation rule) must be brought in line."
+  plan: >-
+    - Verified: 47 test files in core/src match *.{spec,test,e2e,int}.ts today; no bunfig.toml
+    exists in core/ or root; package.json test script is the bare `bun test`.
+
+    - Verified: tsconfig.build.json (core/tsconfig.build.json:3) excludes only `src/**/*.spec.ts`
+    and `src/**/*.test.ts` — new suffixes would leak into the build artifact unless added here.
+
+    - Verified: tsconfig.json (core/tsconfig.json:20) has `include: ["src"]` — typecheck already
+    covers all files regardless of suffix, so renames stay under typecheck by extension (confirm, no
+    change expected).
+
+    - Verified: docs/design/file-structure.md lines 108-122 list the e2e/ folder by OLD filenames
+    AND assert the colocation rule — both the file list and the prose need updating.
+
+    - Classification-by-reading is load-bearing: several files physically in e2e/ (lifecycle-e2e,
+    extensibility-matrix) are integration (in-memory mocks), while e2e/epic-tier.e2e is true e2e
+    (real fs). cli/epic-tier.spec is integration and shares a stem with the true-e2e e2e/epic-tier —
+    the rename must not collide.
+
+    - Ordering is intentional per user instruction: rule-authoring FIRST as the basis, then
+    migration, then runner-config isolated as its own silent-failure concern, then docs.
+
+    - The runner-config phase carries a pre-vs-post test-FILE-COUNT gate: the same number of test
+    files must execute after migration as before — the primary defense against silent drops.
+
+    - plan-check verified discovery against the real tree: exactly 47 *.spec.ts (0 *.test.ts);
+    bunfig.toml absent (core/ + root); core/package.json test script is bare `bun test`; BUILD
+    script is `tsc -p tsconfig.build.json` (NOT `bun build`) — so phase 2's
+    tsconfig.build.json-exclude lever is correct. tsconfig.build.json exclude =
+    ["src/**/*.spec.ts","src/**/*.test.ts"]; tsconfig.json include = ["src"]. All 9 migration
+    targets exist; stem-collision pair are two genuinely distinct files.
+
+    - plan-check verified file-structure.md line refs: e2e/ list at 108-113, colocation prose at
+    30-31 and 119-122, cross-ref anchor at 23-24 — all accurate.
+
+    - plan-check parallelism note: author-naming-rule (.claude/rules/) and
+    configure-runner-and-build (core/ config) touch disjoint paths with no data dependency — could
+    run in parallel. migrate-and-classify + update-references depend on the rule's classification
+    criteria being settled, so must follow phase 1.
+
+    - plan-check flagged the count gate as structurally weak: git mv preserves file count by
+    construction, so a raw count-equality gate can NEVER catch a misclassification — reinforces q7
+    (name-set / suffix-distribution diff). Also a 37-vs-38 arithmetic gap (47 − 9 = 38;
+    skeleton.spec.ts is the off-by-one).
+
+    - rules-check: coverage clean across all 4 phases; no rule additions, no orphans, no conflicts.
+    factory-functions deliberately stays out (a pure spec-move + build-config edit does not exercise
+    the factory pattern; colocation-and-naming already extends factory-functions for the naming
+    half).
+
+    - Refine decisions (consolidated): standalone new rule file (q1) with explicit unit/int/e2e
+    criteria (q6); literal .e2e.ts/.int.ts suffixes + bunfig.toml [test] glob as single source of
+    truth (q2, q8); DISSOLVE core/src/e2e/ — every test colocates by subject (q3), so the build's
+    migrate phase must (a) rename the 9 suffix-changers AND (b) relocate the true cross-cutting e2e
+    suites (dogfood, epic-tier.e2e) next to their nearest subject/entry-point, not just rename them
+    in place; skeleton stays a unit .spec.ts relocated out of e2e/ (q4, q11). Classification
+    confirmed (q5). Migration gate is a name-set / per-suffix-distribution diff (38 .spec.ts + 5
+    .e2e.ts + 4 .int.ts), NOT a raw count (q7, q9, q10) — the migrate phase's count-equality AC
+    should be read as this stronger set/suffix diff.
+  build:
+    plan-check: >-
+      **Verdict: needs-attention** — 0 auto-fixes (discovery confirmed accurate), 3 medium questions
+      added.
+
+
+      Verified against the real tree: 47 *.spec.ts / 0 *.test.ts; no bunfig.toml; test script `bun
+      test`; build script `tsc -p tsconfig.build.json`; tsconfig.build.json exclude
+      `["src/**/*.spec.ts","src/**/*.test.ts"]`; tsconfig.json include `["src"]`. All 9 migration
+      targets + the stem-collision pair exist at cited paths. file-structure.md line refs accurate
+      (e2e list 108-113, prose 30-31 + 119-122, cross-ref 23-24). No fractal / mechanism-vs-policy /
+      CLI-only-transport violations (tooling+convention change, outside engine substrate).
+
+
+      Key finding: the planned post-migration count-equality gate is structurally unable to catch a
+      misclassification — `git mv` preserves the total by construction. Surfaced as a question
+      alongside q7. Plus a 37-vs-38 arithmetic gap (skeleton.spec.ts).
+    rules-check: >-
+      **Verdict: needs-attention** — 0 rule additions, 0 orphans, 0 conflicts, 1 low question added.
+
+
+      Every phase's rules[] already covers the .claude/rules/*.md its affected paths trigger:
+      colocation-and-naming.md on the move/doc phases, tooling-quality-gates.md on the build-config
+      phase. factory-functions.md deliberately stays out — a pure git-mv of specs + a build-config
+      edit does not exercise the factory pattern, and colocation-and-naming.md explicitly extends
+      factory-functions.md for the naming half. No meta-rule governs how rule files are structured,
+      so phase 1's new-rule authoring has no additional coverage gap. One low judgment-call
+      question: is a test-naming convention even rule-material (vs. a docs/design note or lint
+      rule)?
+phases:
+  - name: Author the Three-Suffix Naming Rule
+    slug: author-naming-rule
+    status: pending
+    context: "Write a governing rule in .claude/rules/ for the three-suffix convention (.spec = unit,
+      .e2e = end-to-end, .int = integration), matching the existing rule format: `> Scope:`
+      blockquote, `## The rule` / `## Always` / `## Never` / `## Why` / `## Reference` sections,
+      [[wikilink]] cross-refs. The rule must define what distinguishes unit / integration / e2e (the
+      classification criteria a reader will apply in the migration phase) and reconcile with
+      colocation-and-naming.md's \"spec next to its subject\" placement rule. Whether this is a
+      standalone file or an amendment to colocation-and-naming.md is an open question (q1) — this
+      phase's ACs assume a decision will be made; the classification criteria content is identical
+      either way."
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: the new naming rule directly extends/reconciles with this rule's spec-next-to-subject mandate;
+          placement semantics must not contradict
+    acceptance_criteria:
+      - text: "Rule file authored in .claude/rules/ defining .spec/.e2e/.int with explicit classification
+          criteria distinguishing unit vs integration vs e2e (evidence: file path + the three
+          criteria sections)"
+        status: pending
+      - text: "Rule matches existing format: `> Scope:` blockquote + `## The rule`/`## Always`/`##
+          Never`/`## Why`/`## Reference` + at least one [[wikilink]] (evidence: section headers
+          grep)"
+        status: pending
+      - text: "Rule explicitly states the .e2e.ts/.int.ts suffixes carry no .spec infix and names the
+          bun-discovery dependency this creates (evidence: file:line)"
+        status: pending
+      - text: "Reconciliation with colocation-and-naming.md is stated in-rule (cross-ref + how
+          spec-next-to-subject still holds for all three suffixes) (evidence: file:line)"
+        status: pending
+  - name: Bun Test-Glob + Build-Exclude Config
+    slug: configure-runner-and-build
+    status: pending
+    context: Isolate the silent-failure risk as its own phase, done BEFORE the file moves so discovery
+      is in place when renames land. Add explicit bun test config (bunfig.toml [test] or equivalent)
+      covering *.spec.ts, *.e2e.ts, *.int.ts. Split npm scripts into test:unit / test:e2e / test:int
+      plus an aggregate `test` that runs all three. Extend tsconfig.build.json exclude globs to
+      src/**/*.e2e.ts and src/**/*.int.ts so the new suffixes stay out of the build artifact.
+      Capture a pre-migration test-file-count baseline now so the post-migration gate in the
+      migration phase can compare against it.
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: this phase edits bunfig + npm scripts + tsconfig.build.json; all five gates
+          (lint/format/typecheck/test/build) must stay green and stay wired as npm scripts
+    acceptance_criteria:
+      - text: "Bun test config added (bunfig.toml [test] or equivalent) explicitly matching *.spec.ts,
+          *.e2e.ts, *.int.ts (evidence: file:line)"
+        status: pending
+      - text: "npm scripts split into test:unit, test:e2e, test:int with an aggregate `test` running all
+          three (evidence: package.json scripts block)"
+        status: pending
+      - text: "tsconfig.build.json exclude extended to include `src/**/*.e2e.ts` and `src/**/*.int.ts`
+          (evidence: core/tsconfig.build.json:3 diff)"
+        status: pending
+      - text: "Pre-migration baseline test-file count captured and recorded as evidence (command output:
+          count of executed test files before any rename)"
+        status: pending
+      - text: "All five quality gates green with the config in place and tests still pointing at current
+          filenames (evidence: gate command output)"
+        status: pending
+  - name: Migrate + Classify Test Files via git mv
+    slug: migrate-and-classify
+    status: pending
+    context: "Apply the rule's classification criteria by reading, then git mv each non-conforming file.
+      Confirmed targets from discovery: cli/cli.e2e.spec.ts, cli/commands/lifecycle.e2e.spec.ts,
+      e2e/epic-tier.e2e.spec.ts, e2e/e2e.dogfood.spec.ts, cli/custom-field-e2e.spec.ts -> *.e2e.ts.
+      e2e/lifecycle-e2e.spec.ts, e2e/extensibility-matrix.spec.ts, cli/epic-tier.spec.ts,
+      engine/integration.spec.ts -> *.int.ts. The 37 plain *.spec.ts unit tests stay. Watch the stem
+      collision: cli/epic-tier (-> .int) vs e2e/epic-tier.e2e (-> true .e2e) are different tiers -
+      keep both distinct. skeleton.spec.ts (trivial 1+1 smoke in e2e/) and the fate of the e2e/
+      folder itself are open questions (q3, q4); the per-file .int reclassifications are open for
+      user confirmation (q5). Every git mv MUST preserve spec-next-to-subject colocation per
+      colocation-and-naming.md. The post-migration test-file-count must equal the baseline from the
+      previous phase - nothing silently dropped."
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: every git mv must preserve spec-next-to-subject colocation; renamed files stay in their
+          subject's folder, not relocated
+      - path: .claude/rules/tooling-quality-gates.md
+        why: after renames the full test suite must still run green under the new glob config; the
+          file-count gate is the evidence-honesty check
+    acceptance_criteria:
+      - text: "All e2e-classified files renamed to *.e2e.ts via git mv preserving folder/colocation
+          (evidence: git mv commands + git status showing renames)"
+        status: pending
+      - text: "All integration-classified files renamed to *.int.ts via git mv (evidence: git mv commands)"
+        status: pending
+      - text: "The 37 genuine unit *.spec.ts files left unchanged (evidence: count unchanged)"
+        status: pending
+      - text: "Stem-collision pair (cli/epic-tier -> .int vs e2e/epic-tier -> .e2e) confirmed distinct, no
+          overwrite (evidence: both paths present post-move)"
+        status: pending
+      - text: "Post-migration executed-test-file count equals the pre-migration baseline (evidence: count
+          diff = 0)"
+        status: pending
+      - text: "All five quality gates green after migration (evidence: gate command output)"
+        status: pending
+  - name: Update In-Repo References + Docs
+    slug: update-references
+    status: pending
+    context: "Bring docs in line with the corrected filenames and the three-suffix convention.
+      docs/design/file-structure.md: the e2e/ file list (lines ~108-113) uses OLD names, and the
+      colocation prose (lines ~119-122) and the earlier \"each *.ts has its *.spec.ts next to it\"
+      (lines ~30-31) must reflect the three suffixes. colocation-and-naming.md's spec-placement
+      lines (~23-24) must cross-reference the new rule. No CI workflows exist; no other in-repo
+      references found in discovery."
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: this phase edits the spec-placement section of this rule to cross-ref the new naming rule; keep
+          both rules internally consistent
+    acceptance_criteria:
+      - text: "docs/design/file-structure.md e2e/ file list updated to corrected filenames matching what
+          landed in migration (evidence: file:line diff)"
+        status: pending
+      - text: "docs/design/file-structure.md colocation prose (the *.spec.ts mentions ~lines 30-31 and
+          119-122) updated to describe the three-suffix convention (evidence: file:line)"
+        status: pending
+      - text: "colocation-and-naming.md spec-placement section cross-references the new naming rule
+          (evidence: file:line)"
+        status: pending
+      - text: "No remaining stale references to old test filenames in docs/ (evidence: grep for old names
+          returns empty)"
+        status: pending
+questions:
+  - id: q1
+    text: Should the three-suffix convention be a standalone new rule file in .claude/rules/, or an
+      amendment to the existing colocation-and-naming.md? (lean standalone file that
+      [[wikilink]]-cross-refs colocation-and-naming.md — keeps placement vs. naming as separate
+      concerns, matches the one-concern-per-rule pattern)
+    priority: high
+    origin: plan-agent
+    phase: author-naming-rule
+    status: resolved
+    answer: Standalone new rule file in .claude/rules/ (e.g. test-file-naming.md) that
+      [[wikilink]]-cross-refs colocation-and-naming.md. Keeps placement and naming as separate
+      one-concern-per-rule files.
+    source: user
+    created_at: 2026-06-13T13:17:26.514Z
+    resolved_at: 2026-06-13T13:48:12.971Z
+  - id: q2
+    text: Confirm honoring the literal `.e2e.ts` / `.int.ts` suffixes (no .spec infix) — this is what
+      forces the bunfig.toml dependency, since bun's default matcher only finds *.spec.ts/*.test.ts;
+      the alternative `.e2e.spec.ts` anchor would need no runner config. (lean honor the literal
+      choice and pay the bunfig cost, per your stated preference)
+    priority: high
+    origin: plan-agent
+    status: resolved
+    answer: Honor the literal .e2e.ts / .int.ts suffixes (no .spec infix). The bunfig.toml glob config
+      is mandatory and is covered by the configure-runner-and-build phase.
+    source: user
+    created_at: 2026-06-13T13:17:29.163Z
+    resolved_at: 2026-06-13T13:48:14.902Z
+  - id: q3
+    text: What is the fate of the core/src/e2e/ folder? Keep it as the cross-cutting home for tests with
+      no single subject module (as docs currently describe it), or dissolve it and colocate
+      everything by subject? (lean keep it — the true e2e suites genuinely have no single subject;
+      only the misclassified .int files leave by reclassification)
+    priority: high
+    origin: plan-agent
+    phase: migrate-and-classify
+    status: resolved
+    answer: Dissolve the core/src/e2e/ folder and colocate every test next to its subject. The true
+      cross-cutting e2e suites (dogfood, epic-tier.e2e) get placed next to their nearest
+      subject/entry-point module during migration; the misclassified .int files colocate with their
+      subjects too.
+    source: user
+    created_at: 2026-06-13T13:17:31.975Z
+    resolved_at: 2026-06-13T13:48:18.694Z
+  - id: q4
+    text: What happens to e2e/skeleton.spec.ts (trivial 1+1 smoke misplaced in e2e/)? Keep as *.spec.ts
+      in place, move it out of e2e/ to a more fitting home, or delete it as redundant? (lean keep as
+      .spec.ts but move out of e2e/ since it is a unit smoke, not e2e)
+    priority: medium
+    origin: plan-agent
+    phase: migrate-and-classify
+    status: resolved
+    answer: Keep skeleton as a unit .spec.ts but relocate it out of the dissolving e2e/ folder (e.g.
+      core/src/skeleton.spec.ts at the package root, or fold into the existing index.spec.ts wiring
+      smoke). It is a package-wiring smoke, not e2e.
+    source: ai
+    reasoning: "Follows directly from the user's q3 decision to dissolve e2e/: skeleton cannot stay in
+      that folder. It is a trivial 1+1/wiring smoke (a unit, not e2e), so it keeps .spec.ts and
+      moves to a unit home. User's own lean on q4 was \"keep as .spec.ts, move out of e2e/\"."
+    created_at: 2026-06-13T13:17:34.314Z
+    resolved_at: 2026-06-13T13:48:23.726Z
+  - id: q5
+    text: Do you agree with the per-file integration reclassifications — extensibility-matrix,
+      lifecycle-e2e, cli/epic-tier, engine/integration all become *.int.ts (in-memory mocks, no real
+      fs/spawn), while only cli.e2e, lifecycle.e2e, e2e/epic-tier.e2e, dogfood, custom-field-e2e are
+      true *.e2e.ts? (lean yes — matches the read-by-discovery classification)
+    priority: high
+    origin: plan-agent
+    phase: migrate-and-classify
+    status: resolved
+    answer: "Yes — adopt the read-by-discovery classification: extensibility-matrix, lifecycle-e2e,
+      cli/epic-tier, engine/integration become .int.ts (full chain but in-memory mocks); cli.e2e,
+      lifecycle.e2e, e2e/epic-tier.e2e, dogfood, custom-field-e2e are true .e2e.ts (real fs/spawn).
+      The build re-reads each file to confirm before renaming."
+    source: user
+    created_at: 2026-06-13T13:17:37.611Z
+    resolved_at: 2026-06-13T13:48:20.029Z
+  - id: q6
+    text: Should the rule define explicit hard criteria for unit vs integration vs e2e (e.g. 'e2e = real
+      fs + real spawn', 'int = full chain but in-memory mocks', 'unit = single subject module')?
+      (lean yes — concrete criteria make future classification deterministic and reviewable)
+    priority: medium
+    origin: plan-agent
+    phase: author-naming-rule
+    status: resolved
+    answer: "Yes — the rule defines explicit hard criteria: unit = single subject module in isolation
+      (deps mocked); int = multiple modules wired together but in-memory (no real fs/spawn); e2e =
+      real filesystem and/or real process spawn, full lifecycle. These criteria are what the
+      migration phase applies per file."
+    source: ai
+    reasoning: Concrete criteria make classification deterministic and reviewable, and the migrate phase
+      explicitly depends on them to classify the ambiguous files. Matches the user's lean and the
+      discovery's own real-fs-vs-in-memory distinction.
+    created_at: 2026-06-13T13:17:40.028Z
+    resolved_at: 2026-06-13T13:48:27.023Z
+  - id: q7
+    text: "For the test-file-count gate: is a count-equality check (same number of files execute
+      pre/post) sufficient, or do you also want a per-file name-set diff to prove WHICH files run
+      (catching a same-count coincidental swap)? (lean name-set diff — strictly stronger, catches
+      silent same-count drift)"
+    priority: medium
+    origin: plan-agent
+    phase: migrate-and-classify
+    status: resolved
+    answer: Use a per-file name-set / suffix-distribution diff, not a raw count. Capture the full set of
+      executed test-file paths pre-migration and the expected post-migration set, and assert they
+      match exactly (each rename maps old->new). The raw count is insufficient.
+    source: ai
+    reasoning: plan-check proved a raw count-equality gate is structurally unable to catch a
+      misclassification because git mv preserves the total by construction. A name-set diff is
+      strictly stronger and the only thing that actually proves the right files run under the new
+      globs.
+    created_at: 2026-06-13T13:17:42.855Z
+    resolved_at: 2026-06-13T13:48:30.361Z
+  - id: q8
+    text: Should bun test config live in a new core/bunfig.toml, or is an equivalent inline mechanism
+      (npm script glob args) preferred? (lean core/bunfig.toml [test] block — declarative, single
+      source for discovery)
+    priority: low
+    origin: plan-agent
+    phase: configure-runner-and-build
+    status: resolved
+    answer: Use a new core/bunfig.toml with a [test] block declaring the glob set (*.spec.ts, *.e2e.ts,
+      *.int.ts). The per-tier npm scripts (test:unit/test:e2e/test:int) pass narrower path filters;
+      the aggregate `test` runs all.
+    source: ai
+    reasoning: A declarative bunfig.toml is a single source of truth for discovery, cleaner than
+      scattering glob args across npm scripts. Matches the user's lean and keeps the per-tier
+      scripts thin.
+    created_at: 2026-06-13T13:17:44.479Z
+    resolved_at: 2026-06-13T13:48:33.596Z
+  - id: q9
+    text: The intro says 37 unit *.spec.ts stay, but 47 total minus the 9 named migration targets leaves
+      38 — the difference is e2e/skeleton.spec.ts (whose fate q4 already raises). Should the
+      baseline-count gate in configure-runner-and-build expect 38 unit files (skeleton staying) or
+      37 (skeleton also migrated/removed)?
+    priority: medium
+    origin: plan-check
+    phase: configure-runner-and-build
+    status: resolved
+    answer: Baseline expects 38 unit .spec.ts files, not 37. 47 total minus 9 reclassified (5 e2e + 4
+      int) = 38, because skeleton stays a unit .spec.ts (just relocated out of e2e/, per q4). The
+      intro's "37" is an off-by-one; treat 38 as the correct unit count.
+    source: ai
+    reasoning: "The arithmetic is unambiguous once q4 is settled: skeleton remains a unit spec, so only
+      the 9 named targets change suffix. 47 - 9 = 38 unit files. The plan intro's \"37\" predates
+      the skeleton decision."
+    created_at: 2026-06-13T13:43:50.928Z
+    resolved_at: 2026-06-13T13:48:37.351Z
+  - id: q10
+    text: Phase configure-runner-and-build plans a post-migration file-COUNT baseline gate, but git mv
+      preserves count by construction (a rename never changes the file total), so the gate cannot
+      catch a misclassification. Should the gate instead diff the name-set / suffix-distribution
+      (the q7 concern) rather than the raw count?
+    priority: medium
+    origin: plan-check
+    phase: configure-runner-and-build
+    status: resolved
+    answer: "Replace the raw count-equality gate with the name-set / suffix-distribution diff from q7.
+      The migration AC asserts the exact old-path-set maps to the exact new-path-set (and the
+      per-suffix counts: 38 .spec.ts, 5 .e2e.ts, 4 .int.ts), not just total == total."
+    source: ai
+    reasoning: Same root cause as q7 — git mv preserves the total, so count-equality is a no-op gate.
+      The name-set + per-suffix-distribution diff is what actually proves nothing was misclassified
+      or silently dropped.
+    created_at: 2026-06-13T13:43:53.259Z
+    resolved_at: 2026-06-13T13:48:41.118Z
+  - id: q11
+    text: Phase migrate-and-classify lists e2e/skeleton.spec.ts among neither the e2e nor the int
+      targets, implying it silently stays a unit *.spec.ts under core/src/e2e/. Is leaving a
+      'package skeleton / wiring smoke' file in the e2e/ folder as a .spec.ts the intended outcome,
+      or should the e2e/ folder's fate (q3) decide where it lands?
+    priority: medium
+    origin: plan-check
+    phase: migrate-and-classify
+    status: resolved
+    answer: skeleton does not stay in e2e/ — the e2e/ folder is being dissolved (q3). It relocates out
+      as a unit .spec.ts (per q4). No file is left behind in a folder that no longer exists.
+    source: ai
+    reasoning: Resolved consistently with q3 (dissolve e2e/) and q4 (skeleton stays a relocated unit
+      spec). The plan-check concern about silently leaving skeleton in e2e/ is moot once the folder
+      is dissolved.
+    created_at: 2026-06-13T13:43:56.558Z
+    resolved_at: 2026-06-13T13:48:44.496Z
+  - id: q12
+    text: Phase author-naming-rule introduces the test-file naming convention (.spec/.e2e/.int) as a new
+      .claude/rules/ rule — is a project coding convention the right home for it, or does
+      fractal-substrate-integrity.md's mechanism-vs-policy split argue it belongs elsewhere (e.g. a
+      docs/design note or a lint rule) rather than a standalone rule file?
+    priority: low
+    origin: rules-check
+    phase: author-naming-rule
+    status: resolved
+    answer: "A standalone .claude/rules/ rule is the right home — settled by q1. A project test-naming
+      convention is legitimate rule-material: it is a code-authoring convention (like
+      colocation-and-naming.md itself), distinct from the engine mechanism-vs-policy axis that
+      fractal-substrate-integrity.md governs. No conflict."
+    source: ai
+    reasoning: The user already chose a standalone rule in q1. fractal-substrate-integrity.md's
+      mechanism-vs-policy split is about engine/substrate/config behavior, not about whether a code
+      convention belongs in .claude/rules/ — colocation-and-naming.md sets the precedent that
+      authoring conventions live there. Category match, no contradiction.
+    created_at: 2026-06-13T13:43:58.611Z
+    resolved_at: 2026-06-13T13:48:48.009Z

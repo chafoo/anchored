@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
 schema_version: 2
 slug: colocation-migration
-status: build
+status: done
 created: 2026-06-13
 title: Colocation + file-naming migration (core/src)
 context:
@@ -57,6 +57,123 @@ context:
       barrels; `find core/src -name index.ts` → ONLY src/index.ts, so the central-modules warn is
       now RESOLVED). 2 non-blocking cosmetic warns for phase-5 sweep: stale header-path comments in
       node/node.ts:1 ("cli/commands/node.ts") + plan/plan.ts:1 ("cli/commands/plan.ts").
+
+      - e2e-bundle-and-docs (commit d4e70c1, FINAL phase): task-validate PASS (3/3 ACs honest — 5
+      suites in core/src/e2e/, index.spec.ts stayed beside index.ts, +1 depth imports/fixture-URLs
+      correct, file-structure.md cross-refs colocation-and-naming.md + lists e2e/ bundle, gates
+      green). code-validate PASS (0 block / 0 warn) — WHOLE-TASK cleanliness verified: `find
+      core/src -name index.ts` → ONLY core/src/index.ts, `grep "export * from" core/src` → zero
+      barrels across the entire migrated tree; 2 phase-4 header warns swept. colocation-migration
+      complete: 5/5 phases done, bun test 274 pass/2 skip/0 fail held at baseline through all 5
+      commits (96e4b8c, c0a02bb, 91d5d57, c6307d2, d4e70c1), zero behavior change end-to-end.
+  wrap:
+    intro: >-
+      ## Wrap-up summary
+
+
+      **Shipped**: 5 of 5 phases done. Pure structural refactor applying
+      `.claude/rules/colocation-and-naming.md` across all of `core/src` — modules-with-companions
+      foldered, folder-mains renamed after their folder, e2e suites bundled, design doc synced. 5
+      commits: 96e4b8c (root io/+spawn/), c0a02bb (27-file leaf folders), 91d5d57 (central modules),
+      c6307d2 (cli naming), d4e70c1 (e2e bundle + docs).
+
+
+      **Blocked/Deferred**: none. All phases terminal=done.
+
+
+      **ACs with evidence**: 22 of 22 (100% honest completion). Every AC carries concrete evidence
+      (git-mv rename ratios, file:line import retargets, exact gate numbers).
+
+
+      **Zero behavior change, proven**: `bun test` held at exactly 274 pass / 2 skip / 0 fail
+      through every single commit. typecheck/lint/prettier green at each phase. End-state
+      cleanliness: `find core/src -name index.ts` → only the package-root `core/src/index.ts`; zero
+      barrels across the migrated tree. 13/13 build-time gate runs PASS (per-phase task-validate +
+      code-validate).
+
+
+      **Autonomous decisions (review these)**: 4 decisions, all `source='ai'` (resolved during
+      refine on the high-together walk — you delegated the medium/low calls).
+
+        leaf-folders
+        - Leave ops/scope/log.ts flat, fold questions-log.spec.ts into questions/ — log.ts has no own spec companion, so the "single file stays flat" rule applies; the spec exercises questions+log together so it colocates with its primary subject.
+
+        cli-and-naming
+        - Rename root epic-tier.spec.ts → epic-tier.e2e.spec.ts (cli one stays) — the root variant is cross-cutting (parser/render/io/schema/engine), the .e2e suffix disambiguates it; the cli variant is a genuine buildCli/makeTierFor subject spec.
+        - Just retarget the 3 fakeFacade importers, don't extract a shared fixture — keeps the rename behavior-preserving; the test-helper-in-a-spec smell is real but orthogonal to colocation, flagged as a separate follow-up.
+
+        e2e-bundle-and-docs
+        - Bundle the 5 cross-cutting suites under core/src/e2e/ (index.spec.ts stays beside index.ts) — these have no single subject so the colocation mandate doesn't apply; a dedicated e2e/ dir cuts src-root clutter and signals their cross-cutting nature.
+
+      **Notable findings during build**: self-caught + fixed before each commit by the test gate — a
+      forgotten `/invariants` folder segment + 2 readFileSync fixture-URL depths (leaf-folders), a
+      runtime `new URL` depth ENOENT in steps-planner.spec + prettier reflow on 3 loop files
+      (central-modules). Every red gate was fixed before the phase landed; no phase committed dirty.
+
+
+      **Notable findings from review** (post-build, code-reviewer over the full diff — see review
+      subsection for detail): the migrated work is clean (no wrong-module imports, all 14 runtime
+      fixture paths resolve, no new barrels). Three items surfaced, none a defect in scoped work:
+
+      - engine/scope/worker-dispatch left flat — DELIBERATE deferral; architecture-cleanup A6
+      relocates it to ops/scope/ and colocates there (the leaf-folders AC documents this).
+
+      - cli/commands/stage.spec.ts + cli/commands/lifecycle.e2e.spec.ts are two specs whose real
+      subject is the cli surface / are cross-cutting — both should eventually sit at cli/ and e2e/
+      respectively, but neither was in the repo-analysis §3 migration table (scope gap, not a
+      defect). Their existence makes the file-structure.md:119-122 "only specs not next to a subject
+      are in e2e/" claim slightly overstated.
+
+
+      **Recommended follow-up**: fold into architecture-cleanup (it already owns the worker-dispatch
+      relocation + touches this cli area) — move stage.spec.ts → cli/, lifecycle.e2e.spec.ts → e2e/,
+      then reconcile the file-structure.md "only" claim. Small, behavior-preserving, same class of
+      work.
+
+
+      **Outcome vs plan**: shipped exactly as planned — bottom-up phasing (root → leaf → central →
+      cli → e2e+docs) kept each step small and the test count pinned. The one mid-flight discovery
+      worth noting: the file-structure.md doc was stale far beyond colocation (predated bin.ts,
+      engine-ops, facade, loop-workflow, steps-planner, tier-derive, the archive/reset/steps
+      commands), so phase 5 rewrote the whole core/ tree block against `find` output rather than
+      doing a surface rename — a bigger doc delta than the AC implied, but the correct call.
+    subsections:
+      review: >-
+        Review over the cumulative diff (96e4b8c~1..d4e70c1, code-reviewer agent). Pure structural
+        refactor — 13 prior PASS gate runs corroborated. Findings:
+
+
+        CLEAN (verified): no bare index.ts besides package-root core/src/index.ts; all 14 runtime
+        `new URL`/readFileSync fixture paths resolve correctly post-move; no import resolves to a
+        wrong module (tsc-clean + manual path check); zero new barrels; doc paths match disk for
+        everything explicitly listed.
+
+
+        3 findings — all SCOPE-gap / deliberate-deferral, none a defect in the work that was in
+        scope:
+
+        - [deliberate, not a defect] engine/scope/worker-dispatch.{ts,spec.ts} left flat (not
+        foldered). This was EXPLICITLY deferred — the leaf-folders AC notes worker-dispatch is owned
+        by architecture-cleanup A6, which MOVES it to ops/scope/ AND colocates it there; foldering
+        it in engine/scope/ now would be throwaway work. Reviewer lacked that context.
+
+        - [scope gap, follow-up] cli/commands/stage.spec.ts is not next to its real subject
+        (cli/cli.ts — it imports createCli from ../cli.js + fakeFacade from ../cli.spec.js). It
+        tests the cli surface, not a commands/ module. Was NOT in the repo-analysis §3 migration
+        table, so out of this task's scope.
+
+        - [scope gap, follow-up] cli/commands/lifecycle.e2e.spec.ts is a cross-cutting e2e spec
+        (drives archive/reset through buildCli) sitting in commands/ rather than e2e/. The q1 bundle
+        covered only the root-level cross-cutting suites; this cli/commands/ one wasn't enumerated.
+
+
+        DOC ACCURACY (worth a follow-up): the phase-5 doc rewrite (file-structure.md:119-122) states
+        "the ONLY specs not next to a single subject are the cross-cutting suites in e2e/". The two
+        stragglers above are genuine counterexamples, so the "only" claim slightly overstates
+        current reality. Recommend folding into architecture-cleanup (which already owns the
+        worker-dispatch relocation + touches this cli area): move stage.spec.ts → cli/,
+        lifecycle.e2e.spec.ts → e2e/, then the doc claim becomes true. Deliberately NOT fixed during
+        wrap (implementation is build's job, not wrap's).
 phases:
   - name: Root effect-modules into own folders
     slug: root-modules
@@ -353,7 +470,7 @@ phases:
             moved file, so the depth-+1 runtime hazard didn't apply; no prettier reflow this phase.
   - name: E2E bundle + design-spec sync
     slug: e2e-bundle-and-docs
-    status: in-progress
+    status: done
     context: "Final tidy: gather the cross-cutting suites that have no single subject, and pull the
       authoritative file-structure design doc onto the new convention so the map matches the tree."
     rules:
@@ -365,14 +482,53 @@ phases:
       - text: "Per the open question: cross-cutting suites (`e2e.dogfood`, `lifecycle-e2e`,
           `extensibility-matrix`, `skeleton`, root `epic-tier`) bundled under `core/src/e2e/` (or
           left at root if declined); `index.spec.ts` stays beside `index.ts`. Imports retargeted."
-        status: pending
+        status: done
+        evidence:
+          - Globbed core/src/*.spec.ts first — 6 root specs found; 5 movable (e2e.dogfood,
+            epic-tier.e2e, extensibility-matrix, lifecycle-e2e, skeleton), index.spec.ts left beside
+            index.ts.
+          - "git mv all 5 → core/src/e2e/ (renames recorded in d4e70c1: e2e.dogfood 95%,
+            epic-tier.e2e 88%, extensibility-matrix 88%, lifecycle-e2e 97%, skeleton 100%); ls
+            core/src/*.spec.ts now returns only index.spec.ts."
+          - "+1 ../ depth on every module import: e2e.dogfood.spec.ts:7-11,
+            epic-tier.e2e.spec.ts:4-12, extensibility-matrix.spec.ts:10-16,
+            lifecycle-e2e.spec.ts:7-8 — grep confirms zero stale './' module imports."
+          - "Runtime fixture URLs +1 depth: e2e.dogfood:14 ../../default-template/,
+            extensibility-matrix:94 ../../../plugin/ + :98 ../../default-template/,
+            epic-tier.e2e:104 ../../default-template/ — verified by the 274 passing tests reading
+            those files at runtime."
+          - Header comments updated (lifecycle-e2e:1, extensibility-matrix:1 → 'e2e/' prefix);
+            skeleton.spec.ts had no relative imports/URLs, no rewrite needed.
       - text: "`docs/design/file-structure.md` updated to the colocation + folder-name convention (replace
           the stale `index.ts` / flat `io.ts`/`spawn.ts` entries) and cross-reference
           `colocation-and-naming.md`."
-        status: pending
+        status: done
+        evidence:
+          - docs/design/file-structure.md header gained a binding 'Colocation + folder-naming
+            convention' note cross-referencing .claude/rules/colocation-and-naming.md (folder-named
+            main file, no folder-internal index.ts, no barrels, single package-root index.ts).
+          - "core/ tree block fully rewritten from the stale index.ts/flat-io.ts/spawn.ts form to
+            the real post-migration tree: io/io.ts, spawn/spawn.ts, cli/cli.ts,
+            parser/parse/parse.ts, parser/render/render.ts, schema/step/step.ts,
+            state/transitions/transitions.ts, ops/node-ops/node-ops.ts, cli/commands/plan/plan.ts,
+            cli/commands/node/node.ts, + the new e2e/ directory — verified against `find src -name
+            '*.ts' -not -name '*.spec.ts'`."
+          - Doc captures the e2e/ exception note + index.spec.ts-stays-beside-index.ts note;
+            Mechanism-vs-Policy footer updated io/ → io/io.ts. 106 lines changed in d4e70c1. The doc
+            was stale beyond colocation (predated bin.ts, engine-ops, facade, loop-workflow,
+            steps-planner, etc.) — rewritten against real tree, not just renamed.
       - text: "Final full green: `bun test` + eslint + `prettier --check` + `tsc --noEmit`; grep proves zero
           non-root `index.ts` and zero barrels under `core/src`; zero behavior change end-to-end."
-        status: pending
+        status: done
+        evidence:
+          - "Gates GREEN: typecheck (tsc --noEmit) clean; lint (eslint .) clean; format (prettier
+            --check .) 'All matched files use Prettier code style!' (no print-width reflow)."
+          - bun test → 274 pass / 2 skip / 0 fail (915 expect(), 47 files) — exactly the baseline,
+            zero behavior change end-to-end.
+          - "Cleanliness greps: `find core/src -name index.ts` → ONLY core/src/index.ts
+            (package-root entry); `grep -rn 'export * from' core/src` → no matches (zero barrels)."
+          - "Committed d4e70c1: 9 files changed, 164 insertions / 76 deletions, 5 renames recorded.
+            Also swept the 2 phase-4 cosmetic warns (node/node.ts:1 + plan/plan.ts:1 header paths)."
 questions:
   - id: q1
     text: Should the cross-cutting suites that have no single subject (e2e.dogfood, lifecycle-e2e,

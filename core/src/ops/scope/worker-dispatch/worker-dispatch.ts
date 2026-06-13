@@ -1,4 +1,4 @@
-// engine/scope/worker-dispatch.ts — maps a built-in step NAME to its worker ref.
+// ops/scope/worker-dispatch/worker-dispatch.ts — maps a built-in step NAME to its worker ref.
 // Policy/data, injectable: the engine never hardcodes step names; this is the
 // single place that knows them. Workers themselves are plugin agents (Task
 // plugin-agents); here it is only the name→ref mapping.
@@ -9,9 +9,6 @@ export interface WorkerRef {
 }
 
 // step name → worker, per the default template + the agent roster (file-structure).
-// NOTE: 'rules-scan' (task.plan) maps to a plan-rules-scan agent that the agent
-// roster must add (it currently lists refine-rules-check only) — surfaced for
-// Task plugin-agents.
 const DEFAULT_WORKERS: Record<string, WorkerRef> = {
   implement: { type: 'agent', ref: 'build-implement' },
   'task-validate': { type: 'agent', ref: 'build-task-validate' },

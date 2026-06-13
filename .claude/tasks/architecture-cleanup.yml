@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
 schema_version: 2
 slug: architecture-cleanup
-status: refined
+status: build
 created: 2026-06-13
 title: Architecture cleanup — mechanism/policy placement + invariant centralization
 context:
@@ -65,10 +65,55 @@ context:
     rules-check: colocation-and-naming.md added to worker-dispatch-relocate (the move lands a
     .ts+.spec pair into a new ops/scope/ folder → must colocate). tooling-quality-gates is task-wide
     (every phase keeps gates green); factory-functions does not bind a pure relocate.
+
+    Updated 2026-06-13: added phase `colocation-stragglers` (4 ACs) — folds the 3 follow-ups from
+    the colocation-migration wrap review into this task (it already owns the worker-dispatch
+    relocation + touches the cli area): move cli/commands/stage.spec.ts → cli/, move
+    cli/commands/lifecycle.e2e.spec.ts → e2e/ (renamed to avoid colliding with the existing
+    lifecycle-e2e.spec.ts), and reconcile the file-structure.md:119-122 "only specs not next to a
+    subject are in e2e/" claim. Status flipped refined → drafted so /impl-refine re-validates the
+    enlarged plan.
+
+    --- refine #2 (2026-06-13, post-colocation-migration) ---
+
+    plan-check: the 5 colocation-migration commits moved three files cited by the earlier A6/A7
+    refine notes into colocation folders — path refs drift accordingly (line numbers held, each just
+    gained a folder level):
+
+    - A7: `ops/node-ops.ts` → `ops/node-ops/node-ops.ts` (inline guard :327, error name :329, hint
+    :332). invariant-centralize context patched. Note: state/invariants/invariants.ts ALREADY
+    exports assertAcDoneHasEvidence (called at node-ops.ts:240 + :439 for phase ACs) — A7's epic-DoD
+    helper is the epic-tier SIBLING of that, not net-new infra.
+
+    - A6: sole consumer `ops/steps-planner.ts` → `ops/steps-planner/steps-planner.ts` (import :8,
+    createWorkerDispatch() :19, resolveWorker :45). worker-dispatch.ts itself is STILL at
+    engine/scope/ (correct — that's the move-FROM). Target ops/scope/ now EXISTS (log.ts, children/,
+    questions/), so A6's destination is real. A6 import-depth after the move: consumer's import
+    becomes `../scope/worker-dispatch.js` (currently `../../engine/scope/worker-dispatch.js`) —
+    already covered by A6 AC1.
+
+    - colocation-stragglers: naming-collision CONFIRMED real (e2e/lifecycle-e2e.spec.ts hyphen +
+    cli/commands/lifecycle.e2e.spec.ts dot both exist) — the mandated rename is warranted.
+
+    rules-check: aligned — colocation-stragglers' two attached rules (colocation-and-naming +
+    tooling-quality-gates) are correct + sufficient; factory-functions / cli-only-transport /
+    fractal-substrate-integrity correctly NOT bound (no new module, no ops mutation, no
+    engine/substrate code — just spec moves + a doc). Zero orphans, zero cross-phase conflicts.
+  build:
+    refine-2: "plan-check verdict=needs-attention: 1 path-patch applied (invariant-centralize context
+      corrected to ops/node-ops/node-ops.ts post-colocation), 1 drift note appended (A6/A7 cited
+      files moved into colocation folders; line numbers held, +1 folder level each), 2 questions
+      added (q4 medium, q5 low — both doc-detail, resolved source=ai). colocation-stragglers ACs all
+      verified clean against the real tree; naming-collision (lifecycle-e2e vs lifecycle.e2e)
+      confirmed real. rules-check verdict=aligned: colocation-stragglers' 2 rules
+      correct+sufficient, factory-functions/cli-only-transport/fractal-substrate-integrity correctly
+      NOT bound; zero orphans, zero cross-phase conflicts. q4→only reconcile doc entries already
+      named (worker-dispatch clause is a no-op, not in the tree). q5→119-122 span is fine, agent
+      matches by content."
 phases:
   - name: "A6: move worker-dispatch out of engine/ into ops/scope/"
     slug: worker-dispatch-relocate
-    status: pending
+    status: in-progress
     context: worker-dispatch.ts hardcodes the full default-template step roster (DEFAULT_WORKERS) but
       sits under engine/scope/. The engine control-flow never reads it; its only consumer is
       ops/steps-planner. It is policy/data and must not live in the mechanism tree.
@@ -96,9 +141,15 @@ phases:
   - name: "A7: centralize the epic-DoD evidence check into state/invariants.ts"
     slug: invariant-centralize
     status: pending
-    context: ops/node-ops.ts:329 inlines the epic-DoD evidence check (status done requires non-empty
-      merged evidence) instead of routing through the invariants module. Same evidence-honesty floor
-      one tier up — it should live in one place.
+    context: "ops/node-ops/node-ops.ts:327 inlines the epic-DoD evidence check (status done requires
+      non-empty merged evidence) instead of routing through the invariants module. Same
+      evidence-honesty floor one tier up — it should live in one place. (Path corrected
+      post-colocation-migration: node-ops.ts moved into its own folder — the inline guard now sits
+      at core/src/ops/node-ops/node-ops.ts:327, error name :329, provenance hint :332. The
+      invariants module also moved to core/src/state/invariants/invariants.ts and ALREADY exports
+      assertAcDoneHasEvidence / isEvidenceFilled / assertNodeCompletable — the new epic-DoD helper
+      should follow that existing naming pattern and live beside them, i.e. it is the epic-tier
+      sibling of the existing phase-AC assertion, not net-new infrastructure.)"
     rules:
       - path: .claude/rules/fractal-substrate-integrity.md
         why: the hard invariant must live in state/invariants.ts, not be re-implemented inline at the write
@@ -131,6 +182,56 @@ phases:
           tsconfig.build.json` emits cleanly.
         status: pending
       - text: "Gates green: `bun test` + eslint + full `tsc --noEmit` (both build + test configs)."
+        status: pending
+  - name: Colocation stragglers — cli specs + file-structure doc reconcile
+    slug: colocation-stragglers
+    status: pending
+    context: 'Two specs that the colocation-migration task left in cli/commands/ because they were not
+      in its repo-analysis §3 migration table (surfaced by the colocation-migration wrap review).
+      Both have their real subject elsewhere, and their existence makes the
+      file-structure.md:119-122 claim ("the ONLY specs not next to a single subject are the
+      cross-cutting suites in e2e/") factually overstated. This phase relocates them and reconciles
+      the doc so the claim becomes true. Pure structural refactor, zero behavior change — same
+      character as colocation-migration: bun test must hold at its baseline (currently 274 pass / 2
+      skip / 0 fail). NodeNext ESM: every import specifier ends in .js; both moves change depth so
+      import paths must be retargeted; watch for `new URL`/readFileSync runtime fixture paths in the
+      moved files (none currently expected, but verify). NAMING COLLISION to resolve: e2e/ already
+      holds `lifecycle-e2e.spec.ts` (hyphen); the cli straggler is `lifecycle.e2e.spec.ts` (dot,
+      archive/reset via the real CLI argv path) — give the moved file a clearer non-colliding name
+      (suggest `archive-reset.e2e.spec.ts` or `cli-lifecycle.e2e.spec.ts`) so the two are not
+      confused.'
+    rules:
+      - path: .claude/rules/colocation-and-naming.md
+        why: the governing rule for both moves — spec sits next to its subject (stage.spec → cli/),
+          cross-cutting suites with no single subject live in e2e/ (lifecycle.e2e.spec → e2e/); no
+          behavior change
+      - path: .claude/rules/tooling-quality-gates.md
+        why: phase keeps gates green (bun test held at baseline + eslint + tsc --noEmit + prettier --check)
+          — the per-phase checkpoint
+    acceptance_criteria:
+      - text: "`cli/commands/stage.spec.ts` moved to `cli/stage.spec.ts` (next to its real subject
+          cli/cli.ts — it imports createCli from ../cli.js + fakeFacade from ../cli.spec.js).
+          Imports retargeted one level shallower (../cli.js → ./cli.js, ../cli.spec.js →
+          ./cli.spec.js); header comment updated if it names the old path."
+        status: pending
+      - text: "`cli/commands/lifecycle.e2e.spec.ts` (cross-cutting — drives archive/reset through buildCli
+          via the real CLI argv path, imports ../../index.js + ../../io/io.js) moved to
+          `core/src/e2e/` under a non-colliding name (NOT `lifecycle-e2e.spec.ts`, which already
+          exists there — use e.g. `archive-reset.e2e.spec.ts`). Imports retargeted one level
+          shallower (../../index.js → ../index.js, ../../io/io.js → ../io/io.js); header comment
+          path updated."
+        status: pending
+      - text: '`docs/design/file-structure.md` reconciled with the two moves: the tree block reflects
+          cli/stage.spec.ts (under cli/) + the renamed cli-lifecycle e2e spec (under e2e/), and the
+          lines 119-122 "the ONLY specs not next to a single subject are the cross-cutting suites in
+          e2e/" claim is now factually true (or softened to match reality). NOTE if worker-dispatch
+          (A6) ran earlier in this same task: the doc must also show worker-dispatch under
+          ops/scope/, not engine/scope/.'
+        status: pending
+      - text: 'Gates green: `bun test` (held at the 274 pass / 2 skip / 0 fail baseline — zero behavior
+          change), eslint, `tsc --noEmit`, `prettier --check`. Grep confirms no spec left in
+          cli/commands/ whose subject is the cli surface, and no remaining counterexample to the
+          file-structure.md "only" claim.'
         status: pending
 questions:
   - id: q1
@@ -188,3 +289,43 @@ questions:
       comment.
     created_at: 2026-06-13T10:09:57.763Z
     resolved_at: 2026-06-13T11:42:18.048Z
+  - id: q4
+    text: "colocation-stragglers AC2 says the doc \"must also show worker-dispatch under ops/scope/\" if
+      A6 ran earlier — but the file-structure.md tree block (lines ~80-117) doesn't currently list
+      worker-dispatch at all under engine/scope/ OR ops/scope/; does AC2 expand to ADD that line, or
+      only reconcile entries the doc already names? (lean: only reconcile what's already named —
+      don't expand the doc's granularity for a file it never listed)"
+    priority: medium
+    origin: plan-check
+    phase: colocation-stragglers
+    status: resolved
+    answer: Only reconcile entries the doc already names — do NOT add a worker-dispatch line the tree
+      never listed. AC2's worker-dispatch note applies ONLY if file-structure.md already shows
+      worker-dispatch under engine/scope/; since the tree block doesn't list it at all, there's
+      nothing to move/correct there, so that clause is a conditional no-op.
+    source: ai
+    reasoning: Verified the file-structure.md tree block does not name worker-dispatch anywhere, so the
+      AC2 worker-dispatch clause is a conditional no-op; expanding the doc's granularity for a file
+      it never listed would be scope-creep beyond a pure reconcile. Keeps the phase zero-behavior
+      with a minimal doc delta.
+    created_at: 2026-06-13T13:37:51.194Z
+    resolved_at: 2026-06-13T13:38:26.756Z
+  - id: q5
+    text: "colocation-stragglers AC2 cites file-structure.md:119-122 but the load-bearing \"only specs
+      not next to a single subject\" claim is actually at lines 120-121 (119 starts the blockquote,
+      122 is the index.spec.ts clause) — should the AC's line ref be tightened, or is 119-122
+      intentionally the whole blockquote span? (lean: 119-122 = the whole blockquote span is fine,
+      line numbers are approximate anchors not exact targets)"
+    priority: low
+    origin: plan-check
+    phase: colocation-stragglers
+    status: resolved
+    answer: 119-122 as the whole-blockquote span is fine — line numbers are approximate anchors, not
+      exact targets. The implement agent locates the claim by content ("only specs not next to a
+      single subject"), not by exact line, so no AC edit is needed.
+    source: ai
+    reasoning: Line numbers in ACs are navigational anchors; the agent matches the claim by its text.
+      Tightening 119-122 → 120-121 adds no precision the build step can use and risks staleness if
+      the doc shifts again. Pure cosmetic — not worth an AC churn.
+    created_at: 2026-06-13T13:38:00.201Z
+    resolved_at: 2026-06-13T13:38:38.113Z
