@@ -4,27 +4,27 @@
 // The hard invariant (no ac→done without evidence) and forward-only transitions
 // are enforced HERE, at the writing op. Pure substrate functions (assert*) are
 // imported directly; the only effect (io) is injected.
-import { assertTransition } from '../state/transitions.js'
+import { assertTransition } from '../state/transitions/transitions.js'
 import {
   assertAcDoneHasEvidence,
   assertNodeCompletable,
   anchoredError,
   type AnchoredError,
-} from '../state/invariants.js'
+} from '../state/invariants/invariants.js'
 import {
   nextChild as nextChildOf,
   readyChildren as readyChildrenOf,
   addChild as addChildOf,
   moveChild as moveChildOf,
   type ChildLike,
-} from './scope/children.js'
+} from './scope/children/children.js'
 import {
   addQuestion as addQuestionOf,
   resolveQuestion as resolveQuestionOf,
   type QuestionInit,
   type QuestionResolution,
   type Question,
-} from './scope/questions.js'
+} from './scope/questions/questions.js'
 import { appendLog as appendLogOf, type LogEntry } from './scope/log.js'
 import { phaseExecutorValues, phaseStatusValues } from '../schema/tiers/phase.js'
 import { stubStatusValues } from '../schema/tiers/epic.js'

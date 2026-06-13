@@ -2,7 +2,7 @@ import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { createWorkerDispatch } from './worker-dispatch.js'
-import { createResolveSteps } from './resolve-steps.js'
+import { createResolveSteps } from './resolve-steps/resolve-steps.js'
 
 const NAMES = [
   'implement',

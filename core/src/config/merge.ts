@@ -7,7 +7,7 @@
 //     before/after (else appended). No remove op.
 //   - keyless value lists (stop, rules): union-append + dedupe (never replace)
 //   - `each`: intrinsic — always taken from the default
-import type { Config } from '../schema/config.js'
+import type { Config } from '../schema/config/config.js'
 
 type Rec = Record<string, unknown>
 

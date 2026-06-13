@@ -46,7 +46,7 @@ context:
 phases:
   - name: Root effect-modules into own folders
     slug: root-modules
-    status: in-progress
+    status: done
     context: The two flat root-level effect modules each get their own folder per the rule's own example
       (io/io.ts). Smallest blast radius but high fan-in, so do it first to settle the
       most-referenced import paths early.
@@ -100,7 +100,7 @@ phases:
           - "Zero behavior change: pure git-mv + import-specifier retarget, no logic edits."
   - name: Colocate leaf subject+spec pairs
     slug: leaf-folders
-    status: pending
+    status: in-progress
     context: Every leaf module with a companion spec moves into its own folder, and mis-placed specs are
       pulled to their subject's folder. These have localized churn (mostly intra-package), so they
       go before the high-fan-in central modules.
@@ -114,11 +114,31 @@ phases:
       - text: "parser/: `parse.ts`+spec to `parser/parse/`, `render.ts`+spec to `parser/render/`;
           `roundtrip.spec.ts` stays at `parser/` (cross-cutting, no single subject). Imports
           retargeted."
-        status: pending
+        status: done
+        evidence:
+          - "git mv: parse.ts+spec → parser/parse/, render.ts+spec → parser/render/ (4 renames,
+            history preserved)."
+          - roundtrip.spec.ts STAYED at parser/roundtrip.spec.ts; its parse/render imports
+            retargeted (:4-5 → './parse/parse.js' + './render/render.js').
+          - "Importers retargeted to parser/parse/parse.js + parser/render/render.js:
+            index.ts:17-18, epic-tier.spec.ts:4-5, ops/node-ops.spec.ts:7-8."
+          - "Internal depth fixed: parse/parse.ts:4 '../../state/invariants/invariants.js';
+            parse/parse.spec.ts:4-6 '../../schema/...'."
       - text: "state/: `invariants.ts`+spec to `state/invariants/`, `transitions.ts`+spec to
           `state/transitions/`. Heavy importers retargeted (step-runner, node-ops,
           schema/tiers/phase.ts all import invariants)."
-        status: pending
+        status: done
+        evidence:
+          - "git mv: invariants.ts+spec → state/invariants/, transitions.ts+spec →
+            state/transitions/ (4 renames)."
+          - "invariants importers retargeted to state/invariants/invariants.js: config/init.ts:8,
+            config/bootstrap.ts:7, io/io.ts:6, parser/parse/parse.ts:4, schema/tiers/phase.ts:4,
+            ops/facade.ts:6, ops/scope/questions/questions.ts, ops/scope/children/children.ts,
+            ops/node-ops.ts:13."
+          - "transitions importers retargeted to state/transitions/transitions.js: ops/node-ops.ts:7
+            + the moved spec."
+          - "Cross-folder internal: transitions/transitions.ts:3 imports
+            '../invariants/invariants.js'."
       - text: "schema/: `config`, `step`, `custom-fields` each (subject+spec) to own folder; `tiers/*` stay
           flat; `tiers.spec.ts` stays at `schema/tiers/` (collective spec)."
         status: pending

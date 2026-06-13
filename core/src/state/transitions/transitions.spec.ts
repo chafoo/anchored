@@ -1,9 +1,9 @@
 import { test, expect } from 'bun:test'
 import { assertTransition } from './transitions.js'
-import { type AnchoredError } from './invariants.js'
-import { phaseDescriptor } from '../schema/tiers/phase.js'
-import { taskDescriptor } from '../schema/tiers/task.js'
-import { epicDescriptor } from '../schema/tiers/epic.js'
+import { type AnchoredError } from '../invariants/invariants.js'
+import { phaseDescriptor } from '../../schema/tiers/phase.js'
+import { taskDescriptor } from '../../schema/tiers/task.js'
+import { epicDescriptor } from '../../schema/tiers/epic.js'
 
 // a1 — legal forward chains per tier + idempotent self-transition
 test('legal forward transitions + idempotent self-edge', () => {

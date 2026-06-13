@@ -5,7 +5,7 @@ import {
   assertNodeCompletable,
   type AnchoredError,
 } from './invariants.js'
-import { AcceptanceCriterion } from '../schema/tiers/phase.js'
+import { AcceptanceCriterion } from '../../schema/tiers/phase.js'
 
 // a1 — assertAcDoneHasEvidence throws without evidence, no-op with
 test('assertAcDoneHasEvidence enforces evidence for done', () => {

@@ -1,8 +1,8 @@
 import { test, expect } from 'bun:test'
-import { loopStep } from './scope/loop-step.js'
-import { workflowLoop, selectWorker, isUnitComplete, partition } from './scope/loop-workflow.js'
-import { nextChild as realNextChild } from '../ops/scope/children.js'
-import type { AnyNode, MergedResult, OpsLike, RunnerDeps, WorkflowSeam } from './step-runner.js'
+import { loopStep } from '../loop-step/loop-step.js'
+import { workflowLoop, selectWorker, isUnitComplete, partition } from './loop-workflow.js'
+import { nextChild as realNextChild } from '../../../ops/scope/children/children.js'
+import type { AnyNode, MergedResult, OpsLike, RunnerDeps, WorkflowSeam } from '../../step-runner.js'
 
 const ctx = { tier: 'task', stage: 'build' }
 

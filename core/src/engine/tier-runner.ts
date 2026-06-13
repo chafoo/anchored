@@ -2,7 +2,7 @@
 // plan→refine→build→wrap of one node in order. ONE tier-runner serves every tier;
 // the only difference is cfg (from anchored.default.yml) + node (data).
 import { createStageRunner } from './stage-runner.js'
-import { resolveSteps } from './scope/resolve-steps.js'
+import { resolveSteps } from './scope/resolve-steps/resolve-steps.js'
 import type { AnyNode, RunnerDeps, StepResult, TierCfg } from './step-runner.js'
 
 const STAGES = ['plan', 'refine', 'build', 'wrap'] as const

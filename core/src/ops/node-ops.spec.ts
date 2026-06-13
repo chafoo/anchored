@@ -4,8 +4,8 @@ import { createNodeOps, type NodeOpsDeps } from './node-ops.js'
 import { phaseDescriptor } from '../schema/tiers/phase.js'
 import { taskDescriptor, TaskNodeSchema } from '../schema/tiers/task.js'
 import { epicDescriptor } from '../schema/tiers/epic.js'
-import { createParser } from '../parser/parse.js'
-import { createRenderer, defaultSchemaUrl } from '../parser/render.js'
+import { createParser } from '../parser/parse/parse.js'
+import { createRenderer, defaultSchemaUrl } from '../parser/render/render.js'
 
 function makeDeps() {
   const writes: { path: string; content: string }[] = []

@@ -2,7 +2,7 @@
 // config-driven (no hardcoded DOMAIN step names; 'loop'/'run' are structural
 // built-ins). The build:{each} shorthand expands to a positioned loop step with
 // the implicit body [run] (Item 5a).
-import type { Step } from '../../schema/step.js'
+import type { Step } from '../../../schema/step/step.js'
 
 export interface StageCfg {
   steps?: Step[]

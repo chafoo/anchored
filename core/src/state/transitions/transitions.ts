@@ -1,6 +1,6 @@
 // state/transitions.ts — per-tier forward-only state machine. One tier-generic
 // assertTransition parametrised over the tier descriptor (no per-tier dupes).
-import { anchoredError } from './invariants.js'
+import { anchoredError } from '../invariants/invariants.js'
 
 // Allowed forward edges per tier. The only backward edge is task's update-mode
 // re-entry to `drafted` (refined/build/wrap/done → drafted). X→X is idempotent.

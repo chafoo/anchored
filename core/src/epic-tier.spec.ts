@@ -1,14 +1,14 @@
 import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse, stringify } from 'yaml'
-import { createParser } from './parser/parse.js'
-import { createRenderer, defaultSchemaUrl } from './parser/render.js'
+import { createParser } from './parser/parse/parse.js'
+import { createRenderer, defaultSchemaUrl } from './parser/render/render.js'
 import { createIo, type IoDeps } from './io/io.js'
 import { createEngine } from './engine/engine.js'
-import { createResolveSteps } from './engine/scope/resolve-steps.js'
+import { createResolveSteps } from './engine/scope/resolve-steps/resolve-steps.js'
 import { EpicNodeSchema } from './schema/tiers/epic.js'
 import { TaskNodeSchema } from './schema/tiers/task.js'
-import { nextChild as realNextChild } from './ops/scope/children.js'
+import { nextChild as realNextChild } from './ops/scope/children/children.js'
 import type { AnyNode, OpsLike } from './engine/step-runner.js'
 
 // nested-slugs a1 — a nested slug task-file round-trips losslessly

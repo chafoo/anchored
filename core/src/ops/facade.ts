@@ -3,7 +3,7 @@
 // slug→verb surface: read the node, apply the verb, persist. All the await-bearing
 // glue lives HERE (not in index.ts, which stays a pure, await-free wiring factory).
 import type { NodeOpsFacade } from '../cli/index.js'
-import { anchoredError } from '../state/invariants.js'
+import { anchoredError } from '../state/invariants/invariants.js'
 
 interface AnyRec {
   slug: string

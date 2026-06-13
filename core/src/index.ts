@@ -14,8 +14,8 @@ import { createEngineOps, tierOfNode } from './ops/engine-ops.js'
 import { makeTierFor } from './ops/tier-derive.js'
 import { createStepsPlanner } from './ops/steps-planner.js'
 import { createValidator } from './ops/validate.js'
-import { createParser } from './parser/parse.js'
-import { createRenderer, defaultSchemaUrl } from './parser/render.js'
+import { createParser } from './parser/parse/parse.js'
+import { createRenderer, defaultSchemaUrl } from './parser/render/render.js'
 import { createIo, type IoDeps } from './io/io.js'
 import { createBootstrap } from './config/bootstrap.js'
 import { createSpawn } from './spawn/spawn.js'
@@ -24,8 +24,8 @@ import type { AnyNode, SpawnLike, RunnerDeps, TierCfg } from './engine/step-runn
 import { phaseDescriptor, PhaseNodeSchema } from './schema/tiers/phase.js'
 import { taskDescriptor, TaskNodeSchema } from './schema/tiers/task.js'
 import { epicDescriptor, EpicNodeSchema } from './schema/tiers/epic.js'
-import { ConfigSchema, type Config } from './schema/config.js'
-import { extendSchemaWithFields } from './schema/custom-fields.js'
+import { ConfigSchema, type Config } from './schema/config/config.js'
+import { extendSchemaWithFields } from './schema/custom-fields/custom-fields.js'
 
 export { tierOfNode }
 

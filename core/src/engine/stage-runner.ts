@@ -1,7 +1,7 @@
 // engine/stage-runner.ts — createStageRunner(cfg, deps) → { run }. Runs the steps
 // of ONE stage in order, reusing createStepRunner per step. A failed step short-
 // circuits the stage.
-import type { Step } from '../schema/step.js'
+import type { Step } from '../schema/step/step.js'
 import { createStepRunner } from './step-runner.js'
 import type { AnyNode, RunCtx, RunnerDeps, StepResult, TierCfg } from './step-runner.js'
 

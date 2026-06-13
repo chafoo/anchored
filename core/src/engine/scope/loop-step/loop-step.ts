@@ -4,11 +4,11 @@
 // fan-out the children to the injected workflow seam — Task workflow-mode, the
 // orchestration lives in loop-workflow.ts). stopCheck is a pure function;
 // routeStopVerdict routes it to ops.
-import type { Step } from '../../schema/step.js'
-import { runStep } from './run-step.js'
-import { workerStep } from './worker-step.js'
-import { workflowLoop } from './loop-workflow.js'
-import type { AnyNode, RunCtx, RunnerDeps, StepResult, TierCfg } from '../step-runner.js'
+import type { Step } from '../../../schema/step/step.js'
+import { runStep } from '../run-step/run-step.js'
+import { workerStep } from '../worker-step.js'
+import { workflowLoop } from '../loop-workflow/loop-workflow.js'
+import type { AnyNode, RunCtx, RunnerDeps, StepResult, TierCfg } from '../../step-runner.js'
 
 const CHILD_FIELD: Record<string, string> = { phase: 'phases', task: 'tasks', epic: 'epics' }
 

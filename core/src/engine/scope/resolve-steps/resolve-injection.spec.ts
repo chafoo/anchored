@@ -2,11 +2,14 @@ import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { createResolveSteps } from './resolve-steps.js'
-import { merge } from '../../config/merge.js'
-import type { Config } from '../../schema/config.js'
+import { merge } from '../../../config/merge.js'
+import type { Config } from '../../../schema/config/config.js'
 
 const defaultCfg = parse(
-  readFileSync(new URL('../../../default-template/anchored.default.yml', import.meta.url), 'utf8'),
+  readFileSync(
+    new URL('../../../../default-template/anchored.default.yml', import.meta.url),
+    'utf8',
+  ),
 ) as Record<string, unknown>
 
 // a1 — unoverridden stage → canonical default sequence
