@@ -223,19 +223,58 @@ phases:
     acceptance_criteria:
       - text: store/ exists with node-store/, node-router/, children/, questions/, log/, validate/, codec/
           and io/, populated only by moved code with unchanged factory signatures.
-        status: pending
+        status: done
+        evidence:
+          - "`find core/src/store -type f` → 19 files: node-store/ (node-store.ts +
+            node-store.spec.ts + tier-generic.spec.ts), node-router/ (node-router.ts +
+            node-router.archive-reset.spec.ts), children/, questions/, log.ts (flat, q9), validate/,
+            codec/ (parse/ + render/ + roundtrip.spec.ts), io/."
+          - "Factory signatures byte-identical: node-store.ts:144 `export function
+            createNodeOps(tierSchema, deps)`; node-router.ts:117 `export function
+            createSlugFacade(deps): NodeOpsFacade`; io/io.ts:30 `createIo(deps)`;
+            validate/validate.ts:22 `createValidator(...)`."
+          - All moves via git mv (commits 42a7d82/66f50cd/cb6e7f1/4e276e9/7ff9dd6/3a9677d show
+            R-renames), history preserved.
       - text: parser/ and io/ no longer exist as top-level folders; their content lives under store/codec
           and store/io respectively.
-        status: pending
+        status: done
+        evidence:
+          - "`ls core/src/parser core/src/io` → 'No such file or directory' for both."
+          - "Content relocated: parser/parse + parser/render → store/codec/parse +
+            store/codec/render; parser-root roundtrip.spec.ts → store/codec/roundtrip.spec.ts (q12);
+            io/io.ts + io.spec.ts → store/io/."
       - text: store/validate imports STAGES from domain/lifecycle/stages.ts (no re-hardcoded stages
           literal).
-        status: pending
+        status: done
+        evidence:
+          - store/validate/validate.ts:9 `import { STAGES } from '../../domain/lifecycle/stages.js'`
+            (used at :31 `for (const stage of STAGES)`) — no re-hardcoded stages literal.
+          - "q10 resolved cleanly: StepPlan/PlanStep type defs MOVED from cli/commands/steps.ts to
+            new domain/steps/plan.ts (pure type-only move, verhaltensneutral).
+            store/validate/validate.ts:8 now imports from '../../domain/steps/plan.js' — NO
+            store→cli upward dependency. cli/commands/steps.ts re-exports them (`export type`) for
+            transport compatibility; cli.ts, config/override.spec.ts, ops/steps-planner repointed
+            too."
       - text: No index.ts and no re-export-only barrel was introduced under store/; folder main files are
           named after their folder.
-        status: pending
+        status: done
+        evidence:
+          - "`find core/src/store -name index.ts` → empty (no index.ts under store/)."
+          - "`ls core/src/store/store.ts` → No such file or directory (no barrel/aggregator)."
+          - "Folder-named main files: node-store/node-store.ts, node-router/node-router.ts,
+            io/io.ts, children/children.ts, questions/questions.ts, validate/validate.ts; log.ts
+            flat (q9); codec/ groups parse/ + render/ with no single codec.ts (intended folder
+            grouping of the YAML↔Node codec)."
       - text: "Quality gates are green after the phase: lint, format --check, tsc --noEmit, bun test (unit +
           e2e + int), bun build."
-        status: pending
+        status: done
+        evidence:
+          - "`bun run typecheck` (tsc --noEmit) → clean, no errors."
+          - "`bun run lint` (eslint .) → clean; `bun run format` (prettier --check .) → 'All matched
+            files use Prettier code style!'."
+          - "`bun run test` → 146 unit + 4 e2e + 60 int = 210 pass / 0 fail (count unchanged from
+            pre-migration baseline)."
+          - "`bun run build` (tsc -p tsconfig.build.json) → compiles without errors."
   - name: Orchestration Layer + Dissolve ops/
     slug: orchestration-and-dissolve-ops
     status: pending
