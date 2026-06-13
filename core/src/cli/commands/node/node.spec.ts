@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { createCli, type CliDeps, type NodeOpsFacade } from '../index.js'
-import { fakeFacade } from '../index.spec.js'
+import { createCli, type CliDeps, type NodeOpsFacade } from '../../cli.js'
+import { fakeFacade } from '../../cli.spec.js'
 
 function spyFacade() {
   const calls: { verb: string; args: unknown[] }[] = []

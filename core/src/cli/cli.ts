@@ -1,10 +1,10 @@
-// cli/index.ts — createCli(deps) → { run(argv) → exitCode }. Pure factory: no
+// cli/cli.ts — createCli(deps) → { run(argv) → exitCode }. Pure factory: no
 // process access (that lives only in the bin entry, src/index.ts). Every call
 // emits exactly ONE JSON envelope to deps.out — { ok, command, result|error } —
 // machine-parseable for skills + agents (cli-only-transport). Errors are caught
 // centrally and serialised (no stacktrace leak, no crash).
-import { nodeCommand } from './commands/node.js'
-import { planCommand } from './commands/plan.js'
+import { nodeCommand } from './commands/node/node.js'
+import { planCommand } from './commands/plan/plan.js'
 import { refineCommand } from './commands/refine.js'
 import { buildCommand } from './commands/build.js'
 import { wrapCommand } from './commands/wrap.js'

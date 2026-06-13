@@ -3,7 +3,7 @@
 // injected classify seam (NOT a content heuristic in the CLI), then proceed with
 // the recommended tier. The TIER_KEYWORDS set only RECOGNISES an explicit tier
 // argument (parsing) — classification is fully delegated.
-import { cliError, type CliDeps } from '../index.js'
+import { cliError, type CliDeps } from '../../cli.js'
 
 const TIER_KEYWORDS = new Set(['epic', 'task', 'phase'])
 

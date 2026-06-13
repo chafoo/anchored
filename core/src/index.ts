@@ -7,7 +7,7 @@
 // fakeable (wiring tests inject spy sub-factories).
 import { z } from 'zod'
 import { parse, stringify } from 'yaml'
-import { createCli, type CliDeps, type NodeOpsFacade } from './cli/index.js'
+import { createCli, type CliDeps, type NodeOpsFacade } from './cli/cli.js'
 import { createNodeOps, type TierDescriptor, type NodeOpsDeps } from './ops/node-ops/node-ops.js'
 import { createSlugFacade, type TierOps } from './ops/facade/facade.js'
 import { createEngineOps, tierOfNode } from './ops/engine-ops.js'

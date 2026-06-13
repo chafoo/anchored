@@ -2,7 +2,7 @@
 // tier-generic node-ops (read-modify-write through the io seam) behind a flat
 // slug→verb surface: read the node, apply the verb, persist. All the await-bearing
 // glue lives HERE (not in index.ts, which stays a pure, await-free wiring factory).
-import type { NodeOpsFacade } from '../../cli/index.js'
+import type { NodeOpsFacade } from '../../cli/cli.js'
 import { anchoredError } from '../../state/invariants/invariants.js'
 
 interface AnyRec {

@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { createCli, type CliDeps, type NodeOpsFacade } from './index.js'
+import { createCli, type CliDeps, type NodeOpsFacade } from './cli.js'
 
 export function fakeFacade(over: Partial<NodeOpsFacade> = {}): NodeOpsFacade {
   return {

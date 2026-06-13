@@ -2,7 +2,7 @@
 // existed by REMOVING its task-file (substrate op, via the facade). FILE-ONLY: it
 // never touches git — deleting any feature branch is the user's own concern, not a
 // framework side-effect.
-import { cliError, type CliDeps } from '../index.js'
+import { cliError, type CliDeps } from '../cli.js'
 import { requireNode } from './scope/lifecycle.js'
 
 export async function resetCommand(args: string[], deps: CliDeps): Promise<unknown> {

@@ -3,7 +3,7 @@
 // The hard invariant lives in the substrate: a nodeOps error (e.g. done without
 // evidence) is caught upstream and rendered as an error envelope — never re-checked
 // in the CLI.
-import { cliError, type CliDeps } from '../index.js'
+import { cliError, type CliDeps } from '../../cli.js'
 
 export async function nodeCommand(args: string[], deps: CliDeps): Promise<unknown> {
   const verb = args[0]

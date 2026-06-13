@@ -43,6 +43,12 @@ context:
     rules-check: tooling-quality-gates.md attached to all 5 phases (each has a "Gates green" AC but
     the rule wasn't linked). factory-functions.md deemed already covered by colocation-and-naming.md
     (which extends it) — not separately attached for a pure move/rename.
+  build:
+    Validation: "- central-modules (commit 91d5d57): task-validate PASS (5/5 ACs honest — folders+specs
+      exist, depth-fixes verified, 5 stay-flat files flat, tsc clean = no stale imports, bun test
+      274 pass). code-validate PASS (folder-named mains not index.ts, specs colocated, no barrels,
+      gates green). 1 non-blocking warn: cli/index.ts is a bare non-root index.ts but pre-existing
+      (commit 3503a86, untouched this phase) — resolved by phase 4 cli-and-naming."
 phases:
   - name: Root effect-modules into own folders
     slug: root-modules
@@ -203,7 +209,7 @@ phases:
             gate before commit.
   - name: Colocate high-fan-in central modules
     slug: central-modules
-    status: in-progress
+    status: done
     context: The widely-imported central modules and their cross-named specs. Done after the leaves so
       their import churn lands on an already-settled tree.
     rules:
@@ -214,22 +220,66 @@ phases:
     acceptance_criteria:
       - text: "`engine/step-runner.ts`+spec to `engine/step-runner/`; central type supplier, retarget all
           importers (engine.ts, runners.spec, loop-workflow.spec, integration.spec, index.ts)."
-        status: pending
+        status: done
+        evidence:
+          - git mv engine/step-runner.{ts,spec.ts} → engine/step-runner/ (R/RM renames).
+          - step-runner/step-runner.ts:5-8 own imports +1 depth-fixed
+            ('../schema/step/step.js'→'../../...', './scope/...'→'../scope/...').
+          - "All 18 importers retargeted:
+            engine/{engine,integration.spec,runners.spec,stage-runner,tier-runner,workflow-smoke.sp\
+            ec}.ts, engine/scope/{loop-step,loop-workflow,run-step}/*, engine/scope/worker-step.ts,
+            epic-tier.spec.ts, index.ts, ops/engine-ops.ts."
+          - "Stale-ref grep: NONE stale; only the in-folder spec keeps './step-runner.js'."
       - text: "`ops/node-ops.ts`+spec to `ops/node-ops/`; `tier-generic.spec.ts` moved into
           `ops/node-ops/`."
-        status: pending
+        status: done
+        evidence:
+          - git mv node-ops.ts+spec AND tier-generic.spec.ts → ops/node-ops/ (RM/R renames).
+          - node-ops/node-ops.ts:7-30 own imports +1 depth-fixed (../../state/..., ../scope/...,
+            ../../schema/tiers/...).
+          - "Moved specs depth-fixed (node-ops.spec.ts + tier-generic.spec.ts: ../../schema/,
+            ../../parser/; in-folder './node-ops.js' kept)."
+          - "4 external importers retargeted: e2e.dogfood.spec.ts + index.ts
+            (./ops/node-ops/node-ops.js), engine/workflow-smoke.spec.ts,
+            ops/scope/questions/questions-log.spec.ts ('../../node-ops/node-ops.js')."
       - text: "`ops/facade.ts` to `ops/facade/`; `facade.archive-reset.spec.ts` moved into `ops/facade/`."
-        status: pending
+        status: done
+        evidence:
+          - git mv facade.ts + facade.archive-reset.spec.ts → ops/facade/ (RM/R renames).
+          - facade/facade.ts:5-6 own imports +1 depth-fixed ('../cli/index.js'→'../../cli/index.js',
+            '../state/invariants/invariants.js'→'../../state/...').
+          - "2 external importers retargeted: index.ts:12 (./ops/facade/facade.js),
+            ops/engine-ops.ts:8 (./facade/facade.js); in-folder spec keeps './facade.js'."
       - text: "`ops/steps-planner.ts`+spec to `ops/steps-planner/`; `ops/validate.ts`+spec to
           `ops/validate/`."
-        status: pending
+        status: done
+        evidence:
+          - git mv steps-planner.{ts,spec.ts} → ops/steps-planner/ and validate.{ts,spec.ts} →
+            ops/validate/ (4 RM renames).
+          - steps-planner/steps-planner.ts:7-10 +1 depth-fixed (../../engine/, ../../schema/,
+            ../../cli/); validate/validate.ts:8 fixed (../../cli/commands/steps.js).
+          - "Runtime relative URL caught+fixed: steps-planner.spec.ts:7 new
+            URL('../../../default-template/...') (+1 depth — was the sole red test on first run)."
+          - "External importers retargeted: extensibility-matrix.spec.ts + index.ts
+            (./ops/steps-planner/steps-planner.js), index.ts:16 (./ops/validate/validate.js);
+            validate.spec.ts:5 depth-fixed."
       - text: Confirm `engine/engine.ts` stays (already folder-named); `stage-runner.ts` + `tier-runner.ts`
           + `ops/engine-ops.ts` + `ops/tier-derive.ts` stay flat (no companion spec). Gates green;
           zero behavior change.
-        status: pending
+        status: done
+        evidence:
+          - "Confirmed STAY FLAT (file-existence check, none in the git rename list):
+            engine/engine.ts, engine/stage-runner.ts, engine/tier-runner.ts, ops/engine-ops.ts,
+            ops/tier-derive.ts — only the 5 targeted modules + companions moved."
+          - "Gates GREEN, zero behavior change: typecheck (tsc --noEmit) exit 0; lint (eslint .)
+            exit 0; bun test → 274 pass / 2 skip / 0 fail (276 across 47 files); format (prettier
+            --check .) → 'All matched files use Prettier code style!'."
+          - "Committed as 91d5d57. 2 red gates self-caught+fixed: runtime new URL depth in
+            steps-planner.spec (ENOENT) + prettier reflow on 3 loop-* files whose step-runner import
+            grew over print-width."
   - name: CLI naming + duplicate-spec resolution
     slug: cli-and-naming
-    status: pending
+    status: in-progress
     context: The naming mandate hits the cli last because cli/index.ts is the highest-churn rename (~10
       importers). Also resolves the confusing duplicate epic-tier.spec.ts.
     rules:

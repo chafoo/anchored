@@ -4,7 +4,7 @@
 // what order, plus the loop edge + stop/retry for a looping build. The skill is
 // the orchestrator (it has the plugin + agents loaded); the CLI stays the
 // deterministic planner + ops. No spawning happens here.
-import { cliError, type CliDeps } from '../index.js'
+import { cliError, type CliDeps } from '../cli.js'
 
 export interface PlanStep {
   name: string

@@ -5,7 +5,7 @@
 // skill's job (skill-orchestrated runtime). The deterministic engine stays wired +
 // tested for a future headless path, but it is not the skill path. runStage is the
 // shared helper for the three slug-only stage verbs (refine/build/wrap).
-import { cliError, type CliDeps } from '../index.js'
+import { cliError, type CliDeps } from '../cli.js'
 
 export async function runStage(stage: string, args: string[], deps: CliDeps): Promise<unknown> {
   const slug = args[0]
