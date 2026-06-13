@@ -80,14 +80,24 @@ context:
       reinforcing; test-file-naming declares itself orthogonal to colocation). 2 low scoping
       questions added (test-file-naming.md in the cross-ref sweep [q13]; whether suffix-integrity is
       in scope here or owned by the parallel instance [q14])."
-    task-validate: "- domain-layer (attempt 1) — verdict: PASS. task-validate: 5/5 ACs accepted, re-ran
-      gates independently (lint 0, prettier clean, tsc 0, bun test 210 pass/0 fail, build 0).
+    task-validate: >-
+      - domain-layer (attempt 1) — verdict: PASS. task-validate: 5/5 ACs accepted, re-ran gates
+      independently (lint 0, prettier clean, tsc 0, bun test 210 pass/0 fail, build 0).
       code-validate: PASS, all 6 phase rules clean (no index.ts/barrel under domain/, tiers.ts keeps
       pure injected helpers tierOfNode+makeTierFor unchanged, invariants.ts intact as data-model
       invariant, STAGES centralized, .js suffixes + spec-colocation preserved). One non-blocking
       warn (deferred to phase 5): stale header comment `// state/invariants.ts` in
       domain/invariants/invariants.ts:1 (cosmetic path label). No emergent decision matched a
-      build.stop rule; no questions raised."
+      build.stop rule; no questions raised.
+
+      - store-layer (attempt 1) — verdict: PASS. task-validate: 5/5 ACs accepted, gates re-run
+      independently (lint 0, prettier clean, tsc 0, bun test 210 pass/0 fail, build 0).
+      code-validate: PASS (5/5 accepted), one non-blocking WARN: store/node-router/node-router.ts:5
+      imports `type NodeOpsFacade` from cli/cli.js — a remaining store→cli upward type-only
+      dependency (byte-carried from ops/facade, pre-existing). Raised as q15 (high, phase
+      store-layer); resolved source='ai' — relocate NodeOpsFacade in the cli-restructure phase,
+      leave the pure `import type` for now (q10's resolution explicitly permits not forcing a
+      layer-flip beyond the refactor goal; not a build.stop architecture-flip).
 phases:
   - name: Domain Layer + Unified Tier Derivation
     slug: domain-layer
@@ -191,7 +201,7 @@ phases:
             dist/index.d.ts emitted."
   - name: Store Layer (Persist + Mutate Mechanism)
     slug: store-layer
-    status: in-progress
+    status: done
     context: "Build store/ via pure moves (plan §6 step 4): ops/node-ops→store/node-store,
       ops/facade→store/node-router,
       ops/scope/{children,questions,log}→store/{children,questions,log},
@@ -277,7 +287,7 @@ phases:
           - "`bun run build` (tsc -p tsconfig.build.json) → compiles without errors."
   - name: Orchestration Layer + Dissolve ops/
     slug: orchestration-and-dissolve-ops
-    status: pending
+    status: in-progress
     context: "Build orchestration/ via pure moves (plan §6 step 5):
       ops/steps-planner→orchestration/steps-planner,
       ops/scope/worker-dispatch→orchestration/worker-dispatch (name→agent-ref, DEFAULT_WORKERS).
@@ -305,15 +315,51 @@ phases:
     acceptance_criteria:
       - text: orchestration/ exists with steps-planner/ and worker-dispatch/, populated only by moved code
           with unchanged factory signatures.
-        status: pending
+        status: done
+        evidence:
+          - "`find core/src/orchestration -type f` → 5 files: steps-planner/{steps-planner.ts,
+            steps-planner.spec.ts, extensibility-matrix.int.ts} +
+            worker-dispatch/{worker-dispatch.ts, worker-dispatch.spec.ts} — all moved code via git
+            mv."
+          - "git rename status: R100 for all 5 moved files (3 pure R100, 2 RM = rename + import-path
+            edit only) — history preserved as renames."
+          - "Factory signatures byte-identical: steps-planner.ts:17 `export function
+            createStepsPlanner(config: Record<string, unknown>)`; worker-dispatch.ts:33 `export
+            function createWorkerDispatch(overrides: Record<string, WorkerRef> = {})` with
+            DEFAULT_WORKERS config-driven (defined :12, spread-merged with overrides :34)."
+          - "index.ts:18 repointed: `import { createStepsPlanner } from
+            './orchestration/steps-planner/steps-planner.js'`."
       - text: The ops/ folder no longer exists and the engine/ folder no longer exists; no import in src/
           references an ops/ or engine/ path.
-        status: pending
+        status: done
+        evidence:
+          - "`test -d core/src/ops` → 'ops gone'; `test -d core/src/engine` → 'engine gone' — both
+            folders deleted via rmdir after emptying (engine/ was already empty since domain-layer
+            moved resolve-steps)."
+          - "`grep -rn \"from ['\\\"][^'\\\"]*\\(ops\\|engine\\)/\" core/src` → exit code 1 (zero
+            matches) — no import in src references an ops/ or engine/ path."
+          - "Internal path rewrites applied so nothing dangles: steps-planner.ts:8
+            `../scope/worker-dispatch/` → `../worker-dispatch/`; worker-dispatch.spec.ts:5-6
+            `../../../domain/` → `../../domain/`."
       - text: No index.ts and no re-export-only barrel was introduced under orchestration/.
-        status: pending
+        status: done
+        evidence:
+          - "`find core/src/orchestration -name index.ts -o -name orchestration.ts` → no output — no
+            folder-entry index.ts, no orchestration.ts barrel."
+          - "`grep -rnE 'export \\* from|^export \\{.*\\} from' core/src/orchestration` → no output
+            — no re-export-only pass-through file."
+          - "Folder-named main files confirmed: orchestration/steps-planner/steps-planner.ts and
+            orchestration/worker-dispatch/worker-dispatch.ts (colocation-and-naming honored)."
       - text: "Quality gates are green after the phase: lint, format --check, tsc --noEmit, bun test (unit +
           e2e + int), bun build."
-        status: pending
+        status: done
+        evidence:
+          - "`bun run lint` (eslint .) → clean, no output, exit 0."
+          - "`bun run format` (prettier --check .) → 'All matched files use Prettier code style!'."
+          - "`bun run typecheck` (tsc --noEmit) → exit 0; `bun run build` (tsc -p
+            tsconfig.build.json) → exit 0."
+          - "`bun run test` → 146 unit / 0 fail, 4 e2e / 0 fail, 60 int / 0 fail = 210 pass total —
+            matches the 146+4+60 pre-migration baseline exactly (no test fell out of discovery)."
   - name: CLI Restructure + Classify Out of Transport
     slug: cli-restructure
     status: pending
@@ -628,3 +674,30 @@ questions:
       Discovery fällt — das prüft die explizite Phase-5-AC.
     created_at: 2026-06-13T18:29:13.820Z
     resolved_at: 2026-06-13T18:33:22.914Z
+  - id: q15
+    text: store/node-router/node-router.ts:5 importiert `type NodeOpsFacade` aus cli/cli.ts — eine
+      verbleibende store→cli Aufwärts-Typabhängigkeit (byte-getreu aus ops/facade übernommen, reiner
+      `import type`, vorbestehend). Soll der NodeOpsFacade-Typ in der cli-restructure-Phase aus der
+      Transportschicht heraus an einen schichtkonformen Ort umziehen (analog StepPlan→domain/steps
+      in q10), oder bleibt der reine `import type` akzeptabel?
+    priority: high
+    origin: code-validate
+    phase: store-layer
+    status: resolved
+    answer: Den NodeOpsFacade-Typ in der cli-restructure-Phase (Phase 4) aus cli/cli.ts an einen
+      schichtkonformen Ort umziehen — analog zum StepPlan→domain/steps-Move aus q10 — sodass
+      store/node-router ihn nicht mehr aus der Transportschicht bezieht. Für store-layer bleibt der
+      reine `import type` bestehen (verhaltensneutral, byte-getreu aus ops/facade übernommen); er
+      blockiert die store-layer-ACs nicht. Die Auflösung der store→cli-Typkante wird Teil der
+      cli-restructure-Phase, deren Kern ohnehin das Herauslösen von Domänen-/Schichtlogik aus dem
+      Transport ist.
+    source: ai
+    reasoning: "Reiner type-only-Import, vorbestehend (aus ops/facade byte-getreu übernommen), kein
+      Laufzeitverhalten und damit verhaltensneutral für diese Move-Migration — er verletzt keine
+      store-layer-AC. Kein build.stop-Fall (die zwei stop-Regeln sind architecture-flip und
+      outside-project-root; ein geplanter Typ-Umzug innerhalb des beauftragten Refactors ist beides
+      nicht). q10 hat die Linie bereits gezogen: Schichtgrenzen sauber herstellen, aber keinen Flip
+      über das Refactor-Ziel hinaus erzwingen. Die cli-restructure-Phase löst Transport von
+      Domänenlogik — der NodeOpsFacade-Umzug gehört genau dorthin, nicht in store-layer."
+    created_at: 2026-06-13T19:26:00.551Z
+    resolved_at: 2026-06-13T19:26:17.213Z

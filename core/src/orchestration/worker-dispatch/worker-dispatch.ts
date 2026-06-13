@@ -1,4 +1,4 @@
-// ops/scope/worker-dispatch/worker-dispatch.ts — maps a built-in step NAME to its worker ref.
+// orchestration/worker-dispatch/worker-dispatch.ts — maps a built-in step NAME to its worker ref.
 // Policy/data, injectable: the engine never hardcodes step names; this is the
 // single place that knows them. Workers themselves are plugin agents (Task
 // plugin-agents); here it is only the name→ref mapping.
