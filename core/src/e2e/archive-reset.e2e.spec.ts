@@ -1,12 +1,12 @@
-// lifecycle.e2e.spec.ts — `anchored archive <slug>` / `anchored reset <slug>` driven
+// e2e/archive-reset.e2e.spec.ts — `anchored archive <slug>` / `anchored reset <slug>` driven
 // through the real CLI argv path (parse → command → facade → io). Both verbs are
 // FILE-ONLY: archive MOVES the task-file into archive/, reset REMOVES the task-file.
 // Neither touches git — deleting branches is the user's own concern, not a framework
 // side-effect. A fake `run` records every issued command so the tests can assert that
 // archive/reset issue ZERO commands. Mirrors the in-memory file map + fake io harness.
 import { test, expect } from 'bun:test'
-import { buildCli } from '../../index.js'
-import type { IoDeps } from '../../io/io.js'
+import { buildCli } from '../index.js'
+import type { IoDeps } from '../io/io.js'
 
 function harness() {
   const files = new Map<string, string>()

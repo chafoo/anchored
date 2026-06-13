@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { createCli, type CliDeps } from '../cli.js'
-import { fakeFacade } from '../cli.spec.js'
+import { createCli, type CliDeps } from './cli.js'
+import { fakeFacade } from './cli.spec.js'
 
 const fakeSteps = (tier: string, stage: string) => ({
   tier,

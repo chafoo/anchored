@@ -94,6 +94,7 @@ core/
 │   │
 │   ├── cli/                     # ── `anchored` CLI (the only transport, no MCP) ──
 │   │   ├── cli.ts               # entry + dispatch; JSON output (folder-named, not index.ts)
+│   │   ├── stage.spec.ts        # spec for the stage verbs on the cli surface (beside cli.ts)
 │   │   └── commands/
 │   │       ├── plan/plan.ts     # `anchored plan <tier?> <input>`  (classify when tier is missing)
 │   │       ├── refine.ts        # `anchored refine <slug>`
@@ -108,6 +109,7 @@ core/
 │   └── e2e/                     # ── cross-cutting suites (no single subject) ──
 │       ├── e2e.dogfood.spec.ts          # drive a real task-file lifecycle end-to-end
 │       ├── lifecycle-e2e.spec.ts        # full lifecycle of both tiers through the engine
+│       ├── archive-reset.e2e.spec.ts    # archive/reset through the real CLI argv path (cross-cutting)
 │       ├── extensibility-matrix.spec.ts # extend anchored without touching engine code
 │       ├── epic-tier.e2e.spec.ts        # epic-tier scaffold/walk/loop/roll-up
 │       └── skeleton.spec.ts             # package skeleton / wiring smoke
