@@ -7,13 +7,13 @@
 import { describe, test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
-import { createStepsPlanner } from '../ops/steps-planner/steps-planner.js'
-import { merge } from '../config/merge.js'
-import { ConfigSchema } from '../schema/config/config.js'
-import { extendSchemaWithFields } from '../schema/custom-fields/custom-fields.js'
-import { PhaseNodeSchema } from '../schema/tiers/phase.js'
-import { TaskNodeSchema } from '../schema/tiers/task.js'
-import { EpicNodeSchema } from '../schema/tiers/epic.js'
+import { createStepsPlanner } from './steps-planner.js'
+import { merge } from '../../config/merge.js'
+import { ConfigSchema } from '../../schema/config/config.js'
+import { extendSchemaWithFields } from '../../schema/custom-fields/custom-fields.js'
+import { PhaseNodeSchema } from '../../schema/tiers/phase.js'
+import { TaskNodeSchema } from '../../schema/tiers/task.js'
+import { EpicNodeSchema } from '../../schema/tiers/epic.js'
 
 const TIERS = ['phase', 'task', 'epic'] as const
 const STAGES = ['plan', 'refine', 'build', 'wrap'] as const
@@ -91,11 +91,11 @@ describe('custom field validates on every tier (read + write)', () => {
 // that a large hand-built yml extends anchored without touching code.
 describe('comprehensive example anchored.yml is valid + fully resolves', () => {
   const raw = readFileSync(
-    new URL('../../../plugin/references/anchored.example-comprehensive.yml', import.meta.url),
+    new URL('../../../../plugin/references/anchored.example-comprehensive.yml', import.meta.url),
     'utf8',
   )
   const defaultRaw = readFileSync(
-    new URL('../../default-template/anchored.default.yml', import.meta.url),
+    new URL('../../../default-template/anchored.default.yml', import.meta.url),
     'utf8',
   )
 

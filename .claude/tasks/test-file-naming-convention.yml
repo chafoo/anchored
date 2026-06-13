@@ -166,19 +166,64 @@ context:
 
       Baseline RE-GROUNDED after the concurrent remove-headless-engine-path task: 39 .spec.ts on
       disk (not 47), corrected target 31/4/4=39. All five gates green.
-    task-validate: "- author-naming-rule (attempt 1): **pass** — 4/4 ACs accepted, 0 rejected. Evidence
-      verified against the real .claude/rules/test-file-naming.md. Two cited line-refs off by 1
-      (ladder at 39-40 not 40-41; src/e2e dissolve at 68-70 not 70-71) but the cited content is
-      genuinely present — no stale refs. Note: core/bunfig.toml not yet on disk, but AC2 only
-      requires the rule to NAME the dependency (which it does), enacted in the next phase."
-    code-validate: "- author-naming-rule (attempt 1): **pass** — 0 blocking findings, 1 fyi warn.
+
+      - migrate-and-classify / Migrate + Classify Test Files via git mv
+
+
+      9 files moved via git mv (history preserved); src/e2e/ dissolved + removed (rmdir, confirmed
+      gone). Relocations: cli/cli.e2e.ts (in place); cli/epic-tier.int.ts (in place);
+      e2e/lifecycle-e2e->cli/lifecycle.int.ts; e2e/archive-reset.e2e->cli/archive-reset.int.ts;
+      e2e/e2e.dogfood->src/dogfood.e2e.ts (root, real fs); e2e/epic-tier.e2e->src/epic-tier.int.ts
+      (root, cross-cutting);
+      e2e/extensibility-matrix->ops/steps-planner/extensibility-matrix.int.ts;
+      e2e/skeleton->src/skeleton.spec.ts (root).
+
+
+      TWO CONTENT-DRIVEN DEVIATIONS from the projected mapping (the rule's classification criteria
+      won, per the per-file confirm-by-reading the user authorized in q5):
+
+      1. cli/custom-field-e2e.spec.ts was projected .e2e but uses an in-memory Map fs ("no real fs")
+      => reclassified to cli/custom-field.int.ts.
+
+      2. e2e/epic-tier.e2e.spec.ts was projected .e2e but wires parser+render+io(createIo over
+      in-memory Map)+resolve-steps+schemas with only a readFileSync fixture load, no fs-under-test,
+      no spawn => reclassified to .int. As cross-cutting (no single subject) it landed at
+      src/epic-tier.int.ts, which also cleanly resolves the stem-collision vs cli/epic-tier.int.ts.
+
+
+      Net distribution 31 spec / 2 e2e / 6 int (not the projected 31/4/4); total still exactly 39,
+      name-set 1:1, 210 tests across 39 files. Import re-pointing for files that changed depth (root
+      + ops/steps-planner relocations) fixed via Edit and verified green by typecheck+tests; cli/
+      relocations needed no import change (same depth as old e2e/). All 5 gates green.
+    task-validate: >-
+      - author-naming-rule (attempt 1): **pass** — 4/4 ACs accepted, 0 rejected. Evidence verified
+      against the real .claude/rules/test-file-naming.md. Two cited line-refs off by 1 (ladder at
+      39-40 not 40-41; src/e2e dissolve at 68-70 not 70-71) but the cited content is genuinely
+      present — no stale refs. Note: core/bunfig.toml not yet on disk, but AC2 only requires the
+      rule to NAME the dependency (which it does), enacted in the next phase.
+
+      - configure-runner-and-build (attempt 1): **pass** — 5/5 ACs accepted. Live-verified: 39
+      .spec.ts on disk; baseline.md's recorded 39-path set diffs EXACT vs `find src -name
+      '*.spec.ts'` (zero drift); test 210 pass/39 files, build rc0, typecheck rc0 (match claims);
+      e2e/int scripts skip cleanly. The 47->39 concurrent-deletion re-grounding is honestly
+      documented, not a defect.
+    code-validate: >-
+      - author-naming-rule (attempt 1): **pass** — 0 blocking findings, 1 fyi warn.
       test-file-naming.md does NOT contradict colocation-and-naming.md — reconciles orthogonally
       (placement vs. kind-suffix; spec-next-to-subject extended to all three suffixes). House
-      style/voice + English + spelled-out \"end-to-end\" all satisfied; e2e/int stay as
+      style/voice + English + spelled-out "end-to-end" all satisfied; e2e/int stay as
       filename-suffix code tokens (correct). factory/CLI/substrate principles correctly
       not-applicable to a markdown artifact. Warn (fyi, non-blocking): the rule mandates a
       src/e2e-dissolved + core/bunfig.toml-present target state the current tree doesn't yet reflect
-      — by-design, enacted by the later configure-runner-and-build + migrate-and-classify phases."
+      — by-design, enacted by the later configure-runner-and-build + migrate-and-classify phases.
+
+      - configure-runner-and-build (attempt 1): **pass** — 2/2 ACs accepted. All 5 gates wired as
+      npm scripts + green; aggregate test runs all three tiers; no Bun.* leaked into production
+      src/; 4-entry tsconfig.build exclude keeps spec/test/e2e/int out of dist/ (0 test-suffix files
+      in dist after build). factory/CLI/substrate principles N/A for a config-only phase. One warn
+      (fyi, non-blocking): unquoted `$files` in the find-script is space-fragile, but kebab-case
+      paths carry no risk today; the empty-set guard correctly averts a bare `bun test` that would
+      scan all specs.
 phases:
   - name: Author the Three-Suffix Naming Rule
     slug: author-naming-rule
@@ -249,7 +294,7 @@ phases:
     commit: cd077c9
   - name: Bun Test-Glob + Build-Exclude Config
     slug: configure-runner-and-build
-    status: in-progress
+    status: done
     context: Isolate the silent-failure risk as its own phase, done BEFORE the file moves so discovery
       is in place when renames land. Add explicit bun test config (bunfig.toml [test] or equivalent)
       covering *.spec.ts, *.e2e.ts, *.int.ts. Split npm scripts into test:unit / test:e2e / test:int
@@ -322,9 +367,10 @@ phases:
             e2e+int skip cleanly, rc 0"
           - "Gate 5 build: npm run build (tsc -p tsconfig.build.json) rc 0, dist clean of test
             artifacts"
+    commit: 82739b6
   - name: Migrate + Classify Test Files via git mv
     slug: migrate-and-classify
-    status: pending
+    status: in-progress
     context: "Apply the rule's classification criteria by reading, then git mv each non-conforming file.
       Confirmed targets from discovery: cli/cli.e2e.spec.ts, cli/commands/lifecycle.e2e.spec.ts,
       e2e/epic-tier.e2e.spec.ts, e2e/e2e.dogfood.spec.ts, cli/custom-field-e2e.spec.ts -> *.e2e.ts.
@@ -346,19 +392,68 @@ phases:
     acceptance_criteria:
       - text: "All e2e-classified files renamed to *.e2e.ts via git mv preserving folder/colocation
           (evidence: git mv commands + git status showing renames)"
-        status: pending
+        status: done
+        evidence:
+          - git mv src/cli/cli.e2e.spec.ts src/cli/cli.e2e.ts (real-fs e2e via mkdtemp); git mv
+            src/e2e/e2e.dogfood.spec.ts src/dogfood.e2e.ts (real-fs e2e via mkdtemp, relocated to
+            package root next to index.ts)
+          - find src -name '*.e2e.ts' = 2 (cli/cli.e2e.ts, dogfood.e2e.ts) — only the two TRUE
+            real-fs suites keep .e2e; custom-field + old e2e/epic-tier reclassified to .int by
+            content (in-memory fake-io), see build notes
+          - npm run test:e2e -> Ran 4 tests across 2 files, 0 fail
       - text: "All integration-classified files renamed to *.int.ts via git mv (evidence: git mv commands)"
-        status: pending
+        status: done
+        evidence:
+          - "6 *.int.ts produced via git mv:
+            cli/{archive-reset,custom-field,epic-tier,lifecycle}.int.ts, src/epic-tier.int.ts,
+            ops/steps-planner/extensibility-matrix.int.ts"
+          - "git renames: cli/epic-tier.spec.ts->cli/epic-tier.int.ts;
+            e2e/lifecycle-e2e.spec.ts->cli/lifecycle.int.ts;
+            e2e/archive-reset.e2e.spec.ts->cli/archive-reset.int.ts;
+            e2e/extensibility-matrix.spec.ts->ops/steps-planner/extensibility-matrix.int.ts;
+            e2e/epic-tier.e2e.spec.ts->src/epic-tier.int.ts;
+            cli/custom-field-e2e.spec.ts->cli/custom-field.int.ts"
+          - find src -name '*.int.ts' = 6; npm run test:int -> Ran 60 tests across 6 files, 0 fail
       - text: "The 37 genuine unit *.spec.ts files left unchanged (evidence: count unchanged)"
-        status: pending
+        status: done
+        evidence:
+          - find src -name '*.spec.ts' = 31 (the re-grounded baseline unit count, not the stale 37)
+          - "Only one .spec.ts touched (relocated, suffix unchanged): e2e/skeleton.spec.ts ->
+            src/skeleton.spec.ts; the other 30 unit .spec.ts have no git status entry (untouched)"
+          - npm run test:unit -> Ran 146 tests across 31 files, 0 fail — all 31 unit files still
+            discovered + green
       - text: "Stem-collision pair (cli/epic-tier -> .int vs e2e/epic-tier -> .e2e) confirmed distinct, no
           overwrite (evidence: both paths present post-move)"
-        status: pending
+        status: done
+        evidence:
+          - "Both epic-tier paths present + distinct post-move: cli/epic-tier.int.ts (15525 bytes,
+            drives buildCli, cli subject) AND src/epic-tier.int.ts (4101 bytes, cross-cutting
+            substrate)"
+          - "git recorded two SEPARATE renames, no overwrite:
+            cli/epic-tier.spec.ts->cli/epic-tier.int.ts and
+            e2e/epic-tier.e2e.spec.ts->src/epic-tier.int.ts"
+          - "Collision avoided by content-driven home choice: cli-subject suite stays in cli/,
+            cross-cutting suite landed at package root"
       - text: "Post-migration executed-test-file count equals the pre-migration baseline (evidence: count
           diff = 0)"
-        status: pending
+        status: done
+        evidence:
+          - "Per-suffix distribution: spec=31, e2e=2, int=6, test=0 — total 39, exactly the
+            pre-migration baseline name-set (1:1 preserved by git mv)"
+          - "Executed-test totals: 146 (unit) + 4 (e2e) + 60 (int) = 210 tests across 39 files —
+            identical to the baseline 'Ran 210 tests across 39 files'. No file silently lost
+            discovery"
+          - src/e2e/ confirmed empty then removed (rmdir); test ! -d src/e2e -> CONFIRMED GONE
       - text: "All five quality gates green after migration (evidence: gate command output)"
-        status: pending
+        status: done
+        evidence:
+          - npm run test (aggregate) -> unit 146/146, e2e 4/4, int 60/60, all 0 fail
+          - npm run typecheck (tsc --noEmit) exit 0; npm run build (tsc -p tsconfig.build.json) exit
+            0
+          - npm run lint (eslint .) exit 0; npm run format (prettier --check) 'All matched files use
+            Prettier code style!'
+          - "No test leaked into dist/: find dist -name '*.spec.*' -o -name '*.e2e.*' -o -name
+            '*.int.*' empty"
   - name: Update In-Repo References + Docs
     slug: update-references
     status: pending

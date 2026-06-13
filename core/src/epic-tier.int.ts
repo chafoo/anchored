@@ -1,13 +1,13 @@
 import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse, stringify } from 'yaml'
-import { createParser } from '../parser/parse/parse.js'
-import { createRenderer, defaultSchemaUrl } from '../parser/render/render.js'
-import { createIo, type IoDeps } from '../io/io.js'
-import { createResolveSteps } from '../engine/scope/resolve-steps/resolve-steps.js'
-import { EpicNodeSchema } from '../schema/tiers/epic.js'
-import { TaskNodeSchema } from '../schema/tiers/task.js'
-import { nextChild as realNextChild } from '../ops/scope/children/children.js'
+import { createParser } from './parser/parse/parse.js'
+import { createRenderer, defaultSchemaUrl } from './parser/render/render.js'
+import { createIo, type IoDeps } from './io/io.js'
+import { createResolveSteps } from './engine/scope/resolve-steps/resolve-steps.js'
+import { EpicNodeSchema } from './schema/tiers/epic.js'
+import { TaskNodeSchema } from './schema/tiers/task.js'
+import { nextChild as realNextChild } from './ops/scope/children/children.js'
 
 // nested-slugs a1 — a nested slug task-file round-trips losslessly
 test('nested slug task-file round-trips losslessly', () => {
@@ -99,7 +99,7 @@ test('epic next-child over the tasks queue respects depends_on', () => {
 // epic-stages a1 — epic stages resolve from the default template
 test('epic stages resolve to [discover,scaffold] / each:task / [roll-up]', () => {
   const defaultCfg = parse(
-    readFileSync(new URL('../../default-template/anchored.default.yml', import.meta.url), 'utf8'),
+    readFileSync(new URL('../default-template/anchored.default.yml', import.meta.url), 'utf8'),
   ) as Record<string, unknown>
   const r = createResolveSteps(defaultCfg)
   expect(r.resolve('epic', 'plan').map((s) => s.name)).toEqual(['discover', 'scaffold'])
