@@ -1,102 +1,121 @@
-# Engine architecture — fractal factory functions
+# Engine architecture — skill-orchestrated, factory-function core
 
-> Draft / design spec (Item 3). How we build the lifecycle engine: the same
-> `createX(cfg, deps) → { run(input) → output }` pattern as the trader modules,
-> just applied to the fractal lifecycle.
+> Design spec (Item 3). How the lifecycle runs: the same
+> `createX(cfg, deps) → { run(input) → output }` factory pattern as the trader
+> modules, applied to the substrate and ops — **driven by the in-session skill,
+> not by a headless engine.**
+>
+> **History note (ABANDONED — `remove-headless-engine-path`):** the original
+> design (below, in its first form) had a deterministic *engine* that drove the
+> AI: `engine.run → tier-runner → stage-runner → step-runner → worker-step →
+> spawn`, with the loop-step recursing into the child tier and `spawn` running a
+> headless `claude -p` per task-file. That entire engine-drives-AI path was
+> **removed**. Rationale: a headless `claude -p` subprocess can't reach the
+> in-session Task / Workflow tools, so it could never actually spawn the workers
+> it was designed to orchestrate (dogfood finding F11 / architecture-cleanup A8,
+> mirrored in `cli/commands/refine.ts`). The orchestrator is the **in-session
+> skill**; the core is the substrate + ops + the `anchored` CLI it calls.
 
 ## The core idea in one sentence
 
-There are **two fractals with the same form**: the **runtime fractal** (what runs
-at runtime) and the **code fractal** (how the code is structured). Both nest
-`tier → stage → step`, and at the `each` edge the recursion closes.
+The **in-session skill is the orchestrator.** It drives `plan → refine → build →
+wrap` by calling the `anchored` CLI over Bash; the CLI returns deterministic,
+config-driven **orchestration plans** (which steps, which worker per step) and
+performs the **ops** (the substrate mutations). The skill then runs the actual
+fan-out — spawning workers, looping over children — itself, via Claude Code's
+Task / Workflow tools. AI never lives inside the core; the core is pure,
+testable code behind the CLI.
 
-## Important separation: deterministic engine vs. AI effects
+## Who does what
 
-- **Engine = pure code** (testable, robust): control flow (which stage, which
-  step), state transitions, `retry`, `stop`, atomic-writes, the substrate
-  invariant.
-- **Worker steps = AI effects** that the engine *triggers* (via `spawn` →
-  agent or `claude -p`). The AI hangs behind an injected `spawn` dep — i.e.
-  swappable and replaceable by a fake in tests.
+- **Skill (in-session, the orchestrator):** asks the CLI what to do
+  (`anchored <stage> <slug>` → an orchestration plan), executes each step —
+  running a worker via the Task tool, or fanning out over children itself — and
+  writes results back through the ops (`anchored node …`). The loop and the
+  spawn live in the skill, where the Task / Workflow tools are reachable.
+- **CLI + core (deterministic code, the substrate):** parse the node, resolve
+  the config-driven step sequence (steps-planner → resolve-steps), validate, and
+  perform every mutation atomically with the hard invariant enforced. Returns
+  JSON. Never spawns anything.
 
-The code part is the core that we test fully; the AI is a pluggable effect.
-
-## Runtime fractal — what runs
+## Runtime — what runs
 
 ```mermaid
 flowchart TB
-    classDef loop fill:#fde68a,stroke:#b45309,color:#000;
-    classDef leaf fill:#bbf7d0,stroke:#15803d,color:#000;
+    classDef skill fill:#fde68a,stroke:#b45309,color:#000;
+    classDef core fill:#bbf7d0,stroke:#15803d,color:#000;
 
-    N["node = epic | task | phase"] --> TIER
+    SK["in-session SKILL (orchestrator)"]:::skill
 
-    subgraph TIER["tierRunner(node)"]
-        direction LR
-        PL["plan"] --> RF["refine"] --> BD["build"]:::loop --> WR["wrap"]
-    end
-
-    BD --> STG["stageRunner — steps in order"]
-    STG --> STP["stepRunner(step)"]
-    STP -->|"run: / use:"| WK["worker → Bash / CLI / Agent"]:::leaf
-    STP -->|"each: child"| LP["loop-step"]:::loop
-    LP -. "per child: tierRunner(child-node)" .-> TIER
+    SK -->|"anchored &lt;stage&gt; &lt;slug&gt;"| PLAN["orchestration plan
+(node + resolved steps)"]:::core
+    PLAN --> SK
+    SK -->|"per step"| EXEC{"step kind"}
+    EXEC -->|"worker (use:)"| WK["Task tool → agent worker"]:::skill
+    EXEC -->|"command (run:)"| BASH["Bash"]:::skill
+    EXEC -->|"loop (each: child)"| FAN["skill fans out over children
+(Workflow / Task tools)"]:::skill
+    FAN -. "per child: anchored &lt;stage&gt; &lt;child-slug&gt;" .-> PLAN
+    SK -->|"anchored node … (write results)"| OPS["ops — validating, atomic"]:::core
 ```
 
-Read it like this: a `tierRunner` drives the four stages of a node. A stage
-drives its `steps` in order. A step is **either** a worker
-(`run:`/`use:` → Bash/CLI/Agent) **or** the loop (`each:`), which per child
-recursively calls the `tierRunner` of the child tier. At the leaf (`phase`)
-there is no loop — only workers (implement/validate).
+Read it like this: the skill asks the CLI for the stage's orchestration plan
+(the node plus its resolved, config-driven steps). For each step it either runs
+a worker (the Task tool spawns an agent), runs a Bash command, or — for the
+loop (`each: child`) — fans out over the children itself, asking the CLI for
+each child's plan in turn. At the leaf (`phase`) there is no loop, only workers
+(implement / validate). Every result is written back through the ops, where the
+hard invariant bites.
 
-## Code fractal — how it's built
+## The core — how it's built (factory functions)
 
-Each runtime layer = a **factory function** `createX(cfg, deps)` that returns a
-`{ run(input) → output }`. Deeper helpers live in the module's `scope/` folder,
-also with a clear input/output.
+What remains in `core/` is pure substrate + ops, each a **factory function**
+`createX(cfg, deps)` returning a `{ run(input) → output }` (engine layers) or
+named verbs (ops). Deeper helpers live in the module's `scope/` folder, also
+with a clear input/output.
 
 ```mermaid
 flowchart LR
     subgraph deps["deps — substrate, injected"]
-        ops["ops = createOps()"]
         parse["parser / render"]
+        io["io — atomic-write"]
         val["validate · state-machine · invariant"]
-        spawn["spawn · agent / claude -p"]
     end
 
-    E["createEngine(deps)"] --> T["createTierRunner(cfg, deps)"]
-    T --> S["createStageRunner(cfg, deps)"]
-    S --> P["createStepRunner(cfg, deps)"]
-    P --> SC["scope/ : run-step · worker-step · loop-step"]
-    SC -. "loop-step calls" .-> T
-    deps --> E
+    A["createAnchored(deps) → { cli, ops, config }"] --> CLI["createCli(deps)"]
+    A --> OPS["ops — node-ops · facade"]
+    A --> PLN["steps-planner (resolve-steps + worker-dispatch)"]
+    deps --> OPS
+    OPS --> CLI
+    PLN --> CLI
 ```
 
-Sketch (pseudo-TS) to make input/output tangible:
+Sketch (pseudo-TS) of the orchestration surface the CLI exposes to the skill:
 
 ```ts
-// each layer: createX(deps) → { run(input) → output }
-export function createStepRunner(deps) {
-  const { spawn, ops } = deps
-  return {
-    async run(step, node) {                 // input: step-config + current node
-      if (step.run)  return runStep(step, deps)           // scope/run-step.ts
-      if (step.use)  return workerStep(step, node, deps)  // scope/worker-step.ts → spawn()
-      if (step.each) return loopStep(step, node, deps)    // scope/loop-step.ts → per child: body-steps, then advance+stop
-    },                                        // output: { node', status, evidence }
-  }
+// `anchored <stage> <slug>` → the orchestration plan; the SKILL executes it.
+export async function runStage(stage, args, deps) {
+  const node = await deps.nodeOps.read(slug)
+  const steps = deps.steps(node, stage)   // steps-planner: resolve-steps + worker per step
+  return { node, stage, steps }           // plan only — the CLI spawns NOTHING
 }
 ```
 
-The `loopStep` is the point where the code fractal closes: it calls the
-`tierRunner` of the child tier → recursion. Exactly like the runtime fractal.
+The step resolution (which steps a stage runs, and which worker each `use:` step
+maps to) is the only "engine" logic left, and it is pure config logic:
+`ops/steps-planner` calls `engine/scope/resolve-steps` to fill in the default
+template's steps, and `ops/scope/worker-dispatch` (the `DEFAULT_WORKERS` roster)
+to name the worker per step. No control flow, no spawn — just a deterministic
+plan the skill reads.
 
-## The loop-step has a body (interleaved)
+## The loop is the skill's job (interleaved body)
 
-A loop-step carries `each: <tier>` **+ a `steps` body**. Per child the
-`loopStep` drives the body in order — **interleaved**: all body-steps for
-child A, then all for child B, … (NOT first step-1 across all, then step-2 across
-all). For this the `loopStep` reuses the same `stepRunner` on the body → fractal
-again, just one layer deeper.
+A loop step carries `each: <tier>` **+ a `steps` body**. The skill drives the
+body per child **interleaved**: all body steps for child A, then all for child B
+(NOT first one step across all children, then the next). The CLI still resolves
+the body's steps per child (the same steps-planner call, one tier deeper), but
+the iteration — fanning out, advancing each child's status, the stop-check — is
+the skill's, because that is where the Task / Workflow tools live.
 
 ```yaml
 epic:
@@ -105,43 +124,51 @@ epic:
       - { name: setup,  run: '...' }        # once, before the loop
       - name: loop
         each: task
-        steps:                               # BODY — per task in order
-          - { name: run }                    # built-in: drive this task (headless spawn)
+        steps:                               # BODY — per task, interleaved
+          - { name: run }                    # skill drives this task (Task / Workflow tool)
           - { name: commit, run: '...' }     # right after, still on THIS task
       - { name: report, run: '...' }        # once, afterwards
 ```
 
-Per task: `run → commit`, then the next one. The per-iteration mechanics
-(advance the stub status, log, stop-check) the `loopStep` does after the body of
-each iteration — built-in. Shorthand `build: { each: task }` = loop with an
-implicit body `[run]`.
+Per task: `run → commit`, then the next one. Shorthand `build: { each: task }` =
+a loop with an implicit body `[run]`.
+
+> **Note on `executor`:** the optional `executor` field on a node survives (kept
+> per design question q1). It is a hint the build skill reads to choose its own
+> fan-out mechanism — for example `executor: workflow` tells the skill to drive
+> the children through the Workflow tool. It is a flag the *skill* honors, not an
+> engine that runs anything.
 
 ## What this gives us
 
-- **Testability**: `createStepRunner({ spawn: fakeSpawn, ops: fakeOps })` →
-  call `run(step, node)`, assert the output. No real CC needed.
-- **Swappability**: switch `spawn` from agent to `claude -p`, or a worker-step
-  from MCP to CLI — without touching the tier/stage runners.
-- **Extensibility**: a new step type = one file in `scope/`, the contracts
-  above stay the same.
-- **Robustness**: each layer has input/output contracts; the hard invariant
-  (no `done` without `evidence`) sits in `val`/`ops` and bites exactly at the
-  step that writes.
+- **Testability**: the core is pure — `createNodeOps`, `createStepsPlanner`,
+  `createValidator` take faked seams (`io`, `parse`, `render`) and assert
+  outputs. No real Claude Code, no headless subprocess needed.
+- **Right place for spawn**: the fan-out lives in the session where the Task /
+  Workflow tools actually exist — not in a headless subprocess that can't reach
+  them.
+- **Extensibility**: a new step type is config in the default template; the
+  steps-planner resolves it and the skill executes it.
+- **Robustness**: the hard invariant (no `done` without `evidence`) sits in
+  `validate`/`ops` and bites at the op that writes — independent of any
+  orchestrator.
 
 ## Folder sketch
 
 ```
 core/
   engine/
-    engine.ts               createEngine(deps)
-    tier-runner.ts          createTierRunner(cfg, deps)
-    stage-runner.ts         createStageRunner(cfg, deps)
-    step-runner.ts          createStepRunner(cfg, deps)
     scope/
-      run-step.ts           run: → Bash
-      worker-step.ts        use: → spawn(agent | claude -p)
-      loop-step.ts          each: → createTierRunner(child)
-      resolve-steps.ts      inject built-in defaults from anchored.default.yml
-  ops/                      createOps() — the existing substrate (stays)
-  parser/  validate/  io/   substrate (stays)
+      resolve-steps/          inject the default template's steps + normalize order
+                              (the only surviving "engine" logic — pure config)
+  ops/                        createNodeOps / facade / steps-planner / validate (the substrate)
+    steps-planner/            resolve the concrete step sequence + worker per step for a stage
+    scope/worker-dispatch/    DEFAULT_WORKERS roster: which agent a use: step maps to
+  parser/  state/  io/        substrate (parser/render, transitions/invariants, atomic-write)
+  cli/                        the `anchored` CLI — the only transport (no MCP, no spawn)
 ```
+
+> The engine-run chain (`engine.ts`, `tier-runner`, `stage-runner`,
+> `step-runner`, `run-step`, `worker-step`, `loop-step`, `loop-workflow`) and
+> the `spawn/` seam were **removed** with `remove-headless-engine-path`. Only
+> `engine/scope/resolve-steps/` remains.

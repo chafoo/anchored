@@ -36,7 +36,7 @@ core/
 ├── package.json                 # @chaafoo/anchored · bin: anchored · (tooling choice in the build)
 ├── tsconfig.json
 ├── src/
-│   ├── index.ts                 # public entry (the ONLY index.ts): wiring createEngine + createOps
+│   ├── index.ts                 # public entry (the ONLY index.ts): createAnchored(deps) → { cli, ops, config }
 │   ├── bin.ts                   # #!/usr/bin/env node shebang entry → cli/cli.ts
 │   │
 │   ├── config/                  # ── anchored.yml as base dependency ──
@@ -44,30 +44,22 @@ core/
 │   │   ├── merge.ts             # combine default base + user deltas
 │   │   └── init.ts              # lazy-init of a user project (anchored.yml + settings)
 │   │
-│   ├── engine/                  # ── the fractal factory engine ──
-│   │   ├── engine.ts            # createEngine(deps) → run(tier, node)
-│   │   ├── tier-runner.ts       # createTierRunner(cfg, deps) → runs plan/refine/build/wrap of a node
-│   │   ├── stage-runner.ts      # createStageRunner(cfg, deps) → runs the steps of a stage in order
-│   │   ├── step-runner/         # createStepRunner(cfg, deps) → one step: run | use | each
-│   │   │   └── step-runner.ts
+│   ├── engine/                  # ── step-resolution config logic (the engine-run chain was removed) ──
 │   │   └── scope/
-│   │       ├── run-step/run-step.ts            # run:  → Bash
-│   │       ├── worker-step.ts                  # use:  → spawn(agent | claude -p)
-│   │       ├── worker-dispatch.ts              # pick spawn mode (in-process phase vs. claude -p task-file)
-│   │       ├── loop-step/loop-step.ts          # each: → the body per child (interleaved), then advance + stop; calls tier-runner
-│   │       ├── loop-workflow/loop-workflow.ts  # the Claude-Code-workflow loop variant
-│   │       └── resolve-steps/resolve-steps.ts  # insert built-in defaults from the default template + normalize order
+│   │       └── resolve-steps/resolve-steps.ts  # insert the default template's steps + normalize order
+│   │                                           # (the ONLY surviving "engine" piece — pure config, no spawn)
 │   │
 │   ├── ops/                     # ── tier-generic op core ──
 │   │   ├── node-ops/node-ops.ts        # createNodeOps(tierSchema, deps): create/read/set-status/add-child/next-child/…
-│   │   ├── engine-ops.ts               # ops surface the engine/stages drive
+│   │   ├── engine-ops.ts               # ops surface the CLI/stages drive (createEngineOps adapter removed with the headless path)
 │   │   ├── facade/facade.ts            # the combined ops facade handed to the CLI
-│   │   ├── steps-planner/steps-planner.ts  # resolve the concrete step sequence for a stage
+│   │   ├── steps-planner/steps-planner.ts  # resolve the concrete step sequence + worker per step for a stage
 │   │   ├── tier-derive.ts              # derive tier/slug relationships
 │   │   ├── validate/validate.ts        # node validation surface
 │   │   └── scope/
 │   │       ├── children/children.ts    # add/move/next-child (dependency graph: first pending whose depends_on are all done)
 │   │       ├── questions/questions.ts  # add/resolve question
+│   │       ├── worker-dispatch/worker-dispatch.ts  # DEFAULT_WORKERS roster: which agent a use: step maps to (a plan hint for the skill)
 │   │       └── log.ts                  # append-only log
 │   │
 │   ├── schema/                  # ── Zod schemas ──
@@ -90,7 +82,8 @@ core/
 │   │
 │   ├── io/io.ts                 # atomic-write: lock + mkdir -p + POSIX-rename
 │   │
-│   ├── spawn/spawn.ts           # execution substrate: `claude -p` per task-file; phases in-process (subagent mode later)
+│   │                            # (spawn/ REMOVED — the headless `claude -p` seam is gone; the
+│   │                            #  in-session skill spawns workers via the Task / Workflow tools)
 │   │
 │   ├── cli/                     # ── `anchored` CLI (the only transport, no MCP) ──
 │   │   ├── cli.ts               # entry + dispatch; JSON output (folder-named, not index.ts)
@@ -108,9 +101,9 @@ core/
 │   │
 │   └── e2e/                     # ── cross-cutting suites (no single subject) ──
 │       ├── e2e.dogfood.spec.ts          # drive a real task-file lifecycle end-to-end
-│       ├── lifecycle-e2e.spec.ts        # full lifecycle of both tiers through the engine
+│       ├── lifecycle-e2e.spec.ts        # full lifecycle of both tiers through the real CLI argv path
 │       ├── archive-reset.e2e.spec.ts    # archive/reset through the real CLI argv path (cross-cutting)
-│       ├── extensibility-matrix.spec.ts # extend anchored without touching engine code
+│       ├── extensibility-matrix.spec.ts # extend anchored without touching substrate code
 │       ├── epic-tier.e2e.spec.ts        # epic-tier scaffold/walk/loop/roll-up
 │       └── skeleton.spec.ts             # package skeleton / wiring smoke
 │
@@ -154,8 +147,11 @@ plugin/
 
 ## Mechanism vs. Policy (where what lives)
 
-- **Mechanism (code/substrate, fixed)**: `engine/`, `ops/`, `state/`, `parser/`,
-  `io/io.ts`, the tier mechanics in `schema/tiers/*` (status enum, transitions,
-  child relationship), the invariant.
+- **Mechanism (code/substrate, fixed)**: `ops/`, `state/`, `parser/`,
+  `io/io.ts`, `engine/scope/resolve-steps/` (step resolution — the only surviving
+  engine piece), the tier mechanics in `schema/tiers/*` (status enum, transitions,
+  child relationship), the invariant. The engine-run chain + the `spawn` seam were
+  removed (`remove-headless-engine-path`); orchestration is the in-session skill's
+  job.
 - **Policy (config/template, swappable)**: `default-template/anchored.default.yml`
   + the field declarations the user adds in their `anchored.yml`.

@@ -18,12 +18,16 @@
   discover at both tiers. Detection: <5 task / 5–9 independence test / ≥10 epic.
   Fractal escalation is cheap; auto = v2.
 
-### 2. Execution substrate of the loop ✅ DECIDED
-- Headless `claude -p` per task-file, phases in-process; `spawn` left open as a seam.
+### 2. Execution substrate of the loop ✅ DECIDED, then ABANDONED
+- ~~Headless `claude -p` per task-file, phases in-process; `spawn` left open as a
+  seam.~~ → **ABANDONED** (`remove-headless-engine-path`): a headless subprocess
+  can't reach the session's Task tool, so the in-session **skill** is the executor.
   Record in the notes.
 
 ### 3. Architecture principle: fractal factory functions ✅ DECIDED
-- Detail + diagrams: `docs/drafts/engine-architecture.md`; record in the notes.
+- Detail + diagrams: `docs/design/engine-architecture.md`; record in the notes.
+  Note: the factory pattern stays for the substrate/ops; the engine-run chain it
+  originally drove was removed (`remove-headless-engine-path`).
 
 ### 4. Agent organization into buckets ✅ DECIDED
 - No subfolders (CC only scans flat) → prefix buckets. Roster = distinct

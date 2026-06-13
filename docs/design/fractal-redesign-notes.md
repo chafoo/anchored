@@ -117,7 +117,9 @@ requirement on the engine + the substrate. The default file is the contract.
 3. **Execution substrate of the loop**: does `build.each` run each child unit as
    an in-process **Task subagent** (lightweight, session-bound, observable) OR as
    a headless **`claude -p` instance** (real isolation, CI-/script-capable, but
-   more expensive + nested processes)? → to be decided.
+   more expensive + nested processes)? → **RESOLVED: in-session Task subagent
+   only** (`remove-headless-engine-path`). The headless `claude -p` path was tried
+   and removed — a headless subprocess can't reach the session's Task tool.
 
 ## Parking lot (ideas, later)
 
@@ -129,10 +131,12 @@ requirement on the engine + the substrate. The default file is the contract.
 ## What changes in the existing system
 
 - **Functionally for the user**: `task`/`phase` behavior stays the same.
-- **Internally**: engine becomes tier-generic (one loop mechanism for all tiers);
-  built-ins → template steps (config-driven dispatch instead of hardcoded);
+- **Internally**: the substrate becomes tier-generic (one `createNodeOps` for all
+  tiers); built-ins → template steps (config-driven dispatch instead of hardcoded);
   new substrate invariant; `anchored.yml` schema flat → fractal; `fields` per
-  tier; `epic` is "one tier higher" with its own steps + data.
+  tier; `epic` is "one tier higher" with its own steps + data. The loop /
+  orchestration is the in-session **skill's** job, not an engine's
+  (`remove-headless-engine-path`).
 
 ## Agent roster + buckets (Item 4 — DECIDED)
 
@@ -150,36 +154,58 @@ requirement on the engine + the substrate. The default file is the contract.
 - Prefix scheme by stage where sensible (`plan-…`, `refine-…`, `build-…`,
   `wrap-…`, `epic-…`).
 
-## Engine architecture (Item 3 — DECIDED)
+## Engine architecture (Item 3 — DECIDED, then REVISED)
 
-Detail + diagrams: `docs/drafts/engine-architecture.md`.
+Detail + diagrams: `docs/design/engine-architecture.md`.
 
-- **Fractal factory functions** (trader pattern): `createEngine` →
-  `createTierRunner` → `createStageRunner` → `createStepRunner`, each as
-  `createX(cfg, deps) → { run(input) → output }`; helpers in the `scope/` folder.
-- **Two fractals, same form**: runtime (tier→stage→step) + code; `loopStep`
-  closes the recursion (calls `createTierRunner` of the child tier).
-- **Separation**: engine = deterministic code (control flow, state
-  transitions, retry, stop, atomic-writes, invariant). **AI workers = effects**
-  behind injected `spawn` dep (agent | `claude -p`) → swappable/fakeable.
-- **Substrate remains** (`createOps`, parser, validate, io); `spawn` is the new
-  dep. One `createTierRunner` serves epic/task/phase — the difference is only
-  `cfg` (from `anchored.default.yml`) + `node` (data).
-- Folders: `core/engine/{engine,tier-runner,stage-runner,step-runner}.ts` +
-  `core/engine/scope/{run-step,worker-step,loop-step,resolve-steps}.ts`.
+> **REVISED (`remove-headless-engine-path`):** the engine-drives-AI chain below
+> was built and then **removed**. The orchestrator is the **in-session skill**;
+> the core keeps only the substrate + ops + the `anchored` CLI. See the per-bullet
+> notes.
 
-## Execution substrate (Item 2 — DECIDED)
+- **Fractal factory functions** (trader pattern): the `createX(cfg, deps) →
+  { run(input) → output }` form **stays** for the surviving core (`createNodeOps`,
+  `createStepsPlanner`, `createValidator`, `createCli`); helpers in `scope/`.
+  ~~`createEngine → createTierRunner → createStageRunner → createStepRunner`~~ —
+  **ABANDONED**: a headless `claude -p` subprocess can't reach the session's Task
+  tool, so the engine could never spawn the workers it orchestrated (dogfood F11 /
+  architecture-cleanup A8). `createAnchored(deps)` now returns `{ cli, ops, config }`.
+- ~~**Two fractals, same form**: runtime + code; `loopStep` closes the recursion~~
+  — **ABANDONED**: the loop + fan-out live in the **skill** (Task / Workflow tools),
+  not in a recursive engine.
+- **Separation stays in spirit**: the core is deterministic, fully-tested code
+  (parse, resolve-steps, validate, transitions, atomic-write, invariant). The AI
+  is an **effect the skill runs in-session** — never inside the core, never behind
+  a `spawn` dep anymore (~~`spawn` agent | `claude -p`~~ removed).
+- **Substrate remains** (`createNodeOps`, parser, validate, io). ~~`spawn` is the
+  new dep~~ — removed. The per-stage orchestration plan (which steps, which worker)
+  comes from the steps-planner; the skill executes it.
+- Folders: ~~`core/engine/{engine,tier-runner,stage-runner,step-runner}.ts` +
+  `core/engine/scope/{run-step,worker-step,loop-step,resolve-steps}.ts`~~ →
+  only `core/engine/scope/resolve-steps/` survives (pure step-resolution config);
+  the worker roster lives in `core/ops/scope/worker-dispatch/`.
 
-- **`spawn` = headless `claude -p`**, granularity **per task-file** (each
+## Execution substrate (Item 2 — DECIDED, then ABANDONED)
+
+> **ABANDONED (`remove-headless-engine-path`):** the headless `claude -p`
+> execution substrate below was removed. A headless subprocess can't reach the
+> session's Task / Workflow tools, so the in-session **skill** is the executor —
+> it spawns each task/phase worker via the Task tool (and may fan out via the
+> Workflow tool, hinted by the node's `executor` field). The original bullets are
+> kept for the record:
+
+- ~~**`spawn` = headless `claude -p`**, granularity **per task-file** (each
   task-file = a fresh instance), **phases in-process** within that
-  instance → nesting capped at ~2.
-- `spawn` remains an **injected seam** → an in-process Task subagent mode (live
+  instance → nesting capped at ~2.~~
+- ~~`spawn` remains an **injected seam** → an in-process Task subagent mode (live
   progress, session-bound) can be added later as a second implementation,
-  without touching the runners.
-- Consistent with q6: task runs isolated/epic-blind; cross-task context
-  (epic-log excerpt) comes in as an argument.
-- Price accepted: full instance per task (startup/tokens); headless auth must
-  be running (no interactive login at runtime).
+  without touching the runners.~~ → The in-session path is now the **only** path;
+  there is no `spawn` seam.
+- Consistent with q6: a task still runs isolated / epic-blind; cross-task context
+  (an epic-log excerpt) comes in as an argument the skill passes to the worker.
+- ~~Price accepted: full instance per task (startup/tokens); headless auth must
+  be running.~~ → Not applicable: the skill spawns in-session subagents, no
+  headless instance.
 
 ## steps/each semantics (Item 5a — DECIDED)
 
@@ -188,13 +214,17 @@ Detail + diagrams: `docs/drafts/engine-architecture.md`.
 - The `loop` step has `each` **+ a `steps` body** that runs **interleaved** per
   child: all body steps for child A, then for child B (A→run→commit,
   B→run→commit, …). NOT the pass model (first all run, then all commit).
-- In the body, `{ name: run }` is the built-in "drive this unit" step
-  (headless spawn), around which custom steps are positionable.
-- Per-iteration mechanics (advance status, log, stop-check) are done by the
-  `loopStep` after the body of each iteration — built-in.
+- In the body, `{ name: run }` is the "drive this unit" step. ~~(headless
+  spawn)~~ → **the in-session skill drives it** via the Task / Workflow tools
+  (`remove-headless-engine-path`), around which custom steps are positionable.
+- Per-iteration mechanics (advance status, log, stop-check) are driven by the
+  **skill** after the body of each iteration; the CLI resolves the body's steps
+  per child and performs the status/log writes through the ops.
 - Shorthand `build: { each: task }` = loop with implicit body `[run]`.
-- Engine: `loopStep` reuses `stepRunner` on the body → fractal, one level deeper.
-  Detail in `docs/drafts/engine-architecture.md`.
+- ~~Engine: `loopStep` reuses `stepRunner` on the body → fractal, one level
+  deeper.~~ → **ABANDONED**: the loop lives in the skill; the CLI just re-resolves
+  the body's plan per child (one tier deeper). Detail in
+  `docs/design/engine-architecture.md`.
 
 ## Ops namespace + config-as-base-dep (Item 5b — DECIDED)
 
@@ -211,7 +241,7 @@ Detail + diagrams: `docs/drafts/engine-architecture.md`.
 - **`anchored.yml` is *the* base dependency**:
   `effectiveConfig = merge(anchored.default.yml [framework base], <project>/anchored.yml [user deltas])`
   — loaded + validated once at **bootstrap**, then injected as `deps.config` into all
-  factory functions (createEngine / createOps / …). That's why the minimal
+  surviving factory functions (createNodeOps / createStepsPlanner / createCli / createAnchored / …). That's why the minimal
   user `anchored.yml` suffices: anything not overridden comes from the default base.
 
 ## v2 repo + command naming (DECIDED/clarified)
