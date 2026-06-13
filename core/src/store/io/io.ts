@@ -1,9 +1,9 @@
-// io.ts — createIo(deps): atomic-write substrate. mkdir -p → lock → write temp →
+// store/io/io.ts — createIo(deps): atomic-write substrate. mkdir -p → lock → write temp →
 // POSIX rename → release (finally). fs/lock/rand/pid are injected seams; the
 // write logic touches no node:fs directly (fakeable in tests). node:path is a
 // pure utility (no effect), so importing dirname is fine.
 import { dirname } from 'node:path'
-import { anchoredError } from '../domain/invariants/invariants.js'
+import { anchoredError } from '../../domain/invariants/invariants.js'
 
 export interface IoFs {
   mkdir(dir: string, opts: { recursive: true }): Promise<unknown>
