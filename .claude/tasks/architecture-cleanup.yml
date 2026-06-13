@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
 schema_version: 2
 slug: architecture-cleanup
-status: build
+status: done
 created: 2026-06-13
 title: Architecture cleanup — mechanism/policy placement + invariant centralization
 context:
@@ -110,12 +110,150 @@ context:
       NOT bound; zero orphans, zero cross-phase conflicts. q4→only reconcile doc entries already
       named (worker-dispatch clause is a no-op, not in the tree). q5→119-122 span is fine, agent
       matches by content."
-    Validation: "- worker-dispatch-relocate / A6 (commit 35f61c5): task-validate PASS (4/4 ACs honest —
-      files at ops/scope/worker-dispatch/, old engine path gone, steps-planner import resolves, NOTE
+    Validation: >-
+      - worker-dispatch-relocate / A6 (commit 35f61c5): task-validate PASS (4/4 ACs honest — files
+      at ops/scope/worker-dispatch/, old engine path gone, steps-planner import resolves, NOTE
       comment removed + rules-scan mapping kept, bun test 274 pass). code-validate PASS (0 block / 0
       warn — mechanism/policy separation satisfied: DEFAULT_WORKERS roster out of engine/, foldered
       correctly per colocation, no barrel, no bare index.ts, lint+typecheck clean). Pure rename +
-      1-line import retarget, zero behavior change."
+      1-line import retarget, zero behavior change.
+
+      - invariant-centralize / A7 (commit d95d45d): task-validate PASS (3/3 ACs honest —
+      assertEpicAcHasEvidence at invariants.ts:53-67 beside its phase-tier sibling, node-ops:328
+      delegates, inline throw gone; git diff CONFIRMS the AcceptanceNoEvidence message is
+      byte-identical = zero drift; new test a5; bun test 275 pass). code-validate PASS (0 block / 0
+      warn — hard invariant now in the substrate not inlined at the write site, pure stateless
+      helper, assertAcDoneHasEvidence untouched, lint+typecheck clean).
+
+      - build-tsconfig-types / A10 (commit 6f4eb19): task-validate PASS (3/3 ACs honest —
+      tsconfig.build.json:4 types:["node"], base keeps ["bun"]; tsc -p tsconfig.build.json emits 47
+      .d.ts clean with 0 bun-leaks, dist gitignored+cleaned; bun test 275 pass). code-validate PASS
+      (0 block / 0 warn — Node-compat publish condition upheld; independently grep-confirmed ZERO
+      Bun.* in production src = genuinely Bun-free). DEVIATION (justified, flag for wrap): refine
+      note prescribed types:[]; agent shipped types:["node"] because bun-types transitively supplies
+      @types/node, so [] would strip Node globals and break 23x on legitimate node:* usage in
+      bin.ts/io.ts. Both validators verified ["node"] meets the AC goal (Bun types out, build
+      compilable) — a correctness improvement, not a defect.
+
+      - colocation-stragglers (commit 4c55789, FINAL phase): task-validate PASS (4/4 ACs honest —
+      stage.spec.ts at cli/, archive-reset.e2e.spec.ts at e2e/ as a clean git-rename R95 not an
+      overwrite, pre-existing lifecycle-e2e.spec.ts intact + distinct, old cli/commands paths gone,
+      file-structure.md reconciled, bun test 275 pass). code-validate PASS (0 block / 0 warn) —
+      WHOLE-TASK final sweep: `find core/src -name index.ts` → ONLY core/src/index.ts, `grep "export
+      * from" core/src` → zero barrels, both surviving cli/commands specs (classify, node) correctly
+      colocated with their subjects, file-structure.md "only specs not beside a subject live in
+      e2e/" claim now factually true. architecture-cleanup complete: 4/4 phases done across commits
+      35f61c5 (A6) / d95d45d (A7) / 6f4eb19 (A10) / 4c55789 (stragglers); bun test 274→275 (the +1
+      is A7's new helper test), zero behavior change throughout.
+  wrap:
+    intro: >-
+      ## Wrap-up summary
+
+
+      **Shipped**: 4 of 4 phases done. The low-severity architecture gaps from
+      `.claude/temp/repo-analysis.md` §4 are closed: mechanism/policy line tightened, the evidence
+      guarantee centralized, the published artifact made Node-clean, and two colocation stragglers
+      swept. 4 commits: 35f61c5 (A6 worker-dispatch roster out of engine/ → ops/scope/), d95d45d (A7
+      epic-DoD guard → state/invariants), 6f4eb19 (A10 Bun types out of the published build),
+      4c55789 (cli straggler specs + file-structure doc reconcile).
+
+
+      **Blocked/Deferred**: none. All phases terminal=done. (The originally-planned A8 spawn-seam
+      phase was removed during refine — see decision below — and lives on as the separate
+      `remove-headless-engine-path` task.)
+
+
+      **ACs with evidence**: 14 of 14 (100% honest completion). Every AC carries concrete evidence
+      (git-mv rename ratios, byte-identical error proof, tsc emit results, exact gate numbers).
+
+
+      **Zero behavior change, proven**: `bun test` held green throughout — 274 → 275 (the single +1
+      is A7's new focused helper test, not a behavior change); the build config tightening (A10) is
+      the only deliberate change and it's verified to keep the build compilable. 8/8 build-time gate
+      runs PASS (per-phase task-validate + code-validate).
+
+
+      **Autonomous decisions (review these)**: 3 `source='ai'` refine-stage calls + 1 build-time
+      deviation.
+
+        worker-dispatch-relocate
+        - q3: the rules-scan → plan-rules-scan mapping is NOT dangling, so neither add nor drop it — plugin/agents/plan-rules-scan.md already exists; the only work was deleting the stale NOTE comment that wrongly claimed the agent must still be added.
+
+        colocation-stragglers
+        - q4: only reconcile doc entries the tree already names — do NOT add a worker-dispatch line file-structure.md never listed; that AC2 clause is a conditional no-op (avoids scope-creep, keeps the doc delta minimal).
+        - q5: file-structure.md:119-122 stays as the whole-blockquote span — line numbers are navigational anchors, the build agent matches the claim by content not by exact line; no AC churn.
+
+        build-tsconfig-types (BUILD-TIME deviation, both validators flagged + accepted)
+        - A10: shipped `types:["node"]` instead of the refine note's planned `types:[]`. Reason: bun-types transitively supplies @types/node, so `[]` strips Node globals too and breaks 23× on legitimate `node:*` usage in bin.ts/io.ts. `["node"]` keeps Node, excludes Bun — it meets the AC's actual goal (Bun types out of the published build) better than the literal plan. A correctness improvement, not a defect; verified by both task-validate + code-validate.
+
+      **Notable findings during build**: each implement pass self-caught its own depth/runtime
+      hazards before committing (A6 spec fixture-URL depth, A10 the `[]`→`["node"]` correction).
+      Every red gate was fixed pre-commit; no phase committed dirty.
+
+
+      **Notable findings from review** (post-build code-reviewer over the full diff — detail in the
+      review subsection): all 4 changes CLEAN — A7's error is byte-identical (verified against git
+      diff), A10 keeps the build genuinely Bun-free (zero Bun.* in production source), all
+      moved-spec import depths + fixture paths resolve, the e2e rename did not collide with the
+      pre-existing lifecycle-e2e.spec.ts. Two PRE-EXISTING items surfaced (neither introduced by
+      this task, both follow-up candidates):
+
+      - worker-dispatch.spec.ts's NAMES array lists 13 entries + says "all 13", but DEFAULT_WORKERS
+      has 15 (missing epic-plan-check + epic-decompose from the static list). A6 relocated the file
+      unchanged; the a3 test covers the gap dynamically + the suite is green. Recommend a follow-up
+      to sync the static NAMES list + its "13" comment to the real 15-entry roster.
+
+      - cli/cli.e2e.spec.ts has an .e2e.spec.ts name but lives in cli/ not e2e/ — a placement
+      inconsistency predating this task; candidate for a future colocation sweep.
+
+
+      **Outcome vs plan**: shipped as planned minus the deliberately-removed A8 phase. The notable
+      refinements vs the original plan: (1) the whole task was enlarged mid-stream — the
+      colocation-stragglers phase was folded in from the colocation-migration wrap review, which is
+      exactly the kind of cross-task follow-up anchored is meant to absorb; (2) A10's `types:[]` →
+      `types:["node"]` correction is the one substantive plan deviation, and it's a strict
+      improvement the validators confirmed. Phase ordering (A6 first so the later doc-reconcile
+      builds on its result) held. Net: a clean, fully-evidenced architecture tidy-up with no
+      behavior change and two small pre-existing follow-ups surfaced for later.
+    subsections:
+      review: >-
+        Review over the cumulative diff (35f61c5~1..4c55789, code-reviewer agent). 4 small targeted
+        changes, already corroborated by 8 PASS gate runs. Verdict: CLEAN — no regressions, no
+        broken paths, no Bun leak.
+
+
+        - A7 (only logic-touching change): assertEpicAcHasEvidence at invariants.ts:53-67 is
+        BYTE-IDENTICAL to the old inline throw — error name 'AcceptanceNoEvidence', message
+        template, suggestion literal all match; condition `status==='done' &&
+        (!merged||merged.length===0)` preserved exactly (deliberately NOT unified onto
+        isEvidenceFilled which filters whitespace+sentinel). The `merged` construction at the
+        call-site (node-ops.ts:326-327) is unchanged, so the guard fires on undefined/[] and passes
+        on non-empty exactly as before. invariants.spec.ts a5 pins name+message+suggestion, so
+        future drift is test-caught. No caller behaves differently.
+
+        - A10 (build config): tsconfig.build.json types:["node"] override verified correct — zero
+        Bun.* in production source (grep), so the runtime is genuinely Bun-free; import.meta comes
+        from lib:["ES2022"] (not @types/bun); @types/node covers all node:* + NodeJS.* usage. Build
+        compiles + emits clean, no masked Bun usage surfaced.
+
+        - A6 + straggler moves (pure git-mv): all import depths + the readFileSync fixture path
+        (worker-dispatch.spec.ts:47 ../../../../default-template/...) resolve correctly; the e2e
+        rename (lifecycle.e2e.spec → archive-reset.e2e.spec) does NOT collide with the pre-existing
+        e2e/lifecycle-e2e.spec.ts (distinct files confirmed).
+
+
+        PRE-EXISTING finding (NOT introduced by this task, worth a tiny follow-up):
+        worker-dispatch.spec.ts NAMES array (lines 7-21) has 13 entries + the a1 test title says
+        "all 13 default step names", but DEFAULT_WORKERS in worker-dispatch.ts has 15 (missing
+        epic-plan-check + epic-decompose from the static list). A6 relocated the file unchanged, so
+        this predates these commits; the a3 test covers the gap dynamically (iterates all tiers,
+        every step resolves) and the suite is green at 275. Recommend a follow-up to sync the a1
+        NAMES list + its "13" comment to the real 15-entry roster.
+
+
+        Also surfaced (pre-existing, out of scope): cli/cli.e2e.spec.ts has an .e2e.spec.ts name but
+        lives in cli/ not e2e/ — placement inconsistency predating this task; candidate for a future
+        colocation sweep.
 phases:
   - name: "A6: move worker-dispatch out of engine/ into ops/scope/"
     slug: worker-dispatch-relocate
@@ -185,7 +323,7 @@ phases:
             state, not part of the source refactor.)
   - name: "A7: centralize the epic-DoD evidence check into state/invariants.ts"
     slug: invariant-centralize
-    status: in-progress
+    status: done
     context: "ops/node-ops/node-ops.ts:327 inlines the epic-DoD evidence check (status done requires
       non-empty merged evidence) instead of routing through the invariants module. Same
       evidence-honesty floor one tier up — it should live in one place. (Path corrected
@@ -203,16 +341,46 @@ phases:
       - text: "`assertAcceptanceItemHasEvidence` (or similar) added to `state/invariants.ts` capturing the
           epic-DoD rule; `ops/node-ops.ts:329` calls it instead of the inline `status === 'done' &&
           (!merged || merged.length === 0)` check."
-        status: pending
+        status: done
+        evidence:
+          - New helper `assertEpicAcHasEvidence(id, status, merged)` added at
+            state/invariants/invariants.ts:54-72 — the epic-tier sibling of assertAcDoneHasEvidence
+            (invariants.ts:36-44), same anchoredError(kind, message, suggestions) shape + JSDoc
+            cross-ref, no class.
+          - node-ops.ts:8-14 import block now includes assertEpicAcHasEvidence alongside
+            assertAcDoneHasEvidence.
+          - "node-ops.ts:325-327: the inline 8-line throw block replaced by a single call
+            `assertEpicAcHasEvidence(id, status, merged)` — the merged-evidence computation stays at
+            the call-site, only the guard/throw moved into invariants."
       - text: "Behavior identical: the same `AcceptanceNoEvidence` error (name + message + suggestions) is
           thrown for the same inputs. Verified by the existing/updated specs."
-        status: pending
+        status: done
+        evidence:
+          - "Error construction moved VERBATIM: name 'AcceptanceNoEvidence', message `acceptance
+            item '${id}' cannot be done without delivery evidence`, suggestion `pass the provenance
+            pointer(s): set-acceptance-status <slug> ${id} done \"<task>/<phase> — delivered\"` —
+            identical to the prior inline throw."
+          - "Condition preserved EXACTLY: `status === 'done' && (!merged || merged.length === 0)` —
+            raw array-emptiness, deliberately NOT switched to isEvidenceFilled (which filters
+            whitespace + the '—' sentinel), so no behavior drift from the phase-tier predicate."
+          - New focused spec (a5) in invariants.spec.ts asserts err.name === 'AcceptanceNoEvidence',
+            exact message string, exact suggestions[0] — all pass.
+          - "Epic-DoD path specs green: bun test invariants.spec.ts + epic-tier.spec.ts +
+            cli.spec.ts → 25 pass / 0 fail."
       - text: "Gates green: `bun test` (incl. the invariants spec exercising the new helper) + eslint + `tsc
           --noEmit`."
-        status: pending
+        status: done
+        evidence:
+          - "typecheck GREEN: `bun run typecheck` (tsc --noEmit) → clean, no output."
+          - "lint GREEN: `bun run lint` (eslint .) → clean; format GREEN: `bun run format` (prettier
+            --check .) → 'All matched files use Prettier code style!'."
+          - "test GREEN: `bun test` → 275 pass / 2 skip / 0 fail (baseline 274 + 1 new helper test
+            a5), 922 expect() across 47 files — the only delta is the added focused test, no
+            behavior change."
+          - Committed as d95d45d.
   - name: "A10: keep Bun ambient types out of the published build"
     slug: build-tsconfig-types
-    status: pending
+    status: done
     context: tsconfig.json:7 sets types:["bun"], which pulls Bun ambient types into the build
       compilation and thus the published .d.ts. Runtime code is verified Bun-free; only the type
       config leaks. Move bun types to a test-only tsconfig.
@@ -222,15 +390,49 @@ phases:
     acceptance_criteria:
       - text: '`tsconfig.build.json` no longer references `types:["bun"]`; Bun ambient types are carried
           only in a test-scoped tsconfig (specs still typecheck under it).'
-        status: pending
+        status: done
+        evidence:
+          - core/tsconfig.build.json:3-5 — added compilerOptions.types:['node'], overriding the base
+            config's types:['bun'] so the build compilation carries Node ambient types but NOT
+            Bun's. Base tsconfig.json:7 still has types:['bun'] (unchanged) so specs/tests keep Bun
+            globals.
+          - "DEVIATION from the refine note (types:[]): types:[] strips Node ambient types TOO —
+            bun-types transitively supplies @types/node, so [] broke 23x on legitimate node:* usage
+            in bin.ts/io.ts. Correct override is types:['node'] (Node stays, Bun excluded).
+            @types/node already present transitively."
+          - "Probe proof — base config: `const x=Bun.version` under tsc -p tsconfig.json --noEmit →
+            ONLY TS6133 (unused var), NO 'Cannot find name Bun' = Bun types remain for the base/test
+            config. Build config: same probe under tsc -p tsconfig.build.json → TS2868 'Cannot find
+            name Bun' = Bun types absent from the build. Probe file removed after."
       - text: The emitted `dist/**/*.d.ts` no longer reference Bun ambient types; `tsc -p
           tsconfig.build.json` emits cleanly.
-        status: pending
+        status: done
+        evidence:
+          - "`bunx tsc -p tsconfig.build.json` → EXIT=0 (clean emit), 47 *.d.ts files written to
+            dist/."
+          - "`grep -rn 'reference types=\"bun\"' dist/ --include=*.d.ts` → exit 1 (no matches);
+            `grep -rni 'bun' dist/ --include=*.d.ts` → exit 1 (no matches). Zero Bun references
+            across all 47 emitted .d.ts files."
+          - dist/ is gitignored (.gitignore:2 'dist/') and untracked; throwaway emit cleaned up with
+            `rm -rf dist` — no stray artifacts in git status.
+          - "Guarantee strengthened: under the build config the Bun global is now unresolved
+            (TS2868), so any future Bun.* usage in production code would FAIL the build emit rather
+            than silently leak. HONEST FINDING: the runtime is genuinely Bun-free — tsc -p
+            tsconfig.build.json emits 0 errors, no masked Bun.* surfaced."
       - text: "Gates green: `bun test` + eslint + full `tsc --noEmit` (both build + test configs)."
-        status: pending
+        status: done
+        evidence:
+          - "typecheck GREEN: `bun run typecheck` (base tsc --noEmit, still has bun types so specs
+            typecheck) → EXIT=0, clean."
+          - "build-config GREEN: `bunx tsc -p tsconfig.build.json` (build config WITHOUT bun types)
+            → EXIT=0, clean — production node:* usage typechecks under types:['node']."
+          - "lint GREEN: `bun run lint` (eslint .) → EXIT=0; format GREEN: `bun run format`
+            (prettier --check .) → EXIT=0 'All matched files use Prettier code style!'."
+          - "test GREEN: `bun test` → 275 pass / 2 skip / 0 fail (277 across 47 files) — matches the
+            post-A7 baseline exactly. Committed as 6f4eb19."
   - name: Colocation stragglers — cli specs + file-structure doc reconcile
     slug: colocation-stragglers
-    status: pending
+    status: done
     context: 'Two specs that the colocation-migration task left in cli/commands/ because they were not
       in its repo-analysis §3 migration table (surfaced by the colocation-migration wrap review).
       Both have their real subject elsewhere, and their existence makes the
@@ -258,26 +460,68 @@ phases:
           cli/cli.ts — it imports createCli from ../cli.js + fakeFacade from ../cli.spec.js).
           Imports retargeted one level shallower (../cli.js → ./cli.js, ../cli.spec.js →
           ./cli.spec.js); header comment updated if it names the old path."
-        status: pending
+        status: done
+        evidence:
+          - git mv core/src/cli/commands/stage.spec.ts → core/src/cli/stage.spec.ts (commit 4c55789
+            rename `cli/{commands => }/stage.spec.ts` 97%) — up beside its real subject cli/cli.ts.
+          - "Imports retargeted one level shallower: cli/stage.spec.ts:2 './cli.js', :3
+            './cli.spec.js' (were ../cli.js / ../cli.spec.js)."
+          - No header comment named the old path; grep 'stage.spec' across src/ → no importers to
+            retarget.
       - text: "`cli/commands/lifecycle.e2e.spec.ts` (cross-cutting — drives archive/reset through buildCli
           via the real CLI argv path, imports ../../index.js + ../../io/io.js) moved to
           `core/src/e2e/` under a non-colliding name (NOT `lifecycle-e2e.spec.ts`, which already
           exists there — use e.g. `archive-reset.e2e.spec.ts`). Imports retargeted one level
           shallower (../../index.js → ../index.js, ../../io/io.js → ../io/io.js); header comment
           path updated."
-        status: pending
+        status: done
+        evidence:
+          - git mv core/src/cli/commands/lifecycle.e2e.spec.ts →
+            core/src/e2e/archive-reset.e2e.spec.ts (commit 4c55789 rename 95%) — non-colliding name
+            chosen (e2e/ already has hyphenated lifecycle-e2e.spec.ts; archive-reset is descriptive
+            for the archive/reset CLI argv path it drives).
+          - "Imports retargeted depth-2→depth-1: e2e/archive-reset.e2e.spec.ts:8 '../index.js', :9
+            '../io/io.js' (were ../../index.js / ../../io/io.js, verified by reading the file
+            pre-move)."
+          - "Header comment updated: line 1 now '// e2e/archive-reset.e2e.spec.ts — ...' (was '//
+            lifecycle.e2e.spec.ts — ...')."
+          - No new URL / readFileSync / __dirname / import.meta runtime fixture paths in either
+            moved file (grep → none).
       - text: '`docs/design/file-structure.md` reconciled with the two moves: the tree block reflects
           cli/stage.spec.ts (under cli/) + the renamed cli-lifecycle e2e spec (under e2e/), and the
           lines 119-122 "the ONLY specs not next to a single subject are the cross-cutting suites in
           e2e/" claim is now factually true (or softened to match reality). NOTE if worker-dispatch
           (A6) ran earlier in this same task: the doc must also show worker-dispatch under
           ops/scope/, not engine/scope/.'
-        status: pending
+        status: done
+        evidence:
+          - file-structure.md:96-97 — added stage.spec.ts beside cli.ts under cli/ (its single
+            subject), reflecting the move out of cli/commands/.
+          - file-structure.md:111 — added archive-reset.e2e.spec.ts line under the e2e/
+            cross-cutting block.
+          - The lines 119-122 blockquote claim ('the only specs not next to a single subject are the
+            cross-cutting suites in e2e/') is now factually TRUE — the two moves removed the
+            counterexamples (stage.spec beside cli.ts, archive-reset cross-cutting spec in e2e/), so
+            no wording change was needed.
+          - "Per resolved q4: did NOT touch worker-dispatch (the doc never listed it) — only
+            reconciled the cli-area entries the 2 moves affected."
       - text: 'Gates green: `bun test` (held at the 274 pass / 2 skip / 0 fail baseline — zero behavior
           change), eslint, `tsc --noEmit`, `prettier --check`. Grep confirms no spec left in
           cli/commands/ whose subject is the cli surface, and no remaining counterexample to the
           file-structure.md "only" claim.'
-        status: pending
+        status: done
+        evidence:
+          - "typecheck GREEN: `bun run typecheck` (tsc --noEmit) → clean; lint GREEN: `bun run lint`
+            (eslint .) → clean; format GREEN: `bun run format` (prettier --check .) → 'All matched
+            files use Prettier code style!'."
+          - "test GREEN: `bun test` → 275 pass / 2 skip / 0 fail (922 expect(), 47 files) — exact
+            baseline, zero behavior change."
+          - "Cleanliness: `ls src/cli/commands/*.spec.ts` → 'no spec files in cli/commands/' — the
+            cli-surface straggler is gone; file-structure.md 'only' claim has no remaining
+            counterexample."
+          - "Committed at 4c55789 (3 files changed: 2 renames + doc). The engine had staged the
+            task-yml into the index; the agent unstaged it so the commit contains only the 3
+            refactor files."
 questions:
   - id: q1
     text: "A8 direction (product decision): do we COMMIT to the headless spawn path now — bin.ts feeds

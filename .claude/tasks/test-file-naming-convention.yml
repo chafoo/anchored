@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
 schema_version: 2
 slug: test-file-naming-convention
-status: refined
+status: build
 created: 2026-06-13
 title: Unified Test-File Naming Convention (.spec / .e2e / .int)
 context:
@@ -107,10 +107,49 @@ context:
       so phase 1's new-rule authoring has no additional coverage gap. One low judgment-call
       question: is a test-naming convention even rule-material (vs. a docs/design note or lint
       rule)?
+    Implement: >-
+      - author-naming-rule / Author the Three-Suffix Naming Rule
+
+
+      Authored `.claude/rules/test-file-naming.md` as a standalone rule (per q1 — NOT folded into
+      colocation-and-naming.md). Grounded on reads of colocation-and-naming.md,
+      tooling-quality-gates.md, factory-functions.md for exact voice/structure.
+
+
+      Decisions made autonomously (wording/structure):
+
+      - Framed the rule as orthogonal to colocation (placement vs. kind-suffix) → clean
+      one-concern-per-rule reconciliation.
+
+      - Classification stated as a strict ladder (real fs/spawn → e2e; else multi-module → int; else
+      single faked → spec) → deterministic per-file decision for the migration.
+
+      - Made both the bunfig.toml [test] glob AND the tsconfig.build.json exclude load-bearing
+      requirements (Always + Why).
+
+      - Forbade src/e2e/ as a home, pointed cross-cutting e2e at nearest entry-point (cli/engine)
+      since e2e/ is dissolved in this task.
+
+
+      Markdown artifact — verification = grep over structural requirements (section headers,
+      wikilinks, suffix definitions, bun-discovery statement, reconciliation cross-ref), all green.
+    task-validate: "- author-naming-rule (attempt 1): **pass** — 4/4 ACs accepted, 0 rejected. Evidence
+      verified against the real .claude/rules/test-file-naming.md. Two cited line-refs off by 1
+      (ladder at 39-40 not 40-41; src/e2e dissolve at 68-70 not 70-71) but the cited content is
+      genuinely present — no stale refs. Note: core/bunfig.toml not yet on disk, but AC2 only
+      requires the rule to NAME the dependency (which it does), enacted in the next phase."
+    code-validate: "- author-naming-rule (attempt 1): **pass** — 0 blocking findings, 1 fyi warn.
+      test-file-naming.md does NOT contradict colocation-and-naming.md — reconciles orthogonally
+      (placement vs. kind-suffix; spec-next-to-subject extended to all three suffixes). House
+      style/voice + English + spelled-out \"end-to-end\" all satisfied; e2e/int stay as
+      filename-suffix code tokens (correct). factory/CLI/substrate principles correctly
+      not-applicable to a markdown artifact. Warn (fyi, non-blocking): the rule mandates a
+      src/e2e-dissolved + core/bunfig.toml-present target state the current tree doesn't yet reflect
+      — by-design, enacted by the later configure-runner-and-build + migrate-and-classify phases."
 phases:
   - name: Author the Three-Suffix Naming Rule
     slug: author-naming-rule
-    status: pending
+    status: in-progress
     context: "Write a governing rule in .claude/rules/ for the three-suffix convention (.spec = unit,
       .e2e = end-to-end, .int = integration), matching the existing rule format: `> Scope:`
       blockquote, `## The rule` / `## Always` / `## Never` / `## Why` / `## Reference` sections,
@@ -128,17 +167,52 @@ phases:
       - text: "Rule file authored in .claude/rules/ defining .spec/.e2e/.int with explicit classification
           criteria distinguishing unit vs integration vs e2e (evidence: file path + the three
           criteria sections)"
-        status: pending
+        status: done
+        evidence:
+          - "/Users/jack/Dev/anchored-v2/.claude/rules/test-file-naming.md created — defines the
+            three suffixes in the ## The rule code block (lines 10-13): foo.spec.ts=unit,
+            foo.int.ts=integration, foo.e2e.ts=end-to-end"
+          - "Classification criteria section (lines 22-39): unit = single subject module in
+            isolation, deps mocked; integration = multiple production modules wired in-memory, no
+            real fs/spawn; e2e = real filesystem and/or real process spawn, full lifecycle"
+          - "Lines 40-41 state the discriminator as a strict ladder: real fs/spawn → e2e; else
+            multi-module → int; else single faked module → spec"
       - text: "Rule matches existing format: `> Scope:` blockquote + `## The rule`/`## Always`/`##
           Never`/`## Why`/`## Reference` + at least one [[wikilink]] (evidence: section headers
           grep)"
-        status: pending
+        status: done
+        evidence:
+          - "grep '^> Scope:|^## (The rule|Always|Never|Why|Reference)' matches all required
+            sections: > Scope: (line 3), ## The rule (8), ## Always (42), ## Never (62), ## Why
+            (75), ## Reference (89)"
+          - "Wikilinks present: [[colocation-and-naming]] (lines 4,6,48,93), [[factory-functions]]
+            (29,94), [[tooling-quality-gates]] (95)"
+          - "Header opens with '# Rule: Test-File Naming — ...' and > Scope: blockquote spans lines
+            3-6, matching colocation-and-naming.md + factory-functions.md voice"
       - text: "Rule explicitly states the .e2e.ts/.int.ts suffixes carry no .spec infix and names the
           bun-discovery dependency this creates (evidence: file:line)"
-        status: pending
+        status: done
+        evidence:
+          - "test-file-naming.md:19 — '*.int.ts and *.e2e.ts are bare — they carry no `.spec`
+            infix'; lines 20-21: 'foo.e2e.ts, never foo.e2e.spec.ts; foo.int.ts, never
+            foo.int.spec.ts'"
+          - "test-file-naming.md:77-82 (## Why) names the bun-discovery dependency: Bun's default
+            matcher only finds *.spec.ts / *.test.ts, so the bare suffixes need a core/bunfig.toml
+            [test] glob — required"
+          - test-file-naming.md:58-60 also requires core/tsconfig.build.json exclude to cover all
+            three suffixes so bare suffixes never leak into dist/
       - text: "Reconciliation with colocation-and-naming.md is stated in-rule (cross-ref + how
           spec-next-to-subject still holds for all three suffixes) (evidence: file:line)"
-        status: pending
+        status: done
+        evidence:
+          - "test-file-naming.md:47-50 — Always bullet states colocation from
+            [[colocation-and-naming]] holds for all three suffixes: foo.spec.ts, foo.int.ts,
+            foo.e2e.ts each live in the same folder as foo.ts"
+          - "test-file-naming.md:4-6 (Scope blockquote) frames reconciliation: orthogonal to
+            [[colocation-and-naming]] — placement lives there, kind-suffix lives here; one concern
+            per rule"
+          - test-file-naming.md:51-54 handles the no-single-subject case (cross-cutting e2e next to
+            nearest entry-point); lines 70-71 state there is no src/e2e/ (dissolved in this task)
   - name: Bun Test-Glob + Build-Exclude Config
     slug: configure-runner-and-build
     status: pending

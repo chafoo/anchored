@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
 schema_version: 2
 slug: remove-headless-engine-path
-status: refined
+status: done
 created: 2026-06-13
 title: Remove the headless / engine-drives-AI execution path
 context:
@@ -79,10 +79,196 @@ context:
     conflict (the deleted mechanism is the dead engine-run path; the substrate invariant survives).
     Low open: whether cli-only-transport attaches thematically to the delete phases (it reinforces
     CLI-only but doesn't constrain HOW to delete) — left off.
+  build:
+    Implement: |-
+      - map-dead-surface / Map the exact dead surface: ANALYSIS-ONLY phase, zero source edits. Baseline pinned: bun test 275 pass / 2 skip / 0 fail (277 across 47 files), tsc --noEmit clean. PATH DRIFT corrected vs the plan's old refs (colocation-migration + architecture-cleanup landed since planning — files moved into colocation folders; all delete-list paths re-derived against the current tree). FINAL delete-list: 11 source files + their specs (phase-2: spawn/spawn.ts + spec, engine/scope/worker-step.ts; phase-3: engine.ts, tier-runner.ts, stage-runner.ts, step-runner/ + spec, scope/{run-step,loop-step,loop-workflow}/ + specs, plus engine/runners.spec.ts + integration.spec.ts + workflow-smoke.spec.ts). Two tsc-coupling hazards nailed with current file:line — (a) ops/engine-ops.ts:7 SPLIT module (tierOfNode survives, createEngineOps + its step-runner type-import die same change-set); (b) index.ts:23 public-surface type-import (AnyNode/SpawnLike/RunnerDeps/TierCfg) that must be removed/inlined when step-runner dies else tsc breaks. Surviving specs needing SURGICAL (not wholesale) edits: e2e/e2e.dogfood.spec.ts:120 (engine.run call) + index.spec.ts:63,93 (createEngine wiring-order assertions). Surprises: stale 'Drives the engine' comments in build.ts:1/wrap.ts:1 (drift, phase-4 cosmetic fix); resolve-steps.ts whole-file survives (createResolveSteps live via steps-planner); worker-dispatch.ts has zero imports = self-contained survivor.
+      - map-dead-surface (attempt 2) / AC2 completed: full orphaned-spec disposition + resolve-steps carve-out. Complete grep sweep (engine.run|createEngine|createSpawn|createFakeSpawn|workerStep|create*Runner|createEngineOps|Spawn*|step-runner across core/src --include=*.spec.ts) → EXACTLY 11 specs touch the dead surface; 3 false-positives (schema/step/step.spec, steps-planner.spec, extensibility-matrix.spec — only mention 'run-step' as a config-step CONCEPT, import schemas not engine) survive untouched. Disposition: 8 DELETE-WHOLESALE (phase-2: spawn.spec; phase-3: integration/runners/workflow-smoke/step-runner + run-step/loop-step/loop-workflow scope specs), 3 SURGICAL (epic-tier.e2e is a MIXED file — tests 1-5 assert surviving substrate/epic behaviour, only the last engine-run test + makeOps helper + 2 imports go in phase-3; e2e.dogfood — phase-2 strips the SpawnInput/SpawnResult type-import :11 + harness uses, phase-3 strips engine.run :120 + dependent a4; index.spec — phase-4 drops the engine.run/createEngine wiring asserts, keeps merge-once + pure-factory + tierOfNode). Phase-boundary gate-safety mapped so tsc+test stay green at each cut. resolve-steps/ EXPLICITLY carved out (steps-planner.ts:7 keeps it alive; relocation out of scope); worker-dispatch re-confirmed at ops/scope/ not engine/scope.
+      - map-dead-surface (attempt 3) / AC2 source-side phase-boundary disposition added. Production-source grep (non-spec) found EXACTLY 3 cross-phase source orphans — importers of a phase-2-deleted module that are themselves phase-3+ files, all to be stripped in phase-2's same change-set: ORPHAN 1 step-runner.ts:7/:106 (workerStep import+call), ORPHAN 2 loop-step.ts:9/:96 (workerStep import+call), ORPHAN 3 (newly surfaced) index.ts:21/:198 (createSpawn import + `?? createSpawn(...)` default-spawn wiring). NON-ORPHAN trap clarified: SpawnLike is an INTERFACE defined in step-runner.ts (phase-3), NOT exported from the deleted spawn.ts — survives until phase-3; config.ts SpawnSettings is the schema carve-out. Gate-safety proven at BOTH phase boundaries (phase-2 cut = deletes + 3 orphan strips + config carve-out → green; phase-3 deletes the spawn-free bodies wholesale → green).
+      - remove-spawn-and-worker / Delete the spawn seam + worker-step: DELETED core/src/spawn/ (spawn.ts + spawn.spec.ts) + engine/scope/worker-step.ts. EDITED config.ts (SpawnSettings + `spawn:` key carve-out), step-runner.ts + loop-step.ts (workerStep import dropped, body inlined locally to keep the still-running phase-3 specs green), index.ts (createSpawn import + default-construction dropped → inert injection seam), e2e.dogfood.spec.ts (spawn-type import → local inline types). All 5 gates green: bun test 267 pass/0 fail/0 skip (baseline 275/2skip minus spawn.spec's 8 tests + 2 skips, fully reconciled), tsc/eslint/prettier/build exit 0; CLI smoke (node dist/bin.js --help + steps phase build) ok. TWO build-time decisions WITHIN the phase brief's explicit latitude (not plan-deviations): (1) inlined worker-step body instead of throwing — a throw would have red-ed step-runner.spec:53 + integration.spec:33 which still run at the phase-2 boundary; the inlined bodies die wholesale in phase-3. (2) AnchoredDeps.spawn FIELD deferred to phase-3 — the surviving createEngine wiring feeds the non-optional EngineDeps.spawn, so removing the field now reds tsc; the disposition explicitly permits keeping the injection seam until phase-3. AC0's intent (no createSpawn construction in index.ts) is fully met.
+    task-validate: >-
+      ## map-dead-surface (attempt 1) — verdict: pass (3/3 accepted)
+
+      Re-verified against the live tree: baseline re-run bun test 275 pass / 2 skip / 0 fail, tsc
+      --noEmit exit 0. All cited file:line refs resolve exactly (executor surface, both coupling
+      hazards, spawn + worker-step importers). AC2 CLI-trace confirmed (runStage calls nodeOps.read
+      + tierFor + steps only; zero live engine.run in cli/). Grep-proof independently validated: the
+      COMPLETE set of production cross-boundary engine/ consumers is exactly 4 — index.ts:22
+      (createEngine wiring), index.ts:23 (4-name type-import), ops/engine-ops.ts:7 (type-import),
+      ops/steps-planner/steps-planner.ts:7 (createResolveSteps). First three flagged; fourth targets
+      resolve-steps (NOT a delete target, dependency-clean).
+
+      HIGH-PRIO QUESTION raised → folded into AC2 failures for the retry: resolve-steps/ must be
+      EXPLICITLY carved out of the engine/scope deletion (steps-planner still imports
+      createResolveSteps from it); the grep-proof carve-out omitted that live edge. (Relocation of
+      resolve-steps into ops/ is out of scope for this task.)
+
+      ## map-dead-surface (attempt 3) — verdict: pass (AC2 accepted; 3/3)
+
+      Source-side orphan claims verified line-by-line: ORPHAN 1 step-runner.ts:7 import + :106 call
+      CONFIRMED; ORPHAN 2 loop-step.ts:9 import + :96 call CONFIRMED; ORPHAN 3 index.ts:21 import +
+      :198 `deps.spawn ?? createSpawn(...)` CONFIRMED. NON-ORPHAN CONFIRMED: SpawnLike is an
+      interface DEFINED at step-runner.ts:35 (sole definition site), imported by index.ts:23 +
+      engine.ts:9-13 both FROM step-runner — never from spawn.ts, so not a 4th orphan. Baseline
+      green: bun test 275 pass / 2 skip / 0 fail, tsc --noEmit exit 0.
+
+      ## remove-spawn-and-worker (attempt 1) — verdict: pass (3/3 accepted)
+
+      Re-ran all gates from core/: bun test 267 pass / 0 fail / 0 skip (897 expect, 46 files),
+      tsc/eslint/prettier/build exit 0, CLI smoke (node dist/bin.js --help) clean. Deletions
+      confirmed via git status D (spawn/spawn.ts, spawn/spawn.spec.ts, engine/scope/worker-step.ts).
+      TEST-DELTA HONEST: deleted spawn.spec held exactly 10 tests (8 pass + 2 test.skip); 275→267
+      pass = exactly the 8 non-skip spawn tests, 2→0 skip = the 2 test.skip — no non-spawn test
+      lost, none newly failing. Inlined workerStep bodies (step-runner.ts:104-119,
+      loop-step.ts:83-98) are BYTE-IDENTICAL to the deleted worker-step.ts body (same deps.spawn.run
+      payload, same !r.ok→failed mapping) — honest inline, zero semantic drift. SpawnSettings
+      carve-out clean (0 live grep hits).
+
+      ## remove-engine-run-chain (attempt 1) — verdict: pass (3/3 accepted)
+
+      Re-ran all gates fresh from core/: bun test 210 pass / 0 fail / 0 skip (678 expect, 39 files),
+      tsc/eslint/prettier/build clean. DELTA RECONCILED EXACTLY (267→210 = −57): 56 engine-spec
+      tests (integration 2 + runners 4 + workflow-smoke 23 + loop-step 6 + loop-workflow 14 +
+      run-step 4 + step-runner 3) + 1 epic-tier e2e engine.run DAG-loop test. NO surviving
+      substrate/cli test silently lost — spot-checked
+      node-ops/facade/steps-planner/parser/io/state/schema/cli-verbs/epic-tier 1-5/dogfood
+      a2-a3/index.spec all green. find src/engine → only resolve-steps/. Executor surface confirmed
+      present (field/op/verb/help) + tests pass. tierOfNode survivor confirmed (engine-ops.ts +
+      index.ts tierFor wiring). HONESTY: the reworked e2e.dogfood a1 is NOT gutted — it does a
+      genuine facade self-write (addChildEvidence then setChildStatus 'done', which only succeeds
+      BECAUSE evidence was written = the evidence-required invariant is exercised), asserting
+      per-phase status/AC done + evidence.length>0. index.spec a1 real (['cli','config','ops']). One
+      coverage loss is intended (engine DAG-loop order) → surfaced as q3 (resolved source=ai: out of
+      core scope, moves to skill layer).
+
+      ## clean-wiring-tests-docs (attempt 1) — verdict: pass (3/3 accepted)
+
+      Re-ran all 5 gates from core/: bun test 210 pass / 0 fail (39 files), tsc/lint/prettier/build
+      all green. grep for the 8 deleted symbols → 1 hit, a comment at ops/engine-ops.ts:2 (no live
+      ref); grep 'drives the engine' in cli/commands → 0. DOCS-HONESTY CHECK (the AC's point):
+      engine-architecture.md honestly reframed to skill-as-orchestrator (createAnchored →
+      {cli,ops,config}, 'the CLI spawns NOTHING', ABANDONED history note); file-structure.md engine/
+      tree spot-checked against `find core/src -type d` → MATCHES exactly (only
+      scope/resolve-steps/, spawn/ marked REMOVED, worker-dispatch at ops/scope/);
+      fractal-redesign-notes + agenda mark Item-2 execution substrate ABANDONED with strikethrough.
+      Targeted hunt for live present-tense 'engine runs X' claims → 0 lying hits. Docs no longer
+      contradict the code.
+    code-validate: |-
+      ## map-dead-surface (attempt 1) — verdict: fail (1 block on AC2)
+      Rule adherence PASS: factory-functions upheld — engine cluster (engine/tier-runner/stage-runner/step-runner/run-step/loop-step/loop-workflow/worker-step/spawn) is self-contained; both coupling hazards (engine-ops.ts:7 keep tierOfNode / drop createEngineOps; index.ts:23 4-name type-import) correctly identified + dep-graph-valid; every survivor (resolve-steps, worker-dispatch, steps-planner, executor surface) keeps its injected deps. mechanism-vs-policy upheld — engine-run is genuinely dead mechanism (planCommand + runStage return the skill-orchestration plan via nodeOps+deps.steps; substrate/ops/CLI/policy survive).
+      BLOCK (AC2, delete-list completeness vs tooling-quality-gates): the delete-list omits orphaned-spec disposition. The 3 engine specs ARE listed (integration/runners/workflow-smoke) but e2e/epic-tier.e2e.spec.ts:7,12,162 (imports createEngine + calls engine.run('epic')) and e2e/e2e.dogfood.spec.ts:11 (spawn-type import, in addition to the :120 call already flagged) are not fully enumerated → a cut that leaves them dangling reds tsc+test. The verified delete-list must list every orphaned spec with its disposition (delete vs surgical-edit) per deletion phase.
+      ## map-dead-surface (attempt 2) — verdict: fail (1 block on AC2, source-side)
+      Spec-side disposition now VERIFIED clean (11-spec sweep reproduced, 3 false-positives confirmed, 8 wholesale + 3 surgical correct, resolve-steps carve-out holds — the attempt-1 spec orphan is closed). BUT a distinct SOURCE-side phase-2 boundary orphan remains: worker-step.ts (phase-2 delete) is still imported+called by two PHASE-3 source files — step-runner.ts:7,106 + loop-step.ts:9,96. At the phase-2 cut → dangling import → tsc/test red. The gate-safety claim only argued spec files. FIX (within phase-2 AC1 'remove the spawn dep from step-runner.ts'): phase-2 strips the workerStep import+call from step-runner.ts + loop-step.ts in the same change-set; the now-spawn-free runner bodies are deleted wholesale in phase-3. Disposition table must state the source-side phase-boundary, not just specs.
+      ## map-dead-surface (attempt 3) — verdict: pass (AC2 accepted; 0 block / 0 warn)
+      Own production-source grep reproduced: every hit maps to (a) deleted-in-phase-2 [spawn.ts 12 self-internal hits + worker-step.ts:7 def], (b) one of the 3 flagged orphans [step-runner.ts:7/:106, loop-step.ts:9/:96, index.ts:21/:198], or (c) confirmed non-orphan [SpawnLike = `export interface SpawnLike` at step-runner.ts:35 NOT from spawn.ts; SpawnSettings = config.ts:40 schema carve-out]. NO category-(d) unflagged 4th orphan. Gate-safety holds at BOTH boundaries: phase-2 cut leaves no dangling import of a deleted module (the only importers of spawn.ts + worker-step.ts are exactly the 3 stripped orphans); phase-3 deletes the spawn-free bodies wholesale. Disposition COMPLETE + gate-safe — the analysis phase's deliverable is sound.
+      ## remove-spawn-and-worker (attempt 1) — verdict: pass (0 block / 0 warn)
+      factory-functions PASS: surviving dep graph valid. createEngine (engine.ts:18) still requires non-optional `spawn: SpawnLike` threaded to RunnerDeps.spawn (step-runner.ts:93); index.ts:202-204 supplies an inert `deps.spawn ?? {run: async()=>({ok:false,...})}` stand-in — a LEGITIMATE injection seam, DEAD on every live path (engine.run has zero live call-sites; all refs are spec/e2e + comments; live CLI routes through steps-planner; the one engine.run test e2e.dogfood injects its own fakeSpawn so the inert fallback is never invoked). tooling-quality-gates PASS: lint/tsc exit 0, bun test 267 pass/0 fail, no dangling import of the deleted modules. mechanism-vs-policy PASS: SpawnSettings removal is a clean POLICY carve-out (the mode enum), strictObject drops the spawn key, no surviving reader of config.spawn. Both build-time decisions sanity-checked: (a) inlined worker-step bodies byte-identical to the deleted original (faithful, no drift); (b) AnchoredDeps.spawn deferral is tsc-forced (createEngine needs a concrete non-optional SpawnLike; the field dies with the engine wiring in phase-3 — correct ordering).
+      ## remove-engine-run-chain (attempt 1) — verdict: pass (0 block / 0 warn)
+      fractal-substrate-integrity PASS: SUBSTRATE intact — parser/io/state (incl. state/invariants/invariants.ts, the no-done-without-evidence hard invariant) + schema entirely untouched in the working tree; ops/* (node-ops, facade, steps-planner, validate, scope/{children,questions,worker-dispatch,log}, engine-ops-now-just-tierOfNode) all survive with valid dep graphs; the skill-runtime surface preserved (resolve-steps survives + feeds steps-planner). The deleted run-chain was the DEAD mechanism half. factory-functions PASS: createAnchored returns {cli,ops,config} in clean substrate→ops→cli order, every surviving factory still injected; the inlined `deps.run` structural type ((cmd)=>Promise<{code,stdout,stderr}>) is a clean self-contained replacement for the deleted RunnerDeps['run'], declared identically across CliDeps/WireDeps/AnchoredDeps. tooling-quality-gates PASS: tsc exit 0, bun test 210 pass/0 fail, ZERO dangling live refs to any deleted symbol (createEngine/create*Runner/workflowLoop/loopStep/runStep/createEngineOps — sole grep hit is a removal-documenting comment at engine-ops.ts:2). mechanism-vs-policy PASS: legitimate dead-mechanism deletion, policy + surviving mechanism (invariant + transitions) intact. API change PASS: createAnchored dropped `engine` consistent with q1; no surviving consumer expects anchored.engine (sole consumer bin.ts:149 uses anchored.cli.run only).
+      ## clean-wiring-tests-docs (attempt 1) — verdict: fail (1 block on AC1, :244)
+      Gates green (tsc 0, bun test 210/0); file-structure.md tree matches `find core/src -type d`; grep-clean (1 comment hit); no-abbreviations honored; comment edits clean. BLOCK: fractal-redesign-notes.md:244 (UNMARKED Item-5b config-as-base-dep bullet) named the now-deleted createEngine as a live factory the config is injected into — stale live engine claim vs CLAUDE.md docs-as-source-of-truth.
+      ## clean-wiring-tests-docs (attempt RETRY) — verdict: pass (AC1 accepted; 0 block / 0 warn)
+      The :244 fix confirmed: the bullet now lists surviving factories (createNodeOps / createStepsPlanner / createCli / createAnchored), no live createEngine. Re-grep docs/design for createEngine → exactly 2 hits, both legitimate (fractal-redesign-notes.md:169 strikethrough ABANDONED record; file-structure.md:54 removal-documenting comment). CLAUDE.md docs-as-source-of-truth holds — no stale live engine-run claim survives in docs/design.
+  wrap:
+    intro: >-
+      ## Wrap-up summary
+
+
+      **Shipped**: 4 of 4 phases done. The dead headless / engine-drives-AI execution path is fully
+      removed and the codebase + docs now honestly reflect the skill-orchestrated runtime. Commits:
+      743888d (phase 2 spawn seam + worker-step), 7475747 (phase 3 engine-run chain), bf07475 (phase
+      4 wiring-cleanup + design docs), fe6f0d6 (wrap doc-sync). Phase 1 (map-dead-surface) was
+      analysis-only, no commit.
+
+
+      **Blocked/Deferred**: none. All 4 phases terminal = done.
+
+
+      **ACs with evidence**: 13 of 13 (100% honest completion). Every AC carries concrete evidence —
+      git rename/delete ratios, exact gate numbers, byte-faithful inline proofs, grep results,
+      reconciled test deltas.
+
+
+      **Zero behavior change, proven**: −2668/+280 lines, almost entirely the dead engine-run chain
+      (9 source modules + their specs). `bun test` 275 → 210 pass / 0 fail / 0 skip throughout;
+      EVERY dropped test reconciled to a deleted spec (8 spawn + 56 engine-spec + 1 epic-tier
+      engine.run). The substrate (parser/io/state incl. the no-done-without-evidence invariant),
+      ops/*, the executor surface, and all CLI commands are untouched. createAnchored now returns
+      {cli, ops, config}. 8 build-time gate-runs (task-validate + code-validate per deletion phase)
+      PASS; CLI resolves without the engine.
+
+
+      **Autonomous decisions (review these)**: 2 source='ai' decisions + 2 brief-latitude build-time
+      calls.
+
+        plan / refine
+        - q2: the step GRAMMAR survives, only the runtime executors die — carve out schema/step.ts, resolve-steps, worker-dispatch, PlanStep/StepPlan; delete only createStepRunner + scope/{run-step,loop-step,worker-step}. (plan-check traced the imports: steps-planner depends only on surviving config logic.)
+
+        remove-engine-run-chain
+        - q3: DAG/loop-order coverage is intentionally OUT of the core test surface from here on — the engine-run chain WAS the per-phase/DAG-order mechanism, so removing it (per A8/q1) deliberately removes what those specs tested. The substrate's child-ordering logic (ops/scope/children) + its test (epic-tier e2e realNextChild) survive; loop-orchestration coverage rightly moves to the skill layer where the loop now lives. No core test gap to backfill.
+
+        remove-spawn-and-worker (brief-latitude build decisions, both validator-confirmed — documented in build log, not minted as questions)
+        - inlined the worker-step body into step-runner/loop-step rather than throwing — a throw would have red-ed the still-running phase-3 specs at the phase-2 boundary; byte-identical to the deleted original, both die in phase-3.
+        - deferred the AnchoredDeps.spawn FIELD removal from phase-2 to phase-3 — tsc-forced (the still-present createEngine wiring fed the non-optional EngineDeps.spawn); AC0's intent (no createSpawn construction) was met regardless.
+
+      **Notable findings during build**: each implement pass self-caught its depth/gate hazards
+      before committing. Three validator retries were genuine catches that strengthened the
+      delete-list: (1) orphaned-spec disposition incomplete (phase 1 a1), (2) a SOURCE-side
+      phase-boundary orphan — worker-step's phase-3 callers + a 3rd createSpawn orphan in index.ts
+      (phase 1 a2/a3), (3) a single stale `createEngine` in an unmarked doc bullet (phase 4). All
+      fixed + re-validated to PASS.
+
+
+      **Notable findings from review** (wrap cross-cutting): clean deletion, zero stale live engine
+      refs in core/src OR docs (grep-confirmed; only removal-documenting comments remain). One
+      PRE-EXISTING follow-up surfaced (NOT introduced here):
+      docs/core/engine/scope/worker-dispatch.md still lives under engine/scope/ and says 'the engine
+      dispatches', but the worker-dispatch MODULE moved to ops/scope/worker-dispatch/ in the earlier
+      architecture-cleanup task (module survives — DEFAULT_WORKERS roster). Relocating + rewording
+      that doc page is structure-drift from a prior task → candidate for a later docs sweep.
+
+
+      **Outcome vs plan**: shipped exactly as planned. The safety-first sequencing held — phase 1
+      produced a fully verified, validator-accepted delete-list + gate-safe phase-boundary
+      disposition BEFORE any deletion, so every cut landed green. The one notable pivot was that the
+      entire index.ts/cli.ts wiring teardown landed in phase 3 (forced by the tsc-coupling: deleting
+      step-runner requires severing index.ts's type-imports in the same change-set), leaving phase 4
+      as a pure docs sweep — which is exactly how a clean coupled deletion should fall out. The
+      package's public surface change (createAnchored dropping `engine`) is the intended end-state
+      of the user-approved A8/q1 decision, not a scope drift.
+    subsections:
+      review: >-
+        Wrap review over the cumulative task diff (743888d~1..bf07475, 35 files, +280/−2668). The
+        config's wrap pipeline is docu-scan → docs-commit (no /review step); the cumulative diff was
+        already adversarially vetted by 13 build-time validation runs (task-validate + code-validate
+        per phase + retries, all final PASS). Wrap-level cross-cutting findings:
+
+
+        - CLEAN DELETION, ZERO BEHAVIOR CHANGE: −2668/+280 lines is almost entirely the dead
+        engine-run chain (9 source modules + their specs). bun test 275→210, every dropped test
+        reconciled to a deleted spec (8 spawn + 56 engine-spec + 1 epic-tier engine.run); 0 fail
+        throughout. The substrate (parser/io/state incl. the no-done-without-evidence invariant) +
+        ops/* + executor surface + all CLI commands are untouched and green.
+
+        - PUBLIC API CHANGE (intended, per user A8/q1): createAnchored now returns {cli, ops,
+        config} — `engine` dropped from the package surface. Sole consumer bin.ts uses only
+        anchored.cli.run, so no external break. createEngineOps removed from engine-ops (tierOfNode
+        kept).
+
+        - DOCS HONESTY: docs/design (4 files) reframed to skill-orchestrated reality with headless
+        marked ABANDONED + rationale; docs/core user-docs synced this wrap (9 micro pages for
+        deleted modules removed, 10 trimmed). grep confirms ZERO stale live engine refs in core/src
+        OR docs (only removal-documenting comments/notes).
+
+        - FOLLOW-UP SURFACED (out of this task's scope): docs/core/engine/scope/worker-dispatch.md
+        still lives under engine/scope/ and describes 'the engine dispatches', but the
+        worker-dispatch MODULE moved to ops/scope/worker-dispatch/ in the earlier
+        architecture-cleanup task (the module survives — DEFAULT_WORKERS roster consumed by
+        steps-planner). Relocating that doc page + rewording its engine references is
+        structure-drift from a prior task, not this deletion — candidate for a later docs sync.
 phases:
   - name: Map the exact dead surface (verify before deleting)
     slug: map-dead-surface
-    status: pending
+    status: done
     context: The safety phase. Before any deletion, prove which modules are reachable ONLY from
       engine.run/spawn (dead on the skill path) vs still consumed by the CLI commands /
       steps-planner / substrate.
@@ -95,18 +281,144 @@ phases:
           tier-/stage-/step-runner, run-step, loop-step, loop-workflow + specs + spawn wiring +
           SpawnSettings), grep every exported symbol and prove zero consumer outside the engine-run
           path (cli/ commands, steps-planner, node-ops, substrate must not depend on it)."
-        status: pending
+        status: done
+        evidence:
+          - FINAL DELETE-LIST (current real paths, exported symbols, importer-proof) — baseline bun
+            test 275 pass / 2 skip / 0 fail, tsc --noEmit clean.
+          - "PHASE-2 group (spawn seam + worker-step): (1) core/src/spawn/spawn.ts — exports
+            createSpawn/createFakeSpawn + types
+            SpawnInput/SpawnResult/ExecResult/AgentResult/SpawnDeps/SpawnCfg. Importers:
+            index.ts:21,198 (dying engine-wiring), spawn/spawn.spec.ts (own spec),
+            e2e/e2e.dogfood.spec.ts:11 (type-only). No CLI/ops/substrate importer. → DELETE (+
+            spawn.spec.ts). (2) core/src/engine/scope/worker-step.ts — exports workerStep.
+            Importers: step-runner.ts:7 + loop-step.ts:9, both on delete-list. Zero external. →
+            DELETE."
+          - "PHASE-3 group (engine-run chain): engine/engine.ts (createEngine,EngineDeps; importers
+            index.ts:22,199 + engine specs + e2e/epic-tier.e2e.spec.ts:7); engine/tier-runner.ts
+            (createTierRunner; importers engine.ts:4 + runners.spec); engine/stage-runner.ts
+            (createStageRunner; importers tier-runner.ts:4 + runners.spec);
+            engine/step-runner/step-runner.ts (createStepRunner + shared engine TYPES
+            AnyNode/StepResult/RunCtx/ExecOut/SpawnLike/OpsLike/TierCfg/WorkflowUnit/MergedResult/W\
+            orkflowSeam/RunnerDeps — DELETE only after the 2 hazard edits land same change-set);
+            engine/scope/run-step/run-step.ts (runStep; importers step-runner.ts:6 +
+            loop-step.ts:8); engine/scope/loop-step/loop-step.ts
+            (loopStep/stopCheck/routeStopVerdict/StopVerdict; importers step-runner.ts:8 +
+            loop-workflow.ts:18 + spec); engine/scope/loop-workflow/loop-workflow.ts
+            (workflowLoop/selectWorker/isUnitComplete/partition/WORKFLOW_CAP/WorkflowBuildCfg; only
+            importer loop-step.ts:10). All importers are themselves on the delete-list ⇒ no
+            surviving external consumer."
+          - "Engine-path specs deleted wholesale: engine/runners.spec.ts,
+            engine/integration.spec.ts, engine/workflow-smoke.spec.ts,
+            engine/scope/{run-step,loop-step,loop-workflow}/*.spec.ts,
+            engine/step-runner/step-runner.spec.ts."
+          - "grep-proof: no cli/ command, no ops/ module (except the dying createEngineOps wiring),
+            no parser/io/state/schema substrate imports any delete-list symbol. Every importer of
+            every delete-list file is either (a) another delete-list file or (b) one of the 3
+            surgical survivors (index.ts wiring, engine-ops.ts type-import, the two e2e/index specs)
+            handled by the coupling edits in AC1."
       - text: "Flag any boundary surprises: types/contracts that survive (e.g. StepPlan, Step schema) even
           though their runtime is deleted; the `executor` field + `set-executor` verb +
           workflow-mode (decide keep-vs-remove per the open question)."
-        status: pending
+        status: done
+        evidence:
+          - "EXECUTOR SURFACE KEPT (per q1), each verified with a live skill-path consumer, none on
+            delete-list: executor reserved field ops/node-ops/node-ops.ts:114; enum-validated writer
+            setExecutor node-ops.ts:471; facade setExecutor ops/facade/facade.ts:61,235; CLI verb
+            set-executor cli/commands/node/node.ts:113-114 + help-list node.ts:189 +
+            cli/cli.ts:46,132."
+          - "STEP GRAMMAR SURVIVES (per q2): schema/step/step.ts (consumed by steps-planner :9),
+            resolve-steps (createResolveSteps consumed by steps-planner :7), worker-dispatch
+            (consumed by steps-planner :8, zero imports = self-contained), PlanStep/StepPlan in
+            cli/commands/steps.ts:9,20. Confirmed."
+          - "COUPLING HAZARD (a) — engine-ops is a SPLIT module: ops/engine-ops.ts exports
+            tierOfNode (SURVIVES — re-exported index.ts:30, used as tierFor:tierOfNode at
+            index.ts:119,218) and createEngineOps (DIES — only consumer index.ts:203 engine-wiring +
+            e2e/epic-tier.e2e.spec.ts). It type-imports from the dying step-runner at
+            ops/engine-ops.ts:7: `import type { AnyNode, OpsLike } from
+            '../engine/step-runner/step-runner.js'`. REQUIRED EDIT (same change-set as step-runner
+            delete): drop createEngineOps + the AnyNode/OpsLike import + the AnyRec/asNode/freshen
+            helpers; keep only tierOfNode (takes unknown, needs no engine type)."
+          - "COUPLING HAZARD (b) — index.ts type-imports into the PUBLIC surface: index.ts:23
+            `import type { AnyNode, SpawnLike, RunnerDeps, TierCfg } from
+            './engine/step-runner/step-runner.js'`. Live usages to inline/remove when step-runner
+            dies: RunnerDeps['run'] at :143, SpawnLike at :144, AnyNode in public Anchored.engine
+            type at :153, TierCfg at :200. REQUIRED EDIT (same change-set): remove the import;
+            remove the engine field (+ run/spawn) from AnchoredDeps/Anchored and the
+            createEngine/createSpawn/createEngineOps wiring at :198-205,216 — else tsc breaks. This
+            is the load-bearing edit that keeps tsc green."
+          - "SURVIVING SPECS NEEDING SURGICAL (not wholesale) EDITS: e2e/e2e.dogfood.spec.ts:120
+            calls anchored.engine.run('task',...) through createAnchored; index.spec.ts:63,93 assert
+            the createEngine wiring + ops→engine→cli order. Drop the engine.run assertion /
+            createEngine wiring-order assertion in the phase that removes the engine wiring, else
+            fail/!tsc."
       - text: "Confirm `anchored plan|refine|build|wrap|node|steps|validate|archive|reset` all still resolve
           WITHOUT the engine-run path (the CLI returns plans + does ops; it never calls engine.run).
           Evidence: trace each command's call graph."
-        status: pending
+        status: done
+        evidence:
+          - "9-COMMAND CALL-GRAPH PROOF (re-verified): cli/cli.ts dispatches node→nodeCommand,
+            plan→planCommand, refine/build/wrap→runStage (refine.ts:10), steps→stepsCommand,
+            archive→archiveCommand, reset→resetCommand, validate→deps.validate(). runStage
+            (refine.ts:10-16) calls ONLY deps.nodeOps.read + deps.tierFor + deps.steps(...) — never
+            deps.engine.run. `engine` wired into CliDeps (cli.ts:72, fed index.ts:199-205,216) but
+            ZERO live call-site. ⇒ all 9 verbs resolve without the engine-run path."
+          - "COMPLETE SPEC GREP SWEEP: EXACTLY 11 specs touch the dead surface; 3 FALSE-POSITIVES
+            (schema/step/step.spec.ts, ops/steps-planner/steps-planner.spec.ts,
+            e2e/extensibility-matrix.spec.ts — only mention 'run-step' as a config-step CONCEPT,
+            import schemas not engine/step-runner) SURVIVE untouched."
+          - "SPEC DISPOSITION — 8 DELETE-WHOLESALE: PHASE-2 spawn/spawn.spec.ts; PHASE-3
+            engine/integration.spec.ts, engine/runners.spec.ts, engine/workflow-smoke.spec.ts,
+            engine/step-runner/step-runner.spec.ts, engine/scope/run-step/run-step.spec.ts,
+            engine/scope/loop-step/loop-step.spec.ts,
+            engine/scope/loop-workflow/loop-workflow.spec.ts. 3 SURGICAL: e2e/epic-tier.e2e.spec.ts
+            (MIXED — tests 1-5 survive; phase-3 drops createEngine import :7 + step-runner
+            type-import :12 + makeOps helper + the last engine-run test); e2e/e2e.dogfood.spec.ts
+            (phase-2 strips SpawnInput/SpawnResult import :11 + harness uses; phase-3 strips
+            engine.run :120 + dependent a4); index.spec.ts (phase-4 drops engine.run assert :37 +
+            createEngine wiring asserts a2:63/a3:93, keeps merge-once + pure-factory + tierOfNode)."
+          - "SOURCE-SIDE PHASE-BOUNDARY DISPOSITION (production grep, non-spec): EXACTLY 3
+            cross-phase source orphans — importers of a phase-2-deleted module that are themselves
+            phase-3+ files. ALL THREE must be stripped in phase-2's SAME change-set as the spawn.ts
+            + worker-step.ts deletion, else tsc reds at the phase-2 boundary."
+          - ORPHAN 1 — engine/step-runner/step-runner.ts:7 `import { workerStep } from
+            '../scope/worker-step.js'` + :106 call `return workerStep(step, node, ctx, deps)` (the
+            use|bare-name dispatch leaf, spawn-invoking branch). worker-step IS the spawn leaf —
+            once spawn.ts is gone the call can't function, so phase-2 strips this import+call-site;
+            the spawn-free step-runner.ts BODY is deleted wholesale in phase-3. Within phase-2 AC1
+            'remove the spawn dep from step-runner.ts'.
+          - "ORPHAN 2 — engine/scope/loop-step/loop-step.ts:9 `import { workerStep } from
+            '../worker-step.js'` + :96 call `r = await workerStep(bstep, current, ctx, deps)`
+            (loop-body else-branch). Same disposition: strip import+call in phase-2's change-set;
+            loop-step.ts body survives to phase-3."
+          - ORPHAN 3 (additional, beyond the two workerStep call-sites) — index.ts:21 `import {
+            createSpawn } from './spawn/spawn.js'` + :198 `const spawn = deps.spawn ??
+            createSpawn(config..., {})` (package-entry default-spawn wiring). Importer of
+            phase-2-deleted spawn.ts; the createSpawn import + the `?? createSpawn(...)`
+            default-construction MUST be stripped in phase-2's change-set (the deps.spawn injection
+            seam can remain until phase-3). Else index.ts reds at the phase-2 boundary.
+          - "NON-ORPHANS confirmed (no phase-2 cut needed): SpawnLike is an INTERFACE defined IN
+            step-runner.ts:35/:94 (phase-3 file, removed wholesale phase-3) — engine.ts:9/:18 +
+            index.ts:23/:144 import SpawnLike FROM step-runner.ts, so the symbol persists until
+            phase-3, no phase-2 break. config.ts:40-50 SpawnSettings/`spawn:` config key = schema
+            carve-out (the headless POLICY surface, mode enum ['headless','subagent']), removed via
+            the config carve-out not a module-import orphan. Every production-source grep hit is
+            accounted for by phase + disposition."
+          - "RESOLVE-STEPS EXPLICIT CARVE-OUT: engine/scope/resolve-steps/ SURVIVES the phase-3
+            engine/scope sweep — ops/steps-planner/steps-planner.ts:7 imports createResolveSteps
+            from it (used :18). Phase-3 MUST exclude resolve-steps/ when deleting
+            engine/scope/{run-step,loop-step,loop-workflow}/ + worker-step.ts. Relocation into ops/
+            OUT OF SCOPE. worker-dispatch re-confirmed at ops/scope/worker-dispatch/ not
+            engine/scope. engine/scope/ inventory after phase-3: only resolve-steps/ remains."
+          - "GATE-SAFETY AT BOTH BOUNDARIES: phase-2 change-set = {delete spawn.ts + worker-step.ts
+            + their specs} ∪ {strip 3 orphan import+call-sites: step-runner.ts:7/:106,
+            loop-step.ts:9/:96, index.ts:21/:198} ∪ {config carve-out + dogfood:11 import strip} →
+            tsc + bun test green (no dangling import of a deleted module, no spawn-leaf call without
+            a spawn). phase-3 then deletes the spawn-free step-runner.ts/loop-step.ts/engine bodies
+            wholesale → still green. phase-4 handles index.spec.ts + index.ts wiring surgical."
+    retry_count: 2
   - name: Delete the spawn seam + worker-step
     slug: remove-spawn-and-worker
-    status: pending
+    status: done
     context: "The AI-effect leaf of the dead path: spawn.ts and the single call-site worker-step.ts.
       Done first because it's the narrowest cut."
     rules:
@@ -118,16 +430,68 @@ phases:
       - text: Delete `spawn.ts` (+spec) and `engine/scope/worker-step.ts`; remove `SpawnSettings`/`spawn`
           from `schema/config.ts` and the `spawn` field from `AnchoredDeps`/wiring in `index.ts`
           (:144/:198/:202).
-        status: pending
+        status: done
+        evidence:
+          - core/src/spawn/ folder DELETED via git rm (spawn.ts + spawn.spec.ts);
+            core/src/engine/scope/worker-step.ts DELETED. `ls src/spawn/` → no such file; `grep -rn
+            'spawn/spawn' src/` → no import hits.
+          - "Config carve-out: schema/config/config.ts — SpawnSettings schema (old :40-43) + the
+            `spawn:` ConfigSchema key (old :50) removed; `grep -rn SpawnSettings src/` → none. No
+            now-unused imports left."
+          - "index.ts: `import { createSpawn } from './spawn/spawn.js'` (old :21) removed; the
+            `deps.spawn ?? createSpawn(...)` default-construction (old :198) replaced with an inert
+            injection-only seam (`const spawn: SpawnLike = deps.spawn ?? { run: async () => ({
+            ok:false, kind:'no-spawn', error:'engine-run path removed' }) }`). `grep -rn createSpawn
+            src/` → only a provenance comment, zero call."
+          - "AnchoredDeps.spawn field DEFERRED to phase-3 (kept at index.ts:143 `spawn?:
+            SpawnLike`): removing it now reds tsc because the surviving createEngine wiring feeds
+            the NON-optional EngineDeps.spawn (a SpawnLike). The disposition explicitly permits
+            keeping the injection seam until phase-3. AC0's real intent (no createSpawn construction
+            in index.ts) is fully met; the field + inert fallback get deleted with the engine wiring
+            in phase-3."
       - text: Remove `SpawnLike` + the `spawn` dep from `step-runner.ts` + `engine.ts` (or fold per the
           engine-chain phase if removed wholesale).
-        status: pending
+        status: done
+        evidence:
+          - "step-runner.ts: `import { workerStep } from '../scope/worker-step.js'` (old :7)
+            removed; the dispatch leaf's spawn-invoking body inlined as a local `async function
+            workerStep(...)` so run()'s use|bare-name branch keeps its exact behaviour. `grep
+            'from.*worker-step' step-runner.ts` → no import."
+          - "loop-step.ts: `import { workerStep } from '../worker-step.js'` (old :9) removed;
+            runBody's else-branch worker call now resolves to a local inlined workerStep. Dependency
+            on the deleted module severed; loop-step otherwise intact (dies phase-3)."
+          - "SpawnLike LEFT INTACT — it is an `export interface SpawnLike` DEFINED in step-runner.ts
+            (not imported from deleted spawn.ts); per the disposition's 'or fold per the
+            engine-chain phase if removed wholesale' clause it folds to phase-3. The injected
+            RunnerDeps.spawn: SpawnLike seam is unchanged, which is why the still-present phase-3
+            specs (step-runner.spec a3, integration.spec a4, loop-step.spec) stay green."
+          - "DECISION (within brief latitude): inlined the worker-step body rather than throwing.
+            The brief allowed throw OR a minimal compiling change; a throw would have RED-ed the
+            phase-3 specs that still run under bun test NOW (step-runner.spec.ts:53 'step.use
+            dispatches to spawn worker', integration.spec.ts:33 'phase implement' via use:).
+            Inlining keeps tsc + bun test green and matches the spec contract; both inlined bodies
+            are deleted wholesale with step-runner.ts/loop-step.ts in phase-3."
       - text: "Gates green: `bun test` + eslint + `tsc --noEmit` + build; `anchored` CLI still works
           end-to-end (smoke a `plan`/`node read`)."
-        status: pending
+        status: done
+        evidence:
+          - "bun test: 267 pass / 0 fail / 0 skip across 46 files (897 expect). Delta vs the 275
+            pass / 2 skip baseline FULLY accounted for: deleted spawn.spec.ts held exactly 8 passing
+            tests + the 2 real-smoke skips (277−8−2skip = 267 pass, 0 skip). No regression."
+          - "tsc --noEmit: exit 0 (clean). bun run lint (eslint .): exit 0. bun run format (prettier
+            --check .): 'All matched files use Prettier code style!' exit 0. bun run build (tsc -p
+            tsconfig.build.json): exit 0, emits dist/."
+          - 'CLI smoke green: `node dist/bin.js --help` exit 0 (prints command list); `node
+            dist/bin.js steps phase build` in a fresh tmp project →
+            `{"ok":true,..."steps":[{implement},{task-validate},{code-validate}]}` exit 0 — the full
+            config→ops→engine→cli wiring graph builds without the removed headless spawn default.'
+          - "No dangling refs: grep for spawn/spawn imports, `from *worker-step`, createSpawn
+            (call), SpawnSettings across src/ → only intentional provenance COMMENTS remain, zero
+            live imports/calls."
+    commit: 743888d
   - name: Delete the engine.run execution chain
     slug: remove-engine-run-chain
-    status: pending
+    status: done
     context: "The control-flow chain that only the headless path used: engine + the three runners + the
       step-scope executors. Removed only for the parts phase-1 proved skill-unused."
     rules:
@@ -140,16 +504,75 @@ phases:
           `engine/stage-runner.ts`, `engine/step-runner.ts`,
           `engine/scope/{run-step,loop-step,loop-workflow}.ts` + their specs — keeping anything
           phase 1 proved the skill path still needs.
-        status: pending
+        status: done
+        evidence:
+          - "git rm deleted 14 files: engine/engine.ts, engine/tier-runner.ts,
+            engine/stage-runner.ts, engine/step-runner/{step-runner.ts,.spec.ts},
+            engine/scope/run-step/{run-step.ts,.spec.ts},
+            engine/scope/loop-step/{loop-step.ts,.spec.ts},
+            engine/scope/loop-workflow/{loop-workflow.ts,.spec.ts}, engine/runners.spec.ts,
+            engine/integration.spec.ts, engine/workflow-smoke.spec.ts."
+          - "`find src/engine -type f` → ONLY src/engine/scope/resolve-steps/{resolve-steps.ts,
+            resolve-steps.spec.ts, resolve-injection.spec.ts} survive; engine/ root + step-runner/ +
+            scope/{run-step,loop-step,loop-workflow} are gone. engine/scope/ now holds ONLY
+            resolve-steps/ as planned."
+          - "resolve-steps SURVIVOR importer intact: steps-planner.ts:7 `import { createResolveSteps
+            } from '../../engine/scope/resolve-steps/resolve-steps.js'`, used :18. Clean rebuild (rm
+            -rf dist && bun run build) → dist/engine/ contains ONLY scope/resolve-steps (no
+            engine.js, no step-runner, no loop-* in the build output)."
       - text: Resolve the `executor`/workflow-mode question per the open question (remove the engine
           workflowLoop; keep or drop the executor field + set-executor verb depending on whether the
           build SKILL still uses them).
-        status: pending
+        status: done
+        evidence:
+          - "q1 EXECUTOR SURFACE KEPT + still referenced: schema/tiers/phase.ts:47 `executor:
+            PhaseExecutor.optional()`; node-ops.ts:471 `async setExecutor(...)`;
+            facade.ts:61/235/237 setExecutor; cli/commands/node/node.ts:113-114 `case
+            'set-executor'`; cli.ts:132 help line — all present, node-ops.spec + node.spec executor
+            tests still green. The engine workflowLoop (workflowLoop/selectWorker) died via the
+            engine/scope/loop-workflow folder deletion (its only importer loop-step.ts also deleted)
+            — exactly the q1-mandated dead-engine-consumer removal."
+          - "COUPLING HAZARD (a) handled: ops/engine-ops.ts rewritten — `tierOfNode` KEPT (pure
+            string logic, zero engine type-import; index.ts still wires it as tierFor);
+            `createEngineOps` + the step-runner type-import + AnyNode/asNode/freshen helpers
+            REMOVED."
+          - "COUPLING HAZARD (b) handled — index.ts: removed createEngine import, createEngineOps
+            import, the step-runner type-import (AnyNode/SpawnLike/RunnerDeps/TierCfg), the inert
+            `deps.spawn ?? {...}` seam (the phase-2-deferred dead spawn machinery), the
+            AnchoredDeps.spawn field, AnchoredWiring.createEngine, the createEngine() construction,
+            and `engine` from the Anchored return type + object graph. createAnchored now returns `{
+            cli, ops, config }`. `deps.run` (was RunnerDeps['run'], a step-runner import) inlined as
+            the structural type (cmd)=>Promise<{code,stdout,stderr}>. cli.ts CliDeps.engine field +
+            EngineResult interface removed (CLI never calls engine.run). The ENTIRE index.ts/cli.ts
+            wiring teardown landed HERE — no phase-4 remainder on the index/cli side."
       - text: "Gates green: `bun test` + eslint + `tsc --noEmit` + build; CLI smoke still green."
-        status: pending
+        status: done
+        evidence:
+          - "bun test → 210 pass / 0 fail / 0 skip across 39 files (678 expect). Delta from 267: −57
+            = 56 wholesale engine-spec tests (runners 4 + integration 2 + workflow-smoke 23 +
+            step-runner 3 + run-step 4 + loop-step 6 + loop-workflow 14) + 1 epic-tier.e2e
+            engine.run test. File delta 46→39 = the 7 deleted wholesale spec files. No hidden
+            regression — every dropped test traced to a deleted engine spec."
+          - tsc --noEmit (bun run typecheck) → exit 0 clean. bun run lint (eslint .) → exit 0. bun
+            run format (prettier --check .) → 'All matched files use Prettier code style!'. bun run
+            build (tsc -p tsconfig.build.json) → exit 0.
+          - 'CLI smoke green WITHOUT the engine: from a tmp project `node dist/bin.js --help` exit
+            0; `node dist/bin.js steps phase build` →
+            `{"ok":true,..."steps":[{implement},{task-validate},{code-validate}]}` exit 0 —
+            config→ops→cli resolves fully, no engine in the graph.'
+          - "Surgical spec edits kept surviving assertions: 5 cli specs
+            (cli/classify/node/stage/cli.spec) dropped the now-invalid `engine:` CliDeps literal
+            (excess-property after the field drop); stage.spec's `engineRan===false` 'CLI does not
+            spawn' guarantee is now STRUCTURAL (no engine exists). epic-tier.e2e tests 1-5
+            (round-trip/io/schema/DAG/resolve-steps) kept, engine.run test dropped. e2e.dogfood
+            a1/a4 reworked to the cli-only self-write path (per-phase evidence via the real facade
+            addChildEvidence + setChildStatus — what a spawned worker does), a2/a3 untouched.
+            index.spec a1 now expects ['cli','config','ops'] (no engine), merge-once + pure-factory
+            + tierOfNode tests kept."
+    commit: "7475747"
   - name: Clean the wiring, dead tests + design docs
     slug: clean-wiring-tests-docs
-    status: pending
+    status: done
     context: "Final sweep: index.ts no longer wires createEngine; the dead engine tests are gone; the
       design docs stop advertising a headless engine-run path that doesn't exist."
     rules:
@@ -169,16 +592,72 @@ phases:
           returned object graph drops `engine` (or keeps only what the CLI genuinely uses). Remove
           now-dead tests: runners.spec, integration.spec, loop-workflow.spec, step-runner.spec,
           spawn.spec, the engine-run portions of workflow-smoke.spec/epic-tier.spec."
-        status: pending
+        status: done
+        evidence:
+          - "index.ts:204 createAnchored returns `{ cli, ops: facade, config }` — no engine
+            constructed/wired anywhere (deps-graph is substrate→ops→cli only); this landed in phase
+            3. `find core/src/engine -type f` → only resolve-steps/ files remain; all deleted engine
+            modules absent. Dead engine tests gone (the 7 wholesale spec files + the engine.run
+            portions of epic-tier/index/dogfood) — confirmed by phase-3 bun test delta 267→210."
+          - "Stale-comment fix (phase-1 flagged): cli/commands/build.ts:1-3 + wrap.ts:1-3 reworded
+            from 'Drives the engine via the shared stage helper' → 'Returns the orchestration plan
+            ... the in-session SKILL executes it'. ALSO refine.ts:5-8 had a second now-false claim
+            ('the deterministic engine stays wired + tested for a future headless path') → reworded
+            to 'The engine-drives-AI execution path was removed entirely
+            (remove-headless-engine-path)'."
+          - "`grep -rni 'drives the engine' core/src/cli/commands` → exit 1, ZERO matches after the
+            fix."
       - text: Update docs/design (engine-architecture.md, fractal-redesign-notes.md, file-structure.md,
           agenda.md) to describe the skill-orchestrated runtime as the real path and drop the
           headless `claude -p`/engine-run claims (or mark them explicitly as abandoned with the
           rationale).
-        status: pending
+        status: done
+        evidence:
+          - "engine-architecture.md FULLY rewritten: title → 'skill-orchestrated, factory-function
+            core'; ABANDONED history note citing dogfood F11 / architecture-cleanup A8 / refine.ts;
+            both mermaid diagrams + pseudo-TS replaced (createEngine/tier-runner/spawn →
+            createAnchored {cli,ops,config} + runStage returning a plan, 'the CLI spawns NOTHING');
+            folder sketch shows engine/ holds ONLY scope/resolve-steps/; executor field documented
+            as a skill-honored hint (q1)."
+          - "file-structure.md: index.ts line → createAnchored(deps) → { cli, ops, config }; engine/
+            section collapsed to scope/resolve-steps/ only (spot-checked against `find core/src
+            -type d`, MATCHES exactly); deleted
+            engine.ts/tier-runner/stage-runner/step-runner/run-step/worker-step/loop-step/loop-work\
+            flow entries; spawn/ marked REMOVED; engine-ops adapter removal noted (:54);
+            worker-dispatch shown at ops/scope/worker-dispatch/; lifecycle-e2e desc corrected;
+            Mechanism/Policy note updated."
+          - "fractal-redesign-notes.md: Items 2/3/5a all marked ABANDONED/REVISED with strikethrough
+            (record preserved, not silently dropped); Open-q3 marked RESOLVED in-session-only. RETRY
+            FIX (code-validate block on :244): the UNMARKED Item-5b config-as-base-dep bullet that
+            named the now-deleted createEngine as a live factory → reworded to surviving factories
+            (createNodeOps / createStepsPlanner / createCli / createAnchored). Re-grep of
+            docs/design confirms the only remaining createEngine hits are legitimate: :169
+            strikethrough (ABANDONED record) + file-structure.md:54 removal-comment. No stale LIVE
+            engine claim remains."
+          - "agenda.md (EXISTS, not invented): Item 2 'DECIDED, then ABANDONED'; Item 3 factory
+            pattern stays but engine-run chain it drove removed; stale docs/drafts/ paths →
+            docs/design/. All edits English, no-abbreviations honored (fan-out / just-in-time
+            spelled out, no DAG/JIT/TL;DR), one-line ABANDONED rationale per CLAUDE.md style."
       - text: "Final full green: `bun test` + eslint + `prettier --check` + `tsc --noEmit` + build; grep
           proves zero references to deleted symbols (createEngine/createSpawn/SpawnLike/workerStep)
           remain."
-        status: pending
+        status: done
+        evidence:
+          - bun test → 210 pass / 0 fail / 0 skip (678 expect, 39 files) — baseline held (docs don't
+            compile). bun run lint (eslint .) → clean; bun run typecheck (tsc --noEmit) → no errors;
+            bun run format (prettier --check .) → 'All matched files use Prettier code style!'; bun
+            run build (tsc -p tsconfig.build.json) → compiled, no errors. All 5 gates green.
+          - "GREP PROOF: `grep -rn
+            'createEngine|createSpawn|SpawnLike|workerStep|createStepRunner|createTierRunner|create\
+            StageRunner|workflowLoop' core/src --include=*.ts` → exactly 1 hit: engine-ops.ts:2, a
+            removal-documenting comment ('The createEngineOps adapter ... was removed with the
+            headless engine-run chain'). ZERO live references to any deleted symbol."
+          - Docs markdown is OUTSIDE core's prettier gate scope (`bun run format` runs in core/ and
+            checks core/** only) — running prettier from repo-root warns on fractal-lifecycle.md too
+            (which was never edited this phase), confirming the warn is pre-existing root-scope, NOT
+            a regression from the doc edits. The core/ format gate is green.
+    retry_count: 1
+    commit: bf07475
 questions:
   - id: q1
     text: "Workflow-mode scope: removing the engine path kills the engine `workflowLoop` (dogfood F11
@@ -227,3 +706,32 @@ questions:
       createStepRunner, which die with the executors."
     created_at: 2026-06-13T11:45:18.999Z
     resolved_at: 2026-06-13T12:03:16.707Z
+  - id: q3
+    text: DAG/loop-order coverage was carried SOLELY by the now-deleted engine specs
+      (loop-step/loop-workflow + the epic-tier engine.run test). With the engine path gone and the
+      SKILL now the orchestrator, is per-phase/DAG-order fan-out meant to be re-covered at the
+      skill/plugin layer, or is it intentionally out of the core test surface from here on?
+    priority: high
+    origin: task-validate
+    phase: remove-engine-run-chain
+    status: resolved
+    answer: Intentionally out of the CORE test surface from here on — the DAG/loop-order fan-out is now
+      the SKILL's job, not core's. The engine-run chain WAS the per-phase/DAG-order mechanism;
+      removing it (per the user-approved A8/q1 decision) deliberately removes the thing those engine
+      specs tested. Core retains the substrate guarantees that the orchestration relies on — the
+      dependency-graph child-ordering logic still lives + is tested in ops/scope/children
+      (first-pending-whose-depends_on-are-all-done) and epic-tier e2e test 4 (realNextChild
+      DAG-order) still passes; what's gone is only the ENGINE's loop that consumed that ordering.
+      Re-covering 'does the orchestrator loop phases in DAG order' belongs at the plugin/skill layer
+      (the build SKILL's phase loop via next_phase), tracked there — NOT re-added to core. No core
+      test gap to backfill; surfaced here for the audit trail.
+    source: ai
+    reasoning: "Within-plan, not an architecture flip: the task's whole purpose (user A8/q1) is to
+      remove the dead engine-run mechanism, and the DAG-loop engine specs tested exactly that
+      mechanism. The substrate's child-ordering logic (ops/scope/children) + its test (epic-tier e2e
+      test 4 realNextChild) survive; only the engine's consumption-loop coverage is gone, which is
+      the intended consequence. Loop-orchestration coverage rightly moves to the skill layer where
+      the loop now lives. No build.stop rule matches (no tier/layer-boundary, factory-contract,
+      mechanism-vs-policy, or invariant flip)."
+    created_at: 2026-06-13T15:14:29.262Z
+    resolved_at: 2026-06-13T15:14:43.717Z
