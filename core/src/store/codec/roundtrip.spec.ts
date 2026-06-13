@@ -4,15 +4,15 @@ import { parse, stringify } from 'yaml'
 import { createParser } from './parse/parse.js'
 import { createRenderer, defaultSchemaUrl } from './render/render.js'
 import { createIo, type IoDeps } from '../io/io.js'
-import { TaskNodeSchema } from '../domain/tiers/task.js'
-import { EpicNodeSchema } from '../domain/tiers/epic.js'
+import { TaskNodeSchema } from '../../domain/tiers/task.js'
+import { EpicNodeSchema } from '../../domain/tiers/epic.js'
 
 const schemas = { task: TaskNodeSchema, epic: EpicNodeSchema }
 const parser = createParser({ yaml: { parse }, schemas })
 const renderer = createRenderer({ yaml: { stringify }, schemaUrl: defaultSchemaUrl })
 
 function fixture(name: string): string {
-  return readFileSync(new URL(`../../../plugin/references/${name}`, import.meta.url), 'utf8')
+  return readFileSync(new URL(`../../../../plugin/references/${name}`, import.meta.url), 'utf8')
 }
 
 // a1 — parse(render(parse(raw))) deep-equals parse(raw) for both tiers

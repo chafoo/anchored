@@ -1,4 +1,4 @@
-// parser/render.ts — createRenderer(deps): node → YAML string. Auto-injects the
+// store/codec/render/render.ts — createRenderer(deps): node → YAML string. Auto-injects the
 // schema directive on line 1 (comments don't round-trip through the parser, so the
 // renderer is the single canonical injection point). Prose → block-scalar (|).
 // Pure — no FS write (that is io.ts), just the string.

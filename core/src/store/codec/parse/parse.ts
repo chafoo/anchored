@@ -1,7 +1,7 @@
-// parser/parse.ts — createParser(deps): YAML → typed node. Two profiles:
+// store/codec/parse/parse.ts — createParser(deps): YAML → typed node. Two profiles:
 // task-file (no-alias, schema_version-gated node files) and anchored.yml (alias-ok
 // config). yaml + schemas are injected seams (fakeable); no FS, no effects.
-import { anchoredError } from '../../domain/invariants/invariants.js'
+import { anchoredError } from '../../../domain/invariants/invariants.js'
 
 const SCHEMA_VERSION = 2
 const SIZE_CAP = 1_000_000 // 1 MB — guard against pathological inputs
