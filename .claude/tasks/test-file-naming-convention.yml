@@ -78,6 +78,21 @@ context:
     confirmed (q5). Migration gate is a name-set / per-suffix-distribution diff (38 .spec.ts + 5
     .e2e.ts + 4 .int.ts), NOT a raw count (q7, q9, q10) — the migrate phase's count-equality AC
     should be read as this stronger set/suffix diff.
+
+    - RE-GROUNDING (2026-06-13, mid-build): a CONCURRENT `remove-headless-engine-path` task
+    committed to the same repo while this build ran (3 commits: 7475747/bf07475/fe6f0d6 inserted
+    between session-start tip c6307d2 and our phase-1 commit cd077c9). It deleted 8 engine test
+    files (47->39 .spec.ts) and restructured the tree. User confirmed that task is finished/inactive
+    and directed: re-ground the plan against the current tree, then continue (phase 2 config stays).
+    CONSEQUENCES for the migration: (a) 2 original targets are GONE — engine/integration.spec.ts
+    (.int) and cli/commands/lifecycle.e2e.spec.ts (.e2e) — no action; (b) a NEW file
+    e2e/archive-reset.e2e.spec.ts appeared: it is `.e2e`-named but uses an IN-MEMORY fake-io
+    harness, so by the rule's criteria it is INTEGRATION -> reclassified to .int.ts; (c) corrected
+    migration set = 4 true e2e (cli/cli.e2e, cli/custom-field-e2e, e2e/epic-tier.e2e,
+    e2e/e2e.dogfood) + 4 int (e2e/lifecycle-e2e, e2e/extensibility-matrix, cli/epic-tier,
+    e2e/archive-reset.e2e) + skeleton relocated as .spec; (d) corrected baseline 31 .spec.ts + 4
+    .e2e.ts + 4 .int.ts = 39 (supersedes the stale q9/q10 38/5/4=47). Full authoritative mapping in
+    .claude/tasks/test-file-naming-convention.baseline.md.
   build:
     plan-check: >-
       **Verdict: needs-attention** — 0 auto-fixes (discovery confirmed accurate), 3 medium questions
@@ -133,6 +148,24 @@ context:
 
       Markdown artifact — verification = grep over structural requirements (section headers,
       wikilinks, suffix definitions, bun-discovery statement, reconciliation cross-ref), all green.
+
+      - configure-runner-and-build / Bun Test-Glob + Build-Exclude Config
+
+
+      Created core/bunfig.toml ([test] block as suffix-SSOT + root='src'), split core/package.json
+      into test:unit/test:e2e/test:int + aggregate test, extended core/tsconfig.build.json exclude
+      with *.e2e.ts + *.int.ts.
+
+
+      Key empirical finding (bun 1.3.14): the built-in matcher only recognizes .test/.spec
+      substrings; no bunfig key widens discovery. Reliable lever = explicit ./-prefixed paths. So
+      the e2e/int scripts collect files via `find src -name '*.e2e.ts' | sed 's|^|./|'` with an `[
+      -n "$files" ]` no-op guard for the pre-migration empty case. This is a local impl decision
+      (recorded, not stopped) — not an architecture flip.
+
+
+      Baseline RE-GROUNDED after the concurrent remove-headless-engine-path task: 39 .spec.ts on
+      disk (not 47), corrected target 31/4/4=39. All five gates green.
     task-validate: "- author-naming-rule (attempt 1): **pass** — 4/4 ACs accepted, 0 rejected. Evidence
       verified against the real .claude/rules/test-file-naming.md. Two cited line-refs off by 1
       (ladder at 39-40 not 40-41; src/e2e dissolve at 68-70 not 70-71) but the cited content is
@@ -149,7 +182,7 @@ context:
 phases:
   - name: Author the Three-Suffix Naming Rule
     slug: author-naming-rule
-    status: in-progress
+    status: done
     context: "Write a governing rule in .claude/rules/ for the three-suffix convention (.spec = unit,
       .e2e = end-to-end, .int = integration), matching the existing rule format: `> Scope:`
       blockquote, `## The rule` / `## Always` / `## Never` / `## Why` / `## Reference` sections,
@@ -213,9 +246,10 @@ phases:
             per rule"
           - test-file-naming.md:51-54 handles the no-single-subject case (cross-cutting e2e next to
             nearest entry-point); lines 70-71 state there is no src/e2e/ (dissolved in this task)
+    commit: cd077c9
   - name: Bun Test-Glob + Build-Exclude Config
     slug: configure-runner-and-build
-    status: pending
+    status: in-progress
     context: Isolate the silent-failure risk as its own phase, done BEFORE the file moves so discovery
       is in place when renames land. Add explicit bun test config (bunfig.toml [test] or equivalent)
       covering *.spec.ts, *.e2e.ts, *.int.ts. Split npm scripts into test:unit / test:e2e / test:int
@@ -230,19 +264,64 @@ phases:
     acceptance_criteria:
       - text: "Bun test config added (bunfig.toml [test] or equivalent) explicitly matching *.spec.ts,
           *.e2e.ts, *.int.ts (evidence: file:line)"
-        status: pending
+        status: done
+        evidence:
+          - core/bunfig.toml created; [test] block declares the recognized suffix taxonomy
+            (*.spec.ts / *.e2e.ts / *.int.ts) as single source of truth, with root='src'
+          - "Empirically verified bun 1.3.14: its built-in matcher only recognizes .test/.spec
+            substrings; no bunfig key widens discovery, so the [test] block documents the taxonomy
+            and the npm scripts implement the widening (documented in bunfig.toml header)"
+          - "Default `bun test` with bunfig present: Ran 210 tests across 39 files, 0 fail —
+            root='src' does not break existing .spec.ts discovery"
       - text: "npm scripts split into test:unit, test:e2e, test:int with an aggregate `test` running all
           three (evidence: package.json scripts block)"
-        status: pending
+        status: done
+        evidence:
+          - "core/package.json scripts split: test:unit='bun test' (default .spec.ts discovery);
+            test:e2e collects *.e2e.ts via find and passes ./-paths to bun; test:int collects
+            *.int.ts likewise; aggregate test='npm run test:unit && npm run test:e2e && npm run
+            test:int'"
+          - "Proven discovery per tier with temp src/__verify__ files: test:e2e ran 1 e2e file,
+            test:int ran 1 int file, test:unit stayed at 210/39 (suffix files correctly NOT pulled
+            into unit). Verify files removed, tree clean."
+          - "Pre-migration empty case: npm run test -> test:unit 210 pass, then 'no *.e2e.ts' / 'no
+            *.int.ts' skip cleanly, rc 0"
       - text: "tsconfig.build.json exclude extended to include `src/**/*.e2e.ts` and `src/**/*.int.ts`
           (evidence: core/tsconfig.build.json:3 diff)"
-        status: pending
+        status: done
+        evidence:
+          - core/tsconfig.build.json exclude now =
+            ['src/**/*.spec.ts','src/**/*.test.ts','src/**/*.e2e.ts','src/**/*.int.ts'] — extended
+            from the prior 2-entry exclude
+          - "Build emits no test artifacts: after npm run build, find dist -name '*.e2e.js' -o -name
+            '*.int.js' -o -name '*.spec.js' -o -name '*.test.js' -> empty"
       - text: "Pre-migration baseline test-file count captured and recorded as evidence (command output:
           count of executed test files before any rename)"
-        status: pending
+        status: done
+        evidence:
+          - "Baseline captured + RE-GROUNDED against current tree in
+            .claude/tasks/test-file-naming-convention.baseline.md: 39 .spec.ts on disk (210 tests, 0
+            fail), 0 test/e2e/int; full 39-path set recorded"
+          - "Re-grounding: a concurrent remove-headless-engine-path task deleted 8 engine test files
+            mid-build (47->39) and removed 2 of the 9 original migration targets
+            (engine/integration.spec.ts, cli/commands/lifecycle.e2e.spec.ts); a new e2e-named file
+            (e2e/archive-reset.e2e.spec.ts, in-memory => reclassified .int) appeared. Corrected
+            target distribution recorded: 31 .spec.ts + 4 .e2e.ts + 4 .int.ts = 39 (supersedes the
+            stale 38/5/4=47)"
+          - Gate is a name-set / per-suffix-distribution diff over the 39-path set, not a raw count
+            (per q7/q10)
       - text: "All five quality gates green with the config in place and tests still pointing at current
           filenames (evidence: gate command output)"
-        status: pending
+        status: done
+        evidence:
+          - "Gate 1 lint: npm run lint (eslint .) rc 0, no findings"
+          - "Gate 2 format: npm run format (prettier --check) -> 'All matched files use Prettier
+            code style!'"
+          - "Gate 3 typecheck: npm run typecheck (tsc --noEmit) rc 0"
+          - "Gate 4 test: npm run test aggregate -> test:unit 210 pass/0 fail across 39 files,
+            e2e+int skip cleanly, rc 0"
+          - "Gate 5 build: npm run build (tsc -p tsconfig.build.json) rc 0, dist clean of test
+            artifacts"
   - name: Migrate + Classify Test Files via git mv
     slug: migrate-and-classify
     status: pending

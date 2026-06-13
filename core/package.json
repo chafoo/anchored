@@ -25,7 +25,10 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
+    "test:unit": "bun test",
+    "test:e2e": "files=$(find src -name '*.e2e.ts' | sed 's|^|./|'); if [ -n \"$files\" ]; then bun test $files; else echo 'no *.e2e.ts files — skipping'; fi",
+    "test:int": "files=$(find src -name '*.int.ts' | sed 's|^|./|'); if [ -n \"$files\" ]; then bun test $files; else echo 'no *.int.ts files — skipping'; fi",
+    "test": "npm run test:unit && npm run test:e2e && npm run test:int",
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
