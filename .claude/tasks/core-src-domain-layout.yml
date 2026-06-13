@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
 schema_version: 2
 slug: core-src-domain-layout
-status: wrap
+status: done
 created: 2026-06-13
 title: Domain-Oriented Layout for core/src
 context:
@@ -180,6 +180,86 @@ context:
       individually confirmed (dogfood 3, lifecycle-e2e/cli.e2e 1, extensibility-matrix 29, epic-tier
       5+16, archive-reset 5, all 0 fail). No architecture deviation; no build.stop match.
   wrap:
+    intro: >
+      ## Wrap-up summary
+
+
+      **Shipped**: 5 of 5 phases done (domain-layer, store-layer, orchestration-and-dissolve-ops,
+      cli-restructure, docs-and-final-verification). Pure move-+-rename migration of core/src into
+      the domain-oriented layout — no behavior change.
+
+      **Blocked/Deferred**: none.
+
+      **ACs with evidence**: 23 of 23 (100%). Every AC carries concrete file:line + real command
+      output; both quality gates (task-validate + code-validate) returned PASS on the first attempt
+      of every phase.
+
+      **No-behavior-change proof**: 210/210 tests green (146 unit + 4 e2e + 60 int), discovery
+      counts unchanged (31 spec / 6 int / 2 e2e), public package surface byte-stable, on every
+      phase.
+
+
+      **Autonomous decisions (review these)**: 12 the AI resolved on its own (3 — q1/q2/q5 — you
+      answered yourself: domain/ as the collector layer, full 3-layer cut, no hard block on the test
+      instance). Grouped by phase:
+
+        plan / refine
+        - One-step-per-commit within each phase (not one-commit-per-phase) — maximizes bisect/review granularity for a pure move migration; the per-phase commit step is additive. [q4]
+        - Conventional Commits scoped to the task slug (refactor(core-src-domain-layout): <step>) — consistent with repo history. [q6]
+
+        domain-layer
+        - config/ stays separate from domain/config-schema — loading (I/O-near) vs. definition; matches the mechanism/policy + definition/wiring split. [q3]
+        - project.ts + tiers.spec.ts move with phase/task/epic into domain/tiers/ — "only moved code" covers them; avoids an orphaned remnant folder. [q8]
+        - Move-phases assert only green gates; kind-suffix/discovery-glob ownership stays with the test-file-naming instance; phase 5 verifies suffix counts once. [q14]
+
+        store-layer
+        - log.ts stays flat (store/log.ts, no log/ folder) — single file, no companion yet. [q9]
+        - StepPlan/PlanStep types moved to domain/steps/plan.ts — removes a store→cli upward dependency; StepPlan is conceptually a step-domain type. [q10]
+        - parser-root roundtrip.spec stays a codec-root cross-cutting spec (store/codec/roundtrip.spec.ts) — tests parse+render together, no single subject module. [q12]
+
+        orchestration-and-dissolve-ops
+        - Delete ops/ and engine/ bundled in this phase once steps-planner + worker-dispatch are moved — clean end-state per phase. [q7]
+
+        cli-restructure
+        - commands/steps.ts + the runStage helper group under commands/stage/; archive/reset form commands/lifecycle/. [q11] (Build-time refinement: the q11 decision text mis-stated which file held runStage — resolved by intent: runStage stayed with the stage verbs in stage/refine.ts, the requireNode guard went to lifecycle/require-node.ts. Clean local colocation call, no architecture flip.)
+        - NodeOpsFacade type relocated DOWN from cli/cli.ts into store/node-router — eliminates the last store→cli upward type dependency; cli now imports it downward. [q15]
+
+        docs-and-final-verification
+        - test-file-naming.md included in the rule cross-ref sweep — it also referenced the old paths. [q13]
+
+      **Notable findings during build**:
+
+      - The two upward-dependency fixes (StepPlan q10, NodeOpsFacade q15) turned pre-existing
+      store→cli type edges into correct downward cli→store edges — a layering correctness
+      improvement, not just a relocation.
+
+      - One depth-sensitive test-data path fix in worker-dispatch.spec.ts (the spec moved a level
+      shallower, so a default-template fixture URL lost one `../`) — caught as ENOENT on first run,
+      fixed, re-ran green.
+
+      - Three stale path-label header comments (invariants.ts, resolve-steps.ts, bin.ts) cleaned in
+      phase 5.
+
+
+      **Notable findings from wrap (docu-scan)**:
+
+      - docs/core/ fully re-mapped from the old technical layer-cake
+      (ops/engine/parser/schema/state/io) to the new domain/store/orchestration/config/cli tree; all
+      internal links + breadcrumbs resolve. _core.md gained a "Why this split" section (the three
+      dividing lines + forward-only dependency direction) per your request.
+
+      - Two genuinely-reserved semantics surfaced as open questions →
+      docs/_questions/core.domain.md: workflow-mode / PhaseExecutor runtime behaviour (e9) and
+      project-tier activation. Both are reserved-by-design, not gaps in this task.
+
+
+      **Outcome vs plan**: Shipped exactly the §4 target from .claude/temp/codebase-refactor-plan.md
+      with no scope pivots — three domain layers (domain/store/orchestration) plus separate config/
+      and transport-only cli/, with ops/engine/parser/schema/state fully dissolved. The migration
+      order (§6) held; each phase stayed green and individually reviewable. The only deviations from
+      the literal plan text were the two layering-correctness type relocations (q10/q15, both
+      behavior-neutral and explicitly sanctioned by the resolved questions) and the q11
+      intent-resolution — none changed the architecture, all left the suite at the 210/210 baseline.
     subsections:
       docs-todo: >-
         User-Auftrag für /impl-wrap (docu-scan): Nicht nur den Struktur-BAUM in
