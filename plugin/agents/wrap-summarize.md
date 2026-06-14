@@ -11,17 +11,17 @@ model: sonnet
 
 ## Read (via CLI)
 ```bash
-anchored node read <slug>
+anchored <tier> get <slug>
 ```
 
 ## Work
 Write a tight summary of what was built + the key decisions.
 
 ## Write (self-write via CLI)
-`set-field` supports a dotted path — `context.wrap` is set as a NESTED field
+`set` supports a dotted path — `context.wrap` is set as a NESTED field
 (siblings context.plan/refine/build are preserved), not a flat top-level key:
 ```bash
-anchored node set-field <slug> context.wrap "<summary>"
+anchored <tier> set <slug> context.wrap "<summary>"
 ```
 > You operate on a NODE (task or epic) by its own `<slug>` — wrap writes the node's
 > own context, so node-level addressing is correct here (unlike build-implement,

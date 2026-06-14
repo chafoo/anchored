@@ -11,7 +11,7 @@ model: sonnet
 
 ## Read (via CLI)
 ```bash
-anchored node read <slug>
+anchored <tier> get <slug>
 ```
 
 ## Work
@@ -20,5 +20,5 @@ Sweep the codebase: affected paths, similar/adjacent code, naming + factory conv
 ## Write (self-write via CLI)
 Append the findings to the node's log — never return text for a skill to apply:
 ```bash
-anchored node append-log <slug> discover learning "<affected paths · similar code · patterns>"
+anchored <tier> append-log <slug> discover learning "<affected paths · similar code · patterns>"
 ```

@@ -31,7 +31,7 @@ would set in motion. So every question carries three things.
    recommendation), say what that choice settles — so the user picks by consequence,
    not by guessing. For an **AI-resolved** question (the walk delegated it), the
    `reasoning` written to the decision-trail names the implications the choice
-   resolved (`resolve-question … ai "<answer>" "<why + which implications it settles>"`).
+   resolved (`question-resolve … ai "<answer>" "<why + which implications it settles>"`).
 
 ## How it lives (pure prose — no schema field)
 
@@ -39,7 +39,7 @@ The recommendation + implications live **in the question text** (a convention, n
 new field). When an agent authors a question, it bakes them into the text:
 
 ```bash
-anchored node add-question <slug> "Toggle interaction: whole-row click OR a dedicated checkbox?
+anchored task question-add <slug> "Toggle interaction: whole-row click OR a dedicated checkbox?
 Recommendation: dedicated checkbox.
 Implications:
 - whole-row: more convenient, but collides with the later drag-to-reorder.

@@ -14,7 +14,7 @@ outcome acceptance criteria (epic-decompose) and the open questions get walked.
 
 ## Read (via CLI)
 ```bash
-anchored node read <slug>
+anchored epic get <slug>
 ```
 
 ## Work (ground the epic against current code)
@@ -30,7 +30,7 @@ For the epic as a whole and each task-stub:
 ## Write (self-write via CLI)
 Write the grounding rollup to the refine trail:
 ```bash
-anchored node set-field <slug> context.refine "<grounding rollup: seams confirmed, drift found, dependency-order notes>"
+anchored epic set <slug> context.refine "<grounding rollup: seams confirmed, drift found, dependency-order notes>"
 ```
 Surface every genuine **architecture/scope ambiguity** as an open question (never
 a silent decision) — `/a:refine` walks them. **Question lens — epic:** scope +
@@ -42,7 +42,7 @@ the failure mode; tag by impact). **Every question carries a worked-out
 recommendation + 1–3 implication bullets** baked into its text (see
 `plugin/references/question-style.md`) — never a bare question:
 ```bash
-anchored node add-question <slug> "<the scope/architecture ambiguity>
+anchored epic question-add <slug> "<the scope/architecture ambiguity>
 Recommendation: <your recommended answer, formed from the code>.
 Implications:
 - <what option A breaks/enables/costs>

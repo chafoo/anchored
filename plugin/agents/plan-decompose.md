@@ -11,7 +11,7 @@ model: sonnet
 
 ## Read (via CLI)
 ```bash
-anchored node read <slug>
+anchored task get <slug>
 ```
 
 ## Work
@@ -21,13 +21,13 @@ Decompose into 2–5 phases. Phrase EVERY acceptance criterion so concrete evide
 
 ## Write (self-write via CLI)
 ```bash
-anchored node add-phase <task-slug> <phase-slug> "<name>"
-anchored node add-ac <task-slug> <phase-slug> "<testable acceptance criterion text>"   # id auto-assigned (a1, a2, …); status: pending, no evidence
-anchored node set-phase-rules <task-slug> <phase-slug> <rule-path> "<why this rule applies here>"
+anchored task add-phase <task-slug> <phase-slug> "<name>"
+anchored phase ac-add <task-slug>/<phase-slug> "<testable acceptance criterion text>"   # id auto-assigned (a1, a2, …); status: pending, no evidence
+anchored phase rule-add <task-slug>/<phase-slug> <rule-path> "<why this rule applies here>"
 ```
 The acceptance-criterion id is assigned automatically (a1, a2, …) — you pass only the text. Phases
 and criteria are children of the task-file, addressed by `<task-slug> <phase-slug>`.
-**Attach the applicable `.claude/rules/*.md` per phase** via `set-phase-rules` (from
+**Attach the applicable `.claude/rules/*.md` per phase** via `rule-add` (from
 the rules-scan findings) — so each phase carries a real `rules` array the
 code-validate gate checks against, not just a log note.
 
@@ -43,7 +43,7 @@ A real design fork the plan can't settle becomes an open question for `/a:refine
 to walk. Never a bare question: carry a worked-out recommendation + 1–3 implication
 bullets in the text (see `plugin/references/question-style.md`):
 ```bash
-anchored node add-question <task-slug> "<the ambiguity>
+anchored task question-add <task-slug> "<the ambiguity>
 Recommendation: <recommended answer, formed from the code/discovery>.
 Implications:
 - <what each direction breaks/enables/costs>" <priority>

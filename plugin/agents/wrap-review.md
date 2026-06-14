@@ -11,7 +11,7 @@ model: sonnet
 
 ## Read (via CLI)
 ```bash
-anchored node read <slug>
+anchored <tier> get <slug>
 ```
 
 ## Work
@@ -19,5 +19,5 @@ Review the built node for correctness + cleanup. Read-only.
 
 ## Write (self-write via CLI)
 ```bash
-anchored node append-log <slug> wrap learning "<review findings>"
+anchored <tier> append-log <slug> wrap learning "<review findings>"
 ```

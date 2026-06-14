@@ -11,7 +11,7 @@ model: sonnet
 
 ## Read (via CLI)
 ```bash
-anchored node read <slug>
+anchored task get <slug>
 ```
 
 ## Work
@@ -30,17 +30,17 @@ actionable finding goes onto the node via the CLI:
   `plugin/references/question-discipline.md` (under-surface is the failure mode;
   a hidden default *is* a question):
   ```bash
-  anchored node add-question <slug> "<the question, with a (lean X) recommendation>" <high|medium|low>
+  anchored task question-add <slug> "<the question, with a (lean X) recommendation>" <high|medium|low>
   ```
 - **A missing acceptance criterion the plan needs** (e.g. an enforcement the code
   demands) → add it to the right phase:
   ```bash
-  anchored node add-ac <slug> <phase-slug> "<observable acceptance criterion text>"
+  anchored phase ac-add <slug>/<phase-slug> "<observable acceptance criterion text>"
   ```
 - **The rollup** (what you checked + verdict) is the audit summary, NOT where
   findings hide:
   ```bash
-  anchored node append-log <slug> refine learning "<plan-check rollup>"
+  anchored task append-log <slug> refine learning "<plan-check rollup>"
   ```
 
 If a finding needs a human/AI call, it MUST be a question; if it's a concrete gap

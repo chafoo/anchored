@@ -14,7 +14,7 @@ model: sonnet
 
 ## Read (via CLI)
 ```bash
-anchored node read <slug>
+anchored task get <slug>
 ```
 
 ## Work
@@ -22,5 +22,5 @@ Scan `.claude/rules/` for the rules relevant to this task (keyword + path match)
 
 ## Write (self-write via CLI)
 ```bash
-anchored node append-log <slug> plan learning "<relevant rules: path · why>"
+anchored task append-log <slug> plan learning "<relevant rules: path · why>"
 ```

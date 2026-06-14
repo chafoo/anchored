@@ -24,7 +24,7 @@ Two voices, two surfaces:
   mode, typed errors:** machinery voice. Structured, terse, verb-named. Built for
   the future reader doing forensics — not the user in conversation.
 
-The same orchestrator that just wrote a trail line via `anchored node set-field
+The same orchestrator that just wrote a trail line via `anchored task set
 <slug> context.build …` should NOT then say "wrote context.build via set-field"
 in chat. The audit is the receipt; the chat line is the partnership.
 
@@ -53,11 +53,11 @@ below are in English; mirror whatever language the user speaks).
 | Avoid (machinery voice) | Prefer (partner voice) |
 |---|---|
 | "Spawning plan-check + rules-check in parallel…" | "Let me check the plan against the current state of the code." |
-| "anchored node set-child-status … in-progress" | "Started phase 2." |
+| "anchored phase status … active" | "Started phase 2." |
 | "status transition: drafted → refined" | "Plan's been talked through. Next step: build." |
-| "anchored node create … (status plan)" | "Setting up the task-file for `<slug>`." |
+| "anchored task create … (status plan)" | "Setting up the task-file for `<slug>`." |
 | "task-validate verdict=fail, rejected_count=2" | "Two acceptance criteria don't have a clean evidence anchor yet." |
-| "set-field context.build written" | (nothing — the trail IS the receipt) |
+| "set context.build written" | (nothing — the trail IS the receipt) |
 | "tier derived from file shape → epic" | (nothing — invisible) |
 | "epic state machine is building→done" | "The epic's done." |
 | "set-field context.plan invalid on epic — working around it" | (nothing — just do the right thing silently) |

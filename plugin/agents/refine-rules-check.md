@@ -11,7 +11,7 @@ model: sonnet
 
 ## Read (via CLI)
 ```bash
-anchored node read <slug>
+anchored task get <slug>
 ```
 
 ## Work
@@ -23,10 +23,10 @@ missing coverage + conflicts. Read-only inspection.
   framework requirements — they get enforced, not negotiated with the user. If a
   rule applies to a phase but no acceptance criterion enforces it, ADD the enforcing criterion yourself:
   ```bash
-  anchored node add-ac <slug> <phase-slug> "<acceptance criterion that enforces the rule, testable>"
+  anchored phase ac-add <slug>/<phase-slug> "<acceptance criterion that enforces the rule, testable>"
   ```
-  (And attach the rule to the phase: `anchored node set-phase-rules <slug>
-  <phase-slug> <rule-path> "<why>"`.)
+  (And attach the rule to the phase: `anchored phase rule-add
+  <slug>/<phase-slug> <rule-path> "<why>"`.)
 - **Only a genuine architecture/code ambiguity** (a real design fork, not a rule
   gap) becomes an open question for the user to decide. **Question lens — task:**
   rule *gaps* are auto-fixed (never asked); only a genuine architecture/code fork
@@ -36,12 +36,12 @@ missing coverage + conflicts. Read-only inspection.
   implication bullets** in the text (see `plugin/references/question-style.md`),
   never a bare question:
   ```bash
-  anchored node add-question <slug> "<the architecture ambiguity>
+  anchored task question-add <slug> "<the architecture ambiguity>
   Recommendation: <recommended answer, formed from the rules + code>.
   Implications:
   - <what each direction breaks/enables/costs>" high
   ```
 - Always record the rollup:
   ```bash
-  anchored node append-log <slug> refine learning "<rules-coverage rollup: covered / auto-fixed / questions>"
+  anchored task append-log <slug> refine learning "<rules-coverage rollup: covered / auto-fixed / questions>"
   ```

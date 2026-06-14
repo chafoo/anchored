@@ -14,7 +14,7 @@ Partner voice in chat, machinery only in the audit trail — see
 
 | Avoid (machinery) | Prefer (partner) |
 |---|---|
-| "anchored plan epic … → node created (status plan)" | "Setting up the epic for `<slug>`." |
+| "anchored epic plan … → node created (status plan)" | "Setting up the epic for `<slug>`." |
 | "Spawning discover + decompose…" | "Let's talk it through — what exactly should go in?" |
 | "running the two plan steps: discover then scaffold (stubs + dependency order)" | "I'll skim the code and sketch the two tasks." |
 | "status flip plan → drafted" | "Plan's ready — N phases, M acceptance criteria, K open questions. Run `/a:refine`." |
@@ -27,7 +27,7 @@ words.
 
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns each plan agent itself via the **Task tool**. The
-agents self-write phases/acceptance criteria via `anchored node …` (see
+agents self-write phases/acceptance criteria via the tier-first CLI (see
 `plugin/references/agent-contract.md`). The CLI never spawns agents — a headless
 subprocess can't reach the session's Task tool.
 
@@ -42,24 +42,25 @@ This routing lives only in the skill — no `classify` step, no `classify` agent
 ## Get the orchestration plan + create the node
 
 ```bash
-anchored plan <tier> --slug <short-slug> "<description>"   # → { tier, node, steps }   (creates the node, does NOT spawn)
+anchored <tier> create <short-slug> "<title>"   # creates the node (status plan), does NOT spawn
+anchored <tier> plan <short-slug>                # → { steps, node }   (returns the step-plan, does NOT spawn)
 ```
 
-**Always pass a short, explicit `--slug`.** Derive a 2–3-word kebab slug from the
-gist (`add OAuth device flow` → `oauth-device-flow`, not the whole sentence). Without
-`--slug` the CLI slugifies the *entire description* (capped at 48 chars) into an
-unwieldy name like `tasks-app-test-lauf-kleiner-epic-mit-genau-zwei` — which then
-shows up in every later command, the branch `task/<slug>`, and the task-file. The
-slug is the node's stable handle for its whole life; pick it deliberately. Never `rm`
-a long auto-slug and recreate — pass `--slug` from the start.
+**Always create with a short, explicit slug.** Derive a 2–3-word kebab slug from the
+gist (`add OAuth device flow` → `oauth-device-flow`, not the whole sentence). If you
+slugify the *entire description* you get an unwieldy name like
+`tasks-app-test-lauf-kleiner-epic-mit-genau-zwei` — which then shows up in every later
+command, the branch `task/<slug>`, and the task-file. The slug is the node's stable
+handle for its whole life; pick it deliberately. Never `rm` a long auto-slug and
+recreate — pass the right slug to `create` from the start.
 
 **Re-planning an existing node:** when the user re-plans a slug that already exists
-(refining the brief, restarting the plan stage), pass `--slug <slug>` to **reuse the
-same node** — `anchored plan <tier> --slug <existing-slug> "<description>"`. This keeps
-the node's provenance (log, questions, created date, prior context). Do **not** `rm`
-the task-file and recreate it: that throws away the history and the slug stability the
-rest of the lifecycle (branches `task/<slug>`, archive/reset) depends on. `--slug` is
-the supported re-plan path; deleting + recreating is not.
+(refining the brief, restarting the plan stage), do not re-`create` — run
+`anchored <tier> plan <existing-slug>` to **reuse the same node**. This keeps the
+node's provenance (log, questions, created date, prior context). Do **not** `rm` the
+task-file and recreate it: that throws away the history and the slug stability the rest
+of the lifecycle (branches `task/<slug>`, archive/reset) depends on. Re-running `plan`
+on the existing slug is the supported re-plan path; deleting + recreating is not.
 
 **Onboarding (no `anchored.yml` yet, G13):** a missing `anchored.yml` is fine — the
 CLI lazy-inits a minimal one (deltas-only = all defaults) + the `Bash(anchored *)`
@@ -82,18 +83,18 @@ agent-contract input `{ task-slug: <node.slug>, tier, stage: plan, context, rule
 instructions }`:
 
 - **discover → plan-discover** — scans the codebase; self-writes findings:
-  `anchored node append-log <slug> plan learning "<affected paths / patterns>"`.
+  `anchored <tier> append-log <slug> plan learning "<affected paths / patterns>"`.
 - **rules-scan → plan-rules-scan** — collects applicable `.claude/rules/`:
-  `anchored node append-log <slug> plan learning "<relevant rules>"`.
+  `anchored <tier> append-log <slug> plan learning "<relevant rules>"`.
 - **decompose → plan-decompose** (task) — writes phases + testable acceptance
-  criteria: `anchored node add-phase <slug> <phase-slug> "<name>"` then
-  `anchored node add-ac <slug> <phase-slug> "<testable acceptance criterion>"` (id auto-assigned).
+  criteria: `anchored task add-phase <slug> <phase-slug> "<name>"` then
+  `anchored phase ac-add <slug>/<phase-slug> "<testable acceptance criterion>"` (id auto-assigned).
 - **scaffold → epic-scaffold** (epic) — coarse task stubs:
-  `anchored node add-child <slug> <task-stub-slug>` (dependency order via depends_on).
+  `anchored epic child-add <slug> <task-stub-slug>` (dependency order via depends_on).
 
 ## Custom run/use steps (the config's own steps — research, scaffolding, …)
 
-`anchored steps <tier> plan` returns the FULL config-driven plan, not just the
+`anchored <tier> plan <slug>` returns the FULL config-driven plan, not just the
 known workers. A user can extend the plan stage with their own steps (e.g. a
 web-research step that writes its result into a custom field) — dispatch them in
 declaration order, at the position they sit in the plan:
@@ -105,7 +106,7 @@ declaration order, at the position they sit in the plan:
 - **`kind: 'use'`** — spawn the named subagent (or, with `type: skill`, invoke the
   skill) with the step's `instructions`. A research worker, for example, writes its
   result back into a declared custom field via the CLI:
-  `anchored node set-field <slug> research "<findings>"` (the field must be declared
+  `anchored <tier> set <slug> research "<findings>"` (the field must be declared
   under that tier's `fields` — a custom field validates since the custom-field fix).
 
 **Variable contract (every plan run-step gets these as env vars):**
@@ -120,7 +121,7 @@ Keep the plumbing out of chat — narrate the outcome ("Research's done — resu
 the research field."), not the command.
 
 Surface generously: any ambiguity the decompose agent hits becomes an open
-question (`anchored node add-question <slug> "<q>" high`), NOT a silent decision —
+question (`anchored <tier> question-add <slug> "<q>" high`), NOT a silent decision —
 `/a:refine` walks them. Every question carries a worked-out recommendation + 1–3
 implication bullets in its text (`plugin/references/question-style.md`) — never a
 bare question. The same applies to **every `AskUserQuestion` this skill itself
@@ -138,9 +139,9 @@ failure. Only flip when the structure is actually written.
 Write the plan-trail prose (intro + the discover/decompose summary) to the node's
 own context, then flip the status:
 ```bash
-anchored node set-field <slug> context.plan "<intro + the plan-trail summary>"
-anchored node set-status <slug> drafted
+anchored <tier> set <slug> context.plan "<intro + the plan-trail summary>"
+anchored <tier> status <slug> drafted
 ```
-(`set-field` supports the dotted path — `context.plan` is set nested.) Tell the
+(`set` supports the dotted path — `context.plan` is set nested.) Tell the
 user: *"Plan's ready — N phases, M acceptance criteria, K open questions. Run `/a:refine`
 next."* No MCP, no raw node-file edit.
