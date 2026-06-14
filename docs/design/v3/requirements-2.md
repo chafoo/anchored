@@ -60,7 +60,7 @@ The rules of this model:
 
    - **The evidence invariant lives in the SCHEMA, not the service.** The
      `AcceptanceCriterion` fragment carries the Zod `.refine(ac => ac.status !== 'done' ||
-     isEvidenceFilled(ac.evidence))` — defined ONCE in `modules/shared/schema.ts`, reused
+     isEvidenceFilled(ac.evidence))` — defined ONCE in `modules/shared/fragments.schemas.ts`, reused
      by every tier schema. Because `store.write` runs `schema.parse` on every write, the
      rule is unskippable *without the store knowing what evidence is*. (No `invariants`
      service file.)
@@ -134,7 +134,7 @@ function createCli(deps) {                          // deps = the seams from bin
 import type { StorePort }  from '../../lib/contracts/store.js'    // DEMANDS a store (contract, never concrete)
 import type { TemplatePort } from '../../lib/contracts/template.js'
 import { assertTransition, lifecycleTransitions } from '../shared/transitions.js' // tier knowledge — modules' base
-import { EpicSchema } from './schema.js'   // the tier's schema — carries the evidence refine; the law the store enforces
+import { EpicSchema } from './phase.schemas.js'   // the tier's schema — carries the evidence refine; the law the store enforces
 
 export function createEpic(deps: { store: StorePort; template: TemplatePort }) {
   const { store, template } = deps
@@ -166,7 +166,7 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort }) {
 | `services/store/node-store` (the generic god-kernel) | the per-verb transforms belong to the tier | `services/store/store.ts` shrinks to `read(slug,schema)`/`write(slug,node,schema)`; the transforms move INTO the tier factories |
 | `services/store/io` | the effect is just the filesystem | dissolved — `fs` + `lock` are injected seams into `createStore`; the atomic-write dance is store-internal |
 | `services/store/codec` (parse/render) | yaml⇄object is just the `yaml` lib; the schema comes from the module | dissolved — `store` calls `yaml.parse`/`stringify` + the injected schema |
-| `services/store/invariants` | the service must not know what evidence is | dissolved — the rule is a Zod `.refine` in `modules/shared/schema.ts` (the schema is the law) |
+| `services/store/invariants` | the service must not know what evidence is | dissolved — the rule is a Zod `.refine` in `modules/shared/fragments.schemas.ts` (the schema is the law) |
 | `services/store/transitions` | a pure per-tier-data guard, not a service | `modules/shared/transitions.ts` (maps + `assertTransition`); the module calls it |
 | `services/store/{children,questions,log}` | pure transform helpers, no effect | `modules/shared/` (the modules' transform toolkit) |
 | `services/config` (the name) | it manages *default ⊕ user* settings | renamed → **`services/template`**: `createTemplate({ readDefault, readUser }) → { steps, fields, validate, raw }` |
@@ -177,7 +177,7 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort }) {
 | `services/store/validate` | a read-only settings inspection | folds into **`template.validate()`** (backs the `anchored validate` meta-command) — not a separate module |
 | `services/config/config-schema/custom-fields` | the module owns its schema; only the *data* is config | `template.fields(tier)` returns the data; a pure `extendSchema` helper in `modules/shared` applies it |
 | `services/config/init` (writes files) | a first-run EFFECT, not the pure loader | a separate first-run unit over `fs` (not inside `template`) |
-| `services/config/step.ts` `tierNames` | only the config schema validates tier keys | stays with `services/template/schema.ts` |
+| `services/config/step.ts` `tierNames` | only the config schema validates tier keys | stays with `services/template/config.schemas.ts` |
 | `lib/constants/{statuses,transitions}` + `lib/utils/evidence` | the store is dumb now → only modules use them | `modules/shared/` (tier knowledge belongs with the tiers) |
 | `lib/constants/stages` | only `validate()` iterates the stage axis | `services/template/stages.ts` |
 | `lib/utils/{envelope,args}` | transport format + arg parsing are a cli concern | `cli/` (single consumer) |
@@ -197,6 +197,43 @@ genuinely-generic part (`store`: safe read/write validated by a schema) shared, 
 read/transform/write, so there is no duplication. Better locality, the inversion intact.
 And because the only universal guard (evidence) lives in the *schema*, the store stays
 dumb: it never learns what a tier is.
+
+## File & suffix conventions
+
+Two **orthogonal** axes. A file carries at most one *content* suffix; the *test-kind*
+suffix is the separate concern of [[test-file-naming]].
+
+```
+foo.ts            # the implementation — LOGIC ONLY (no type/schema declarations)
+foo.types.ts      # hand-written types (interfaces · unions · fn signatures) for foo
+foo.schemas.ts    # Zod schemas for foo + their z.infer types (a schema + its type stay together)
+foo.fixtures.ts   # shared test DATA for foo's tests (sample nodes · sample YAML)
+foo.fake.ts       # a reusable test DOUBLE of foo (an in-memory impl of its port)
+foo.spec.ts       # unit         ┐
+foo.int.ts        # integration  ├ the test-kind axis (unchanged)
+foo.e2e.ts        # end-to-end   ┘
+```
+
+Rules:
+- **The impl `.ts` declares no exported types or schemas** — it imports them from its
+  `.types.ts` / `.schemas.ts` sibling. (A trivial one-off *local* type may stay inline.)
+- **A `z.infer` type lives WITH its schema** in `.schemas.ts`, never split into `.types.ts`
+  — a schema and its derived type are one unit. So types are split by *origin*:
+  schema-derived → `.schemas.ts`, hand-written → `.types.ts`. Either way the impl file
+  stays type-free.
+- **`lib/contracts/*` are exempt** — they ARE the boundary type files; they stay bare in
+  `contracts/` (no `store.types.ts`). The folder is the signal.
+- **`.schemas.ts` attaches to a subject** (`phase.ts` → `phase.schemas.ts`). A standalone
+  schema-only file with no impl sibling (e.g. the shared fragments) is named for its
+  content (e.g. `modules/shared/fragments.schemas.ts`).
+- **`.fake.ts` lives next to the real impl it doubles** (`services/store/store.fake.ts`),
+  build-excluded like the specs; any spec may import it.
+- Rejected (not needed): `.const.ts` (local constants live in a well-named file like
+  `stages.ts`), `.errors.ts` (one shared `anchoredError`), `.guards.ts` (guards are plain
+  functions; `.schemas.ts` covers validation data).
+
+> Promote to `.claude/rules/colocation-and-naming.md` + `test-file-naming.md` when the
+> rebuild lands.
 
 ## Status
 

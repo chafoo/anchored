@@ -45,7 +45,7 @@ This is the **code layout** that mirrors the surface 1:1.
 ## Layers + the dependency rule
 
 ```
-lib/         primitives — contracts (ports) · utils · constants. Imported by all, imports nothing.
+lib/         the base — contracts (the five ports) + utils/error. Imported by all, imports nothing.
 modules/     tier FACTORIES (createPhase·createTask·createEpic·createProject) — own their rules + verbs,
              DI'd the services they demand (by contract). May compose another module (by contract).
 services/    two dumb mechanisms (store · template) — know no tier. store = read/write a node validated by a given schema; template = merge + serve the settings.
@@ -83,7 +83,7 @@ core/src/
 │
 ├── modules/                        # tier FACTORIES · demand contracts · DI'd at createCli · 100% covered
 │   ├── shared/                     # the modules' own base (pure, imported by the tier factories) — tier knowledge lives HERE
-│   │   ├── schema.ts               # cross-tier zod FRAGMENTS (slugs · AC-with-evidence-refine · question · log · context)
+│   │   ├── fragments.schemas.ts    # cross-tier zod FRAGMENTS (slugs · AC-with-evidence-refine · question · log · context)
 │   │   ├── statuses.ts             # the status enums (lifecycle · phase · stub · executor) — only modules use them
 │   │   ├── transitions.ts          # the edge maps + assertTransition(map, from, to) — the status guard
 │   │   ├── evidence.ts             # isEvidenceFilled — the predicate the AC `.refine` uses
@@ -92,8 +92,9 @@ core/src/
 │   │   ├── log.ts                  # append-only audit-log transform
 │   │   └── extend-schema.ts        # apply template.fields(tier) to a tier schema (the module owns its schema)
 │   ├── phase/
-│   │   ├── phase.ts                # createPhase(deps) → Tier: leaf · owns PhaseSchema + ac/evidence verbs
-│   │   ├── schema.ts               # the tier's schema + transition map — internal to the module
+│   │   ├── phase.ts                # createPhase(deps) → Tier: leaf · owns the ac/evidence verbs (LOGIC only)
+│   │   ├── phase.schemas.ts        # PhaseSchema + z.infer types — the tier's schema
+│   │   ├── phase.types.ts          # any hand-written types for phase (if needed)
 │   │   └── phase.spec.ts
 │   ├── task/task.ts                # createTask({ store, template }) → Tier · phase-collection + lifecycle verbs
 │   ├── epic/epic.ts                # createEpic({ store, template, task }) → Tier · task-STUB verbs + roll-up (reads task files)
@@ -107,7 +108,7 @@ core/src/
 │   └── template/                   # manage the configurable policy: default ⊕ user, merge, serve
 │       ├── template.ts             # createTemplate({ readDefault, readUser }) → { steps, fields, validate, raw }
 │       ├── merge.ts                # pure: anchored.yml ⊕ default.yml (keyed-steps semantics)
-│       ├── schema.ts               # ConfigSchema (Zod) — what a valid anchored.yml is
+│       ├── config.schemas.ts       # ConfigSchema (Zod) — what a valid anchored.yml is
 │       └── stages.ts               # the plan·refine·build·wrap axis — only validate() iterates it
 │
 └── cli/                            # assembly + routing ONLY
@@ -123,6 +124,10 @@ _(shipped: `modules/<tier>/<tier>.ts` are pure `export const epic = {…}` bundl
 verbs live in `services/store/node-store` + `cli/node-router` + `cli/commands/`. The
 target folds the verbs into the factories and deletes `node-router`/`tier-of`/`commands`.)_
 
+> File suffixes (`.types.ts` · `.schemas.ts` · `.fixtures.ts` · `.fake.ts` and the test
+> trio `.spec`/`.int`/`.e2e`): an impl `.ts` is logic-only; types/schemas live in siblings.
+> See `requirements-2.md` → "File & suffix conventions".
+
 ## Tier-factory pattern (a module owns its rules AND its verbs)
 
 ```ts
@@ -130,7 +135,7 @@ target folds the verbs into the factories and deletes `node-router`/`tier-of`/`c
 import type { StorePort }  from '../../lib/contracts/store.js'    // never the concrete store, never fs
 import type { TemplatePort } from '../../lib/contracts/template.js'
 import { assertTransition, lifecycleTransitions } from '../shared/transitions.js'  // tier knowledge — modules' base
-import { EpicSchema } from './schema.js'   // the tier's schema — carries the evidence .refine; the store's only law
+import { EpicSchema } from './phase.schemas.js'   // the tier's schema — carries the evidence .refine; the store's only law
 
 export function createEpic(deps: { store: StorePort; template: TemplatePort }) {
   const { store, template } = deps
