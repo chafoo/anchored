@@ -9,12 +9,12 @@ import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { createStepsPlanner } from './steps-planner.js'
 import { merge } from '../../services/config/merge.js'
-import { ConfigSchema } from '../../domain/config-schema/config.js'
-import { extendSchemaWithFields } from '../../domain/config-schema/custom-fields.js'
+import { ConfigSchema } from '../../services/config/config-schema/config.js'
+import { extendSchemaWithFields } from '../../services/config/config-schema/custom-fields.js'
 import { PhaseNodeSchema } from '../../domain/tiers/phase.js'
 import { TaskNodeSchema } from '../../domain/tiers/task.js'
 import { EpicNodeSchema } from '../../domain/tiers/epic.js'
-import { STAGES } from '../../domain/lifecycle/stages.js'
+import { STAGES } from '../../services/config/stages.js'
 
 const TIERS = ['phase', 'task', 'epic'] as const
 

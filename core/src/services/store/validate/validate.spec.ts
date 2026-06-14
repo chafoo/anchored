@@ -3,7 +3,7 @@
 import { test, expect } from 'bun:test'
 import { createValidator } from './validate.js'
 import type { StepPlan } from '../../../domain/steps/plan.js'
-import { STAGES } from '../../../domain/lifecycle/stages.js'
+import { STAGES } from '../../../services/config/stages.js'
 
 test('validate reports every tier×stage + the declared custom fields', () => {
   const config = {

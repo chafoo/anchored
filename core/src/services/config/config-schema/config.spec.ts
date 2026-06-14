@@ -6,7 +6,7 @@ import { ConfigSchema, parseConfig, safeParseConfig } from './config.js'
 // a1 — parses the FULL shipped anchored.default.yml
 test('config parses the full anchored.default.yml', () => {
   const raw = readFileSync(
-    new URL('../../../default-template/anchored.default.yml', import.meta.url),
+    new URL('../../../../default-template/anchored.default.yml', import.meta.url),
     'utf8',
   )
   const data = parseYaml(raw)

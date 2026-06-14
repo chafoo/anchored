@@ -3,7 +3,7 @@
 // wrap; only build may carry `each` + stop + retry_limit. `fields` is the policy
 // data-shape and stays loose (the schema knows no concrete step NAMES).
 import { z } from 'zod'
-import { StepSchema, TierName, safeParseWith, type SafeResult } from '../steps/step.js'
+import { StepSchema, TierName, safeParseWith, type SafeResult } from '../../../domain/steps/step.js'
 
 const StepList = z.array(StepSchema)
 

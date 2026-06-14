@@ -2,7 +2,7 @@ import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { merge } from './merge.js'
-import { ConfigSchema, type Config } from '../../domain/config-schema/config.js'
+import { ConfigSchema, type Config } from './config-schema/config.js'
 
 const defaultCfg = ConfigSchema.parse(
   parse(

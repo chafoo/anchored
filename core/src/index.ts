@@ -24,8 +24,8 @@ import { createBootstrap } from './services/config/bootstrap.js'
 import { phaseDescriptor, PhaseNodeSchema } from './domain/tiers/phase.js'
 import { taskDescriptor, TaskNodeSchema } from './domain/tiers/task.js'
 import { epicDescriptor, EpicNodeSchema } from './domain/tiers/epic.js'
-import { ConfigSchema, type Config } from './domain/config-schema/config.js'
-import { extendSchemaWithFields } from './domain/config-schema/custom-fields.js'
+import { ConfigSchema, type Config } from './services/config/config-schema/config.js'
+import { extendSchemaWithFields } from './services/config/config-schema/custom-fields.js'
 
 export { tierOfNode }
 

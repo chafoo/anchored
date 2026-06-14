@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { createBootstrap, type BootstrapDeps } from './bootstrap.js'
 import { merge } from './merge.js'
-import type { Config } from '../../domain/config-schema/config.js'
+import type { Config } from './config-schema/config.js'
 
 const defaultRaw = readFileSync(
   new URL('../../../default-template/anchored.default.yml', import.meta.url),

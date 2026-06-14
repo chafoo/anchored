@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { createResolveSteps } from './resolve-steps.js'
 import { merge } from '../../../services/config/merge.js'
-import type { Config } from '../../config-schema/config.js'
+import type { Config } from '../../../services/config/config-schema/config.js'
 
 const defaultCfg = parse(
   readFileSync(

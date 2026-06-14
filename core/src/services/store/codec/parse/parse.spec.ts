@@ -3,7 +3,7 @@ import { parse } from 'yaml'
 import { createParser } from './parse.js'
 import { TaskNodeSchema } from '../../../../domain/tiers/task.js'
 import { EpicNodeSchema } from '../../../../domain/tiers/epic.js'
-import { ConfigSchema } from '../../../../domain/config-schema/config.js'
+import { ConfigSchema } from '../../../../services/config/config-schema/config.js'
 
 const realSchemas = {
   task: TaskNodeSchema,
