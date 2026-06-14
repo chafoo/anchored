@@ -1,59 +1,80 @@
+// _v3/cli/cli.e2e.ts — end-to-end: the REAL filesystem (a temp dir) + the real yaml lib,
+// wired into createCli exactly as bin.ts does. Drives the full lifecycle through the JSON
+// envelope and asserts the actual files on disk round-trip. The only test that hits real I/O.
 import { test, expect } from 'bun:test'
-import { mkdir, writeFile, rename, readFile, unlink, mkdtemp } from 'node:fs/promises'
+import { mkdtemp, readFile, writeFile, rename, unlink, mkdir, stat, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { buildCli } from '../index.js'
+import { parse, stringify } from 'yaml'
+import { createCli } from './cli.js'
+import type { FileSystem } from '../lib/contracts/fs.js'
 
-async function setup() {
-  const root = await mkdtemp(join(tmpdir(), 'anchored-e2e-'))
-  const tasksDir = join(root, '.claude', 'tasks')
-  await mkdir(tasksDir, { recursive: true })
+const DEFAULT = `
+task:
+  build:
+    steps:
+      - { name: implement, worker: build-implement, type: agent }
+    each: phase
+    retry_limit: 3
+`
+
+async function makeCli() {
+  const dir = await mkdtemp(join(tmpdir(), 'anchored-v3-'))
   const out: string[] = []
-  const cli = buildCli({
-    io: {
-      fs: {
-        mkdir: (dir, opts) => mkdir(dir, opts),
-        writeFile: (p, data) => writeFile(p, data),
-        rename: (from, to) => rename(from, to),
-        readFile: (p) => readFile(p, 'utf8'),
-        unlink: (p) => unlink(p),
-      },
-      lock: { acquire: async () => async () => {} },
-      rand: () => 'r',
-      pid: () => 1,
+  const fs: FileSystem = {
+    readFile: (p) => readFile(p, 'utf8'),
+    writeFile: (p, d) => writeFile(p, d),
+    rename: (a, b) => rename(a, b),
+    unlink: (p) => unlink(p),
+    mkdir: (d, o) => mkdir(d, o),
+    stat: async (p) => {
+      try {
+        const s = await stat(p)
+        return `${s.mtimeMs}:${s.size}`
+      } catch {
+        return undefined
+      }
     },
-    pathFor: (slug) => join(tasksDir, `${slug}.yml`),
-    tierForSlug: () => 'phase',
+  }
+  const cli = createCli({
+    fs,
+    lock: { acquire: async () => async () => {} },
+    yaml: { parse: (r, o) => parse(r, o), stringify: (v, o) => stringify(v, o) },
+    pathFor: (slug) => join(dir, `${slug}.yml`),
+    rand: () => 'r',
+    pid: () => 1,
+    readDefault: () => DEFAULT,
+    readUser: () => undefined,
+    parseYaml: (r) => parse(r),
+    projectRoot: dir,
     out: (l) => out.push(l),
+    version: '1.0.0',
   })
-  // seed a phase node (in-progress, one unbacked AC) directly on disk
-  await writeFile(
-    join(tasksDir, 'my-phase.yml'),
-    'name: Seam\nslug: my-phase\nstatus: in-progress\nacceptance_criteria:\n  - id: a1\n    text: prove it\n    status: pending\n',
-  )
-  const last = () =>
-    JSON.parse(out[out.length - 1]!) as { ok: boolean; result?: { status?: string } }
-  return { cli, last }
+  return { cli, out, dir }
 }
+type Env = { ok: boolean; result?: { title?: string; status?: string } }
+const last = (out: string[]): Env => JSON.parse(out[out.length - 1]!) as Env
 
-// a3 + a4 — real substrate: create→add-evidence→set-status done→read; invariant enforced
-test('e2e against the real substrate: invariant blocks done without evidence', async () => {
-  const { cli, last } = await setup()
+test('e2e: create → get → status persists to the real filesystem; archive moves the file', async () => {
+  const { cli, out, dir } = await makeCli()
+  try {
+    // create writes a real file
+    expect(await cli.run(['task', 'create', 'my-task', 'My Task'])).toBe(0)
+    expect(await readFile(join(dir, 'my-task.yml'), 'utf8')).toContain('slug: my-task')
 
-  // a4 (fail): set-status done before evidence → ok:false, exit 1
-  const code1 = await cli.run(['node', 'set-status', 'my-phase', 'done'])
-  expect(code1).toBe(1)
-  expect(last().ok).toBe(false)
+    // read it back THROUGH the cli (real yaml parse + schema validate)
+    await cli.run(['task', 'get', 'my-task'])
+    expect(last(out).result!.title).toBe('My Task')
 
-  // add-evidence flips the AC to done with real evidence (persisted via atomic-write)
-  await cli.run(['node', 'add-evidence', 'my-phase', 'a1', 'src/x.ts:1 — proof'])
+    // a real status transition persists to disk
+    await cli.run(['task', 'status', 'my-task', 'drafted'])
+    expect(await readFile(join(dir, 'my-task.yml'), 'utf8')).toContain('status: drafted')
 
-  // a4 (ok) + a3: now set-status done succeeds and read returns the persisted node
-  const code2 = await cli.run(['node', 'set-status', 'my-phase', 'done'])
-  expect(code2).toBe(0)
-  expect(last().ok).toBe(true)
-
-  const readCode = await cli.run(['node', 'read', 'my-phase'])
-  expect(readCode).toBe(0)
-  expect(last().result?.status).toBe('done')
+    // archive moves the file into archive/
+    await cli.run(['task', 'archive', 'my-task'])
+    expect(await readFile(join(dir, 'archive', 'my-task.yml'), 'utf8')).toContain('slug: my-task')
+    await expect(readFile(join(dir, 'my-task.yml'), 'utf8')).rejects.toThrow()
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
 })

@@ -1,21 +1,19 @@
 import { test, expect } from 'bun:test'
 import type { Cli, Anchored } from './cli.js'
-import type { ConfigPort } from './config.js'
+import type { TemplatePort } from './template.js'
 
-// contracts/cli is interface-only — conformance spec pins the root dispatcher
-// surface (run(argv) → exit code) and the assembled engine (cli + config).
-test('a1 — an in-memory Cli/Anchored conforms and run returns an exit code', async () => {
-  const config = {
-    planFor: () => ({ tier: 'task', stage: 'build', steps: [] }),
+// conformance: the root dispatcher + the assembled engine.
+test('a Cli/Anchored conforms: run returns an exit code, Anchored carries the template', async () => {
+  const template: TemplatePort = {
+    steps: () => ({ tier: 'task', stage: 'build', steps: [] }),
     fields: () => ({}),
+    validate: () => ({ ok: true }),
     raw: () => ({}),
-  } satisfies ConfigPort
+  }
+  const cli: Cli = { run: async (argv) => (argv.length > 0 ? 0 : 1) }
+  const anchored: Anchored = { run: cli.run, template }
 
-  const cli = { run: async (argv) => (argv.length > 0 ? 0 : 1) } satisfies Cli
-  const anchored = { run: cli.run, config } satisfies Anchored
-
-  expect(await cli.run(['plan', 'task', 'x'])).toBe(0)
+  expect(await cli.run(['task', 'get', 't1'])).toBe(0)
   expect(await cli.run([])).toBe(1)
-  expect(await anchored.run(['version'])).toBe(0)
-  expect(anchored.config.raw()).toEqual({})
+  expect(anchored.template.raw()).toEqual({})
 })

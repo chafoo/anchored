@@ -17,7 +17,8 @@ EXEMPT=""
 missing=0
 while IFS= read -r f; do
   case "$f" in
-    *.spec.ts | *.int.ts | *.e2e.ts) continue ;;
+    *.spec.ts | *.int.ts | *.e2e.ts) continue ;; # the tests themselves
+    *.fake.ts | *.fixtures.ts) continue ;;        # test-support (build-excluded), not runtime
   esac
   rel="${f#./}"
   case " $EXEMPT " in *" $rel "*) continue ;; esac

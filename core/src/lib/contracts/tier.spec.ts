@@ -1,37 +1,22 @@
 import { test, expect } from 'bun:test'
-import type { TierCondition, TierDescriptor } from './tier.js'
+import type { Tier } from './tier.js'
 
-// contracts/tier is interface-only — conformance spec pins the CONDITION bundle a
-// `modules/<tier>` exports (schema + own axes + child relationship) that the
-// orchestrator injects into the generic store.
-test('a1 — a minimal condition bundle conforms to TierCondition', () => {
-  const cond = {
-    tier: 'task',
-    schema: { parse: (x) => x },
-    statusValues: ['plan', 'done'],
-    transitions: { plan: ['done'], done: [] },
-    defaultStatus: 'plan',
-    childTier: 'phase',
-    childField: 'phases',
-    childStatusValues: ['pending', 'done'],
-    childTerminalOk: ['done'],
-    childExecutorValues: ['implement'],
-  } satisfies TierCondition
-
-  expect(cond.tier).toBe('task')
-  expect(cond.schema.parse({ a: 1 })).toEqual({ a: 1 })
-  expect(cond.transitions.plan).toContain('done')
-})
-
-// a2 — the leaf bundle omits the child relationship; TierDescriptor is the alias
-test('a2 — a leaf bundle has no childTier; TierDescriptor accepts it', () => {
-  const leaf: TierDescriptor = {
-    tier: 'phase',
-    schema: { parse: (x) => x },
-    statusValues: ['pending', 'done'],
-    transitions: { pending: ['done'], done: [] },
-    defaultStatus: 'pending',
+// conformance: a tier factory's OUTPUT — run(verb,args) + verbs() + get(slug).
+test('a Tier exposes run / verbs / get', async () => {
+  const node = { slug: 'e1', status: 'plan' }
+  const epic: Tier = {
+    tier: 'epic',
+    verbs: () => ['get', 'status', 'child-add', 'roll-up'],
+    get: async () => node,
+    run: async (verb, args) => {
+      if (verb === 'get') return node
+      if (verb === 'status') return { ...node, status: args[0] }
+      throw new Error(`unknown verb ${verb}`)
+    },
   }
-  expect(leaf.childTier).toBeUndefined()
-  expect(leaf.childField).toBeUndefined()
+
+  expect(epic.tier).toBe('epic')
+  expect(epic.verbs()).toContain('roll-up')
+  expect(await epic.get('e1')).toEqual(node)
+  expect(await epic.run('status', ['drafted'])).toEqual({ slug: 'e1', status: 'drafted' })
 })

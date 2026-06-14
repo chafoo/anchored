@@ -1,17 +1,6 @@
-// src/index.ts — the public entry of the core package (the one permitted index.ts:
-// the package interface, not a folder-internal barrel). It re-exports the public
-// surface from the orchestrator in cli/. The assembly itself lives in cli/anchored.ts
-// (createAnchored = the single composition root); the runtime/bin wiring lives in
-// src/bin.ts. Consumers import from here; everything internal is reached through the
-// orchestrator.
-export {
-  createAnchored,
-  buildCli,
-  tierOfNode,
-  type Anchored,
-  type AnchoredDeps,
-  type AnchoredWiring,
-  type WireDeps,
-} from './cli/anchored.js'
-export type { NodeOpsFacade } from './cli/cli.js'
-export type { Config } from './services/config/config-schema/config.js'
+// _v3/index.ts — the package entry: re-exports the public surface (createCli + the port
+// types) from cli/. The assembly lives in cli/cli.ts; the runtime/bin wiring in bin.ts.
+export { createCli, type CliDeps } from './cli/cli.js'
+export type { Anchored, Cli } from './lib/contracts/cli.js'
+export type { Tier } from './lib/contracts/tier.js'
+export type { Envelope } from './cli/envelope.js'

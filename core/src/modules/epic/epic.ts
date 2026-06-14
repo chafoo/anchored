@@ -1,75 +1,281 @@
-// modules/epic/epic.ts — the epic tier module: a PURE condition bundle. childTier =
-// 'task'. Holds coarse task STUBS (the loop queue) — never full phases (those live
-// in the task files). Imports only lib + the shared schema base; the task-stub is
-// defined HERE from shared fragments, so epic needs no sideways import of the task
-// module.
-import { z } from 'zod'
-import { lifecycleStatusValues, stubStatusValues } from '../../lib/constants/statuses.js'
-import { lifecycleTransitions } from '../../lib/constants/transitions.js'
-import type { TierCondition } from '../../lib/contracts/tier.js'
-import {
-  KebabSlug,
-  AcceptanceCriterion,
-  QuestionSchema,
-  LogEntrySchema,
-  ContextTrails,
-} from '../shared/schema.js'
+// _v3/modules/epic/epic.ts — createEpic({store,template,task}) → Tier. The epic factory: owns
+// the epic lifecycle, the node verbs, the task-STUB verbs (parent owns child existence — the
+// stubs are the loop queue in the epic file), the epic DoD `acceptance` items, and the roll-up
+// (which reads the child TASK files via the injected `task` module — the one module→module
+// dependency, by contract). Every verb = read epic → pure transform → store.write(slug, …,
+// EpicNodeSchema).
+import type { StorePort, Node } from '../../lib/contracts/store.js'
+import type { TemplatePort } from '../../lib/contracts/template.js'
+import type { Tier } from '../../lib/contracts/tier.js'
+import { anchoredError } from '../../lib/utils/error.js'
+import { assertTransition, lifecycleTransitions } from '../shared/transitions.js'
+import { stubStatusValues } from '../shared/statuses.js'
+import { nextChild, readyChildren, addChild, type ChildLike } from '../shared/children.js'
+import { addQuestion, resolveQuestion, type Question } from '../shared/questions.js'
+import { appendLog, type LogEntry } from '../shared/log.js'
+import { EpicNodeSchema } from './epic.schemas.js'
 
-// D1: the epic tier mirrors the task lifecycle EXACTLY — same words, same forward
-// edges — so plan/refine/build/wrap run uniform stage-transitions on every tier.
-export const epicStatusValues = lifecycleStatusValues
-export const EpicStatus = z.enum(epicStatusValues)
+interface AcLike {
+  id: string
+  status: string
+}
+interface Stub extends ChildLike {
+  goal?: string
+  acceptance_criteria?: AcLike[]
+}
+interface AcceptanceItem {
+  id: string
+  text: string
+  status: string
+  evidence?: string[]
+}
+interface EpicNodeLike extends Node {
+  slug: string
+  status: string
+  tasks?: Stub[]
+  acceptance?: AcceptanceItem[]
+  questions?: Question[]
+  concerns?: Question[]
+  log?: LogEntry[]
+}
 
-const AcceptanceItem = z.strictObject({
-  id: z.string(),
-  text: z.string(),
-  status: z.enum(['pending', 'done']),
-  // M3 (harden-2): the epic DoD item carries delivery evidence (the roll-up's
-  // provenance pointers). Required to be non-empty before the item flips done —
-  // a halluc-roll-up can't stamp the whole epic delivered with no backing.
-  evidence: z.array(z.string()).optional(),
-})
+function assertEpicCompletable(node: EpicNodeLike): void {
+  const open = (node.concerns ?? []).filter((c) => c.status !== 'resolved')
+  if (open.length > 0) {
+    throw anchoredError('ConcernsOpen', `cannot complete: ${open.length} open concern(s)`, [
+      'resolve them at wrap',
+    ])
+  }
+  const stubs = (node.tasks ?? []).filter((t) => t.status !== 'done')
+  if (stubs.length > 0) {
+    throw anchoredError(
+      'ChildrenIncomplete',
+      `cannot complete: task-stubs not done — ${stubs.map((s) => s.slug).join(', ')}`,
+      ['finish every task-stub first'],
+    )
+  }
+  const acc = (node.acceptance ?? []).filter((a) => a.status !== 'done')
+  if (acc.length > 0) {
+    throw anchoredError(
+      'AcceptanceIncomplete',
+      `cannot complete: DoD items not done — ${acc.map((a) => a.id).join(', ')}`,
+      ['roll up + flip each acceptance item with delivery evidence'],
+    )
+  }
+}
 
-const TaskStub = z.strictObject({
-  slug: KebabSlug,
-  // optional so a bare `add-child` stub is valid (rolling-wave: scaffold/set-field
-  // fills the goal); a meaningful stub still carries one.
-  goal: z.string().optional(),
-  status: z.enum(stubStatusValues),
-  depends_on: z.array(KebabSlug).optional(),
-  // D2: the OUTCOME-level task-ACs epic-refine works out per stub — same AC shape
-  // as a phase, so every generic child-AC op works on a stub unchanged.
-  acceptance_criteria: z.array(AcceptanceCriterion).optional(),
-})
+const RESERVED = new Set([
+  'status',
+  'tasks',
+  'acceptance',
+  'questions',
+  'concerns',
+  'log',
+  'schema_version',
+  'slug',
+])
+const nextEid = (items: { id: string }[]) =>
+  `e${items.reduce((m, a) => Math.max(m, Number(/^e(\d+)$/.exec(a.id)?.[1] ?? 0)), 0) + 1}`
 
-export const EpicNodeSchema = z.strictObject({
-  schema_version: z.number().int(),
-  slug: KebabSlug,
-  title: z.string(),
-  status: EpicStatus,
-  created: z.string().optional(),
-  goal: z.string().optional(),
-  // D1: epic carries the same context trails as task (plan/refine/build/wrap prose).
-  context: ContextTrails.optional(),
-  acceptance: z.array(AcceptanceItem).optional(),
-  questions: z.array(QuestionSchema).optional(),
-  // harden-3: "check at the end" threads (see task) — done blocks while open.
-  concerns: z.array(QuestionSchema).optional(),
-  tasks: z.array(TaskStub).optional(),
-  log: z.array(LogEntrySchema).optional(),
-})
+export function createEpic(deps: { store: StorePort; template: TemplatePort; task: Tier }): Tier {
+  const { store, template, task } = deps
+  const read = (slug: string) => store.read(slug, EpicNodeSchema) as Promise<EpicNodeLike>
+  const write = (slug: string, node: EpicNodeLike) => store.write(slug, node, EpicNodeSchema)
+  const stubsOf = (n: EpicNodeLike) => n.tasks ?? []
+  const stagePlan = async (stage: string, slug: string) => ({
+    ...template.steps('epic', stage),
+    node: await read(slug),
+  })
 
-export type EpicNode = z.infer<typeof EpicNodeSchema>
+  const mutateStub = (slug: string, childSlug: string, fn: (s: Stub) => Stub) =>
+    read(slug).then((node) => {
+      const stubs = stubsOf(node)
+      const idx = stubs.findIndex((s) => s.slug === childSlug)
+      if (idx < 0) throw anchoredError('UnknownChild', `no task-stub '${childSlug}'`)
+      return write(slug, { ...node, tasks: stubs.map((s, i) => (i === idx ? fn(s) : s)) })
+    })
 
-export const epic: TierCondition = {
-  tier: 'epic',
-  schema: EpicNodeSchema,
-  statusValues: epicStatusValues,
-  transitions: lifecycleTransitions,
-  defaultStatus: 'plan',
-  childTier: 'task',
-  childField: 'tasks',
-  // children are coarse loop-queue STUBS, not full tasks — the stub marker axis.
-  childStatusValues: stubStatusValues,
-  childTerminalOk: ['done'],
+  const verbs: Record<string, (...args: string[]) => Promise<unknown>> = {
+    get: (slug) => read(slug),
+    create: (slug, title) =>
+      write(slug, {
+        schema_version: 2,
+        slug,
+        title: title ?? slug,
+        status: 'plan',
+        tasks: [],
+      } as EpicNodeLike),
+    plan: (slug) => stagePlan('plan', slug),
+    refine: (slug) => stagePlan('refine', slug),
+    build: (slug) => stagePlan('build', slug),
+    wrap: (slug) => stagePlan('wrap', slug),
+
+    async status(slug, to) {
+      const node = await read(slug)
+      assertTransition(lifecycleTransitions, node.status, to, 'epic')
+      if (to === 'done') assertEpicCompletable(node)
+      return write(slug, { ...node, status: to })
+    },
+    async set(slug, field, value) {
+      if (RESERVED.has(field.split('.')[0]!))
+        throw anchoredError('ReservedField', `field '${field}' is reserved`)
+      const node = await read(slug)
+      return write(slug, { ...node, [field]: value })
+    },
+
+    // task-stub existence (the loop queue)
+    async 'child-add'(slug, childSlug, goal) {
+      const node = await read(slug)
+      const stub: Stub = {
+        slug: childSlug,
+        status: 'pending',
+        ...(goal !== undefined ? { goal } : {}),
+      }
+      return write(slug, { ...node, tasks: addChild(stubsOf(node), stub) })
+    },
+    async 'child-next'(slug) {
+      return nextChild(stubsOf(await read(slug)))
+    },
+    async 'child-ready'(slug) {
+      return readyChildren(stubsOf(await read(slug)))
+    },
+    'child-status': (slug, childSlug, status) =>
+      mutateStub(slug, childSlug, (s) => {
+        if (!stubStatusValues.includes(status as (typeof stubStatusValues)[number])) {
+          throw anchoredError('InvalidChildStatus', `'${status}' is not a valid task-stub status`, [
+            ...stubStatusValues,
+          ])
+        }
+        if (status === 'done') {
+          const openAcs = (s.acceptance_criteria ?? []).filter((a) => a.status !== 'done')
+          if (openAcs.length > 0) {
+            throw anchoredError(
+              'ChildIncomplete',
+              `cannot mark '${childSlug}' done: ACs not done — ${openAcs.map((a) => a.id).join(', ')}`,
+            )
+          }
+        }
+        return { ...s, status }
+      }),
+    'child-set-field': (slug, childSlug, field, value) =>
+      mutateStub(slug, childSlug, (s) => {
+        if (['slug', 'status', 'acceptance_criteria'].includes(field)) {
+          throw anchoredError('ReservedField', `stub field '${field}' is reserved`)
+        }
+        return {
+          ...s,
+          [field]: field === 'depends_on' ? value.split(',').map((x) => x.trim()) : value,
+        }
+      }),
+
+    // epic DoD acceptance items
+    async 'add-acceptance'(slug, text) {
+      const node = await read(slug)
+      const items = node.acceptance ?? []
+      return write(slug, {
+        ...node,
+        acceptance: [...items, { id: nextEid(items), text, status: 'pending' }],
+      })
+    },
+    async 'set-acceptance-status'(slug, id, status, evidence) {
+      const node = await read(slug)
+      const items = node.acceptance ?? []
+      const item = items.find((a) => a.id === id)
+      if (!item) throw anchoredError('UnknownAcceptance', `no acceptance item '${id}'`)
+      const merged = evidence ? [...(item.evidence ?? []), evidence] : item.evidence
+      if (status === 'done' && !(merged && merged.length > 0)) {
+        throw anchoredError(
+          'AcceptanceNoEvidence',
+          `acceptance item '${id}' cannot be done without delivery evidence`,
+          [
+            'pass the provenance: set-acceptance-status <slug> <id> done "<task>/<phase> — delivered"',
+          ],
+        )
+      }
+      return write(slug, {
+        ...node,
+        acceptance: items.map((a) =>
+          a.id === id ? { ...a, status, ...(merged ? { evidence: merged } : {}) } : a,
+        ),
+      })
+    },
+
+    // roll-up: read each stub's child TASK file (via the injected task module) → report status.
+    async 'roll-up'(slug) {
+      const node = await read(slug)
+      const children = await Promise.all(
+        stubsOf(node).map(async (s) => {
+          const childSlug = `${node.slug}/${s.slug}`
+          let childStatus: string
+          try {
+            childStatus = ((await task.get(childSlug)) as { status?: string }).status ?? 'unknown'
+          } catch {
+            childStatus = 'missing'
+          }
+          return { slug: s.slug, stubStatus: s.status, childStatus }
+        }),
+      )
+      return { epic: node.slug, children, acceptance: node.acceptance ?? [] }
+    },
+
+    async 'question-add'(slug, text, priority) {
+      const node = await read(slug)
+      return write(slug, {
+        ...node,
+        questions: addQuestion(node.questions ?? [], {
+          text,
+          priority: (priority ?? 'medium') as 'low' | 'medium' | 'high',
+        }),
+      })
+    },
+    async 'concern-add'(slug, text, priority) {
+      const node = await read(slug)
+      return write(slug, {
+        ...node,
+        concerns: addQuestion(
+          node.concerns ?? [],
+          { text, priority: (priority ?? 'medium') as 'low' | 'medium' | 'high' },
+          'c',
+        ),
+      })
+    },
+    async 'concern-resolve'(slug, id, answer, source, reasoning) {
+      const node = await read(slug)
+      return write(slug, {
+        ...node,
+        concerns: resolveQuestion(node.concerns ?? [], id, {
+          answer,
+          source: (source ?? 'user') as 'user' | 'ai',
+          ...(reasoning !== undefined ? { reasoning } : {}),
+        }),
+      })
+    },
+    async 'append-log'(slug, at, kind, note) {
+      const node = await read(slug)
+      return write(slug, { ...node, log: appendLog(node.log ?? [], { at, kind, note }) })
+    },
+
+    async archive(slug) {
+      await store.archive(slug)
+      return { slug, archived: true }
+    },
+    async reset(slug) {
+      await store.remove(slug)
+      return { slug, reset: true }
+    },
+  }
+
+  return {
+    tier: 'epic',
+    verbs: () => Object.keys(verbs),
+    get: (slug) => read(slug),
+    run: async (verb, args) => {
+      const fn = verbs[verb]
+      if (!fn)
+        throw anchoredError('UnknownVerb', `epic has no verb '${verb}'`, [
+          `known: ${Object.keys(verbs).join(', ')}`,
+        ])
+      return fn(...args)
+    },
+  }
 }

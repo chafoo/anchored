@@ -1,26 +1,25 @@
 import { test, expect } from 'bun:test'
-import type { StorePort, NodeGateway } from './store.js'
-import type { Node, TierDescriptor } from './tier.js'
+import type { StorePort, Node, Schema } from './store.js'
 
-// contracts/store is interface-only — conformance spec pins the gateway surface:
-// `for(descriptor)` binds a tier, `read`/`mutate` are the read + guarded
-// read-modify-write the cli drives.
-test('a1 — an in-memory StorePort conforms and mutate applies the transform', async () => {
-  const nodes = new Map<string, Node>([['t', { slug: 't', status: 'plan' }]])
-  const gateway: NodeGateway = {
-    read: async (slug) => nodes.get(slug)!,
-    mutate: async (slug, transform) => {
-      const next = transform(nodes.get(slug)!)
-      nodes.set(slug, next)
-      return next
+// conformance: a dumb in-memory StorePort — read/write validate against the GIVEN schema,
+// it knows nothing about what's in the node.
+test('an in-memory StorePort validates by the given schema, archives + removes', async () => {
+  const disk = new Map<string, Node>([['t', { slug: 't', status: 'plan' }]])
+  const schema: Schema = { parse: (x) => x }
+  const store: StorePort = {
+    read: async (slug, s) => s.parse(disk.get(slug)) as Node,
+    write: async (slug, node, s) => {
+      s.parse(node)
+      disk.set(slug, node)
+      return node
     },
+    archive: async (slug) => void disk.delete(slug),
+    remove: async (slug) => void disk.delete(slug),
   }
-  const store: StorePort = { for: () => gateway }
 
-  const desc = { tier: 'task' } as unknown as TierDescriptor
-  const g = store.for(desc)
-  expect((await g.read('t')).status).toBe('plan')
-  const out = await g.mutate('t', (n) => ({ ...n, status: 'drafted' }))
+  expect((await store.read('t', schema)).status).toBe('plan')
+  const out = await store.write('t', { slug: 't', status: 'drafted' }, schema)
   expect(out.status).toBe('drafted')
-  expect((await g.read('t')).status).toBe('drafted')
+  await store.archive('t')
+  expect(disk.has('t')).toBe(false)
 })

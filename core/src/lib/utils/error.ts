@@ -1,7 +1,6 @@
-// error.ts — the shared typed-error primitive. The whole engine throws an
-// AnchoredError (typed: kind + suggestions) so a rejected op reads the same way
-// everywhere — the CLI envelope renders kind + suggestions. Pure factory (no class —
-// factory-functions rule); imports nothing, imported by config · store · tiers.
+// _v3/lib/utils/error.ts — the shared typed-error primitive. The ONE util: every layer
+// throws an AnchoredError (kind + suggestions) so a rejected op reads the same everywhere
+// and the cli envelope renders kind + suggestions. Pure factory (no class), imports nothing.
 export interface AnchoredError extends Error {
   kind: string
   suggestions?: string[]

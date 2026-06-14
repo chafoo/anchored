@@ -3,5 +3,12 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts", "src/**/*.e2e.ts", "src/**/*.int.ts"]
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts",
+    "src/**/*.e2e.ts",
+    "src/**/*.int.ts",
+    "src/**/*.fake.ts",
+    "src/**/*.fixtures.ts"
+  ]
 }

@@ -1,18 +1,22 @@
-// contracts/store.ts — the store capability: the single gateway to a task-file.
-// `for(descriptor)` binds the gateway to a tier (its schema + path rules); `read`
-// loads+validates a node, `mutate` does the guarded read-modify-write (codec +
-// invariant + atomic write through the Io seam). Interface-only.
-import type { Node, TierDescriptor } from './tier.js'
+// _v3/lib/contracts/store.ts — the store capability (modules↔store). The ONE substrate
+// service: load/persist a node SAFELY, validated against a schema YOU give it. It knows no
+// tier, no evidence, no transition — the schema is the law. Interface-only.
 
-/** A tier-bound gateway: read a node, or mutate it via a pure transform under the
- *  store's atomic write + invariant guard. */
-export interface NodeGateway {
-  read(slug: string): Promise<Node>
-  /** Read → apply transform → render → atomic-write (with CAS). The transform is a
-   *  pure `(node) → node`; the store owns the effect + the invariant assertion. */
-  mutate(slug: string, transform: (node: Node) => Node): Promise<Node>
+/** A persisted node, untyped at the boundary (the injected schema validates it). */
+export type Node = Record<string, unknown>
+
+/** The minimal schema surface the store needs — `schema.parse(node)` validates + throws. */
+export interface Schema {
+  parse(input: unknown): unknown
 }
 
 export interface StorePort {
-  for(descriptor: TierDescriptor): NodeGateway
+  /** fs.readFile → yaml.parse → schema.parse. */
+  read(slug: string, schema: Schema): Promise<Node>
+  /** schema.parse → yaml.stringify(+header) → atomic temp+rename under lock + CAS. */
+  write(slug: string, node: Node, schema: Schema): Promise<Node>
+  /** move the file as a unit into archive/<slug>.yml (the `move` op — no content change). */
+  archive(slug: string): Promise<void>
+  /** delete the file as a unit (reset — back to before the node existed). */
+  remove(slug: string): Promise<void>
 }

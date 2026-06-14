@@ -1,29 +1,77 @@
 import { test, expect } from 'bun:test'
-import { ProjectNodeSchema, project } from './project.js'
+import { createProject } from './project.js'
+import { createFakeStore } from '../../services/store/store.fake.js'
+import type { TemplatePort } from '../../lib/contracts/template.js'
+import type { Tier } from '../../lib/contracts/tier.js'
+import type { Node } from '../../lib/contracts/store.js'
 
-const node = { schema_version: 2, slug: 'my-project', title: 'P', status: 'plan' as const }
-
-// project now walks the full uniform lifecycle (was the reduced planning/building)
-test('ProjectNodeSchema parses a valid project on the lifecycle axis', () => {
-  expect(ProjectNodeSchema.safeParse(node).success).toBe(true)
-  expect(ProjectNodeSchema.safeParse({ ...node, status: 'refined' }).success).toBe(true)
-  expect(ProjectNodeSchema.safeParse({ ...node, status: 'planning' }).success).toBe(false)
+const template: TemplatePort = {
+  steps: (tier, stage) => ({ tier, stage, steps: [] }),
+  fields: () => ({}),
+  validate: () => ({}),
+  raw: () => ({}),
+}
+const fakeEpic = (statuses: Record<string, string> = {}): Tier => ({
+  tier: 'epic',
+  verbs: () => ['get'],
+  get: async (slug: string) => ({ slug, status: statuses[slug] ?? 'plan' }),
+  run: async () => ({}),
 })
 
-// epic-stubs use the loop-queue marker axis (mirrors epic's task-stubs)
-test('project epic-stubs accept the stub status axis', () => {
-  const withStub = (status: string) => ({ ...node, epics: [{ slug: 'e1', status }] })
-  expect(ProjectNodeSchema.safeParse(withStub('active')).success).toBe(true)
-  expect(ProjectNodeSchema.safeParse(withStub('in-progress')).success).toBe(false)
+function projectNode(over: Partial<Node> = {}): Node {
+  return {
+    schema_version: 2,
+    slug: 'my-proj',
+    title: 'P',
+    status: 'plan',
+    epics: [],
+    acceptance: [],
+    ...over,
+  }
+}
+function setup(node: Node = projectNode(), epic = fakeEpic()) {
+  const store = createFakeStore({ 'my-proj': node })
+  return { store, project: createProject({ store, template, epic }) }
+}
+type Disk = {
+  status: string
+  epics: { slug: string; status: string }[]
+  acceptance: { id: string; status: string }[]
+}
+const on = (store: ReturnType<typeof createFakeStore>) =>
+  store.disk.get('my-proj') as unknown as Disk
+
+// a1 — epic-stub existence + enum-guarded child-status; roll-up reads child epic files
+test('epic-stub add + roll-up via the injected epic module', async () => {
+  const { project, store } = setup(projectNode({ epics: [] }), fakeEpic({ auth: 'done' }))
+  await project.run('child-add', ['my-proj', 'auth', 'auth system'])
+  expect(on(store).epics[0]!.slug).toBe('auth')
+  await expect(project.run('child-status', ['my-proj', 'auth', 'in-progress'])).rejects.toThrow(
+    /valid epic-stub/,
+  )
+  const r = (await project.run('roll-up', ['my-proj'])) as {
+    children: { slug: string; stubStatus: string; childStatus: string }[]
+  }
+  expect(r.children[0]).toEqual({ slug: 'auth', stubStatus: 'pending', childStatus: 'done' })
 })
 
-// the condition bundle: project → epic (stub children)
-test('project bundle declares the epic child relationship', () => {
-  expect(project.tier).toBe('project')
-  expect(project.childTier).toBe('epic')
-  expect(project.childField).toBe('epics')
-  expect(project.defaultStatus).toBe('plan')
-  expect(project.statusValues).toEqual(['plan', 'drafted', 'refined', 'build', 'wrap', 'done'])
-  expect(project.childStatusValues).toEqual(['pending', 'active', 'done', 'blocked'])
-  expect(project.childTerminalOk).toEqual(['done'])
+// a2 — DoD acceptance needs evidence; done floor checks stubs + acceptance
+test('acceptance evidence + status-done floor', async () => {
+  const { project, store } = setup()
+  await project.run('add-acceptance', ['my-proj', 'project shipped'])
+  await expect(project.run('set-acceptance-status', ['my-proj', 'e1', 'done'])).rejects.toThrow(
+    /evidence/,
+  )
+  await project.run('set-acceptance-status', ['my-proj', 'e1', 'done', 'auth — delivered'])
+  expect(on(store).acceptance[0]!.status).toBe('done')
+
+  // a project on the uniform lifecycle reaches done with stubs + acceptance done
+  const node = projectNode({
+    status: 'wrap',
+    epics: [{ slug: 'auth', status: 'done' }],
+    acceptance: [{ id: 'e1', text: 't', status: 'done', evidence: ['x — y'] }],
+  })
+  const { project: p2, store: s2 } = setup(node)
+  await p2.run('status', ['my-proj', 'done'])
+  expect((s2.disk.get('my-proj') as unknown as Disk).status).toBe('done')
 })
