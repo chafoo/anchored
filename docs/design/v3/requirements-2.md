@@ -37,7 +37,7 @@ The rules of this model:
    raw condition.
 
 2. **A module demands its dependencies by CONTRACT, never a concrete import.** `deps` is
-   typed by `lib/contracts/` (`StorePort`, `ConfigPort`). The module imports only the
+   typed by `lib/contracts/` (`StorePort`, `TemplatePort`). The module imports only the
    *interface*; `createCli` injects the implementation. The inversion holds — a module
    still never imports a concrete service.
 
@@ -67,35 +67,53 @@ The rules of this model:
    - **Transitions are a pure `lib` helper the module calls.** `assertTransition(map,
      from, to)` in `lib/utils`, the maps in `lib/constants`. Not the store's concern.
 
-5. **`validate` and `help` are modules too.** They are units in the same assembly,
-   DI'd what they need (`config`; the tier factories for the live surface). `help` renders
-   from the union of the tiers' verb surfaces — it can never drift from the real API.
+5. **The `template` service (the second service) manages the configurable policy.**
+   `createTemplate({ readDefault, readUser }) → { steps(tier,stage), fields(tier),
+   validate(), raw() }`. It merges the shipped default template (`anchored.default.yml`)
+   with the user's `anchored.yml` ONCE, validates against `ConfigSchema`, and answers
+   per-tier/stage what the **steps** and **custom fields** are. Crucially: **the step
+   order + the worker per step are DATA in the template** (`{ name: implement, worker:
+   build-implement }`), so `steps()` is a trivial accessor — there is **no plan algorithm,
+   no resolve-steps, no worker-dispatch code, no engine**. The lifecycle is configurable
+   because it is template data; `template` only loads + merges + serves it. It does **not**
+   orchestrate (the skill does) and does **not** plan (the data *is* the plan). Named
+   `template` because its job is literally *default template ⊕ user overrides*.
+   - `validate` is **not a separate module** — it is `template.validate()`, backing the
+     `anchored validate` meta-command.
+   - The DATA of custom fields comes from `template.fields(tier)`; **applying** them
+     (extending the module's schema) is a pure helper in `modules/shared` the module calls
+     (the module owns its schema).
 
-6. **`cli/` is just assembly + routing.** `createCli` instantiates the services, then each
-   tier factory (injecting deps), and returns the model. Dispatch is a **direct lookup**:
-   the api.md grammar is tier-first (`anchored <tier> <verb> [slug]`), so
-   `argv → modules[tier].run(verb, rest) → envelope`. No `node-router`, no file-shape
-   derivation for routing (the tier is explicit in the grammar).
+6. **`cli/` is just assembly + routing.** `createCli` instantiates the two services
+   (`store`, `template`), then each tier factory (injecting deps), and returns the model.
+   Dispatch is a **direct lookup**: the api.md grammar is tier-first (`anchored <tier>
+   <verb> [slug]`), so `argv → modules[tier].run(verb, rest) → envelope`. The meta-verbs
+   (`validate` → `template.validate()`, `help` → render the tiers' surface) are handled in
+   `cli` directly. No `node-router`, no file-shape derivation for routing.
 
 ## What `createCli` looks like
 
 ```ts
 // cli/cli.ts — instantiate services, then the tier factories (DI), return the model + route.
 function createCli(deps) {                          // deps = the seams from bin.ts (fs · lock · yaml · readers)
-  // ── services (generic mechanisms — know no tier) ──
-  const store  = createStore({ fs: deps.fs, lock: deps.lock, yaml: deps.yaml })  // read/write a node, validated by a given schema
-  const config = createConfig(deps).load(deps.root)   // implements ConfigPort: planFor · fields · raw
+  // ── the two services (generic mechanisms — know no tier) ──
+  const store    = createStore({ fs: deps.fs, lock: deps.lock, yaml: deps.yaml })  // read/write a node, validated by a given schema
+  const template = createTemplate({ readDefault: deps.readDefault, readUser: deps.readUser })  // default ⊕ user · merge once · steps/fields/validate
 
   // ── modules: each a factory, DI'd ONLY the contracts it demands (may demand another module) ──
-  const phase   = createPhase({ store, config })
-  const task    = createTask({ store, config })
-  const epic    = createEpic({ store, config, task })    // epic reads child task files in roll-up — task injected
-  const project = createProject({ store, config, epic })
-  const validate = createValidate({ config, tiers: { phase, task, epic, project } })
-  const help     = createHelp({ tiers: { phase, task, epic, project } })
+  const phase   = createPhase({ store, template })
+  const task    = createTask({ store, template })
+  const epic    = createEpic({ store, template, task })    // epic reads child task files in roll-up — task injected
+  const project = createProject({ store, template, epic })
+  const tiers   = { phase, task, epic, project }
 
-  return { phase, task, epic, project, validate, help }   // the clean assembled model
-  //  a thin dispatch wraps argv → modules[tier].run(verb, rest) → JSON envelope (bin.ts owns argv/exit).
+  // ── route: tier-first grammar → direct lookup; meta-verbs handled here ──
+  return async (argv) => {                                 // argv → modules[tier].run(verb, rest) → JSON envelope
+    const [tier, verb, ...rest] = argv
+    if (verb === undefined && tier === 'validate') return emit(template.validate())
+    if (tier === 'help') return print(help(tiers))          // help = the union of the tiers' verb surfaces
+    return emit(await tiers[tier].run(verb, rest))
+  }
 }
 ```
 
@@ -104,19 +122,19 @@ function createCli(deps) {                          // deps = the seams from bin
 ```ts
 // modules/epic/epic.ts — a factory: owns the rules AND the verbs, built on the injected store.
 import type { StorePort }  from '../../lib/contracts/store.js'    // DEMANDS a store (contract, never concrete)
-import type { ConfigPort } from '../../lib/contracts/config.js'
+import type { TemplatePort } from '../../lib/contracts/template.js'
 import { assertTransition } from '../../lib/utils/assert-transition.js' // pure guard
 import { lifecycleTransitions } from '../../lib/constants/transitions.js'
 import { EpicSchema } from './schema.js'   // the tier's schema — carries the evidence refine; the law the store enforces
 
-export function createEpic(deps: { store: StorePort; config: ConfigPort }) {
-  const { store, config } = deps
+export function createEpic(deps: { store: StorePort; template: TemplatePort }) {
+  const { store, template } = deps
   const read  = (slug)       => store.read(slug, EpicSchema)
   const write = (slug, node) => store.write(slug, node, EpicSchema)   // store runs schema.parse → evidence enforced
 
   return {
-    // lifecycle (config-driven plan)
-    plan:   (input) => ({ node: …, steps: config.planFor('epic', 'plan') }),
+    // lifecycle (template-driven plan — the steps are template DATA, served not computed)
+    plan:   (input) => ({ node: …, steps: template.steps('epic', 'plan') }),
     // node verbs — trivial read/transform/write; the store + schema do the guarding
     get:    (slug)    => read(slug),
     status: async (slug, s) => {
@@ -142,7 +160,15 @@ export function createEpic(deps: { store: StorePort; config: ConfigPort }) {
 | `services/store/invariants` | the service must not know what evidence is | dissolved — the rule is a Zod `.refine` in `modules/shared/schema.ts` (the schema is the law) |
 | `services/store/transitions` | a pure per-tier-data guard, not a service | `lib/utils/assert-transition.ts` + the maps in `lib/constants`; the module calls it |
 | `services/store/{children,questions,log}` | pure transform helpers, no effect | `modules/shared/` (the modules' transform toolkit) |
-| `services/store/validate` | a read-only config inspection | `modules/validate` (a module unit) |
+| `services/config` (the name) | it manages *default ⊕ user* settings | renamed → **`services/template`**: `createTemplate({ readDefault, readUser }) → { steps, fields, validate, raw }` |
+| `services/config/bootstrap` + `plan-for` | one loader, split across files today | merged into `services/template/template.ts` (load + merge + serve) |
+| `services/config/resolve-steps` | inserting defaults is what `merge`(template, user) already does | gone — the template *is* the defaults |
+| `services/config/worker-dispatch` (code map) | the worker per step is policy DATA, not code | inline in each template step (`worker: build-implement`); `template.steps()` serves it. Kills the deferred item + the engine residue |
+| `plan-for` as an *algorithm* | the data is the plan; nothing to compute | trivial accessor `template.steps(tier,stage)` |
+| `services/store/validate` | a read-only settings inspection | folds into **`template.validate()`** (backs the `anchored validate` meta-command) — not a separate module |
+| `services/config/config-schema/custom-fields` | the module owns its schema; only the *data* is config | `template.fields(tier)` returns the data; a pure `extendSchema` helper in `modules/shared` applies it |
+| `services/config/init` (writes files) | a first-run EFFECT, not the pure loader | a separate first-run unit over `fs` (not inside `template`) |
+| `services/config/step.ts` `tierNames` | a fixed axis | `lib/constants` |
 | `cli/node-router` (slug facade) | routing is a direct tier lookup now (tier-first grammar) | gone — `createCli` dispatch |
 | `cli/tier-of` | not needed for routing (tier is explicit) | gone |
 | `cli/commands/{stage,node,lifecycle}/*` | the verb logic belongs to the tier | folds INTO each `createX` |
@@ -163,6 +189,8 @@ dumb: it never learns what a tier is.
 ## Status
 
 Design note — agreed in discussion 2026-06-14, **not yet built**. The current `core/src`
-still has the v1 pure-condition + generic-kernel + `node-router` shape. This is the spec
-for the next refactor; `lib/` and the `services/config` + `services/store` *primitives*
-stay, the tier behaviour moves into the module factories and `cli/` collapses to assembly.
+still has the v1 pure-condition + generic-kernel + `node-router` + `config` shape. This is
+the spec for the next refactor; `lib/` stays, `services` collapses to two dumb services
+(`store` + `template`), the tier behaviour moves into the module factories, and `cli/`
+collapses to assembly. The whole step-plan engine (resolve-steps/worker-dispatch/plan-for)
+dissolves — the step order + worker are template DATA, not code.

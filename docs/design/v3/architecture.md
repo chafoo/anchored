@@ -20,7 +20,7 @@ This is the **code layout** that mirrors the surface 1:1.
   rules (condition) AND its tier's verbs, built on the services it is injected. Its public
   surface is the verb API; the raw condition is internal.
 - **Dependencies arrive by contract, never by concrete import** — a module's `deps` are
-  typed by `lib/contracts/` (`StorePort`, `ConfigPort`, and `Tier` for a module that
+  typed by `lib/contracts/` (`StorePort`, `TemplatePort`, and `Tier` for a module that
   composes another module). The implementation is injected at the one assembly point. The
   inversion holds: no module imports a concrete service or a sibling module.
 - **One orchestrator** — `cli/cli.ts` (`createCli`) is the single composition root: it
@@ -30,7 +30,7 @@ This is the **code layout** that mirrors the surface 1:1.
   primitives: error factory, predicates, the evidence predicate, arg/envelope helpers),
   `lib/constants/`. Imported by all, imports nothing internal.
 - **One effect** — the whole engine is a pure core around a single effect seam: the
-  filesystem (`fs`). `store` is built on injected `fs` + `lock` + `yaml`; `config`
+  filesystem (`fs`). `store` is built on injected `fs` + `lock` + `yaml`; `template`
   executes nothing — its readers are injected. The real fs · lock effects live solely in
   `bin.ts`. There is no separate `io`/`codec` layer.
 - **The universal rule lives in the SCHEMA, not the service** — the only universal guard
@@ -44,12 +44,12 @@ This is the **code layout** that mirrors the surface 1:1.
 lib/         primitives — contracts (ports) · utils · constants. Imported by all, imports nothing.
 modules/     tier FACTORIES (createPhase·createTask·createEpic·createProject) — own their rules + verbs,
              DI'd the services they demand (by contract). May compose another module (by contract).
-services/    generic mechanisms (store · config) — know no tier. store = read/write a node, validated by a given schema.
+services/    two dumb mechanisms (store · template) — know no tier. store = read/write a node validated by a given schema; template = merge + serve the settings.
 cli/         createCli(deps): instantiate services, instantiate the tier factories (DI), route argv → tier → verb.
 ```
 
 - **A module never imports a concrete service or a sibling module.** It demands them by
-  contract (`StorePort`, `ConfigPort`, `Tier`) and receives the implementation injected at
+  contract (`StorePort`, `TemplatePort`, `Tier`) and receives the implementation injected at
   `createCli`. That is the whole inversion: the tiers compose without coupling.
 - **The store is the seam — and it is dumb.** `createStore({ fs, lock, yaml })` exposes
   `read(slug, schema)` / `write(slug, node, schema)` (+ `move`/`remove`): load/persist a
@@ -71,7 +71,7 @@ core/src/
 │   ├── contracts/                  # the ports (interface-only) — each carries a conformance spec
 │   │   ├── fs.ts                   # FileSystem  { readFile, writeFile, rename, unlink, mkdir, stat } — the effect seam
 │   │   ├── store.ts                # StorePort   { read(slug,schema), write(slug,node,schema), move, remove }
-│   │   ├── config.ts               # ConfigPort  { planFor, fields, raw } + PlanStep/StepPlan
+│   │   ├── template.ts             # TemplatePort { steps(tier,stage), fields(tier), validate(), raw() } + Step type
 │   │   ├── tier.ts                 # Tier (a module factory's OUTPUT: the verb surface) + Schema
 │   │   └── cli.ts                  # Cli         { run(argv) → exitCode } + Anchored
 │   ├── utils/                      # zero-dep primitives · no special knowledge
@@ -92,17 +92,19 @@ core/src/
 │   │   ├── phase.ts                # createPhase(deps) → Tier: leaf · owns PhaseSchema + ac/evidence verbs
 │   │   ├── schema.ts               # the tier's schema + transition map — internal to the module
 │   │   └── phase.spec.ts
-│   ├── task/task.ts                # createTask({ store, config }) → Tier · phase-collection + lifecycle verbs
-│   ├── epic/epic.ts                # createEpic({ store, config, task }) → Tier · task-STUB verbs + roll-up (reads task files)
-│   ├── project/project.ts          # createProject({ store, config, epic }) → Tier · epic-STUB verbs
-│   └── validate/validate.ts        # createValidate({ config }) → the validate unit (parse anchored.yml vs ConfigSchema)
+│   ├── task/task.ts                # createTask({ store, template }) → Tier · phase-collection + lifecycle verbs
+│   ├── epic/epic.ts                # createEpic({ store, template, task }) → Tier · task-STUB verbs + roll-up (reads task files)
+│   └── project/project.ts          # createProject({ store, template, epic }) → Tier · epic-STUB verbs
+│                                   #   (no validate module — it is template.validate(); no help module — it lives in cli)
 │
-├── services/                       # generic mechanisms · know NO tier · import only lib
-│   ├── store/                      # the ONE substrate service — read/write a node, validated by a given schema
+├── services/                       # the two dumb mechanisms · know NO tier · import only lib
+│   ├── store/                      # read/write a node, validated by a given schema
 │   │   ├── store.ts                # createStore({ fs, lock, yaml }) → { read(slug,schema), write(slug,node,schema), move, remove }
 │   │   └── scope/safe-write.ts     # store-internal: the atomic-write dance (mkdir → lock → temp → rename → CAS)
-│   └── config/                     # createConfig({ readDefault, readUser, merge }) → ConfigPort
-│       ├── config.ts · merge.ts · plan-for.ts · config-schema/ · …
+│   └── template/                   # manage the configurable policy: default ⊕ user, merge, serve
+│       ├── template.ts             # createTemplate({ readDefault, readUser }) → { steps, fields, validate, raw }
+│       ├── merge.ts                # pure: anchored.yml ⊕ default.yml (keyed-steps semantics)
+│       └── schema.ts               # ConfigSchema (Zod) — what a valid anchored.yml is
 │
 └── cli/                            # assembly + routing ONLY
     ├── cli.ts                      # createCli(deps): instantiate services → instantiate tier factories (DI) →
@@ -120,17 +122,17 @@ target folds the verbs into the factories and deletes `node-router`/`tier-of`/`c
 ```ts
 // modules/epic/epic.ts — a factory, DI'd the services it demands by contract
 import type { StorePort }  from '../../lib/contracts/store.js'    // never the concrete store, never fs
-import type { ConfigPort } from '../../lib/contracts/config.js'
+import type { TemplatePort } from '../../lib/contracts/template.js'
 import { assertTransition } from '../../lib/utils/assert-transition.js'
 import { lifecycleTransitions } from '../../lib/constants/transitions.js'
 import { EpicSchema } from './schema.js'   // the tier's schema — carries the evidence .refine; the store's only law
 
-export function createEpic(deps: { store: StorePort; config: ConfigPort }) {
-  const { store, config } = deps
+export function createEpic(deps: { store: StorePort; template: TemplatePort }) {
+  const { store, template } = deps
   const read  = (slug)       => store.read(slug, EpicSchema)
   const write = (slug, node) => store.write(slug, node, EpicSchema)   // store runs schema.parse → evidence enforced
   return {
-    plan:     (input)    => ({ node: …, steps: config.planFor('epic', 'plan') }),   // lifecycle (config)
+    plan:     (input)    => ({ node: …, steps: template.steps('epic', 'plan') }),   // lifecycle (template data)
     get:      (slug)     => read(slug),                                             // node — trivial read
     status:   async (slug, s) => {                                                  // pure guard, then write
       const n = await read(slug); assertTransition(lifecycleTransitions, n.status, s)
@@ -165,7 +167,7 @@ export function createStore(deps: { fs: FileSystem; lock: Lock; yaml: Yaml }): S
 // modules/epic/epic.ts — a factory demands ports + (optionally) another module's Tier contract
 import type { StorePort } from '../../lib/contracts/store.js'
 import type { Tier }      from '../../lib/contracts/tier.js'      // the module-output contract
-export function createEpic(deps: { store: StorePort; config: ConfigPort }): Tier { … }
+export function createEpic(deps: { store: StorePort; template: TemplatePort }): Tier { … }
 ```
 
 `lib/` imports nothing internal and is imported by everyone. The store is fully fakeable by
@@ -177,7 +179,7 @@ meet their contracts in exactly one place: `cli/cli.ts`.
 ```ts
 // cli/cli.ts — createCli: instantiate services, then each tier factory (DI), return the model + route.
 import { createStore }  from '../services/store/store.js'
-import { createConfig } from '../services/config/config.js'
+import { createTemplate } from '../services/template/template.js'
 import { createPhase }  from '../modules/phase/phase.js'
 import { createTask }   from '../modules/task/task.js'
 import { createEpic }   from '../modules/epic/epic.js'
@@ -185,22 +187,21 @@ import { createProject }from '../modules/project/project.js'
 import { envelope }     from '../lib/utils/envelope/envelope.js'
 
 export function createCli(deps): Anchored {
-  const store  = createStore({ fs: deps.fs, lock: deps.lock, yaml: deps.yaml })     // StorePort
-  const config = createConfig(deps).load(deps.projectRoot)                          // ConfigPort
+  const store    = createStore({ fs: deps.fs, lock: deps.lock, yaml: deps.yaml })             // StorePort
+  const template = createTemplate({ readDefault: deps.readDefault, readUser: deps.readUser }) // TemplatePort
 
-  const phase   = createPhase({ store, config })
-  const task    = createTask({ store, config })
-  const epic    = createEpic({ store, config, task })    // roll-up reads child task files — task injected by contract
-  const project = createProject({ store, config, epic })
+  const phase   = createPhase({ store, template })
+  const task    = createTask({ store, template })
+  const epic    = createEpic({ store, template, task })    // roll-up reads child task files — task injected by contract
+  const project = createProject({ store, template, epic })
   const tiers   = { phase, task, epic, project }
-  const validate = createValidate({ config, tiers })
-  const help     = createHelp({ tiers })
 
   return {
-    config,
+    template,
     run: async (argv) => {                               // grammar (api.md): anchored <tier> <verb> [slug] …
       const [tier, verb, ...rest] = argv
-      if (isMeta(tier)) return print(metaFor(tier, { tiers, validate, help }))
+      if (verb === undefined && tier === 'validate') return emit(template.validate())  // meta — template-backed
+      if (tier === 'help') return print(help(tiers))                                   // meta — render the tiers' surface
       try { return emit(envelope(`${tier} ${verb}`, await tiers[tier].run(verb, rest))) }
       catch (e) { return emit(envelope(`${tier} ${verb}`, undefined, e)) }
     },
@@ -222,11 +223,11 @@ that spawns workers and drives the loop. `build.each` recursion is the skill cal
 | `bin.ts` | entry | the only real effects (process · fs · yaml · lock); injects them, calls createCli | — |
 | `lib/contracts/*` | lib | interface-only ports; imported by all, imports nothing | pure types |
 | `lib/utils/*` · `lib/constants/*` | lib | zero-dep primitives (error · evidence-predicate · assert-transition · envelope · args) + fixed axes | pure |
-| `cli/cli.ts` | orchestrator | THE root: build services, instantiate tier factories (DI), route `<tier> <verb>` | `createCli(deps) → { run, config }` |
+| `cli/cli.ts` | orchestrator | THE root: build the two services, instantiate tier factories (DI), route `<tier> <verb>` + the meta-verbs | `createCli(deps) → { run, template }` |
 | `modules/<tier>/<tier>.ts` | module | a **factory**: owns the schema + the tier's verbs (lifecycle · node · collection), built on the injected store | `createEpic(deps) → Tier` |
-| `modules/shared/*` | module | the modules' pure base: schema fragments (incl. the evidence `.refine`) + child/question/log transforms | pure |
+| `modules/shared/*` | module | the modules' pure base: schema fragments (incl. the evidence `.refine`) + child/question/log transforms + `extendSchema` | pure |
 | `services/store` | service | read/write a node **safely** (yaml ⇄ object · atomic temp+rename, lock+CAS, on `fs`) validated by a **given schema** — knows no tier | `createStore({ fs, lock, yaml }) → { read(slug,schema), write(slug,node,schema), move, remove }` |
-| `services/config` | service | load + merge (default ⊕ user, once) AND derive `planFor(tier,stage)` → step-plan | `createConfig({ readDefault, readUser, merge }) → ConfigPort` |
+| `services/template` | service | manage the configurable policy: merge default-template ⊕ user `anchored.yml` (once), validate, and **serve** the steps + custom fields (the step order + worker are DATA — no plan algorithm) | `createTemplate({ readDefault, readUser }) → { steps, fields, validate, raw }` |
 
 ### What dissolved (and where it went)
 
@@ -239,7 +240,11 @@ that spawns workers and drives the loop. `build.each` recursion is the skill cal
 | `services/store/invariants` | the service must not know what evidence is | dissolved — a Zod `.refine` on the shared `AcceptanceCriterion` (the schema is the law) |
 | `services/store/transitions` | a pure per-tier-data guard, not a service | `lib/utils/assert-transition.ts` + the maps in `lib/constants`; the module calls it |
 | `services/store/{children,questions,log}` | pure transform helpers, no effect | `modules/shared/` (the modules' transform toolkit) |
-| `services/store/validate` | a read-only config inspection | `modules/validate` (a module unit) |
+| `services/config` (the name) | it manages *default ⊕ user* settings | renamed → `services/template` ( `{ steps, fields, validate, raw }` ) |
+| `services/config/{resolve-steps,worker-dispatch}` + `plan-for` *algorithm* | the step order + worker are template DATA; nothing to compute | gone — `merge` handles overrides; `worker:` is inline template data; `steps()` is a trivial accessor (kills the engine residue + the deferred worker-dispatch item) |
+| `services/config/config-schema/custom-fields` | the module owns its schema; only the data is config | `template.fields(tier)` (data) + a pure `extendSchema` helper in `modules/shared` |
+| `services/config/init` (writes files) | a first-run EFFECT, not the pure loader | a separate first-run unit over `fs` |
+| `services/store/validate` | a read-only settings inspection | folds into `template.validate()` (backs `anchored validate`) — no separate module |
 | `cli/node-router` (slug facade) | routing is a direct tier lookup (tier-first grammar) | gone — `createCli` dispatch |
 | `cli/tier-of` | not needed for routing (tier is explicit in the grammar) | gone |
 | `cli/commands/{stage,node,lifecycle}/*` | the verb logic belongs to the tier | folds INTO each `createX` |
