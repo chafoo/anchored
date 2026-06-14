@@ -30,7 +30,8 @@
     "test:int": "files=$(find src -name '*.int.ts' | sed 's|^|./|'); if [ -n \"$files\" ]; then bun test $files; else echo 'no *.int.ts files — skipping'; fi",
     "coverage:specs": "bash scripts/spec-coverage.sh",
     "test": "npm run coverage:specs && npm run test:unit && npm run test:e2e && npm run test:int",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "postbuild": "chmod +x dist/bin.js"
   },
   "dependencies": {
     "commander": "^15.0.0",
