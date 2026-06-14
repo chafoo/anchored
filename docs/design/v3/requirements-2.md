@@ -198,7 +198,24 @@ read/transform/write, so there is no duplication. Better locality, the inversion
 And because the only universal guard (evidence) lives in the *schema*, the store stays
 dumb: it never learns what a tier is.
 
-## File & suffix conventions
+## Colocation, files & suffixes
+
+### Colocation (folders) — carried over from `colocation-and-naming.md`, holds for v3
+
+- **A lone file needs no folder.** The moment it gains a companion (a spec, a
+  `.schemas.ts`, a `.fake.ts`, a `scope/` helper) it moves into **its own folder**, and the
+  main file is **named after the folder** (`phase/phase.ts`, `store/store.ts`) — never
+  `index.ts`.
+- **The companion suffixes ARE what triggers the folder.** `phase.ts` alone → flat;
+  `phase.ts` + `phase.schemas.ts` + `phase.spec.ts` → `phase/` folder. (So the suffix axis
+  below and the folder rule are the same convention seen from two sides.)
+- **Spec sits next to its subject;** deeper local helpers live in `scope/`.
+- **No barrels** — import directly from the source module
+  (`from '../services/store/store.js'`), never an aggregating re-export file. The **one**
+  exception is the package entry `core/src/index.ts` (re-exporting the public surface — the
+  published boundary, not an internal aggregation).
+
+### File & suffix conventions
 
 Two **orthogonal** axes. A file carries at most one *content* suffix; the *test-kind*
 suffix is the separate concern of [[test-file-naming]].
