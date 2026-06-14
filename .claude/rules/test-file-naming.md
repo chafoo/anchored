@@ -50,7 +50,7 @@ modules wired → `int`; else single module, all deps faked → `spec`.
   subject. The kind-suffix does not change *where* the file lives.
 - **Cross-cutting suites sit next to their nearest entry-point module** — an
   `*.e2e.ts` that drives the whole lifecycle has no single subject module; place
-  it next to the entry-point it exercises (e.g. the `cli/` or `orchestration/` factory it
+  it next to the entry-point it exercises (e.g. the `cli/` orchestrator factory it
   drives), not in a separate test tree.
 - **Keep all three suffixes in the runner glob** — `core/bunfig.toml` `[test]`
   must match `*.spec.ts`, `*.int.ts`, `*.e2e.ts` (see Why; this config is

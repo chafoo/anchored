@@ -29,7 +29,7 @@ clear input/output contract.
 - **Swappable for fakes in tests** — `createStepRunner({ spawn: fakeSpawn, ops: fakeOps })`
   must be enough to test the layer without real CC/FS.
 - **Deeper helpers in `scope/`** — every factory may have helpers in its `scope/` folder,
-  also with a clear input/output (e.g. `domain/steps/resolve-steps/resolve-steps.ts`).
+  also with a clear input/output (e.g. `services/config/resolve-steps/resolve-steps.ts`).
 - **`cfg` = the merged effectiveConfig** (or a part of it), loaded once at
   bootstrap and passed through.
 

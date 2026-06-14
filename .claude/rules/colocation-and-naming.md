@@ -26,8 +26,8 @@ directory.
   (`*.spec.ts`/`*.int.ts`/`*.e2e.ts`) is the orthogonal concern of
   [[test-file-naming]].
 - **Local helpers in `scope/`** — a factory's deeper helpers continue to live in
-  their `scope/` subfolder (existing convention, see `store/codec/`,
-  `domain/steps/resolve-steps/`). `scope/` files follow the same naming + colocate their own
+  their `scope/` subfolder (existing convention, see `services/store/codec/`,
+  `services/config/resolve-steps/`). `scope/` files follow the same naming + colocate their own
   specs.
 - **A single file without companions** needs no folder — only once a second
   related file appears is the folder created.
@@ -50,11 +50,16 @@ entry point of a subfolder.
 **No re-export-only file** whose sole purpose is to bundle and pass through symbols
 from sibling modules (`export * from './a'`).
 
-- **Import directly from the source module** — `from './store/node-store/node-store.js'`, not
-  from an aggregating `store/store.ts` that re-exports everything.
-- A factory file that contains real wiring logic (e.g. `cli/cli.ts` builds
-  `createCli`) is **not** a barrel — it does work, it doesn't just pass through.
+- **Import directly from the source module** — `from './services/store/node-store/node-store.js'`,
+  not from an aggregating `store.ts` that re-exports everything.
+- A factory file that contains real wiring logic (e.g. `cli/anchored.ts` builds
+  `createAnchored`) is **not** a barrel — it does work, it doesn't just pass through.
   Forbidden is only the pure aggregation/pass-through file.
+- **Exception: the package entry** (`core/src/index.ts`) MAY be a pure re-export —
+  it is the deliberate public-interface boundary of the npm package, re-exporting the
+  orchestrator's surface (`createAnchored`, types) from `cli/`. This is permitted
+  precisely because it is the package's one published seam, not an internal
+  aggregation file hiding the dependency graph between sibling modules.
 
 ## Why
 

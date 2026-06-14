@@ -27,8 +27,14 @@ Before every `ac → done` / phase completion, the following holds for `core/`:
 1. **lint** — eslint clean
 2. **format** — prettier check clean
 3. **typecheck** — `tsc --noEmit` without errors
-4. **test** — `bun test` green
-5. **build** — `bun build` / compiles without errors
+4. **spec-coverage** — `npm run coverage:specs` (scripts/spec-coverage.sh) clean:
+   every runtime file under `lib/` · `modules/` · `services/` carries a colocated
+   test (`*.spec.ts`/`*.int.ts`/`*.e2e.ts`, basename-prefixed so an aspect spec
+   counts). A source file with no colocated test blocks the gate. Runs as the first
+   step of `npm test`. (Enforces the 100%-coverage rule structurally — see
+   `docs/design/v3/requirements.md` rule 7.)
+5. **test** — `bun test` green
+6. **build** — `bun build` / compiles without errors
 
 Wired up as npm scripts. A red gate blocks completion — that is
 evidence-honesty at the package level.
