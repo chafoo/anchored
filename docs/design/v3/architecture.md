@@ -26,9 +26,13 @@ This is the **code layout** that mirrors the surface 1:1.
 - **One orchestrator** — `cli/cli.ts` (`createCli`) is the single composition root: it
   instantiates the services, then each tier factory (DI), and routes `argv → tier → verb`.
   The only place a contract meets its implementation.
-- **`lib/` is the base** — `lib/contracts/` (the ports), `lib/utils/` (zero-dep
-  primitives: error factory, predicates, the evidence predicate, arg/envelope helpers),
-  `lib/constants/`. Imported by all, imports nothing internal.
+- **`lib/` is the base — and it is tiny.** Something earns a place in `lib` only if it
+  **crosses a layer boundary** (a contract) OR is needed by **literally every layer**
+  (`error`). Single-consumer things colocate with that consumer — "pure" alone does not
+  earn a lib slot. So `lib/` = `contracts/` (the five ports) + `utils/error.ts`. No
+  `constants/`; tier knowledge (statuses · transitions · the evidence predicate) lives in
+  `modules/shared` (only the modules use it, now that the store is dumb), `stages` lives in
+  `services/template` (only validate uses it), `envelope`/`args` live in `cli`.
 - **One effect** — the whole engine is a pure core around a single effect seam: the
   filesystem (`fs`). `store` is built on injected `fs` + `lock` + `yaml`; `template`
   executes nothing — its readers are injected. The real fs · lock effects live solely in
@@ -67,27 +71,26 @@ core/src/
 ├── bin.ts                          # the only effectful site (fs · yaml · lock · process) — builds deps, calls createCli
 ├── index.ts                        # the package entry: re-exports the public surface (the one permitted index.ts)
 │
-├── lib/                            # the base · imported by all · imports nothing internal
-│   ├── contracts/                  # the ports (interface-only) — each carries a conformance spec
-│   │   ├── fs.ts                   # FileSystem  { readFile, writeFile, rename, unlink, mkdir, stat } — the effect seam
-│   │   ├── store.ts                # StorePort   { read(slug,schema), write(slug,node,schema), move, remove }
-│   │   ├── template.ts             # TemplatePort { steps(tier,stage), fields(tier), validate(), raw() } + Step type
-│   │   ├── tier.ts                 # Tier (a module factory's OUTPUT: the verb surface) + Schema
-│   │   └── cli.ts                  # Cli         { run(argv) → exitCode } + Anchored
-│   ├── utils/                      # zero-dep primitives · no special knowledge
-│   │   ├── error.ts                # the typed-error factory (anchoredError + AnchoredError)
-│   │   ├── evidence/evidence.ts    # isEvidenceFilled — the pure predicate the schema's .refine uses
-│   │   ├── assert-transition.ts    # assertTransition(map, from, to) — pure guard the tier factories call
-│   │   ├── envelope/envelope.ts    # { ok, command, result|error } JSON serializer (cli-only-transport)
-│   │   └── args/args.ts            # argv → typed args (parse/validate) — shared by the tier factories' cli parts
-│   └── constants/                  # fixed axes: stages · statuses · transitions (the maps)
+├── lib/                            # the base · ONLY contracts + error · imported by all, imports nothing
+│   ├── contracts/                  # the FIVE ports (interface-only) — the only thing that crosses a boundary
+│   │   ├── fs.ts                   # FileSystem  { readFile, writeFile, rename, unlink, mkdir, stat }   (bin↔store)
+│   │   ├── store.ts                # StorePort   { read(slug,schema), write(slug,node,schema), move, remove }  (modules↔store)
+│   │   ├── template.ts             # TemplatePort { steps, fields, validate, raw } + Step type            (modules↔template)
+│   │   ├── tier.ts                 # Tier (a module factory's OUTPUT: the verb surface) + Schema           (cli/modules↔modules)
+│   │   └── cli.ts                  # Cli { run(argv) → exitCode } + Anchored                               (bin↔cli)
+│   └── utils/
+│       └── error.ts                # anchoredError — the ONE primitive every layer needs. (No constants/, no other util.)
 │
 ├── modules/                        # tier FACTORIES · demand contracts · DI'd at createCli · 100% covered
-│   ├── shared/                     # the modules' own base (pure, imported by the tier factories)
+│   ├── shared/                     # the modules' own base (pure, imported by the tier factories) — tier knowledge lives HERE
 │   │   ├── schema.ts               # cross-tier zod FRAGMENTS (slugs · AC-with-evidence-refine · question · log · context)
+│   │   ├── statuses.ts             # the status enums (lifecycle · phase · stub · executor) — only modules use them
+│   │   ├── transitions.ts          # the edge maps + assertTransition(map, from, to) — the status guard
+│   │   ├── evidence.ts             # isEvidenceFilled — the predicate the AC `.refine` uses
 │   │   ├── children.ts             # child-list transforms (next · ready · add · move) — DAG/loop-queue logic
 │   │   ├── questions.ts            # question/concern transforms (add id · resolve)
-│   │   └── log.ts                  # append-only audit-log transform
+│   │   ├── log.ts                  # append-only audit-log transform
+│   │   └── extend-schema.ts        # apply template.fields(tier) to a tier schema (the module owns its schema)
 │   ├── phase/
 │   │   ├── phase.ts                # createPhase(deps) → Tier: leaf · owns PhaseSchema + ac/evidence verbs
 │   │   ├── schema.ts               # the tier's schema + transition map — internal to the module
@@ -104,11 +107,14 @@ core/src/
 │   └── template/                   # manage the configurable policy: default ⊕ user, merge, serve
 │       ├── template.ts             # createTemplate({ readDefault, readUser }) → { steps, fields, validate, raw }
 │       ├── merge.ts                # pure: anchored.yml ⊕ default.yml (keyed-steps semantics)
-│       └── schema.ts               # ConfigSchema (Zod) — what a valid anchored.yml is
+│       ├── schema.ts               # ConfigSchema (Zod) — what a valid anchored.yml is
+│       └── stages.ts               # the plan·refine·build·wrap axis — only validate() iterates it
 │
 └── cli/                            # assembly + routing ONLY
     ├── cli.ts                      # createCli(deps): instantiate services → instantiate tier factories (DI) →
-    │                               #   route argv → modules[tier].run(verb, rest) → envelope. THE composition root.
+    │                               #   route argv → modules[tier].run(verb, rest). THE composition root.
+    ├── envelope.ts                 # { ok, command, result|error } JSON serializer — the transport format (cli-only)
+    ├── args.ts                     # argv → typed args (parse/validate) — dispatch concern
     ├── cli.spec.ts                 # unit-tests the assembly + dispatch (faked deps)
     └── cli.e2e.ts                  # drives the WHOLE thing against real fixtures (epic.yml/task.yml) — writes real files
 ```
@@ -123,8 +129,7 @@ target folds the verbs into the factories and deletes `node-router`/`tier-of`/`c
 // modules/epic/epic.ts — a factory, DI'd the services it demands by contract
 import type { StorePort }  from '../../lib/contracts/store.js'    // never the concrete store, never fs
 import type { TemplatePort } from '../../lib/contracts/template.js'
-import { assertTransition } from '../../lib/utils/assert-transition.js'
-import { lifecycleTransitions } from '../../lib/constants/transitions.js'
+import { assertTransition, lifecycleTransitions } from '../shared/transitions.js'  // tier knowledge — modules' base
 import { EpicSchema } from './schema.js'   // the tier's schema — carries the evidence .refine; the store's only law
 
 export function createEpic(deps: { store: StorePort; template: TemplatePort }) {
@@ -184,7 +189,7 @@ import { createPhase }  from '../modules/phase/phase.js'
 import { createTask }   from '../modules/task/task.js'
 import { createEpic }   from '../modules/epic/epic.js'
 import { createProject }from '../modules/project/project.js'
-import { envelope }     from '../lib/utils/envelope/envelope.js'
+import { envelope }     from './envelope.js'                       // cli-local — the transport format
 
 export function createCli(deps): Anchored {
   const store    = createStore({ fs: deps.fs, lock: deps.lock, yaml: deps.yaml })             // StorePort
@@ -221,11 +226,11 @@ that spawns workers and drives the loop. `build.each` recursion is the skill cal
 | unit | layer | responsibility | factory: in → out |
 |---|---|---|---|
 | `bin.ts` | entry | the only real effects (process · fs · yaml · lock); injects them, calls createCli | — |
-| `lib/contracts/*` | lib | interface-only ports; imported by all, imports nothing | pure types |
-| `lib/utils/*` · `lib/constants/*` | lib | zero-dep primitives (error · evidence-predicate · assert-transition · envelope · args) + fixed axes | pure |
+| `lib/contracts/*` | lib | the five interface-only ports — the only thing that crosses a layer boundary | pure types |
+| `lib/utils/error.ts` | lib | `anchoredError` — the ONE primitive every layer needs | pure |
 | `cli/cli.ts` | orchestrator | THE root: build the two services, instantiate tier factories (DI), route `<tier> <verb>` + the meta-verbs | `createCli(deps) → { run, template }` |
 | `modules/<tier>/<tier>.ts` | module | a **factory**: owns the schema + the tier's verbs (lifecycle · node · collection), built on the injected store | `createEpic(deps) → Tier` |
-| `modules/shared/*` | module | the modules' pure base: schema fragments (incl. the evidence `.refine`) + child/question/log transforms + `extendSchema` | pure |
+| `modules/shared/*` | module | the modules' pure base — **all tier knowledge**: schema fragments (incl. the evidence `.refine`) · the status enums · the transition maps + `assertTransition` · the evidence predicate · child/question/log transforms · `extendSchema` | pure |
 | `services/store` | service | read/write a node **safely** (yaml ⇄ object · atomic temp+rename, lock+CAS, on `fs`) validated by a **given schema** — knows no tier | `createStore({ fs, lock, yaml }) → { read(slug,schema), write(slug,node,schema), move, remove }` |
 | `services/template` | service | manage the configurable policy: merge default-template ⊕ user `anchored.yml` (once), validate, and **serve** the steps + custom fields (the step order + worker are DATA — no plan algorithm) | `createTemplate({ readDefault, readUser }) → { steps, fields, validate, raw }` |
 
@@ -238,8 +243,11 @@ that spawns workers and drives the loop. `build.each` recursion is the skill cal
 | `services/store/io` | the effect is just the filesystem | dissolved — `fs` + `lock` are injected seams into `createStore`; the atomic-write dance is store-internal (`scope/safe-write.ts`) |
 | `services/store/codec` (parse/render) | yaml⇄object is the `yaml` lib; the schema comes from the module | dissolved — `store` calls `yaml.parse`/`stringify` + the injected schema |
 | `services/store/invariants` | the service must not know what evidence is | dissolved — a Zod `.refine` on the shared `AcceptanceCriterion` (the schema is the law) |
-| `services/store/transitions` | a pure per-tier-data guard, not a service | `lib/utils/assert-transition.ts` + the maps in `lib/constants`; the module calls it |
+| `services/store/transitions` | a pure per-tier-data guard, not a service | `modules/shared/transitions.ts` (maps + `assertTransition`); the module calls it |
 | `services/store/{children,questions,log}` | pure transform helpers, no effect | `modules/shared/` (the modules' transform toolkit) |
+| `lib/constants/{statuses,transitions}` + `lib/utils/evidence` | now the store is dumb, only the modules use them — no cross-layer agreement to keep | `modules/shared/` (tier knowledge belongs with the tiers) |
+| `lib/constants/stages` | only `validate()` iterates the stage axis | `services/template/stages.ts` |
+| `lib/utils/{envelope,args}` | the transport format + arg parsing are a cli concern | `cli/` (single consumer) |
 | `services/config` (the name) | it manages *default ⊕ user* settings | renamed → `services/template` ( `{ steps, fields, validate, raw }` ) |
 | `services/config/{resolve-steps,worker-dispatch}` + `plan-for` *algorithm* | the step order + worker are template DATA; nothing to compute | gone — `merge` handles overrides; `worker:` is inline template data; `steps()` is a trivial accessor (kills the engine residue + the deferred worker-dispatch item) |
 | `services/config/config-schema/custom-fields` | the module owns its schema; only the data is config | `template.fields(tier)` (data) + a pure `extendSchema` helper in `modules/shared` |

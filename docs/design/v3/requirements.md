@@ -5,13 +5,21 @@ and `api.md` (the CLI surface). This file captures the **why** + the binding rul
 agreed; `architecture.md` reflects the resulting structure.
 
 > **⚠️ `requirements-2.md` is the current authoritative model — read it first.**
-> The four-layer tree below (`lib → modules → services → cli`), contracts-as-seams, the
-> universal evidence invariant, and 100% coverage still hold. But v2 **supersedes rule 6**
-> (the "generic verb kernel fed pure-data conditions"): modules become **active factories**
-> (`createEpic(deps)`) that own their verbs and receive services by dependency injection;
-> the generic kernel shrinks to a `store.for(condition) → { read, mutate }` primitive, and
-> `cli/` collapses to assembly. The shipped code (pure bundles + `node-store` kernel +
-> `node-router`/`commands/`) is the migration source, **not** the target.
+> The four-layer tree (`lib → modules → services → cli`), contracts-as-seams, the evidence
+> invariant, and 100% coverage still hold — but most of the *internals* below are
+> superseded by v2:
+> - **Modules** become **active factories** (`createEpic(deps)`) that own their verbs and
+>   receive services by DI (supersedes rule 6's generic kernel).
+> - **services** collapse to two dumb mechanisms: `store` (`read/write` a node validated by
+>   a given schema — no `io`/`codec`/`invariants`/`node-store`) and `template` (`config`
+>   renamed — merge + serve settings; the whole step-plan engine dissolves into template
+>   *data*).
+> - **The evidence invariant lives in the SCHEMA** (a Zod `.refine`), not a service.
+> - **`lib/` shrinks to `contracts/` + `error`** — no `constants/`; the tier axes move to
+>   `modules/shared`, `stages` to `template`, `envelope`/`args` to `cli`.
+>
+> The shipped code (pure bundles + `node-store` kernel + `node-router`/`commands/` +
+> `config`) is the migration source, **not** the target.
 
 ## The shape: four layers, dependency one-way
 

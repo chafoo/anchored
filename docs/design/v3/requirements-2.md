@@ -64,8 +64,9 @@ The rules of this model:
      by every tier schema. Because `store.write` runs `schema.parse` on every write, the
      rule is unskippable *without the store knowing what evidence is*. (No `invariants`
      service file.)
-   - **Transitions are a pure `lib` helper the module calls.** `assertTransition(map,
-     from, to)` in `lib/utils`, the maps in `lib/constants`. Not the store's concern.
+   - **Transitions are a pure helper the module calls.** `assertTransition(map, from, to)`
+     + the maps live in `modules/shared/transitions.ts` (tier knowledge — only modules use
+     it now that the store is dumb). Not the store's concern, and not `lib` either.
 
 5. **The `template` service (the second service) manages the configurable policy.**
    `createTemplate({ readDefault, readUser }) → { steps(tier,stage), fields(tier),
@@ -89,7 +90,16 @@ The rules of this model:
    Dispatch is a **direct lookup**: the api.md grammar is tier-first (`anchored <tier>
    <verb> [slug]`), so `argv → modules[tier].run(verb, rest) → envelope`. The meta-verbs
    (`validate` → `template.validate()`, `help` → render the tiers' surface) are handled in
-   `cli` directly. No `node-router`, no file-shape derivation for routing.
+   `cli` directly. No `node-router`, no file-shape derivation for routing. `envelope` (the
+   transport JSON) + `args` (argv parsing) are `cli`-local — single consumer.
+
+7. **`lib/` is tiny: contracts + `error`, nothing else.** Something earns a `lib` slot only
+   if it **crosses a layer boundary** (a contract) OR is needed by **literally every layer**
+   (`error`). "Pure" alone does not qualify. So `lib/` = `contracts/` (the five ports: `fs`,
+   `store`, `template`, `tier`, `cli`) + `utils/error.ts`. There is **no `constants/`** —
+   the tier axes (statuses · transitions · the evidence predicate) live in `modules/shared`
+   (only modules use them once the store is dumb), `stages` lives in `services/template`,
+   `envelope`/`args` in `cli`. Single-consumer ⇒ colocate; `lib` stays the pure boundary.
 
 ## What `createCli` looks like
 
@@ -123,8 +133,7 @@ function createCli(deps) {                          // deps = the seams from bin
 // modules/epic/epic.ts — a factory: owns the rules AND the verbs, built on the injected store.
 import type { StorePort }  from '../../lib/contracts/store.js'    // DEMANDS a store (contract, never concrete)
 import type { TemplatePort } from '../../lib/contracts/template.js'
-import { assertTransition } from '../../lib/utils/assert-transition.js' // pure guard
-import { lifecycleTransitions } from '../../lib/constants/transitions.js'
+import { assertTransition, lifecycleTransitions } from '../shared/transitions.js' // tier knowledge — modules' base
 import { EpicSchema } from './schema.js'   // the tier's schema — carries the evidence refine; the law the store enforces
 
 export function createEpic(deps: { store: StorePort; template: TemplatePort }) {
@@ -158,7 +167,7 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort }) {
 | `services/store/io` | the effect is just the filesystem | dissolved — `fs` + `lock` are injected seams into `createStore`; the atomic-write dance is store-internal |
 | `services/store/codec` (parse/render) | yaml⇄object is just the `yaml` lib; the schema comes from the module | dissolved — `store` calls `yaml.parse`/`stringify` + the injected schema |
 | `services/store/invariants` | the service must not know what evidence is | dissolved — the rule is a Zod `.refine` in `modules/shared/schema.ts` (the schema is the law) |
-| `services/store/transitions` | a pure per-tier-data guard, not a service | `lib/utils/assert-transition.ts` + the maps in `lib/constants`; the module calls it |
+| `services/store/transitions` | a pure per-tier-data guard, not a service | `modules/shared/transitions.ts` (maps + `assertTransition`); the module calls it |
 | `services/store/{children,questions,log}` | pure transform helpers, no effect | `modules/shared/` (the modules' transform toolkit) |
 | `services/config` (the name) | it manages *default ⊕ user* settings | renamed → **`services/template`**: `createTemplate({ readDefault, readUser }) → { steps, fields, validate, raw }` |
 | `services/config/bootstrap` + `plan-for` | one loader, split across files today | merged into `services/template/template.ts` (load + merge + serve) |
@@ -168,7 +177,10 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort }) {
 | `services/store/validate` | a read-only settings inspection | folds into **`template.validate()`** (backs the `anchored validate` meta-command) — not a separate module |
 | `services/config/config-schema/custom-fields` | the module owns its schema; only the *data* is config | `template.fields(tier)` returns the data; a pure `extendSchema` helper in `modules/shared` applies it |
 | `services/config/init` (writes files) | a first-run EFFECT, not the pure loader | a separate first-run unit over `fs` (not inside `template`) |
-| `services/config/step.ts` `tierNames` | a fixed axis | `lib/constants` |
+| `services/config/step.ts` `tierNames` | only the config schema validates tier keys | stays with `services/template/schema.ts` |
+| `lib/constants/{statuses,transitions}` + `lib/utils/evidence` | the store is dumb now → only modules use them | `modules/shared/` (tier knowledge belongs with the tiers) |
+| `lib/constants/stages` | only `validate()` iterates the stage axis | `services/template/stages.ts` |
+| `lib/utils/{envelope,args}` | transport format + arg parsing are a cli concern | `cli/` (single consumer) |
 | `cli/node-router` (slug facade) | routing is a direct tier lookup now (tier-first grammar) | gone — `createCli` dispatch |
 | `cli/tier-of` | not needed for routing (tier is explicit) | gone |
 | `cli/commands/{stage,node,lifecycle}/*` | the verb logic belongs to the tier | folds INTO each `createX` |
