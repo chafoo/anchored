@@ -166,3 +166,109 @@ test('e2e: the evidence gate blocks a premature done', async () => {
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+// requirements-3 enforcement, end to end through the REAL CLI: questions-block-build,
+// the optional-stage skip edges, the order-jump rejection, and deferred-AC (reason-gated,
+// terminal). All on the real filesystem, no AI.
+test('e2e: questions block build · optional skips · deferred AC — real CLI', async () => {
+  const { ok, cli, out, readNode, dir } = await makeCli()
+  const lastOk = () => (JSON.parse(out[out.length - 1]!) as { ok: boolean }).ok
+  const statusOf = async (slug: string) => ((await readNode(slug)) as { status: string }).status
+  try {
+    await ok('task', 'create', 'rt', 'R')
+    await ok('task', 'add-phase', 'rt', 'p1', 'P1')
+
+    // order cannot jump: plan → build is illegal (drafted is not optional)
+    expect(await cli.run(['task', 'status', 'rt', 'build'])).toBe(1)
+    expect(lastOk()).toBe(false)
+
+    await ok('task', 'status', 'rt', 'drafted')
+
+    // §5 — an open question blocks the advance to build (with a listing message)
+    await ok('task', 'question-add', 'rt', 'which storage?', 'high')
+    expect(await cli.run(['task', 'status', 'rt', 'build'])).toBe(1)
+    expect(lastOk()).toBe(false)
+    const blocked = JSON.parse(out[out.length - 1]!) as { error?: { name?: string } }
+    expect(blocked.error?.name).toBe('QuestionsOpen')
+
+    // resolve it → the skip-refine edge drafted → build now goes through
+    await ok('task', 'question-resolve', 'rt', 'q1', 'localStorage', 'user')
+    await ok('task', 'status', 'rt', 'build')
+    expect(await statusOf('rt')).toBe('build')
+
+    // §3 — a deferred AC is reason-gated and then terminal (the phase finishes without evidence on it)
+    await ok('phase', 'status', 'rt/p1', 'in-progress')
+    await ok('phase', 'ac-add', 'rt/p1', 'nice-to-have polish') // a1
+    expect(await cli.run(['phase', 'ac-defer', 'rt/p1', 'a1'])).toBe(1) // no reason → rejected
+    expect(lastOk()).toBe(false)
+    await ok('phase', 'ac-defer', 'rt/p1', 'a1', 'punted to the next milestone')
+    const ph = (await readNode('rt')) as {
+      phases: { acceptance_criteria: { status: string; reason?: string }[] }[]
+    }
+    expect(ph.phases[0]!.acceptance_criteria[0]).toMatchObject({
+      status: 'deferred',
+      reason: 'punted to the next milestone',
+    })
+    await ok('phase', 'status', 'rt/p1', 'done') // deferred AC does not block the floor
+
+    // §1 — the build → done skip edge (wrap is optional); the task floor is satisfied (p1 done)
+    await ok('task', 'status', 'rt', 'done')
+    expect(await statusOf('rt')).toBe('done')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+// requirements-3 at the epic tier: stub outcome-ACs gate child-status done, child-ac-defer
+// unblocks, and a DoD item can be deferred (reason-gated) so the epic still completes.
+test('e2e: epic stub outcome-ACs + DoD-item deferral gate completion — real CLI', async () => {
+  const { ok, cli, out, readNode, dir } = await makeCli()
+  const lastOk = () => (JSON.parse(out[out.length - 1]!) as { ok: boolean }).ok
+  try {
+    await ok('epic', 'create', 'ep', 'Epic')
+    await ok('epic', 'child-add', 'ep', 'login', 'login flow')
+    await ok('epic', 'child-add', 'ep', 'audit', 'audit log')
+    await ok('epic', 'add-acceptance', 'ep', 'ships end to end') // e1
+    await ok('epic', 'add-acceptance', 'ep', 'analytics dashboard') // e2 (will be deferred)
+
+    // a stub with an open outcome-AC cannot be marked done…
+    await ok('epic', 'child-ac-add', 'ep', 'login', 'auth path proven') // a1
+    expect(await cli.run(['epic', 'child-status', 'ep', 'login', 'done'])).toBe(1)
+    expect(lastOk()).toBe(false)
+    // …evidence flips the stub-AC, then the stub can complete
+    await ok('epic', 'child-ac-evidence', 'ep', 'login', 'a1', 'login/auth a1 — delivered')
+    await ok('epic', 'child-status', 'ep', 'login', 'done')
+
+    // the other stub defers its outcome-AC (reason-gated) → also completable
+    await ok('epic', 'child-ac-add', 'ep', 'audit', 'retention policy')
+    expect(await cli.run(['epic', 'child-ac-defer', 'ep', 'audit', 'a1'])).toBe(1) // no reason
+    expect(lastOk()).toBe(false)
+    await ok('epic', 'child-ac-defer', 'ep', 'audit', 'a1', 'compliance epic owns it')
+    await ok('epic', 'child-status', 'ep', 'audit', 'done')
+
+    // DoD: e1 needs delivery evidence; e2 is deferred with a reason
+    await ok('epic', 'status', 'ep', 'drafted')
+    await ok('epic', 'status', 'ep', 'build')
+    await ok('epic', 'status', 'ep', 'wrap')
+    expect(await cli.run(['epic', 'status', 'ep', 'done'])).toBe(1) // DoD items not terminal yet
+    expect(lastOk()).toBe(false)
+    await ok('epic', 'set-acceptance-status', 'ep', 'e1', 'done', 'login+audit — delivered')
+    await ok('epic', 'set-acceptance-status', 'ep', 'e2', 'deferred', 'next quarter')
+    await ok('epic', 'status', 'ep', 'done')
+
+    const epic = (await readNode('ep')) as {
+      status: string
+      tasks: { status: string }[]
+      acceptance: { status: string; reason?: string; evidence?: string[] }[]
+    }
+    expect(epic.status).toBe('done')
+    expect(epic.tasks.map((t) => t.status)).toEqual(['done', 'done'])
+    expect(epic.acceptance[0]).toMatchObject({
+      status: 'done',
+      evidence: ['login+audit — delivered'],
+    })
+    expect(epic.acceptance[1]).toMatchObject({ status: 'deferred', reason: 'next quarter' })
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
