@@ -6,19 +6,13 @@ import { lifecycleStatusValues, stubStatusValues } from '../shared/statuses.js'
 import {
   KebabSlug,
   AcceptanceCriterion,
+  AcceptanceItem,
   QuestionSchema,
   LogEntrySchema,
   ContextTrails,
 } from '../shared/fragments.schemas.js'
 
 export const ProjectStatus = z.enum(lifecycleStatusValues)
-
-const AcceptanceItem = z.strictObject({
-  id: z.string(),
-  text: z.string(),
-  status: z.enum(['pending', 'done']),
-  evidence: z.array(z.string()).optional(),
-})
 
 const EpicStub = z.strictObject({
   slug: KebabSlug,

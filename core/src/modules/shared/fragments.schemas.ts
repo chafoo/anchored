@@ -44,6 +44,26 @@ export const AcceptanceCriterion = z
     error: "an acceptance criterion with status 'deferred' must have a non-empty reason",
   })
 
+// The epic/project DEFINITION-OF-DONE item — the parent's own outcome list (not a child's).
+// Same three-state terminal model + the same two invariants as an AC: `done` ⇒ delivery
+// evidence (the roll-up provenance), `deferred` ⇒ a documented reason. Defined once, reused by
+// both the epic and the project node schema (it carries no `failures` — a DoD item is not
+// gate-rejected, it is delivered, deferred, or pending).
+export const AcceptanceItem = z
+  .strictObject({
+    id: z.string(),
+    text: z.string(),
+    status: AcStatus,
+    evidence: z.array(z.string()).optional(),
+    reason: z.string().optional(),
+  })
+  .refine((a) => a.status !== 'done' || isEvidenceFilled(a.evidence), {
+    error: "a definition-of-done item with status 'done' must have non-empty delivery evidence",
+  })
+  .refine((a) => a.status !== 'deferred' || isReasonFilled(a.reason), {
+    error: "a definition-of-done item with status 'deferred' must have a non-empty reason",
+  })
+
 export const QuestionSchema = z.strictObject({
   id: z.string(),
   text: z.string(),

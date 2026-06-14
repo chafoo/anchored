@@ -30,6 +30,7 @@ interface AcceptanceItem {
   text: string
   status: string
   evidence?: string[]
+  reason?: string
 }
 interface EpicNodeLike extends Node {
   slug: string
@@ -56,12 +57,12 @@ function assertEpicCompletable(node: EpicNodeLike): void {
       ['finish every task-stub first'],
     )
   }
-  const acc = (node.acceptance ?? []).filter((a) => a.status !== 'done')
+  const acc = (node.acceptance ?? []).filter((a) => !['done', 'deferred'].includes(a.status))
   if (acc.length > 0) {
     throw anchoredError(
       'AcceptanceIncomplete',
-      `cannot complete: DoD items not done — ${acc.map((a) => a.id).join(', ')}`,
-      ['roll up + flip each acceptance item with delivery evidence'],
+      `cannot complete: DoD items not terminal — ${acc.map((a) => a.id).join(', ')}`,
+      ['roll up + flip each acceptance item with delivery evidence (or defer it with a reason)'],
     )
   }
 }
@@ -205,27 +206,39 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
         acceptance: [...items, { id: nextEid(items), text, status: 'pending' }],
       })
     },
-    async 'set-acceptance-status'(slug, id, status, evidence) {
+    // detail = delivery evidence for `done`, the deferral reason for `deferred`. The schema
+    // backstops both; these explicit checks give the better message.
+    async 'set-acceptance-status'(slug, id, status, detail) {
       const node = await read(slug)
       const items = node.acceptance ?? []
       const item = items.find((a) => a.id === id)
       if (!item) throw anchoredError('UnknownAcceptance', `no acceptance item '${id}'`)
-      const merged = evidence ? [...(item.evidence ?? []), evidence] : item.evidence
-      if (status === 'done' && !(merged && merged.length > 0)) {
-        throw anchoredError(
-          'AcceptanceNoEvidence',
-          `acceptance item '${id}' cannot be done without delivery evidence`,
-          [
-            'pass the provenance: set-acceptance-status <slug> <id> done "<task>/<phase> — delivered"',
-          ],
-        )
+      let next: AcceptanceItem
+      if (status === 'done') {
+        const merged = detail ? [...(item.evidence ?? []), detail] : item.evidence
+        if (!(merged && merged.length > 0)) {
+          throw anchoredError(
+            'AcceptanceNoEvidence',
+            `acceptance item '${id}' cannot be done without delivery evidence`,
+            [
+              'pass provenance: set-acceptance-status <slug> <id> done "<task>/<phase> — delivered"',
+            ],
+          )
+        }
+        next = { ...item, status, evidence: merged }
+      } else if (status === 'deferred') {
+        if (!(detail && detail.trim())) {
+          throw anchoredError(
+            'AcceptanceNoReason',
+            `acceptance item '${id}' cannot be deferred without a reason`,
+            ['pass the reason: set-acceptance-status <slug> <id> deferred "<why postponed>"'],
+          )
+        }
+        next = { ...item, status, reason: detail }
+      } else {
+        next = { ...item, status }
       }
-      return write(slug, {
-        ...node,
-        acceptance: items.map((a) =>
-          a.id === id ? { ...a, status, ...(merged ? { evidence: merged } : {}) } : a,
-        ),
-      })
+      return write(slug, { ...node, acceptance: items.map((a) => (a.id === id ? next : a)) })
     },
 
     // roll-up: read each stub's child TASK file (via the injected task module) → report status.

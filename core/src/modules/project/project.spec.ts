@@ -37,7 +37,7 @@ type StubAc = { id: string; status: string; evidence?: string[]; failures?: stri
 type Disk = {
   status: string
   epics: { slug: string; status: string; acceptance_criteria?: StubAc[] }[]
-  acceptance: { id: string; status: string }[]
+  acceptance: { id: string; status: string; evidence?: string[]; reason?: string }[]
 }
 const on = (store: ReturnType<typeof createFakeStore>) =>
   store.disk.get('my-proj') as unknown as Disk
@@ -100,6 +100,14 @@ test('acceptance evidence + status-done floor', async () => {
   )
   await project.run('set-acceptance-status', ['my-proj', 'e1', 'done', 'auth — delivered'])
   expect(on(store).acceptance[0]!.status).toBe('done')
+
+  // a DoD item can also be deferred with a reason (and not without one)
+  await project.run('add-acceptance', ['my-proj', 'analytics dashboard'])
+  await expect(project.run('set-acceptance-status', ['my-proj', 'e2', 'deferred'])).rejects.toThrow(
+    /reason/,
+  )
+  await project.run('set-acceptance-status', ['my-proj', 'e2', 'deferred', 'next quarter'])
+  expect(on(store).acceptance[1]).toMatchObject({ status: 'deferred', reason: 'next quarter' })
 
   // a project on the uniform lifecycle reaches done with stubs + acceptance done
   const node = projectNode({

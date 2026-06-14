@@ -7,21 +7,13 @@ import { lifecycleStatusValues, stubStatusValues } from '../shared/statuses.js'
 import {
   KebabSlug,
   AcceptanceCriterion,
+  AcceptanceItem,
   QuestionSchema,
   LogEntrySchema,
   ContextTrails,
 } from '../shared/fragments.schemas.js'
 
 export const EpicStatus = z.enum(lifecycleStatusValues)
-
-// the epic DoD item carries delivery evidence (the roll-up's provenance) — required before
-// it flips done (a halluc-roll-up can't stamp the whole epic delivered with no backing).
-const AcceptanceItem = z.strictObject({
-  id: z.string(),
-  text: z.string(),
-  status: z.enum(['pending', 'done']),
-  evidence: z.array(z.string()).optional(),
-})
 
 const TaskStub = z.strictObject({
   slug: KebabSlug,

@@ -37,7 +37,7 @@ type StubAc = { id: string; status: string; evidence?: string[]; failures?: stri
 type EpicDisk = {
   status: string
   tasks: { slug: string; status: string; acceptance_criteria?: StubAc[] }[]
-  acceptance: { id: string; status: string; evidence?: string[] }[]
+  acceptance: { id: string; status: string; evidence?: string[]; reason?: string }[]
 }
 const on = (store: ReturnType<typeof createFakeStore>) =>
   store.disk.get('my-epic') as unknown as EpicDisk
@@ -115,6 +115,27 @@ test('acceptance items: add + done needs evidence', async () => {
     status: 'done',
     evidence: ['login/auth — delivered'],
   })
+})
+
+// a2b — a DoD item can be DEFERRED with a reason (and not without one); deferred is terminal
+test('DoD item: deferral needs a reason and then does not block epic done', async () => {
+  const node = epicNode({
+    status: 'wrap',
+    tasks: [{ slug: 'login', status: 'done' }],
+    acceptance: [{ id: 'e1', text: 'nice-to-have', status: 'pending' }],
+  })
+  const { epic, store } = setup(node)
+  await expect(epic.run('set-acceptance-status', ['my-epic', 'e1', 'deferred'])).rejects.toThrow(
+    /reason/,
+  )
+  await epic.run('set-acceptance-status', ['my-epic', 'e1', 'deferred', 'pushed to the next epic'])
+  expect(on(store).acceptance[0]).toMatchObject({
+    status: 'deferred',
+    reason: 'pushed to the next epic',
+  })
+  // deferred DoD item is terminal → the epic can finish
+  await epic.run('status', ['my-epic', 'done'])
+  expect(on(store).status).toBe('done')
 })
 
 // a3 — status done is guarded: every stub done + every acceptance done + no open concern
