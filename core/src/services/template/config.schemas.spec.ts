@@ -1,16 +1,24 @@
 import { test, expect } from 'bun:test'
 import { StepSchema, ConfigSchema } from './config.schemas.js'
 
-test('StepSchema: inline worker ok; worker+run rejected; type needs worker; involve only on walk', () => {
+test('StepSchema: use{type,name} + instructions + execute ok; no run; involve only on walk', () => {
   expect(
-    StepSchema.safeParse({ name: 'implement', worker: 'build-implement', type: 'agent' }).success,
-  ).toBe(true)
-  expect(StepSchema.safeParse({ name: 'gate', run: 'bun test' }).success).toBe(true)
-  expect(StepSchema.safeParse({ name: 'x', worker: 'a', run: 'b' }).success).toBe(false)
-  expect(StepSchema.safeParse({ name: 'x', type: 'agent' }).success).toBe(false) // type without worker
-  expect(
-    StepSchema.safeParse({ name: 'walk', worker: 'walk', type: 'skill', involve: 'high-only' })
+    StepSchema.safeParse({ name: 'implement', use: { type: 'agent', name: 'build-implement' } })
       .success,
+  ).toBe(true)
+  expect(StepSchema.safeParse({ name: 'gate', instructions: 'run bun test' }).success).toBe(true)
+  expect(
+    StepSchema.safeParse({ name: 'big', use: { type: 'agent', name: 'x' }, execute: 'workflow' })
+      .success,
+  ).toBe(true)
+  expect(StepSchema.safeParse({ name: 'x', run: 'bun test' }).success).toBe(false) // run is gone
+  expect(StepSchema.safeParse({ name: 'x', use: { type: 'agent' } }).success).toBe(false) // name required
+  expect(
+    StepSchema.safeParse({
+      name: 'walk',
+      use: { type: 'skill', name: 'walk' },
+      involve: 'high-only',
+    }).success,
   ).toBe(true)
   expect(StepSchema.safeParse({ name: 'notwalk', involve: 'all' }).success).toBe(false)
 })
@@ -19,7 +27,7 @@ test('ConfigSchema: tier blocks with build each/stop/retry; rejects an unknown t
   const ok = ConfigSchema.safeParse({
     task: {
       build: {
-        steps: [{ name: 'implement', worker: 'build-implement' }],
+        steps: [{ name: 'implement', use: { type: 'agent', name: 'build-implement' } }],
         each: 'phase',
         retry_limit: 3,
       },

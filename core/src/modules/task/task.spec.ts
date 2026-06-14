@@ -9,7 +9,7 @@ const template: TemplatePort = {
   steps: (tier, stage) => ({
     tier,
     stage,
-    steps: [{ name: 'implement', worker: 'build-implement' }],
+    steps: [{ name: 'implement', use: { type: 'agent', name: 'build-implement' } }],
   }),
   fields: () => ({}),
   validate: () => ({ ok: true }),
@@ -28,11 +28,11 @@ test('get returns the node; build returns the orchestration plan', async () => {
   expect(((await task.get('my-task')) as TaskNode).slug).toBe('my-task')
   const plan = (await task.run('build', ['my-task'])) as {
     stage: string
-    steps: { worker?: string }[]
+    steps: { use?: { name?: string } }[]
     node: TaskNode
   }
   expect(plan.stage).toBe('build')
-  expect(plan.steps[0]!.worker).toBe('build-implement')
+  expect(plan.steps[0]!.use?.name).toBe('build-implement')
   expect(plan.node.slug).toBe('my-task')
 })
 

@@ -2,9 +2,12 @@
 # ▸ project) with its stage steps + fields. A real user anchored.yml is almost empty — it
 # carries deltas only; this runs when you write nothing.
 #
-# v3 change: each step carries its WORKER inline (the plugin agent/skill to spawn) — there is
-# no worker-dispatch code; `anchored <tier> <stage>` serves these steps verbatim. The HARD
-# INVARIANT (an ac → done only with evidence) lives in the node schema, not in a step.
+# v3 change: each step carries its worker inline as `use: { type, name }` (the plugin agent or
+# skill to spawn) — there is no worker-dispatch code; `anchored <tier> <stage>` serves these
+# steps verbatim. A step is prose (`instructions`) + an optional worker (`use`) + an optional
+# fan-out mode (`execute: sequential|workflow`); there is no `run` (a command goes in prose).
+# The HARD INVARIANTS (an ac → done only with evidence; deferred only with a reason) live in
+# the node schema, not in a step.
 
 phase:
   plan:
@@ -13,9 +16,9 @@ phase:
     steps: []
   build:
     steps:
-      - { name: implement, worker: build-implement, type: agent }
-      - { name: task-validate, worker: build-task-validate, type: agent }
-      - { name: code-validate, worker: build-code-validate, type: agent }
+      - { name: implement, use: { type: agent, name: build-implement } }
+      - { name: task-validate, use: { type: agent, name: build-task-validate } }
+      - { name: code-validate, use: { type: agent, name: build-code-validate } }
   wrap:
     steps: []
   fields:
@@ -24,21 +27,21 @@ phase:
     status: pending | in-progress | done | blocked | deferred
     context: markdown
     rules: list<{ path, why }>
-    acceptance_criteria: list<{ id, text, status, evidence? }>
+    acceptance_criteria: list<{ id, text, status, evidence?, reason? }>
     evidence: list<string>
     failures: list<string>
 
 task:
   plan:
     steps:
-      - { name: discover, worker: plan-discover, type: agent }
-      - { name: rules-scan, worker: plan-rules-scan, type: agent }
-      - { name: decompose, worker: plan-decompose, type: agent }
+      - { name: discover, use: { type: agent, name: plan-discover } }
+      - { name: rules-scan, use: { type: agent, name: plan-rules-scan } }
+      - { name: decompose, use: { type: agent, name: plan-decompose } }
   refine:
     steps:
-      - { name: plan-check, worker: refine-plan-check, type: agent }
-      - { name: rules-check, worker: refine-rules-check, type: agent }
-      - { name: walk, worker: walk, type: skill, involve: high-only }
+      - { name: plan-check, use: { type: agent, name: refine-plan-check } }
+      - { name: rules-check, use: { type: agent, name: refine-rules-check } }
+      - { name: walk, use: { type: skill, name: walk }, involve: high-only }
   build:
     each: phase # intrinsic — fixed per tier (task→phase)
     stop:
@@ -46,8 +49,8 @@ task:
     retry_limit: 3
   wrap:
     steps:
-      - { name: review, worker: wrap-review, type: agent }
-      - { name: summarize, worker: wrap-summarize, type: agent }
+      - { name: review, use: { type: agent, name: wrap-review } }
+      - { name: summarize, use: { type: agent, name: wrap-summarize } }
   fields:
     schema_version: int
     slug: kebab | nested
@@ -63,13 +66,13 @@ task:
 epic:
   plan:
     steps:
-      - { name: discover, worker: plan-discover, type: agent }
-      - { name: scaffold, worker: epic-scaffold, type: agent }
+      - { name: discover, use: { type: agent, name: plan-discover } }
+      - { name: scaffold, use: { type: agent, name: epic-scaffold } }
   refine:
     steps:
-      - { name: epic-plan-check, worker: epic-plan-check, type: agent }
-      - { name: epic-decompose, worker: epic-decompose, type: agent }
-      - { name: walk, worker: walk, type: skill, involve: high-only }
+      - { name: epic-plan-check, use: { type: agent, name: epic-plan-check } }
+      - { name: epic-decompose, use: { type: agent, name: epic-decompose } }
+      - { name: walk, use: { type: skill, name: walk }, involve: high-only }
   build:
     each: task # intrinsic — fixed per tier (epic→task)
     stop:
@@ -77,7 +80,7 @@ epic:
     retry_limit: 3
   wrap:
     steps:
-      - { name: roll-up, worker: epic-roll-up, type: agent }
+      - { name: roll-up, use: { type: agent, name: epic-roll-up } }
   fields:
     schema_version: int
     slug: kebab
@@ -85,7 +88,7 @@ epic:
     status: plan | drafted | refined | build | wrap | done
     goal: markdown
     context: { plan?, refine?, build?, wrap? }
-    acceptance: list<{ id, text, status, evidence? }>
+    acceptance: list<{ id, text, status, evidence?, reason? }>
     questions: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
     concerns: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
     tasks: list<{ slug, goal, status, depends_on, acceptance_criteria? }>
@@ -94,17 +97,17 @@ epic:
 project:
   plan:
     steps:
-      - { name: discover, worker: plan-discover, type: agent }
-      - { name: scaffold, worker: project-scaffold, type: agent }
+      - { name: discover, use: { type: agent, name: plan-discover } }
+      - { name: scaffold, use: { type: agent, name: project-scaffold } }
   refine:
     steps:
-      - { name: walk, worker: walk, type: skill, involve: high-only }
+      - { name: walk, use: { type: skill, name: walk }, involve: high-only }
   build:
     each: epic # intrinsic — fixed per tier (project→epic)
     retry_limit: 3
   wrap:
     steps:
-      - { name: roll-up, worker: project-roll-up, type: agent }
+      - { name: roll-up, use: { type: agent, name: project-roll-up } }
   fields:
     schema_version: int
     slug: kebab
@@ -112,7 +115,7 @@ project:
     status: plan | drafted | refined | build | wrap | done
     goal: markdown
     context: { plan?, refine?, build?, wrap? }
-    acceptance: list<{ id, text, status, evidence? }>
+    acceptance: list<{ id, text, status, evidence?, reason? }>
     questions: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
     concerns: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
     epics: list<{ slug, goal, status, depends_on, acceptance_criteria? }>

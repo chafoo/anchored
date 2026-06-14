@@ -11,26 +11,22 @@ export const TierNameSchema = z.enum(tierNames)
 
 const StepType = z.enum(['agent', 'skill'])
 const InvolveLevel = z.enum(['all', 'high-only', 'none'])
+const Execute = z.enum(['sequential', 'workflow'])
+const StepUseSchema = z.strictObject({ type: StepType, name: z.string().min(1) })
 
-// A step is a built-in reference (bare name, or name + inline worker), a run step, or a
-// walk step. The XOR keeps a step from being both a privileged worker AND a `run` (a user
-// override that smuggled `run` onto the `implement` slot would run arbitrary shell).
+// A step (requirements-3): prose for the main thread (`instructions`), an optional worker
+// (`use: {type, name}`), an optional fan-out mode (`execute`). No `run` (a command goes in
+// prose, never an enforced shell), no bare `worker`/`type` (folded into `use`). `involve` is
+// the walk-only q&a knob; `before`/`after` are merge anchors.
 export const StepSchema: z.ZodType<Step> = z
   .strictObject({
     name: z.string().min(1),
-    worker: z.string().optional(),
-    type: StepType.optional(),
-    run: z.string().optional(),
+    instructions: z.string().optional(),
+    use: StepUseSchema.optional(),
+    execute: Execute.optional(),
     involve: InvolveLevel.optional(),
     before: z.string().optional(),
     after: z.string().optional(),
-    instructions: z.string().optional(),
-  })
-  .refine((s) => !(s.run !== undefined && s.worker !== undefined), {
-    error: 'a step has at most one of worker | run',
-  })
-  .refine((s) => s.type === undefined || s.worker !== undefined, {
-    error: 'type (agent|skill) is only valid on a worker step',
   })
   .refine((s) => s.involve === undefined || s.name === 'walk', {
     error: 'involve is only valid on a walk step',
@@ -42,14 +38,14 @@ export const StepSchema: z.ZodType<Step> = z
 const StepList = z.array(StepSchema)
 const Stage = z.strictObject({ steps: StepList.optional() })
 
-// build additionally carries the fractal loop edge (each) + stop/retry_limit (bounded so a
-// config can't request a runaway loop).
+// build additionally carries the fractal loop edge (each) + stop/retry_limit. There is NO
+// loop-parallelism flag here — whether the children run sequentially or several at once is
+// plugin orchestration via depends_on (requirements-3), not config. `execute` lives on a step.
 const BuildStage = z.strictObject({
   steps: StepList.optional(),
   each: TierNameSchema.optional(),
   stop: z.array(z.string()).optional(),
   retry_limit: z.number().int().min(1).max(20).optional(),
-  mode: z.enum(['sequential', 'workflow']).optional(),
 })
 
 // fields = the data-model shape per tier (policy). Values are descriptive type-strings in

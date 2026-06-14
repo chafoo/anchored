@@ -13,7 +13,7 @@ const DEFAULT = `
 task:
   build:
     steps:
-      - { name: implement, worker: build-implement, type: agent }
+      - { name: implement, use: { type: agent, name: build-implement } }
     each: phase
     retry_limit: 3
 `

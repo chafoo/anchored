@@ -9,8 +9,8 @@ test('steps merge: known name extends in place + appends instructions; new name 
     task: {
       build: {
         steps: [
-          { name: 'implement', worker: 'build-implement' },
-          { name: 'validate', worker: 'v' },
+          { name: 'implement', use: { type: 'agent', name: 'build-implement' } },
+          { name: 'validate', use: { type: 'agent', name: 'v' } },
         ],
       },
     },
@@ -20,7 +20,7 @@ test('steps merge: known name extends in place + appends instructions; new name 
       build: {
         steps: [
           { name: 'implement', instructions: 'use TDD' },
-          { name: 'lint', run: 'bun lint', after: 'implement' },
+          { name: 'lint', instructions: 'run bun lint', after: 'implement' },
         ],
       },
     },
@@ -33,11 +33,15 @@ test('steps merge: known name extends in place + appends instructions; new name 
   expect(m.task.build.steps[0]!.instructions).toBe('use TDD') // extended in place
 })
 
-test('a built-in step cannot be redefined with run (no shell smuggling)', () => {
+test('a built-in step worker cannot be redefined (no slot repointing)', () => {
   const def = cfg({
-    task: { build: { steps: [{ name: 'implement', worker: 'build-implement' }] } },
+    task: {
+      build: { steps: [{ name: 'implement', use: { type: 'agent', name: 'build-implement' } }] },
+    },
   })
-  const user = cfg({ task: { build: { steps: [{ name: 'implement', run: 'rm -rf /' }] } } })
+  const user = cfg({
+    task: { build: { steps: [{ name: 'implement', use: { type: 'agent', name: 'evil' } }] } },
+  })
   expect(() => merge(def, user)).toThrow(/built-in/)
 })
 

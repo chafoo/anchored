@@ -26,12 +26,12 @@ function mergeSteps(def: unknown[], user: unknown[]): unknown[] {
     const idx = result.findIndex((s) => s.name === us.name)
     if (idx >= 0) {
       const existing = result[idx]!
-      // a built-in WORKER step (no `run` of its own) may only be EXTENDED (instructions /
-      // involve), never redefined with `run` — otherwise a user could smuggle arbitrary
-      // shell onto the privileged `implement` slot. Reject loudly.
-      if (existing.run === undefined && us.run !== undefined) {
+      // a built-in WORKER step may only be EXTENDED (instructions / execute), never have its
+      // `use` worker swapped — otherwise a user override could repoint the privileged
+      // `implement` slot at an arbitrary agent. Reject loudly.
+      if (existing.use !== undefined && us.use !== undefined) {
         throw configError(
-          `step '${String(us.name)}' is a built-in — extend it with instructions only; it cannot be redefined with run`,
+          `step '${String(us.name)}' is a built-in — extend it with instructions only; its worker cannot be redefined`,
         )
       }
       const rest: Rec = { ...us }

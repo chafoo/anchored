@@ -9,13 +9,13 @@ const DEFAULT = `
 task:
   build:
     steps:
-      - { name: implement, worker: build-implement, type: agent }
+      - { name: implement, use: { type: agent, name: build-implement } }
     each: phase
     retry_limit: 3
 epic:
   plan:
     steps:
-      - { name: scaffold, worker: epic-scaffold, type: agent }
+      - { name: scaffold, use: { type: agent, name: epic-scaffold } }
 `
 
 function inMemoryFs() {
@@ -73,17 +73,17 @@ test('create + get a task end to end', async () => {
   expect((last(out).result as { slug: string }).slug).toBe('my-task')
 })
 
-// a2 — the build stage plan carries the template steps (worker inline) + the loop edge
+// a2 — the build stage plan carries the template steps (worker inline via `use`) + the loop edge
 test('task build returns the template-driven plan', async () => {
   const { cli, out } = makeCli()
   await cli.run(['task', 'create', 'my-task'])
   await cli.run(['task', 'build', 'my-task'])
   const plan = last(out).result as {
-    steps: { worker?: string }[]
+    steps: { use?: { name?: string } }[]
     each?: string
     node: { slug: string }
   }
-  expect(plan.steps[0]!.worker).toBe('build-implement')
+  expect(plan.steps[0]!.use?.name).toBe('build-implement')
   expect(plan.each).toBe('phase')
   expect(plan.node.slug).toBe('my-task')
 })

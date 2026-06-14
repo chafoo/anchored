@@ -3,16 +3,25 @@
 // SERVE the steps + custom fields. The step order + the worker per step are DATA in the
 // template — `steps()` is a trivial accessor, there is no plan algorithm. Interface-only.
 
-/** One step in a stage — pure DATA (the worker ref is INLINE, not resolved by code). */
+/** A step's worker: the plugin agent/skill to spawn, with how to dispatch it. Inline template
+ *  DATA — there is no worker-dispatch code; the skill reads `use` and spawns it. */
+export interface StepUse {
+  type: 'agent' | 'skill' // agent = isolated subagent (Task tool); skill = in-session skill
+  name: string // the plugin agent/skill to spawn
+}
+
+/** One step in a stage — pure DATA (the worker ref is INLINE, not resolved by code).
+ *  requirements-3 shape: prose for the main thread (`instructions`), an optional worker
+ *  (`use`), an optional fan-out mode (`execute`). No `run` (say it in prose); no bare
+ *  `worker`/`type` (folded into `use`). */
 export interface Step {
   name: string
-  worker?: string // the plugin agent/skill to spawn (inline template data)
-  type?: 'agent' | 'skill' // how to dispatch the worker (walk is a skill)
-  run?: string // a bash command
-  involve?: 'all' | 'high-only' | 'none' // the q&a walk style (walk step)
+  instructions?: string // prose for the main thread (incl. "run npm test" — replaces `run:`)
+  use?: StepUse // the worker to spawn (agent or skill)
+  execute?: 'sequential' | 'workflow' // default sequential; workflow = fan this step out
+  involve?: 'all' | 'high-only' | 'none' // the q&a walk style (walk step only)
   before?: string // merge: insert this user step before a built-in
   after?: string // merge: insert after a built-in
-  instructions?: string
 }
 
 /** A resolved tier/stage step plan — the menu a skill reads + executes. The loop edge
