@@ -1,7 +1,7 @@
 // store/questions/questions.ts — question helpers (pure). add assigns a sequential id +
 // status open; resolve sets answer/source/reasoning + status resolved. An
 // AI-resolved question MUST carry reasoning (the decision-trail invariant).
-import { anchoredError } from '../../../error.js'
+import { anchoredError } from '../../../lib/utils/error.js'
 
 export interface Question {
   id: string

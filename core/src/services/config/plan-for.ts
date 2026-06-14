@@ -7,7 +7,7 @@
 import { createResolveSteps } from './resolve-steps/resolve-steps.js'
 import { createWorkerDispatch } from './worker-dispatch/worker-dispatch.js'
 import type { Step } from './step.js'
-import type { PlanStep, StepPlan } from '../../contracts/config.js'
+import type { PlanStep, StepPlan } from '../../lib/contracts/config.js'
 
 interface BuildCfg {
   stop?: string[]

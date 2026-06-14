@@ -10,7 +10,7 @@ import {
   assertEpicAcHasEvidence,
   assertNodeCompletable,
 } from '../invariants/invariants.js'
-import { anchoredError, type AnchoredError } from '../../../error.js'
+import { anchoredError, type AnchoredError } from '../../../lib/utils/error.js'
 import {
   nextChild as nextChildOf,
   readyChildren as readyChildrenOf,

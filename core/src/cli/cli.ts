@@ -9,7 +9,7 @@ import { refineCommand } from './commands/stage/refine.js'
 import { buildCommand } from './commands/stage/build.js'
 import { wrapCommand } from './commands/stage/wrap.js'
 import { stepsCommand } from './commands/stage/steps.js'
-import type { StepPlan } from '../contracts/config.js'
+import type { StepPlan } from '../lib/contracts/config.js'
 import { archiveCommand } from './commands/lifecycle/archive.js'
 import { resetCommand } from './commands/lifecycle/reset.js'
 // The slug-based facade surface the CLI drives — defined in the store where

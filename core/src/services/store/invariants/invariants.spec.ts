@@ -5,7 +5,7 @@ import {
   assertEpicAcHasEvidence,
   assertNodeCompletable,
 } from './invariants.js'
-import { type AnchoredError } from '../../../error.js'
+import { type AnchoredError } from '../../../lib/utils/error.js'
 import { AcceptanceCriterion } from '../../../domain/tiers/phase.js'
 
 // a1 — assertAcDoneHasEvidence throws without evidence, no-op with

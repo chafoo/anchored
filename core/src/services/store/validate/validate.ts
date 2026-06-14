@@ -5,8 +5,8 @@
 // plan resolves and gives the user / setup-skill a readable summary of what their
 // (possibly very large) yml actually expands to — the verifier the setup-skill runs
 // as its final check.
-import type { StepPlan } from '../../../contracts/config.js'
-import { STAGES } from '../../../services/config/stages.js'
+import type { StepPlan } from '../../../lib/contracts/config.js'
+import { STAGES } from '../../../lib/constants/stages.js'
 
 const TIERS = ['phase', 'task', 'epic'] as const
 

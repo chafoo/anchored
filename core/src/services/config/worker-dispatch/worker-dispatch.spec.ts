@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { createWorkerDispatch } from './worker-dispatch.js'
 import { createResolveSteps } from '../resolve-steps/resolve-steps.js'
-import { STAGES } from '../stages.js'
+import { STAGES } from '../../../lib/constants/stages.js'
 
 const NAMES = [
   'implement',

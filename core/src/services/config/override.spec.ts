@@ -6,7 +6,7 @@ import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { createAnchored } from '../../index.js'
-import type { StepPlan } from '../../contracts/config.js'
+import type { StepPlan } from '../../lib/contracts/config.js'
 
 const DEFAULT_YML = readFileSync(
   new URL('../../../default-template/anchored.default.yml', import.meta.url),

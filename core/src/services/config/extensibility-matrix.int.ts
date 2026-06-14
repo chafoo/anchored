@@ -14,7 +14,7 @@ import { extendSchemaWithFields } from '../../services/config/config-schema/cust
 import { PhaseNodeSchema } from '../../domain/tiers/phase.js'
 import { TaskNodeSchema } from '../../domain/tiers/task.js'
 import { EpicNodeSchema } from '../../domain/tiers/epic.js'
-import { STAGES } from '../../services/config/stages.js'
+import { STAGES } from '../../lib/constants/stages.js'
 
 const TIERS = ['phase', 'task', 'epic'] as const
 

@@ -5,7 +5,7 @@
 // to .claude/settings.local.json so the CLI calls (incl. background workflows) run
 // without a permission prompt. Both writes are idempotent and go through the
 // injected io seam — no direct node:fs in this logic. Factory, fakeable.
-import { anchoredError } from '../../error.js'
+import { anchoredError } from '../../lib/utils/error.js'
 
 export interface InitDeps {
   io: {

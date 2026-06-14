@@ -2,7 +2,7 @@
 // without evidence. Enforced at the DATA MODEL (the store's write path), never in a
 // (skippable) step. Pure predicates + throwing asserts with the shared typed error;
 // store-internal. The error primitive itself lives in src/error.ts (shared).
-import { anchoredError } from '../../../error.js'
+import { anchoredError } from '../../../lib/utils/error.js'
 
 /** A piece of evidence counts only if it is a non-empty, non-sentinel string. */
 export function isEvidenceFilled(evidence: unknown): boolean {

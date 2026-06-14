@@ -2,8 +2,8 @@
 // step plan resolves and surfaces the declared custom fields.
 import { test, expect } from 'bun:test'
 import { createValidator } from './validate.js'
-import type { StepPlan } from '../../../contracts/config.js'
-import { STAGES } from '../../../services/config/stages.js'
+import type { StepPlan } from '../../../lib/contracts/config.js'
+import { STAGES } from '../../../lib/constants/stages.js'
 
 test('validate reports every tier×stage + the declared custom fields', () => {
   const config = {
