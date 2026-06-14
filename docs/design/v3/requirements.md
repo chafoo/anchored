@@ -4,10 +4,14 @@ Decision record for the v3 rewrite. Companion to `architecture.md` (the code lay
 and `api.md` (the CLI surface). This file captures the **why** + the binding rules we
 agreed; `architecture.md` reflects the resulting structure.
 
-> **⚠️ See `requirements-2.md` for the next iteration on the `cli/` internal structure.**
-> The four-layer model below (`lib → modules → services → cli`) still holds; v2 refines
-> only how `cli/` is organised internally (orchestrators-only, `createTier(condition)`).
-> The shipped `cli/` with `node-router/` + `commands/` is v2 ballast, not the target.
+> **⚠️ `requirements-2.md` is the current authoritative model — read it first.**
+> The four-layer tree below (`lib → modules → services → cli`), contracts-as-seams, the
+> universal evidence invariant, and 100% coverage still hold. But v2 **supersedes rule 6**
+> (the "generic verb kernel fed pure-data conditions"): modules become **active factories**
+> (`createEpic(deps)`) that own their verbs and receive services by dependency injection;
+> the generic kernel shrinks to a `store.for(condition) → { read, mutate }` primitive, and
+> `cli/` collapses to assembly. The shipped code (pure bundles + `node-store` kernel +
+> `node-router`/`commands/`) is the migration source, **not** the target.
 
 ## The shape: four layers, dependency one-way
 
@@ -66,11 +70,15 @@ functions) and a service tier-agnostic.
    tier-specific completability) belongs in a module. Do not copy the evidence invariant
    four times.
 
-6. **The verb mechanics are generic; the verb *surface* is module-declared.** The
-   mutation mechanics (read→transform→validate→atomic-write, addChild/addAc via the
-   descriptor's child-field) live once in the generic service. WHICH verbs a tier exposes
-   (epic→`child`, phase→`ac`) is part of the module's condition bundle; the orchestrator
-   reads it to know the cli surface for `<tier>`.
+6. **The verb mechanics are generic; the verb *surface* is module-declared.**
+   **⚠️ SUPERSEDED by `requirements-2.md`.** v1 put ALL verb mechanics in one generic
+   kernel fed pure-data conditions. v2 reverses this: only the read→transform→validate→
+   atomic-write RMW stays generic (`store.for(condition) → { read, mutate }`); the
+   per-verb *transforms* move into each tier's **factory** (`createEpic`), so
+   tier-specifics (roll-up, stub-vs-AC) are encapsulated, not branched in a god-function.
+   _(original v1 text:)_ The mutation mechanics live once in the generic service; WHICH
+   verbs a tier exposes is part of the module; the orchestrator reads it for the `<tier>`
+   surface.
 
 7. **100% test coverage — non-negotiable.** Every runtime file under `modules/` and
    `services/` (and `lib/`) carries a colocated test (`*.spec.ts` unit / `*.int.ts` /
