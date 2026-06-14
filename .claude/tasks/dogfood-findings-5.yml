@@ -1,0 +1,508 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/chafoo/anchored/main/plugin/references/schema/task-file-v2.schema.json
+schema_version: 2
+slug: dogfood-findings-5
+status: refined
+created: 2026-06-13
+title: Dogfood Findings 5 — Epic-Run Fixes (Substrate, CLI, Voice, Orchestration, Packaging)
+context:
+  intro: >-
+    A fresh `/a:plan epic` dogfood run in `anchored-test` (2026-06-14) surfaced nine concrete
+    weaknesses across four layers: substrate/engine (core/), plugin prose/conversation quality
+    (plugin/), orchestration/steps, and packaging/setup. Evidence anchors per finding; full note in
+    `.claude/temp/dogfood-findings-5.md`.
+
+
+    WHAT EXISTS: Path derivation is flat today (`core/src/index.ts:158` `pathFor` →
+    `${projectRoot}/.claude/tasks/${slug}.yml`, no tier branching), while `core/src/io/io.ts:41` can
+    already nested-mkdir and `core/src/epic-tier.int.ts:26-27` already expects nested
+    `.claude/tasks/<epic>/<slug>.yml` — code lags the expectation. The node CLI
+    (`core/src/cli/commands/node/node.ts`) has a broad verb set but lacks `set-ac-text`,
+    `remove-ac`, `set-phase-context` and a `rename` verb — in the run the session fell back to MCP
+    because of this (forbidden per cli-only-transport) and failed. Custom-field plumbing is
+    surprisingly already present in code (`core/src/domain/config-schema/custom-fields.ts`
+    `extendSchemaWithFields`, wired in `index.ts:172-178`) — this contradicts the discovery
+    assumption "still strict" and must be verified rather than blindly rebuilt. Voice references
+    (`plugin/references/communication-style.md`, `question-style.md`) exist and are linked, the
+    static `plugin/scripts/guard-prose.sh` is green — but it only checks file text, not runtime
+    agent output.
+
+
+    WHAT IS MISSING: tier-aware `pathFor` logic (epic → own folder + `_<slug>.yml`); the four
+    missing CLI verbs; an `executor`/fan-out default in the default-template (`anchored.default.yml`
+    has no `executor` field today); separate walk-style capture per tier in refine; a runtime guard
+    against jargon leak plus de-jargoned skill/agent prose; correct wrap-step ordering (audit-commit
+    after the done-flip, not before); and a packaged `plugin/bin/anchored` shim (directory missing,
+    visible as `?? plugin/bin/` in git-status).
+  plan: >-
+    - Ordering is deliberate: substrate/CLI first, because the plugin-prose guard (F7) couples to
+    green tests beneath it and skill edits (F6/F7) break the exact string assertions in
+    guard-prose.sh + workflow-smoke.spec.ts (Plugin-Prose-Test-Coupling) — those must be carried
+    along.
+
+    - F4 (custom-field plumbing) appears already solved in code:
+    `core/src/domain/config-schema/custom-fields.ts` extends the strict tier schema with declared
+    `task.phase.fields`, and `index.ts:172-178` threads `fieldsByTier` through. Discovery said
+    "still strict" — contradiction open (see question). The phase treats F4 as verify-or-fix, not a
+    rebuild.
+
+    - Mechanism-vs-policy cut (fractal-substrate-integrity): F1 path logic + F3 rename mechanics +
+    F4 schema threading are Mechanism (code); F5 fan-out default is Policy (template); F5 executor
+    dispatch is Mechanism (seam in `core/src/orchestration/`).
+
+    - Single-file CLI `node.ts` gains companions (new verbs + colocated spec) → migrates to folder
+    `node/` + `node.ts` + `node.spec.ts` per colocation-and-naming.
+
+    - F7 has TWO levers (de-jargon prose + runtime guard) that are separately scopeable; the v1 diff
+    `/Users/jack/Dev/anchored/plugin/references/communication-style.md` is the reference for the
+    stronger self-check loop.
+
+    - F5 default is unproven per the run (the independent-tasks parallel case never occurred) — the
+    rolling-wave vs. full-parallelism tension (Epic-Rolling-Wave-Execution) must be resolved.
+  build:
+    refine: >-
+      ## Refine (2026-06-14) — walk-style: all-together, all 10 questions answered by user
+
+
+      **plan-check verdict: needs-attention.** Grounding corrected four stale Explore anchors +
+      re-scoped two findings that are further along in code than the draft assumed:
+
+      - `io.ts` is at `core/src/store/io/io.ts` (not `core/src/io/io.ts`).
+
+      - `core/src/cli/commands/node/` is ALREADY a folder with colocated `node.spec.ts` — F2 extends
+      it, no migration.
+
+      - There is NO `workflow-smoke.spec.ts` in the repo — `guard-prose.sh` is the only plugin-prose
+      gate (it already carries a ~13-term jargon-mapping section). The walk-style + jargon ACs were
+      corrected accordingly.
+
+      - `plugin/bin/anchored` already EXISTS (untracked) with a hardcoded `/Users/jack/...` path +
+      `#!/bin/sh` — F9 narrowed to portability + tracking + packaging.
+
+      - F4 custom-fields: `extendSchemaWithFields` is wired (`custom-fields.ts` →
+      `index.ts:172-178`) → verify-only.
+
+      - F5 fan-out: per-phase fan-out already live (refine-SKILL + `set-executor`); `ready-children`
+      exists in `core/src/store/children/children.ts` → phase re-scoped to the epic-task wave
+      default + wiring the serial build loop onto `ready-children`.
+
+      - F8 audit-flip: lives in the wrap-SKILL prose + after-flip `instructions` mechanism, NOT the
+      default-template wrap sequence.
+
+
+      **rules-check verdict: needs-attention.** Added `.claude/rules/test-file-naming.md` to the 5
+      phases that write a new test (epic-folder-layout, cli-verb-gaps, rename-and-custom-fields,
+      fanout-default, audit-trail-flip-order). No orphaned refs, no cross-phase conflicts.
+
+
+      **Q&A walk (all-together):** all 10 questions resolved by user — F4 verify-only, rename
+      full-migration (file + _epic.yml refs), F5 rolling-wave (parallel within a wave, serial on
+      depends_on), F7 all tokens in user-facing prose + extended static scan guard, F8 wrap-SKILL
+      after-flip step, F9 relative shim + node shebang, F1 tier-aware pathFor with
+      standalone-stays-flat + no auto-migration of old epics, set-ac-text by id.
+
+
+      **Parallelism note (plan-check):** bin-shim-packaging, audit-trail-flip-order,
+      walk-style-per-tier touch disjoint surfaces — parallel candidates. cli-verb-gaps must precede
+      rename-and-custom-fields (consumes the rename verb); epic-folder-layout should precede
+      rename's file-migration AC.
+phases:
+  - name: Epic Folder Layout
+    slug: epic-folder-layout
+    status: pending
+    context: "Make `pathFor` (`core/src/index.ts:158`) tier-aware: epic → own folder
+      `tasks/<epic-slug>/_<epic-slug>.yml`, child task-files alongside in the same folder
+      (`tasks/<epic-slug>/<task-slug>.yml`). `io.ts:41` already does nested-mkdir. Reconcile with
+      `docs/design/file-structure.md:68-72` (nested-slug canonical) and
+      `core/src/epic-tier.int.ts:26-27` (test already expects nested).
+      `plugin/agents/epic-scaffold.md` writes stubs into the `_epic.yml` — check the path convention
+      there. Epic-Plan-No-Task-Files, No-Numbered-Task-Files."
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Path derivation + scaffold layout is Mechanism (code, fixed tier mechanics) — belongs in
+          deterministic pathFor logic, not the template.
+      - path: .claude/rules/factory-functions.md
+        why: pathFor is an injected seam (deps.pathFor); the tier branch must flow through factory deps, not
+          a direct import.
+      - path: .claude/rules/colocation-and-naming.md
+        why: new path helpers get a colocated spec + live in the right folder rather than bare index logic.
+      - path: .claude/rules/test-file-naming.md
+        why: AC3 adds a new test for the epic-folder derivation — needs the correct kind-suffix (real-fs
+          path derivation leans int/e2e), colocation next to subject, and inclusion in the bunfig
+          glob.
+      - path: .claude/rules/tooling-quality-gates.md
+        why: layout change must keep epic-tier.int.ts green + lint/format/typecheck/build clean.
+    acceptance_criteria:
+      - text: "`pathFor` branches by tier: an epic slug → `.claude/tasks/<epic-slug>/_<epic-slug>.yml`, a
+          task slug under an epic → `.claude/tasks/<epic-slug>/<task-slug>.yml`."
+        status: pending
+      - text: "`core/src/epic-tier.int.ts` runs green without modification (test already expects nested
+          paths)."
+        status: pending
+      - text: A new test explicitly covers the epic-folder derivation (epic file with `_` prefix matching
+          the folder name).
+        status: pending
+      - text: "`docs/design/file-structure.md` and code agree on the nested form (docs updated if needed)."
+        status: pending
+      - text: "Quality gates green: lint, format, typecheck, test, build."
+        status: pending
+  - name: CLI Verb Gaps (set-ac-text, remove-ac, set-phase-context, rename)
+    slug: cli-verb-gaps
+    status: pending
+    context: "Add the missing node verbs in `core/src/cli/commands/node/node.ts`: `set-ac-text`,
+      `remove-ac`, `set-phase-context` and `rename` (rename a node slug after creation; `--slug` on
+      `plan` already exists, what's missing is post-creation rename). `set-ac-text` was the concrete
+      trigger of the MCP fallback in the run. Goal: never a reason to reach for MCP
+      (cli-only-transport). Single-file `node.ts` gains companions → folder + colocated spec
+      (colocation-and-naming)."
+    rules:
+      - path: .claude/rules/cli-only-transport.md
+        why: exactly these verb gaps forced the session to MCP; closing them is the core constraint of this
+          rule.
+      - path: .claude/rules/factory-functions.md
+        why: new verbs hang off the createX(cfg,deps) CLI factory, ops over the injected ops seam — no
+          direct effect imports.
+      - path: .claude/rules/colocation-and-naming.md
+        why: node.ts already lives in core/src/cli/commands/node/ with a colocated node.spec.ts — new verbs
+          extend the existing folder + spec, no migration needed.
+      - path: .claude/rules/test-file-naming.md
+        why: AC5 adds a colocated *.spec.ts per new verb — the unit kind-suffix and
+          colocation-next-to-subject placement are governed by this rule.
+      - path: .claude/rules/tooling-quality-gates.md
+        why: new verbs need green specs + clean gates before done.
+    acceptance_criteria:
+      - text: "`anchored node set-ac-text <node> <ac-id> <text>` sets the text of an acceptance criterion
+          and returns JSON."
+        status: pending
+      - text: "`anchored node remove-ac <node> <ac-id>` removes an acceptance criterion."
+        status: pending
+      - text: "`anchored node set-phase-context <node> <phase-slug> <markdown>` sets the phase context."
+        status: pending
+      - text: "`anchored node rename <old-slug> <new-slug>` renames the node slug after creation."
+        status: pending
+      - text: Each new verb has a colocated `*.spec.ts` covering the happy path + at least one error case.
+        status: pending
+      - text: "Quality gates green: lint, format, typecheck, test, build."
+        status: pending
+  - name: Slug Rename Migration + Custom Field Plumbing
+    slug: rename-and-custom-fields
+    status: pending
+    context: "Two substrate concerns touching the `rename` verb (phase cli-verb-gaps delivers the verb
+      surface) and schema threading. RENAME: whether a slug rename also migrates the file paths
+      (rename the file / move it within the epic) or only changes the node's slug field — and
+      whether it carries references in the `_epic.yml` (`tasks[].slug`, `depends_on`). CUSTOM
+      FIELDS: discovery said \"strict → Unrecognized key\", but the code already has
+      `extendSchemaWithFields` (`core/src/domain/config-schema/custom-fields.ts`), wired in
+      `index.ts:172-178` for task/epic/phase. This phase is verify-or-fix: reproduce whether
+      `task.phase.fields` (e.g. commit_sha) already passes through today; if yes → lock with a
+      regression test, if no → close the gap without breaking the invariant
+      (fractal-substrate-integrity)."
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: custom fields are Policy but must reach the substrate without weakening the strict validation /
+          the ac-evidence invariant; rename migration is tier mechanics (Mechanism).
+      - path: .claude/rules/factory-functions.md
+        why: schema extension + file migration run through the substrate/ops factory, not freestanding
+          functions with FS side effects.
+      - path: .claude/rules/cli-only-transport.md
+        why: rename migration mutates task/epic files — must go through the validating CLI/ops, no raw
+          Write/Edit.
+      - path: .claude/rules/test-file-naming.md
+        why: AC1 adds a regression test for custom-field pass-through (and rename-depth coverage) — its
+          kind-suffix and colocation are governed here.
+      - path: .claude/rules/tooling-quality-gates.md
+        why: verify-or-fix ends with a green regression test + gates.
+    acceptance_criteria:
+      - text: "A test proves: a `phase.fields.<x>` (e.g. commit_sha) declared in `anchored.yml` validates on
+          read + write instead of 'Unrecognized key'."
+        status: pending
+      - text: The custom-field path is secured against the behavior of the chosen rename-migration depth
+          (see open question on rename scope).
+        status: pending
+      - text: Slug rename behaves consistently per the decided migration depth (node field and/or file path
+          and/or epic references).
+        status: pending
+      - text: "Quality gates green: lint, format, typecheck, test, build."
+        status: pending
+  - name: Fan-out Default in Template + Epic Waves
+    slug: fanout-default
+    status: pending
+    context: "Anchor fan-out as the default: parallel where work is independent, serial only on a real
+      `depends_on` dependency. `anchored.default.yml` has NO `executor` field on `phase.build` today
+      and no declared wave-parallelism for epic `build.each: task`. Default-setting = Policy
+      (template); executor dispatch = Mechanism (seam in `core/src/orchestration/`).
+      `plugin/skills/refine/SKILL.md:137-166` sets phase-executor task-tier only;
+      `plugin/skills/build/SKILL.md:173-206` does epic task-level fan-out manually. Resolve the
+      rolling-wave vs. full-parallelism tension (Epic-Rolling-Wave-Execution)."
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: the parallelism DEFAULT is Policy (belongs in default-template), the executor DISPATCH is
+          Mechanism (orchestration code) — anchor both halves in the right place.
+      - path: .claude/rules/factory-functions.md
+        why: executor is an injected seam; dispatch runs through deps, fakeable in test.
+      - path: .claude/rules/test-file-naming.md
+        why: AC3 adds a new test proving parallel-vs-serial dispatch — multi-module orchestration wired
+          in-memory leans *.int.ts; kind-suffix + bunfig-glob placement governed here.
+      - path: .claude/rules/tooling-quality-gates.md
+        why: template + orchestration change must keep existing specs green.
+    acceptance_criteria:
+      - text: "`anchored.default.yml` declares a fan-out/parallel default on phase.build and epic
+          build.each: task (parallel as default, serial only on depends_on)."
+        status: pending
+      - text: "`docs/design/anchored.default.yml` is in sync with the default-template change."
+        status: pending
+      - text: "A test proves: independent units (no depends_on edge) are dispatched in parallel, dependent
+          ones serially."
+        status: pending
+      - text: "Quality gates green: lint, format, typecheck, test, build."
+        status: pending
+  - name: Split Walk-Style per Tier
+    slug: walk-style-per-tier
+    status: pending
+    context: "Make epic-walk and task-walk two separate decisions, asked separately (in the run they
+      were pulled into ONE question — the user had to manually add \"don't answer the tasks'
+      questions myself\"). Affects `plugin/skills/refine/SKILL.md:87-107` (epic-wide question
+      policy) and `plugin/skills/build/SKILL.md:93-102` (\"do NOT re-ask the walk-style per
+      child\"). `plugin/references/question-style.md`: one question = one decision. CAUTION:
+      guard-prose.sh + workflow-smoke.spec.ts assert on exact strings (Plugin-Prose-Test-Coupling) —
+      edits must carry the assertions along."
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: skill-prose edit breaks workflow-smoke.spec.ts exact string assertions; the phase must carry
+          the tests along and keep them green.
+    acceptance_criteria:
+      - text: refine asks epic-walk-style and task-walk-style as two separate decisions (one axis per
+          question).
+        status: pending
+      - text: An answer at the epic tier does not auto-set the task-tier walk-style.
+        status: pending
+      - text: "`guard-prose.sh` is green after the prose change (its exact-string assertions updated to
+          match the new walk-style wording). NOTE: there is no `workflow-smoke.spec.ts` in this repo
+          — `guard-prose.sh` is the only plugin-prose gate."
+        status: pending
+  - name: De-jargon Voice + Runtime Leak Guard
+    slug: jargon-leak-guard
+    status: pending
+    context: 'Two levers together. (a) De-jargon skill/agent prose and/or enforce a binding read-first
+      voice source — v1 diff `/Users/jack/Dev/anchored/plugin/references/communication-style.md` as
+      reference (stronger self-check checklist, rules in the skill text rather than only
+      referenced). Counts in the current state: stub 54x, outcome 39x, roll-up/rollup 31x, fan-out
+      18x, drafted/refined 25x, seam/executor 22x, just-in-time several times. "DAG" is NOT in
+      skills/agents (0x) — comes from LLM general vocabulary. (b) A guard/test against RUNTIME leak;
+      the existing `guard-prose.sh` only checks static file text. Voice sources are NOT under
+      `.claude/rules/`, so the guard/test is the load-bearing constraint here. CAUTION
+      Plugin-Prose-Test-Coupling.'
+    rules:
+      - path: .claude/rules/test-file-naming.md
+        why: the new runtime jargon-guard test needs the correct kind-suffix (spec/int/e2e by what it
+          touches) + colocation + bunfig glob.
+      - path: .claude/rules/tooling-quality-gates.md
+        why: the jargon guard joins the gate set; all prose edits must keep guard-prose.sh + workflow-smoke
+          + the other gates green.
+      - path: .claude/rules/colocation-and-naming.md
+        why: the new guard test lives next to its nearest subject/entry module, not in a separate test tree.
+    acceptance_criteria:
+      - text: A guard/test fails when a defined jargon token reaches user-facing output (not just static
+          file text).
+        status: pending
+      - text: The in-scope jargon tokens (see open question on scope) are replaced with partner-voice
+          equivalents in skill/agent prose.
+        status: pending
+      - text: A binding read-first voice source is wired so every skill/agent is guaranteed to follow it.
+        status: pending
+      - text: "`guard-prose.sh` is green (extended with the new rendered-output scan + its existing
+          jargon-mapping assertions updated). NOTE: there is no `workflow-smoke.spec.ts` —
+          guard-prose.sh is the load-bearing prose gate."
+        status: pending
+      - text: "Quality gates green: lint, format, typecheck, test, build."
+        status: pending
+  - name: Audit-Trail Commit After Done-Flip
+    slug: audit-trail-flip-order
+    status: pending
+    context: "Order the steps so the working tree is clean after the final done-flip. Today the
+      audit-commit runs BEFORE the flip → tree dirty afterwards. Touches the wrap sequence in the
+      default-template and/or the orchestrator flip-timing — which of the two is the fix point is
+      open (see question). The mechanism-vs-policy cut (fractal-substrate-integrity) must be
+      respected: step SEQUENCE is Policy (template), the done-flip + atomic-write is Mechanism
+      (code)."
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: the wrap step sequence + after-flip instructions are Policy (skill/template); the
+          done-flip/atomic-write is Mechanism — the fix lands in the wrap-SKILL after-flip step.
+      - path: .claude/rules/test-file-naming.md
+        why: AC2 adds a new test proving the corrected ordering (clean tree post-flip) — its kind-suffix and
+          colocation are governed here.
+      - path: .claude/rules/tooling-quality-gates.md
+        why: ordering fix must keep existing wrap/orchestration specs green.
+    acceptance_criteria:
+      - text: After the final done-flip the working tree is clean (audit-commit runs after the flip).
+        status: pending
+      - text: A test proves the corrected ordering (no dirty tree post-flip).
+        status: pending
+      - text: "Quality gates green: lint, format, typecheck, test, build."
+        status: pending
+  - name: plugin/bin Shim Packaging
+    slug: bin-shim-packaging
+    status: pending
+    context: "`plugin/bin/anchored` must exist and be packaged. The PATH entry
+      (`/Users/jack/Dev/anchored-v2/plugin/bin`) is there, the directory was missing → the run had
+      to create it by hand (the `?? plugin/bin/` in git-status). Without the shim no agent reaches
+      the CLI. `core/package.json` bin: anchored → `./dist/bin.js`. Shebang `#!/usr/bin/env node`
+      for max compatibility (tooling-quality-gates Node-compat). How the shim points at the built
+      CLI (relative path into core/dist vs. node_modules resolution vs. installed package) is open —
+      see question."
+    rules:
+      - path: .claude/rules/cli-only-transport.md
+        why: without the shim no agent reaches the CLI — the shim is the physical precondition of the
+          cli-only-transport rule.
+      - path: .claude/rules/tooling-quality-gates.md
+        why: shim needs a Node-compatible shebang (#!/usr/bin/env node), no Bun.* API.
+    acceptance_criteria:
+      - text: "`plugin/bin/anchored` is portable (relative resolution into the built `core/dist/bin.js`, NOT
+          a hardcoded `/Users/jack/...` path), git-tracked, and included in the package. (The file
+          already exists as an untracked non-portable shim — this narrows the work to portability +
+          tracking + packaging.)"
+        status: pending
+      - text: The shim has shebang `#!/usr/bin/env node` and is executable.
+        status: pending
+      - text: An agent/skill reaches `anchored <verb>` over PATH without manually creating the directory.
+        status: pending
+questions:
+  - id: q1
+    text: 'F4 (custom-field plumbing) appears already solved in code —
+      `core/src/domain/config-schema/custom-fields.ts` `extendSchemaWithFields` is wired in
+      `index.ts:172-178`. Is that actually the fix (then the phase is pure verification + regression
+      test), or is there a reproducible case that still throws "Unrecognized key"? (lean:
+      verify-or-fix — reproduce first, then only fix if the gap is real)'
+    priority: high
+    origin: plan-agent
+    phase: rename-and-custom-fields
+    status: resolved
+    answer: Verify-only + regression test. Code shows extendSchemaWithFields is wired (custom-fields.ts
+      → index.ts:172-178). First reproduce whether phase.fields (e.g. commit_sha) already passes
+      through today; if yes, lock it with a regression test — no rebuild.
+    source: user
+    created_at: 2026-06-13T22:35:59.955Z
+    resolved_at: 2026-06-13T23:59:13.704Z
+  - id: q2
+    text: "Should `rename` only change the node's slug field, or also migrate the file paths (rename the
+      file / move it inside the epic folder) AND carry references in the `_epic.yml`
+      (`tasks[].slug`, `depends_on`)? (lean: full migration incl. file + epic references — otherwise
+      dangling refs remain, full build no cuts)"
+    priority: high
+    origin: plan-agent
+    phase: rename-and-custom-fields
+    status: resolved
+    answer: "Full migration: change the slug field, rename/move the file inside the epic folder, AND
+      carry the references in _epic.yml (tasks[].slug, depends_on). No dangling refs."
+    source: user
+    created_at: 2026-06-13T22:36:07.479Z
+    resolved_at: 2026-06-13T23:59:15.721Z
+  - id: q3
+    text: "F5 default behavior: full parallelism across independent tasks OR rolling-wave (living SSOT,
+      re-sync between waves) — the two are in tension per Epic-Rolling-Wave-Execution. Which is the
+      default? (lean: rolling-wave waves with parallelism WITHIN a wave, serial only on depends_on —
+      unifies both)"
+    priority: high
+    origin: plan-agent
+    phase: fanout-default
+    status: resolved
+    answer: "Rolling-wave: parallelism WITHIN a wave, serial only on a real depends_on edge. Follows
+      from the F5 re-scope (limit the phase to the epic-task wave default + wiring the serial build
+      loop onto ready-children; per-phase fan-out is already live)."
+    source: user
+    created_at: 2026-06-13T22:36:42.847Z
+    resolved_at: 2026-06-13T23:59:17.877Z
+  - id: q4
+    text: "How far should F7 de-jargoning go — all counted tokens
+      (stub/outcome/roll-up/fan-out/drafted/refined/seam/executor/just-in-time) or only the worst
+      leaks? And does it apply only to user-facing prose or also internal step/example prose? (lean:
+      replace all tokens in user-facing prose, internal mechanism docs may keep the technical
+      terms)"
+    priority: high
+    origin: plan-agent
+    phase: jargon-leak-guard
+    status: resolved
+    answer: Replace all counted jargon tokens
+      (stub/outcome/roll-up/fan-out/drafted/refined/seam/executor/just-in-time) in user-facing
+      prose; internal mechanism docs may keep the technical terms.
+    source: user
+    created_at: 2026-06-13T22:37:15.939Z
+    resolved_at: 2026-06-13T23:59:20.226Z
+  - id: q5
+    text: "Should the F7 runtime guard actually inspect agent output at runtime (e2e against real spawn
+      output) or is an extended static token-scan over the rendered skill/agent outputs in a smoke
+      test enough? (lean: extended smoke/int test rather than expensive real spawn — cheaper and
+      CI-friendly)"
+    priority: medium
+    origin: plan-agent
+    phase: jargon-leak-guard
+    status: resolved
+    answer: "Extended smoke/static scan: grow the existing guard-prose.sh with a scan over the rendered
+      skill/agent outputs. Cheap + CI-friendly; no expensive real-spawn e2e."
+    source: user
+    created_at: 2026-06-13T22:37:18.280Z
+    resolved_at: 2026-06-13T23:59:22.217Z
+  - id: q6
+    text: "Does the F8 fix (audit-commit after done-flip) live in the wrap step-sequence of the
+      default-template or in the orchestrator flip-timing? (lean: at the orchestrator flip-timing,
+      because the done-flip is Mechanism and the sequence itself stays Policy)"
+    priority: medium
+    origin: plan-agent
+    phase: audit-trail-flip-order
+    status: resolved
+    answer: Neither template nor pure orchestrator-timing — plan-check grounding shows the fix lives in
+      the wrap-SKILL prose + the after-flip `instructions` mechanism (plugin/skills/wrap/SKILL.md).
+      Define the audit-commit as a step that runs AFTER the done-flip.
+    source: user
+    created_at: 2026-06-13T22:37:21.048Z
+    resolved_at: 2026-06-13T23:59:24.470Z
+  - id: q7
+    text: "How does the `plugin/bin/anchored` shim reference the built CLI — relative path into
+      `core/dist/bin.js`, node_modules resolution, or a separately installed package? (lean:
+      relative shim onto the built core/dist, since plugin + core live in the same repo)"
+    priority: medium
+    origin: plan-agent
+    phase: bin-shim-packaging
+    status: resolved
+    answer: "Relative shim onto the built core/dist/bin.js + shebang #!/usr/bin/env node. The file
+      already exists with a hardcoded /Users/jack path and #!/bin/sh — make it portable, tracked,
+      and packaged."
+    source: user
+    created_at: 2026-06-13T22:37:23.399Z
+    resolved_at: 2026-06-13T23:59:26.335Z
+  - id: q8
+    text: "For the epic-folder layout (F1): when a task is planned WITHOUT an epic (standalone), does
+      the flat path `tasks/<slug>.yml` remain — or does every task always get a folder? (lean:
+      standalone stays flat, only epics + their children get a folder)"
+    priority: medium
+    origin: plan-agent
+    phase: epic-folder-layout
+    status: resolved
+    answer: Standalone task stays flat (tasks/<slug>.yml); only epics + their children get a folder.
+    source: user
+    created_at: 2026-06-13T22:37:25.760Z
+    resolved_at: 2026-06-13T23:59:27.761Z
+  - id: q9
+    text: "Does F1 auto-migrate existing flat epic files into the new folder layout, or does the layout
+      only apply to newly created epics? (lean: only for new epics — no implicit migration of old
+      artifacts)"
+    priority: medium
+    origin: plan-agent
+    phase: epic-folder-layout
+    status: resolved
+    answer: Only for newly created epics — no implicit migration of existing flat epic files.
+    source: user
+    created_at: 2026-06-13T22:37:27.597Z
+    resolved_at: 2026-06-13T23:59:29.307Z
+  - id: q10
+    text: "For the missing CLI verbs (F2): should `set-ac-text` address the AC by id or by index, to
+      stay consistent with the existing verb style? (lean: by id, consistent with set-ac-status
+      which also goes by id)"
+    priority: low
+    origin: plan-agent
+    phase: cli-verb-gaps
+    status: resolved
+    answer: By id, consistent with set-ac-status (which also addresses by id).
+    source: user
+    created_at: 2026-06-13T22:37:29.503Z
+    resolved_at: 2026-06-13T23:59:30.435Z

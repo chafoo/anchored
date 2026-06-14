@@ -1,14 +1,14 @@
 // schema/tiers/phase.ts — the phase tier descriptor: config-driven FIELDS + fixed
 // MECHANICS (status enum, childTier=Leaf). phase is the leaf — no child tier.
 import { z } from 'zod'
-import { isEvidenceFilled } from '../../services/store/invariants/invariants.js'
+import { isEvidenceFilled } from '../../lib/utils/evidence/evidence.js'
+import { phaseStatusValues, phaseExecutorValues } from '../../lib/constants/statuses.js'
 
-export const phaseStatusValues = ['pending', 'in-progress', 'done', 'blocked', 'deferred'] as const
+export { phaseStatusValues, phaseExecutorValues }
 export const PhaseStatus = z.enum(phaseStatusValues)
 
 // reserved executor field (workflow-mode): optional on the wire, NO injected
 // default — a phase without executor round-trips byte-identical.
-export const phaseExecutorValues = ['implement', 'workflow'] as const
 export const PhaseExecutor = z.enum(phaseExecutorValues)
 
 export const KebabSlug = z

@@ -26,8 +26,11 @@ import {
   type Question,
 } from '../questions/questions.js'
 import { appendLog as appendLogOf, type LogEntry } from '../log.js'
-import { phaseExecutorValues, phaseStatusValues } from '../../../domain/tiers/phase.js'
-import { stubStatusValues } from '../../../domain/tiers/epic.js'
+import {
+  phaseExecutorValues,
+  phaseStatusValues,
+  stubStatusValues,
+} from '../../../lib/constants/statuses.js'
 
 // G2: valid status values for a CHILD, keyed by the child tier. A phase child uses
 // the phase status enum; a task/epic STUB uses the loop-queue marker enum (NOT the

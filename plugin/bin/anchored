@@ -1,0 +1,2 @@
+#!/bin/sh
+exec node /Users/jack/Dev/anchored-v2/core/dist/bin.js "$@"

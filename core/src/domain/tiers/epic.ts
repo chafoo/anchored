@@ -3,11 +3,12 @@
 import { z } from 'zod'
 import { KebabSlug, AcceptanceCriterion } from './phase.js'
 import { QuestionSchema, LogEntrySchema, ContextTrails } from './task.js'
+import { lifecycleStatusValues, stubStatusValues } from '../../lib/constants/statuses.js'
 
 // D1: the epic tier mirrors the task lifecycle EXACTLY — same words, same forward
 // edges — so plan/refine/build/wrap run uniform stage-transitions on every tier
 // (no tier-branching in the skills). The old reduced planning/building/done is gone.
-export const epicStatusValues = ['plan', 'drafted', 'refined', 'build', 'wrap', 'done'] as const
+export const epicStatusValues = lifecycleStatusValues
 export const EpicStatus = z.enum(epicStatusValues)
 
 const AcceptanceItem = z.strictObject({
@@ -21,10 +22,9 @@ const AcceptanceItem = z.strictObject({
 })
 
 // Child-STUB status = the parent's loop-queue marker (NOT the child's own
-// lifecycle). One SSOT, reused by epic's TaskStub + project's EpicStub + the
-// setChildStatus enum-guard (G2). 'active' is the in-flight marker (never the
-// phase word 'in-progress' — that mismatch bricked an epic in the dogfood).
-export const stubStatusValues = ['pending', 'active', 'done', 'blocked'] as const
+// lifecycle). One SSOT in lib/constants, reused by epic's TaskStub + project's
+// EpicStub + the setChildStatus enum-guard (G2).
+export { stubStatusValues }
 
 const TaskStub = z.strictObject({
   slug: KebabSlug,

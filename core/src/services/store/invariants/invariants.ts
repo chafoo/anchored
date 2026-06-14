@@ -3,12 +3,11 @@
 // (skippable) step. Pure predicates + throwing asserts with the shared typed error;
 // store-internal. The error primitive itself lives in src/error.ts (shared).
 import { anchoredError } from '../../../lib/utils/error.js'
+import { isEvidenceFilled } from '../../../lib/utils/evidence/evidence.js'
 
-/** A piece of evidence counts only if it is a non-empty, non-sentinel string. */
-export function isEvidenceFilled(evidence: unknown): boolean {
-  if (!Array.isArray(evidence)) return false
-  return evidence.some((e) => typeof e === 'string' && e.trim() !== '' && e.trim() !== '—')
-}
+// re-exported for the store-internal callers that historically imported the
+// predicate from here; the canonical home is now lib/utils/evidence.
+export { isEvidenceFilled }
 
 export interface AcLike {
   id?: string

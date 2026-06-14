@@ -2,8 +2,9 @@
 // be flat (`my-task`) or nested under an epic (`my-epic/my-task`).
 import { z } from 'zod'
 import { PhaseNodeSchema } from './phase.js'
+import { lifecycleStatusValues } from '../../lib/constants/statuses.js'
 
-export const taskStatusValues = ['plan', 'drafted', 'refined', 'build', 'wrap', 'done'] as const
+export const taskStatusValues = lifecycleStatusValues
 export const TaskStatus = z.enum(taskStatusValues)
 
 export const NestedSlug = z
