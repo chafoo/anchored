@@ -69,7 +69,8 @@ fans THAT single step out (see "Workflow mode" below).
 
 ## Drive the loop (task.build.each: phase / epic.build.each: task)
 
-While `anchored task child-next <slug>` returns a child (else done):
+While the parent yields a next child — `anchored task next-phase <slug>` (task→phase)
+or `anchored epic child-next <slug>` (epic→task) — returns one (else done):
 
 1. **Mark the child in-flight** — the marker word is **tier-dependent** (the CLI
    rejects the wrong one with `InvalidChildStatus`):
@@ -269,7 +270,7 @@ means **the SKILL fans THAT one step out** as a Dynamic Workflow instead of runn
 once. That is the *only* config flag for parallelism — there is **no `mode:` on
 `build`**. Running several phases (or several child-tasks) at once is the plugin's own
 orchestration, NOT a config flag: ready children fan out and the dependency chain
-sequences them — you discover the ready set via `anchored phase ready-phases <slug>` /
+sequences them — you discover the ready set via `anchored task ready-phases <slug>` /
 `anchored epic child-ready <epic-slug>` and the `depends_on` graph, then dispatch (see
 "Epic task-level fan-out" above). The `each:` recursion edge stays intrinsic per tier.
 
