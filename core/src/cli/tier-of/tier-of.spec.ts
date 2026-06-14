@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
 import { stringify } from 'yaml'
-import { tierOfNode, makeTierFor } from './tiers.js'
+import { tierOfNode, makeTierFor } from './tier-of.js'
 
 // tierOfNode — derive the tier from a node's child collection (in-memory)
 test('tierOfNode derives tier from child collection', () => {

@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
-import { createAnchored, tierOfNode, type AnchoredDeps } from './index.js'
-import type { Config } from './services/config/config-schema/config.js'
+import { createAnchored, tierOfNode, type AnchoredDeps } from './anchored.js'
+import type { Config } from '../services/config/config-schema/config.js'
 
 function baseDeps(over: Partial<AnchoredDeps> = {}): AnchoredDeps {
   return {
@@ -37,7 +37,7 @@ test('a1: createAnchored returns the object graph; index.ts is a pure factory', 
   expect(typeof a.ops.read).toBe('function')
 
   // grep parity: `grep -nE 'class |process\.|^[^/]*await ' src/index.ts` is empty
-  const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('./anchored.ts', import.meta.url), 'utf8')
   const offenders = src
     .split('\n')
     .filter((l) => /^[^/]*await /.test(l) || /class /.test(l) || /process\./.test(l))

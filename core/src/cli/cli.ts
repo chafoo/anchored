@@ -15,7 +15,7 @@ import { resetCommand } from './commands/lifecycle/reset.js'
 // The slug-based facade surface the CLI drives — defined in the store where
 // createSlugFacade produces it, imported downward here (cli → store). Re-exported so
 // the public package surface (src/index.ts) keeps `NodeOpsFacade` available from cli.
-import type { NodeOpsFacade } from '../services/store/node-router/node-router.js'
+import type { NodeOpsFacade } from './node-router/node-router.js'
 
 export type { NodeOpsFacade }
 
