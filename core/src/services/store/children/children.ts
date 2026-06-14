@@ -1,7 +1,7 @@
 // store/children/children.ts — child-list helpers (pure). next-child drives the
 // build loop: an active child (resume-safety) wins; else the first pending child
 // whose depends_on are all done. null when nothing is runnable.
-import { anchoredError } from '../../../domain/invariants/invariants.js'
+import { anchoredError } from '../../../error.js'
 
 export interface ChildLike {
   slug: string

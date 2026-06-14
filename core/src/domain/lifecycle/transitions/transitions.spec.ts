@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
 import { assertTransition } from './transitions.js'
-import { type AnchoredError } from '../../invariants/invariants.js'
+import { type AnchoredError } from '../../../error.js'
 import { phaseDescriptor } from '../../tiers/phase.js'
 import { taskDescriptor } from '../../tiers/task.js'
 import { epicDescriptor } from '../../tiers/epic.js'

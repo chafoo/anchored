@@ -9,9 +9,8 @@ import {
   assertAcDoneHasEvidence,
   assertEpicAcHasEvidence,
   assertNodeCompletable,
-  anchoredError,
-  type AnchoredError,
-} from '../../../domain/invariants/invariants.js'
+} from '../invariants/invariants.js'
+import { anchoredError, type AnchoredError } from '../../../error.js'
 import {
   nextChild as nextChildOf,
   readyChildren as readyChildrenOf,

@@ -1,24 +1,8 @@
-// domain/invariants/invariants.ts — the hard substrate invariant: no ac→done without evidence.
-// Enforced at the DATA MODEL, never in a (skippable) step. Pure predicates +
-// throwing asserts with typed errors; no hidden effects, no classes.
-
-export interface AnchoredError extends Error {
-  kind: string
-  suggestions?: string[]
-}
-
-/** Factory for a typed error (no class — factory-functions rule). */
-export function anchoredError(
-  kind: string,
-  message: string,
-  suggestions?: string[],
-): AnchoredError {
-  const e = new Error(message) as AnchoredError
-  e.name = kind
-  e.kind = kind
-  if (suggestions) e.suggestions = suggestions
-  return e
-}
+// services/store/invariants/invariants.ts — the hard substrate invariant: no ac→done
+// without evidence. Enforced at the DATA MODEL (the store's write path), never in a
+// (skippable) step. Pure predicates + throwing asserts with the shared typed error;
+// store-internal. The error primitive itself lives in src/error.ts (shared).
+import { anchoredError } from '../../../error.js'
 
 /** A piece of evidence counts only if it is a non-empty, non-sentinel string. */
 export function isEvidenceFilled(evidence: unknown): boolean {
