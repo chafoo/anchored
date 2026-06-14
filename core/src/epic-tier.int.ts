@@ -1,13 +1,13 @@
 import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse, stringify } from 'yaml'
-import { createParser } from './store/codec/parse/parse.js'
-import { createRenderer, defaultSchemaUrl } from './store/codec/render/render.js'
-import { createIo, type IoDeps } from './store/io/io.js'
+import { createParser } from './services/store/codec/parse/parse.js'
+import { createRenderer, defaultSchemaUrl } from './services/store/codec/render/render.js'
+import { createIo, type IoDeps } from './services/store/io/io.js'
 import { createResolveSteps } from './domain/steps/resolve-steps/resolve-steps.js'
 import { EpicNodeSchema } from './domain/tiers/epic.js'
 import { TaskNodeSchema } from './domain/tiers/task.js'
-import { nextChild as realNextChild } from './store/children/children.js'
+import { nextChild as realNextChild } from './services/store/children/children.js'
 
 // nested-slugs a1 — a nested slug task-file round-trips losslessly
 test('nested slug task-file round-trips losslessly', () => {

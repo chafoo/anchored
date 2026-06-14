@@ -12,14 +12,14 @@ import {
   createNodeOps,
   type TierDescriptor,
   type NodeOpsDeps,
-} from './store/node-store/node-store.js'
-import { createSlugFacade, type TierOps } from './store/node-router/node-router.js'
+} from './services/store/node-store/node-store.js'
+import { createSlugFacade, type TierOps } from './services/store/node-router/node-router.js'
 import { tierOfNode, makeTierFor } from './domain/tiers/tiers.js'
 import { createStepsPlanner } from './orchestration/steps-planner/steps-planner.js'
-import { createValidator } from './store/validate/validate.js'
-import { createParser } from './store/codec/parse/parse.js'
-import { createRenderer, defaultSchemaUrl } from './store/codec/render/render.js'
-import { createIo, type IoDeps } from './store/io/io.js'
+import { createValidator } from './services/store/validate/validate.js'
+import { createParser } from './services/store/codec/parse/parse.js'
+import { createRenderer, defaultSchemaUrl } from './services/store/codec/render/render.js'
+import { createIo, type IoDeps } from './services/store/io/io.js'
 import { createBootstrap } from './config/bootstrap.js'
 import { phaseDescriptor, PhaseNodeSchema } from './domain/tiers/phase.js'
 import { taskDescriptor, TaskNodeSchema } from './domain/tiers/task.js'

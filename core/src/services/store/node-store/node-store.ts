@@ -4,14 +4,14 @@
 // The hard invariant (no ac→done without evidence) and forward-only transitions
 // are enforced HERE, at the writing op. Pure substrate functions (assert*) are
 // imported directly; the only effect (io) is injected.
-import { assertTransition } from '../../domain/lifecycle/transitions/transitions.js'
+import { assertTransition } from '../../../domain/lifecycle/transitions/transitions.js'
 import {
   assertAcDoneHasEvidence,
   assertEpicAcHasEvidence,
   assertNodeCompletable,
   anchoredError,
   type AnchoredError,
-} from '../../domain/invariants/invariants.js'
+} from '../../../domain/invariants/invariants.js'
 import {
   nextChild as nextChildOf,
   readyChildren as readyChildrenOf,
@@ -27,8 +27,8 @@ import {
   type Question,
 } from '../questions/questions.js'
 import { appendLog as appendLogOf, type LogEntry } from '../log.js'
-import { phaseExecutorValues, phaseStatusValues } from '../../domain/tiers/phase.js'
-import { stubStatusValues } from '../../domain/tiers/epic.js'
+import { phaseExecutorValues, phaseStatusValues } from '../../../domain/tiers/phase.js'
+import { stubStatusValues } from '../../../domain/tiers/epic.js'
 
 // G2: valid status values for a CHILD, keyed by the child tier. A phase child uses
 // the phase status enum; a task/epic STUB uses the loop-queue marker enum (NOT the

@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 import { parse } from 'yaml'
 import { createAnchored } from './index.js'
 import { createInit } from './config/init.js'
-import { createIo } from './store/io/io.js'
+import { createIo } from './services/store/io/io.js'
 
 const root = process.cwd()
 const defaultPath = fileURLToPath(

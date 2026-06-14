@@ -6,7 +6,7 @@
 // archive/reset issue ZERO commands. Mirrors the in-memory file map + fake io harness.
 import { test, expect } from 'bun:test'
 import { buildCli } from '../index.js'
-import type { IoDeps } from '../store/io/io.js'
+import type { IoDeps } from '../services/store/io/io.js'
 
 function harness() {
   const files = new Map<string, string>()

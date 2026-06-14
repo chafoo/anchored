@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { createAnchored } from './index.js'
-import { createNodeOps } from './store/node-store/node-store.js'
-import { createIo } from './store/io/io.js'
+import { createNodeOps } from './services/store/node-store/node-store.js'
+import { createIo } from './services/store/io/io.js'
 import { phaseDescriptor } from './domain/tiers/phase.js'
 
 const DEFAULT_YML = readFileSync(
