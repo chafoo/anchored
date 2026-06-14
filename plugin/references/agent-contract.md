@@ -104,8 +104,10 @@ directly via the CLI. Per agent role:
 | plan-discover / plan-rules-scan / refine-* / wrap-review / validators | `anchored <tier> append-log <task-slug> <stage> <kind> "<note>"` |
 | plan-decompose | `anchored task add-phase <task-slug> <phase-slug> "<name>"` · `anchored phase ac-add <task-slug>/<phase-slug> "<text>"` |
 | epic-scaffold | `anchored epic child-add <epic-slug> <task-stub-slug> "<goal>"` |
-| build-implement | `anchored phase ac-evidence <task-slug>/<phase-slug> <ac-id> "<proof>"` (evidence-only — symbol anchor; the AC flips done atomically; NEVER flips the phase status itself, G4) |
-| build-task-validate / build-code-validate | pure inspector (no code write); REJECT a criterion via `anchored phase ac-fail <task-slug>/<phase-slug> <ac-id> "<why>"` (flips it pending → re-do loop) + rollup via `append-log … build learning` |
+| build-implement | code (Write/Edit) + a build-NOTE per criterion: `anchored task append-log <task-slug> build note "<ac-id>: <symbol> — <what + gate green>"`. Authors **NO** evidence, flips nothing — the checker records the proof (requirements-3). |
+| build-task-validate | the **EVIDENCE AUTHOR**: independently re-verifies each criterion, then `anchored phase ac-evidence <task-slug>/<phase-slug> <ac-id> "<proof>"` on pass (flips it done; symbol anchor) or `anchored phase ac-fail <task-slug>/<phase-slug> <ac-id> "<why>"` on fail (→ pending, re-do loop). NEVER flips the phase status (G4). |
+| build-code-validate | rule inspector (no evidence): `anchored phase ac-fail <task-slug>/<phase-slug> <ac-id> "<rule violation>"` on a violation (→ pending, re-do — may veto a criterion the checker already evidenced) + rollup via `append-log … build learning` |
+| build-workflow | fan-out unit-worker: code + a build-NOTE via `append-log … build note` (authors **NO** evidence, like build-implement; the checker records it post-fan-out) |
 | wrap-summarize | `anchored <tier> set <node-slug> context.wrap "<summary>"` (dotted-path → nested) |
 | epic-roll-up | `anchored epic roll-up <epic-slug>` (read child statuses) · `anchored epic set-acceptance-status <epic> <id> done "<evidence>"` · `anchored epic append-log <epic-slug> wrap <kind> "<retro>"` · `anchored epic status <epic-slug> done` |
 

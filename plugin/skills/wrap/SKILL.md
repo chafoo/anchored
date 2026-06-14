@@ -26,12 +26,12 @@ words.
 
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns the wrap agents itself via the **Task tool**
-(agents self-write via `anchored node …`, see
+(agents self-write via `anchored <tier> …`, see
 `plugin/references/agent-contract.md`). The CLI never spawns.
 
 ## Pre-flight + plan
 
-1. `anchored wrap <slug>` → `{ stage, tier, node, steps }` (tier derived; does NOT
+1. `anchored <tier> wrap <slug>` → `{ stage, tier, node, steps }` (tier derived; does NOT
    spawn). State gate: wrap expects a node whose build phases are terminal.
 2. `steps` is the resolved wrap pipeline: for a task `[review, summarize]`, for an
    epic `[roll-up]`.
@@ -39,10 +39,10 @@ step-plan + node ops and spawns the wrap agents itself via the **Task tool**
 ## Spawn each step's agent (Task tool, in order)
 
 - **review → wrap-review** — final review pass over the built node; self-writes
-  findings: `anchored node append-log <slug> wrap learning "<review findings>"`.
+  findings: `anchored <tier> append-log <slug> wrap learning "<review findings>"`.
 - **summarize → wrap-summarize** — writes a tight summary (what was built + the
   source='ai' decisions) into the node's own context:
-  `anchored node set-field <slug> context.wrap "<summary>"` (dotted-path → nested).
+  `anchored <tier> set <slug> context.wrap "<summary>"` (dotted-path → nested).
 - **roll-up → epic-roll-up** (epic) — definition of done against `epic.acceptance`
   + a retro; self-writes via `append-log`, then advances the epic.
 
@@ -75,15 +75,15 @@ the human outcome ("core-list ist auf develop gemerged."), not the commands.
 ## Concern-walk — the "check at the end" threads (harden-3)
 
 During the build, workers + gates raise unexpected things that need a final look as
-**concerns** on the node (`anchored node add-concern <slug> "<what>" <priority>`) —
-a failed `--run` gate, a deferred edge, a decision the build flagged. This is the v1
+**concerns** on the node (`anchored <tier> concern-add <slug> "<what>" <priority>`) —
+a failing gate command, a deferred edge, a decision the build flagged. This is the v1
 `task.context` "still to discuss" surface, made a real surface. **The substrate
 blocks `done` while ANY concern is open (`ConcernsOpen`)** — nothing slips past.
 
 So before you finish, run a **concern-walk** — the SAME shape as the refine Q&A walk:
 
-1. List the open ones: `anchored node concern-list <slug> open`. If none, skip
-   silently.
+1. List the open ones: read `anchored <tier> get <slug>` and filter `concerns[]` for
+   the open ones in-session. If none, skip silently.
 2. **Pick the walk-style** (ephemeral, never persisted) via `AskUserQuestion`,
    exactly like refine: *"N open points — X important … How do we go through them?"*
    - **Just the important ones together — I'll decide the rest** (high-together, default)
@@ -94,8 +94,8 @@ So before you finish, run a **concern-walk** — the SAME shape as the refine Q&
 3. **Resolve each open concern** by that style — the user answers, or you decide
    with reasoning:
    ```bash
-   anchored node resolve-concern <slug> <id> "<how it's addressed>" user
-   anchored node resolve-concern <slug> <id> "<decision>" ai "<why — read later>"
+   anchored <tier> concern-resolve <slug> <id> "<how it's addressed>" user
+   anchored <tier> concern-resolve <slug> <id> "<decision>" ai "<why — read later>"
    ```
    "Addressed" = fixed, turned into a tracked follow-up, or explicitly accepted with
    a reason. A failed-gate concern means the work isn't actually green — that's a
@@ -118,7 +118,7 @@ action.
   `instructions`. A failing **gating** run-step (e.g. a merge conflict) keeps the
   node pre-`done` (see Failure-handling); a step whose `instructions` place it
   *after* the flip runs once `done` has landed.
-- **Flip:** `anchored node set-status <slug> done` — the **same `wrap → done`
+- **Flip:** `anchored <tier> status <slug> done` — the **same `wrap → done`
   transition on every tier** (D1: the epic mirrors the task lifecycle, no
   tier-special casing).
 

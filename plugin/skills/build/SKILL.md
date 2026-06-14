@@ -81,10 +81,14 @@ While `anchored task child-next <slug>` returns a child (else done):
    - **task → phase** (leaf): `anchored phase build <slug>/<phase>` gives
      `[implement, task-validate, code-validate]`. Spawn **build-implement** via the
      Task tool with the agent-contract input `{ task-slug: <slug>, phase-slug:
-     <child>, tier: phase, stage: build, context, rules }`. It writes code +
-     self-writes evidence: `anchored phase ac-evidence <slug>/<child> <ac-id>
-     "<proof>"` per acceptance criterion. Then spawn the two gates **in parallel**
-     (build-task-validate + build-code-validate) — pure inspectors.
+     <child>, tier: phase, stage: build, context, rules }`. It writes code + a
+     **build-NOTE per criterion** (`append-log … build note`) — it authors NO
+     evidence. Then spawn the two checkers: **build-task-validate** is the EVIDENCE
+     AUTHOR — it independently re-verifies each criterion and writes the proof
+     (`anchored phase ac-evidence <slug>/<child> <ac-id> "<proof>"`, flips it done) or
+     `ac-fail` (→ re-do); **build-code-validate** vetoes rule violations via `ac-fail`.
+     Run task-validate THEN code-validate (code-validate may veto a just-evidenced
+     criterion) — the checker records the proof, never the implementer (requirements-3).
    - **epic → task**: the child runs its OWN full just-in-time lifecycle, then the
      epic-child is marked delivered. Per ready child (the loop's body is the child's
      plan→refine→build→wrap, NOT a phase pipeline):
@@ -111,16 +115,17 @@ While `anchored task child-next <slug>` returns a child (else done):
         `anchored epic child-status <epic-slug> <child> done`.
      The stub's outcome acceptance criteria are validated at the EPIC wrap (epic-roll-up,
      hard-with-reconcile), not here.
-3. **Gates + failures (the re-do loop):** the gates REJECT a bad acceptance criterion
-   by self-writing `anchored phase ac-fail <slug>/<phase> <ac-id> "<why>"` — that
-   flips the criterion back to `pending` with its `failures` recorded. Read the child
-   back (`anchored task get <slug>`); for each criterion carrying `failures`, re-spawn
-   build-implement with those failures as the fix-list, then re-run the gates. Retry
-   up to `retry_limit` (default 3); on exhaustion → blocked (see Failure-handling).
-4. **Advance:** when all the child's acceptance criteria are `done` (with evidence) and both gates
-   pass → `anchored phase status <slug>/<child> done`. This is the **only**
-   place a phase reaches `done` — the build-implement agent is evidence-only and
-   never flips the phase status (G4: that flip must come AFTER the gates, never
+3. **Checkers + failures (the re-do loop):** build-task-validate AUTHORS the evidence
+   for each criterion it confirms (`ac-evidence` → done) and REJECTS the rest
+   (`anchored phase ac-fail <slug>/<phase> <ac-id> "<why>"` → `pending` with
+   `failures`); build-code-validate rejects rule violations the same way. Read the
+   child back (`anchored task get <slug>`); for each criterion carrying `failures`,
+   re-spawn build-implement with those failures as the fix-list, then re-run the
+   checkers. Retry up to `retry_limit` (default 3); on exhaustion → blocked.
+4. **Advance:** when all the child's acceptance criteria are `done` (with evidence) and both
+   checkers pass → `anchored phase status <slug>/<child> done`. This is the **only**
+   place a phase reaches `done` — build-implement writes code + notes only and
+   never flips the phase status (G4: that flip must come AFTER the checkers, never
    before, or the gates would inspect an already-`done` phase).
 5. **Run the phase's trailing custom steps (commit, etc.)** — only now, on a green
    phase. See "Custom steps" below. A custom step whose command fails is a
@@ -275,24 +280,25 @@ a headless reference; the live fan-out lives here). The flow, sibling to the seq
 implement path:
 
 1. **Plan the units.** Read the phase (`anchored task get <slug>`). A unit = one criterion
-   that is `pending` OR carries `failures` (skip criteria already `done` with evidence —
-   resume-safety). ≤16 units in parallel; >16 → waves of 16.
+   with no build-note yet OR carrying `failures` (skip criteria that already have a build-note
+   and no failures — resume-safety). ≤16 units in parallel; >16 → waves of 16.
 2. **Dispatch (Workflow tool).** One `agent({ agentType: 'a:build-workflow',
    isolation: 'worktree', … })` per unit (the `build-workflow` plugin agent — the
    per-criterion fan-out worker), each in its **own git worktree** per the fan-out directive
    above, so parallel units never contend on one checkout. Each unit does its criterion's
-   work and **self-writes its own evidence/failures via the CLI**
-   (`anchored phase ac-evidence …` on success, `anchored phase ac-fail …`
-   on a blocker). Background — emit one progress line, then return; the await is
-   **re-invocation**, not polling.
-3. **Collect (evidence-driven, resume-safe).** On re-engage, re-read the task-file;
-   for each criterion: `done`+evidence ⇒ satisfied, anything `pending`/`failures` ⇒
-   re-dispatch ONLY that unit. No per-worker return to apply — the workers wrote to
-   disk (do NOT double-apply).
-4. **Gates ONCE over the merged result.** After the fan-out joins, spawn
-   build-task-validate + build-code-validate once over the whole phase (never
-   per-unit). Failures → the re-do loop (re-dispatch the not-yet-evidenced units),
-   retry to `retry_limit`, stop-check unchanged.
+   code and **self-writes a build-NOTE via the CLI** (`anchored task append-log … build note`)
+   — like build-implement it authors **no** evidence. Background — emit one progress line,
+   then return; the await is **re-invocation**, not polling.
+3. **Collect (note-driven, resume-safe).** On re-engage, re-read the task-file; for each
+   criterion: a build-note + no failures ⇒ its code is done, anything missing a note or
+   carrying failures ⇒ re-dispatch ONLY that unit. No per-worker return to apply — the
+   workers wrote to disk (do NOT double-apply).
+4. **Checkers ONCE over the merged result — and they AUTHOR the evidence.** After the
+   fan-out joins, spawn build-task-validate once over the whole phase: it independently
+   re-verifies each criterion and writes the proof (`ac-evidence` → done) or rejects it
+   (`ac-fail`); then build-code-validate vetoes rule violations. The checker records the
+   evidence, never the unit-workers. Failures → the re-do loop (re-dispatch the rejected
+   units), retry to `retry_limit`, stop-check unchanged.
 
 **Hard precondition: `Bash(anchored *)` must be pre-approved on the allowlist** — a
 background workflow has no interactive session, so an un-allowlisted `anchored` call
