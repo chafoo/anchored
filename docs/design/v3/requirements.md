@@ -67,28 +67,51 @@ functions) and a service tier-agnostic.
    (epic→`child`, phase→`ac`) is part of the module's condition bundle; the orchestrator
    reads it to know the cli surface for `<tier>`.
 
-7. **100% test coverage — non-negotiable.** Every file under `modules/` and `services/`
-   (and `lib/`) carries a colocated spec (`*.spec.ts` unit / `*.int.ts` / `*.e2e.ts`,
-   per the existing test-file-naming rule). Pure modules make this cheap. Add a coverage
-   gate to the quality gates so a file without coverage blocks `done`. (Gap to close now:
-   `lib/utils/error.ts`, `lib/constants/stages.ts` had no spec when relocated.)
+7. **100% test coverage — non-negotiable.** Every runtime file under `modules/` and
+   `services/` (and `lib/`) carries a colocated test (`*.spec.ts` unit / `*.int.ts` /
+   `*.e2e.ts`, per the test-file-naming rule). Pure modules make this cheap. **DONE:** a
+   structural coverage gate ships (`core/scripts/spec-coverage.sh`, wired as the first
+   step of `npm test`) — a source file with no colocated test (basename-prefixed, so an
+   aspect spec counts) blocks the gate. The interface-only `lib/contracts/*` carry
+   conformance specs (tsc is their real gate; the specs catch interface drift). Only
+   `bin.ts` (the effect shell) and `index.ts` (the package re-export) are spec-exempt.
 
-8. **Project gets built out** (no longer a reserved stub). It is a fourth tier module
-   with its own condition bundle, same lifecycle form. Proposed semantics: `project →
-   epics` (childTier: `epic`). Confirm whether project needs anything beyond the uniform
-   tier shape (e.g. a distinct roll-up). — OPEN.
+8. **Project gets built out** (no longer a reserved stub). **DECIDED + DONE:** project is
+   the fourth tier module (`modules/project/`) with its own condition bundle, on the SAME
+   uniform `plan→drafted→refined→build→wrap→done` lifecycle as task/epic (the old reduced
+   `planning/building/done` is gone). Semantics: `project → epics` (childTier `epic`),
+   carrying epic STUBS as its loop-queue exactly as epic carries task-stubs — no distinct
+   roll-up shape; the uniform tier form suffices. Tier-derivation detects `epics[]` →
+   project.
 
-## Open decisions (to confirm before the reshape lands)
-- **Name of the condition bundle:** `condition` (used in discussion) vs `spec` / `rules`
-  / `descriptor`. "condition" reads like a boolean; the bundle is broader (schema +
-  transitions + child + completable). Leaning `spec`. — OPEN.
-- **Generic kernel vs per-tier verbs:** agreed direction = generic kernel in the service
-  + each module injects its conditions (rule 6). (This resolves the earlier A/B.)
-- **Project semantics** (rule 8).
+## Resolved decisions
+- **Name of the condition bundle:** `condition` (the user's term). Each `modules/<tier>`
+  exports the bundle named after the tier (`export const task = { … }`); collectively the
+  orchestrator injects them as `conditions = { phase, task, epic, project }`. The bundle
+  type is `TierCondition` (`lib/contracts/tier.ts`); `TierDescriptor` is a back-compat
+  alias. The bundle is broader than a boolean — schema + statusValues + transitions +
+  defaultStatus + child relationship (childField/childStatusValues/childTerminalOk/
+  childExecutorValues).
+- **Generic kernel vs per-tier verbs:** generic kernel in the service, each module
+  injects its conditions (rule 6). `createNodeOps(condition, deps)` reads every
+  tier-specific fact off the injected bundle — no module import, no hardcoded child maps.
+- **Project semantics:** rule 8 above.
 
-## Status of the rewrite (see `.claude/temp/v3-build-plan.md` for the live log)
-Done + green on branch `v3-rebuild`: `lib/` (contracts·utils·constants), `services/store`,
-`services/config`, `orchestration/` dissolved, steps folded into `plan-for`, shared error
-primitive, store-internal invariants. Remaining: the coupled `modules/<tier>` +
-generic-node-service + `cli/`-as-orchestrator reshape (this document is its spec), plus
-the worker-dispatch → default-template dissolution.
+## Status of the rewrite — COMPLETE on branch `v3-rebuild`
+The reshape this document specifies has landed, all gates green:
+- `lib/` — contracts (io·store·config·tier·cli ports) · utils (error · evidence predicate)
+  · constants (stages · statuses · transitions axes).
+- `modules/<tier>/` — phase·task·epic·project as PURE condition bundles (+ `shared/schema`
+  fragments); import only lib; no I/O.
+- `services/` — `store` (generic node kernel fed conditions via DI, codec, io, invariants,
+  transitions, children, questions, log, validate) + `config` (bootstrap, merge, plan-for,
+  resolve-steps, schema, worker-dispatch).
+- `cli/` — the orchestrator: `anchored.ts` (`createAnchored` = the single composition root)
+  + dispatch (`cli.ts`) + the dissolved slug-facade (`node-router/`) + tier-derivation
+  (`tier-of/`) + commands. `index.ts` re-exports the public surface.
+- `domain/` — fully dissolved.
+
+Remaining (optional, intentionally deferred): the worker-dispatch → default-template
+dissolution (a behaviour-preserving relocation of the step→worker map from
+`services/config/worker-dispatch/` into `anchored.default.yml`; flagged for an attended
+pass since it touches the config merge + data flow).

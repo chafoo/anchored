@@ -26,8 +26,8 @@ that surface 1:1.
   primitives: error factory, pure predicates), `lib/constants/`. Imported by all,
   imports nothing internal.
 - **One effect** — the whole engine is a pure core around a single IO seam
-  (`store/io`). `config` executes nothing — its readers are injected; the real
-  fs · yaml · lock effects live solely in `bin.ts`.
+  (`services/store/io`). `config` executes nothing — its readers are injected; the
+  real fs · yaml · lock effects live solely in `bin.ts`.
 - **Universal substrate rules stay generic** — the hard invariant (no ac→done without
   evidence) is universal, lives ONCE in the service, never duplicated per module.
 
@@ -59,78 +59,90 @@ cli/         the orchestrator (factory fn) — builds services, injects module c
 
 ```
 core/src/
-├── bin.ts                          # the only effectful site (fs · yaml · lock · process) — builds deps, calls cli
+├── bin.ts                          # the only effectful site (fs · yaml · lock · process) — builds deps, calls createAnchored
+├── index.ts                        # the package entry: re-exports the public surface from cli/ (the one permitted index.ts)
 │
 ├── lib/                            # the base · imported by all · imports nothing internal
-│   ├── contracts/                  # the ports (interface-only)
-│   │   ├── io.ts                   # Io         { atomicWrite, readFile, move, remove, statVersion }
-│   │   ├── store.ts                # StorePort  { for(conditions) → { read, mutate } }
-│   │   ├── config.ts               # ConfigPort { planFor, fields, raw } + PlanStep/StepPlan
-│   │   ├── tier.ts                 # Tier conditions + TierOps — the tier surface
-│   │   └── cli.ts                  # Cli        { run(argv) → exitCode } + Anchored
+│   ├── contracts/                  # the ports (interface-only) — each carries a conformance spec
+│   │   ├── io.ts                   # Io           { atomicWrite, readFile, move, remove, statVersion }
+│   │   ├── store.ts                # StorePort    { for(descriptor) → { read, mutate } } + NodeGateway
+│   │   ├── config.ts               # ConfigPort   { planFor, fields, raw } + PlanStep/StepPlan
+│   │   ├── tier.ts                 # TierCondition (the bundle) + TierOps + TierDescriptor alias
+│   │   └── cli.ts                  # Cli          { run(argv) → exitCode } + Anchored
 │   ├── utils/                      # zero-dep primitives · no special knowledge
-│   │   └── error.ts                # the typed-error factory (anchoredError + AnchoredError)
-│   └── constants/
-│       └── stages.ts               # the lifecycle stage axis (plan · refine · build · wrap)
+│   │   ├── error.ts                # the typed-error factory (anchoredError + AnchoredError)
+│   │   └── evidence/evidence.ts    # isEvidenceFilled — the pure predicate BOTH module schema + store guard use
+│   └── constants/                  # fixed axes — what lets a module + the store agree on an enum without importing each other
+│       ├── stages.ts               # the lifecycle stage axis (plan · refine · build · wrap)
+│       ├── statuses.ts             # lifecycle · phase · stub · executor status axes
+│       └── transitions.ts          # lifecycleTransitions (epic·task·project) + phaseTransitions (the edge maps)
 │
-├── cli/                            # ← THE orchestrator (factory fn) — builds services, injects conditions, dispatches
-│   ├── cli.ts                      # createAnchored(deps) → { run, config }: build services, inject into tiers, dispatch <tier>
-│   ├── commands/                   # argv → verb routing (stage· · node· · lifecycle·)
-│   └── cli.spec.ts
+├── modules/                        # PURE tier conditions · import only lib (+ the shared base) · never imported BY a service · covered
+│   ├── shared/schema.ts            # cross-tier zod FRAGMENTS (slugs · AC · question · log · context) — the modules' own base
+│   ├── phase/phase.ts              # condition bundle · leaf (no childTier) · owns PhaseNodeSchema + ac/evidence shape
+│   ├── task/task.ts                # condition bundle · childTier:'phase' (embeds PhaseNodeSchema — strict downward containment)
+│   ├── epic/epic.ts                # condition bundle · childTier:'task' (task STUBS)
+│   └── project/project.ts          # condition bundle · childTier:'epic' (epic STUBS) — BUILT OUT, uniform lifecycle
 │
-├── modules/                        # PURE tier conditions · import only lib · never imported BY a service · 100% covered
-│   ├── epic/
-│   │   ├── epic.ts                 # the condition bundle: { schema, statusValues, transitions, childTier:'task', completable }
-│   │   ├── transitions.ts          # epic's legal status edges (forward-only + update-mode) — pure
-│   │   └── epic.spec.ts            # a pure module is cheap to cover fully
-│   ├── task/   …                   # condition bundle · childTier:'phase'
-│   ├── phase/  …                   # condition bundle · leaf (no childTier) · ac + evidence shape
-│   └── project/                    # BUILT OUT (no longer reserved) · childTier:'epic'  ← needs full impl + specs
+├── services/                       # generic mechanisms · know NO tier · fed conditions via DI · import only lib
+│   ├── store/                      # the node mechanism: read-modify-write a node, guarded
+│   │   ├── node-store/node-store.ts # createNodeOps(condition, deps) → the tier-generic verbs (create,setStatus,addChild,addAc,…)
+│   │   ├── io/io.ts                # ⚡ the ONLY effect: atomic write (mkdir → lock → temp → rename → CAS)
+│   │   ├── codec/{parse,render}    # store-internal (yaml ⇆ node) — has the yaml dep + $schema header, NOT a util
+│   │   ├── invariants/invariants.ts # the UNIVERSAL guard (ac→done needs evidence) — once, here, not per tier
+│   │   ├── transitions/transitions.ts # the generic assertTransition — reads descriptor.transitions, knows no tier
+│   │   ├── children/ · questions/ · log.ts · validate/   # generic helpers (loop-queue · q&a · audit log · validate cmd)
+│   └── config/                     # capability: yaml ⇆ effectiveConfig + step-plan — fully pure (readers injected)
+│       ├── bootstrap.ts            # createBootstrap({ readDefault, readUser, merge }) → { load }
+│       ├── merge.ts                # pure: default ⊕ user, once
+│       ├── config-schema/          # ConfigSchema + custom-fields (extend a tier schema with declared fields)
+│       ├── plan-for.ts             # pure: merged config → ordered step-plan (expands build:{each}); folds resolve-steps
+│       ├── resolve-steps/ · step.ts · worker-dispatch/ · init.ts
 │
-└── services/                       # generic mechanisms · know NO tier · fed conditions via DI · import only lib
-    ├── store/                      # the node mechanism: read-modify-write a node, guarded
-    │   ├── node.ts                 # createNodeOps(conditions, deps) → the tier-generic verbs (create,setStatus,addChild,addAc,…)
-    │   ├── store.ts                # createStore({ io, yaml }) → { for(conditions) → { read, mutate } }
-    │   ├── io/io.ts                # ⚡ the ONLY effect: atomic write (mkdir → lock → temp → rename → CAS)
-    │   ├── codec/                  # store-internal (yaml ⇆ node) — has the yaml dep + $schema header, NOT a util
-    │   │   ├── parse/parse.ts
-    │   │   └── render/render.ts
-    │   ├── invariants.ts           # the UNIVERSAL guard (ac→done needs evidence) — once, here, not per tier
-    │   └── store.spec.ts
-    └── config/                     # capability: yaml ⇆ effectiveConfig + step-plan — fully pure (readers injected)
-        ├── config.ts               # createConfig({ readDefault, readUser, merge }) → { load, planFor }
-        ├── merge.ts                # pure: default ⊕ user, once
-        ├── schema.ts               # ConfigSchema
-        ├── plan-for.ts             # pure: merged config → ordered step-plan (expands build:{each})
-        └── config.spec.ts
+└── cli/                            # ← THE orchestrator — builds services, injects conditions, dispatches <tier>
+    ├── anchored.ts                 # createAnchored(deps) → { cli, ops, config }: THE composition root (collects bundles, injects)
+    ├── cli.ts                      # createCli(deps) → { run(argv) → exitCode }: argv dispatch, one JSON envelope per call
+    ├── node-router/node-router.ts  # createSlugFacade — slug → tier (tier-of) → node verb (the dissolved store router)
+    ├── tier-of/tier-of.ts          # tierOfNode / makeTierFor — derive a node's tier from its child collection / file shape
+    └── commands/                   # argv → verb routing (stage· · node· · lifecycle·)
 ```
 
-> The step-name → worker mapping is **not** a code file — it lives in the default
-> template (`anchored.default.yml`), so `plan-for.ts` stays a pure config query and
-> the worker set is overridable like any other policy. (v2's `worker-dispatch.ts`
-> dissolved into the template; `resolve-steps` folded into `plan-for`.)
+> The step-name → worker mapping currently lives in `services/config/worker-dispatch/`
+> as code (relocated from v2). Moving it into the default template
+> (`anchored.default.yml`) so `plan-for` reads it as pure config policy is an
+> intentionally-deferred, behaviour-preserving follow-up (it touches the config
+> merge). `resolve-steps` is already folded into `plan-for`.
 
 ## Tier-module pattern (a module is pure conditions — no wiring, no I/O)
 
 ```ts
-// modules/epic/epic.ts — the whole module: a pure condition bundle
-import { EpicNodeSchema, epicStatusValues } from './schema.ts'
-import { assertEpicTransition } from './transitions.ts'
-export const epic = {
+// modules/epic/epic.ts — the whole module: a pure condition bundle (no I/O, no verbs)
+import { lifecycleStatusValues, stubStatusValues } from '../../lib/constants/statuses.ts'
+import { lifecycleTransitions } from '../../lib/constants/transitions.ts'
+import type { TierCondition } from '../../lib/contracts/tier.ts'
+import { KebabSlug, AcceptanceCriterion, … } from '../shared/schema.ts'   // the shared base
+// EpicNodeSchema is assembled HERE from the shared fragments
+export const epic: TierCondition = {
   tier: 'epic',
   schema: EpicNodeSchema,
-  statusValues: epicStatusValues,
-  transitions: assertEpicTransition,   // which status→status edges are legal — per tier
-  childTier: 'task',                   // its child relationship
-  completable: (node) => …,            // when THIS tier is satisfied
+  statusValues: lifecycleStatusValues,    // its own status axis
+  transitions: lifecycleTransitions,      // which status→status edges are legal (shared by epic·task·project)
+  defaultStatus: 'plan',
+  childTier: 'task',                      // the child relationship …
+  childField: 'tasks',                    // … where children live …
+  childStatusValues: stubStatusValues,    // … the child's status axis (task-STUBS use the loop-queue marker)
+  childTerminalOk: ['done'],              // … and which child states let the parent complete
 }
 ```
 
-`task` / `phase` / `project` are the same shape — they differ only in schema,
-transitions, and child relationship. **No tier module imports a service, touches I/O,
-or holds the verbs** — that is the generic node-service's job. The verb *surface* a
-tier exposes (epic→`child`, phase→`ac`) is derived by the orchestrator from `childTier`
-+ the schema. Same mechanics, different conditions. That is the fractal.
+`task` / `phase` / `project` are the same shape — they differ only in schema, status
+axis, transitions, and the child relationship (`phase` is the leaf: no `childTier`,
+no child fields). **No tier module imports a service, touches I/O, or holds the
+verbs** — that is the generic node-service's job. Completability is NOT a per-tier
+function: it is the universal invariant (every AC evidence-backed, every child
+terminal-OK) enforced once in the generic store from `childTerminalOk`. The verb
+*surface* a tier exposes (epic→`child`, phase→`ac`) follows from `childTier` + the
+schema. Same mechanics, different conditions. That is the fractal.
 
 ## Contracts (the only thing crossing a boundary)
 
@@ -138,37 +150,40 @@ Every capability ships an interface in `lib/contracts/`; an implementation impor
 interface it needs, never a neighbour's concrete file. A module imports only `lib/`:
 
 ```ts
-// services/store/store.ts — a service imports the port, never the concrete neighbour
-import type { Io } from '../../lib/contracts/io.ts'      // the seam — never io/io.ts
-import type { StorePort } from '../../lib/contracts/store.ts'
-export function createStore(deps: { io: Io; … }): StorePort { … }
+// services/store/node-store/node-store.ts — a service imports the port, never a module
+import type { Io } from '../../../lib/contracts/io.ts'   // the seam — never a concrete neighbour
+import type { TierCondition } from '../../../lib/contracts/tier.ts'
+export function createNodeOps(condition: TierCondition, deps: { io: Io; … }) { … }
 
-// modules/epic/epic.ts — a module imports ONLY lib (utils + contracts), never a service
-import { anchoredError } from '../../lib/utils/error.ts'
-import type { TierConditions } from '../../lib/contracts/tier.ts'
-export const epic: TierConditions = { /* schema · transitions · childTier · completable */ }
+// modules/epic/epic.ts — a module imports ONLY lib (+ the shared schema base), never a service
+import { lifecycleTransitions } from '../../lib/constants/transitions.ts'
+import type { TierCondition } from '../../lib/contracts/tier.ts'
+export const epic: TierCondition = { /* schema · statusValues · transitions · childTier · child axes */ }
 ```
 
 `lib/` imports nothing internal and is imported by everyone. A service is fully fakeable
 by a stub Io; a module is pure, so it needs no fakes at all. Concrete implementations
-meet their contracts in exactly one place: the orchestrator (`cli/cli.ts`).
+meet their contracts in exactly one place: the orchestrator (`cli/anchored.ts`).
 
 ## Assembly (the one place conditions meet the mechanism)
 
 ```ts
-// cli/cli.ts — THE orchestrator (a contract meets its implementation here, once)
-import { epic } from '../modules/epic/epic.ts'
-import { task } from '../modules/task/task.ts'
+// cli/anchored.ts — THE orchestrator (a contract meets its implementation here, once)
 import { phase } from '../modules/phase/phase.ts'
+import { task } from '../modules/task/task.ts'
+import { epic } from '../modules/epic/epic.ts'
 import { project } from '../modules/project/project.ts'
 export function createAnchored(deps): Anchored {
-  const conditions = { epic, task, phase, project }                 // the modules' pure tier knowledge
-  const config = createConfig(deps.config).load(deps.projectRoot)
-  const node   = createNodeOps(conditions, { io: createIo(deps.io), yaml: deps.yaml })
-  return { run: dispatch({ conditions, node, config }), config }    // run(argv) → tierOf(slug) → node verbs
+  const CONDITIONS = { phase, task, epic, project }                  // the modules' pure tier knowledge
+  const config = createBootstrap(deps).load(deps.projectRoot)        // merge default ⊕ user, once
+  // one generic node-ops per tier, each FED its condition bundle (+ the extended schema)
+  const opsByTier = mapValues(CONDITIONS, (c) => createNodeOps(c, { io: createIo(deps.io), … }))
+  const facade = createSlugFacade({ opsFor, tierFor: makeTierFor(io, …), … })  // slug → tier → verb
+  const cli    = createCli({ nodeOps: facade, steps: config.planFor, … })      // argv dispatch
+  return { cli, ops: facade, config }
 }
-//  bin.ts injects the real effects (fs · yaml · lock · process) and calls createAnchored.
-//  `project` is wired like the rest — no longer reserved.
+//  bin.ts injects the real effects (fs · yaml · lock · process) and calls createAnchored;
+//  index.ts re-exports it. `project` is wired like the rest — no longer reserved.
 ```
 
 Runtime flow: `argv → cli → tierOf(slug) → node verb (asserts that tier's conditions)
@@ -185,12 +200,13 @@ module→module import.
 | `bin.ts` | entry | the only real effects (process · fs · yaml · lock); injects them, calls createAnchored | — |
 | `lib/contracts/*` | lib | interface-only ports; imported by all, imports nothing | pure types |
 | `lib/utils/*` · `lib/constants/*` | lib | zero-dep primitives (error factory, predicates) + fixed values (stages) | pure |
-| `cli/cli.ts` | orchestrator | THE root: build services, collect module conditions, inject, dispatch `tierOf(slug)` | `createAnchored(deps) → { run, config }` |
-| `modules/<tier>/<tier>.ts` | module | the **pure condition bundle**: schema · statusValues · transitions · childTier · completable. No wiring, no I/O. | pure data (`export const epic`) |
-| `modules/<tier>/transitions.ts` | module | that tier's legal status edges (per-tier state machine) | pure |
-| `services/store/node.ts` | service | the tier-generic verbs (create/setStatus/addChild/addAc…), fed the conditions | `createNodeOps(conditions, deps) → { verbs }` |
-| `services/store` | service | the gateway + the only effect: atomic write (lock+CAS), read, move; codec (yaml⇆node) + the universal invariant | `createStore({ io, yaml }) → { for(conditions) → { read, mutate } }` |
-| `services/config` | service | load + merge (default ⊕ user, once) AND derive `planFor(tier,stage)` → step-plan | `createConfig({ readDefault, readUser, merge }) → { load, planFor }` |
+| `cli/anchored.ts` | orchestrator | THE root: build services, collect module conditions, inject, wire facade + dispatch | `createAnchored(deps) → { cli, ops, config }` |
+| `cli/cli.ts` | orchestrator | argv → verb dispatch; one JSON envelope per call (cli-only transport) | `createCli(deps) → { run(argv) → exitCode }` |
+| `cli/node-router` · `cli/tier-of` | orchestrator | slug → tier (file-shape derivation) → node verb (the dissolved store router) | `createSlugFacade(deps) → facade` |
+| `modules/<tier>/<tier>.ts` | module | the **pure condition bundle**: schema · statusValues · transitions · defaultStatus · child relationship. No wiring, no I/O. | pure data (`export const epic`) |
+| `services/store/node-store/node-store.ts` | service | the tier-generic verbs (create/setStatus/addChild/addAc…), fed ONE condition bundle | `createNodeOps(condition, deps) → { verbs }` |
+| `services/store/{io,codec,invariants,transitions}` | service | the only effect (atomic write, lock+CAS) + codec (yaml⇆node) + the universal evidence invariant + generic assertTransition | factories / pure guards |
+| `services/config` | service | load + merge (default ⊕ user, once) AND derive `planFor(tier,stage)` → step-plan | `createBootstrap({ readDefault, readUser, merge }) → { load }` |
 
 ### What dissolved (and where it went)
 
@@ -198,12 +214,15 @@ module→module import.
 |---|---|---|
 | `codec` | pure; only consumer is store | inside `services/store` |
 | `invariants` | pure guard; only consumer is store | inside `services/store` |
-| `node` (transformers) | ONE generic verb kernel — fed the conditions, not split per tier | `services/store/node.ts` (generic) |
-| `transitions` | edges differ per tier → live WITH the tier's conditions | `modules/<tier>/transitions.ts` |
-| `node-router` (slug facade) | slug→tier routing is a dispatch concern | `cli/` (the orchestrator) |
-| `engine` | never a motor — it only PLANS; the skill orchestrates | split: planner → `config.planFor`, state-machine → tier |
-| `worker-dispatch` | step-name → worker is policy, not code | the default template (`anchored.default.yml`) |
-| `resolve-steps` | pure, single consumer is the planner | folded into `config/plan-for.ts` |
+| `node` (transformers) | ONE generic verb kernel — fed ONE condition bundle, not split per tier | `services/store/node-store/node-store.ts` (generic) |
+| `transitions` | the edge *maps* are shared fixed data (epic·task·project identical); the *guard* is generic | maps → `lib/constants/transitions.ts`; `assertTransition` → `services/store/transitions/` |
+| `domain/tiers/*` (descriptors) | tier knowledge is pure → becomes the condition bundle | `modules/<tier>/<tier>.ts` |
+| `domain/` (the whole layer) | dissolved — the v3 tree is lib → modules → services → cli | gone |
+| `node-router` (slug facade) + `tier-of` | slug→tier routing is a dispatch concern, not a store concern | `cli/node-router` + `cli/tier-of` |
+| `engine` | never a motor — it only PLANS; the skill orchestrates | split: planner → `config.planFor`, state-machine → store |
+| `worker-dispatch` | step-name → worker is policy, not code — SHOULD move to the template | relocated as code to `services/config/worker-dispatch/` (template dissolution DEFERRED) |
+| `resolve-steps` | pure, single consumer is the planner | folded into `services/config/plan-for.ts` |
+| `isEvidenceFilled` | both the module schema + the store guard need the predicate | `lib/utils/evidence/evidence.ts` (the store keeps the throwing asserts) |
 
 ## Dependencies (decided in v1, carried forward)
 
