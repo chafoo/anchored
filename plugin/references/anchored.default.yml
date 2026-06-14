@@ -24,9 +24,9 @@ phase:
     steps: []                         # empty
   build:
     steps:
-      - { name: implement }           # the work
-      - { name: task-validate }       # evidence-honesty: checks that every criterion has real proof
-      - { name: code-validate }       # rule-adherence: checks against rules
+      - { name: implement, use: { type: agent, name: build-implement } }            # the work
+      - { name: task-validate, use: { type: agent, name: build-task-validate } }    # evidence-honesty: checks that every criterion has real proof
+      - { name: code-validate, use: { type: agent, name: build-code-validate } }    # rule-adherence: checks against rules
   wrap:
     steps: []                         # empty
 
@@ -43,14 +43,14 @@ phase:
 task:
   plan:                               # write the structure
     steps:
-      - { name: discover }            # scan the codebase
-      - { name: rules-scan }          # collect the relevant rules
-      - { name: decompose }           # break into phases + acceptance criteria
+      - { name: discover, use: { type: agent, name: plan-discover } }            # scan the codebase
+      - { name: rules-scan, use: { type: agent, name: plan-rules-scan } }        # collect the relevant rules
+      - { name: decompose, use: { type: agent, name: plan-decompose } }          # break into phases + acceptance criteria
   refine:                             # check the requirements: code, rules, q&a
     steps:
-      - { name: plan-check }          # plan against the current code
-      - { name: rules-check }         # rules coverage per phase
-      - { name: walk, involve: high-only }   # q&a walk · all | high-only | none
+      - { name: plan-check, use: { type: agent, name: refine-plan-check } }      # plan against the current code
+      - { name: rules-check, use: { type: agent, name: refine-rules-check } }    # rules coverage per phase
+      - { name: walk, use: { type: skill, name: walk }, involve: high-only }   # q&a walk · all | high-only | none
   build:                              # loop over phase
     each: phase                       # intrinsic — fixed per tier (task→phase), not configurable (docs only)
     stop:
@@ -58,8 +58,8 @@ task:
     retry_limit: 3                    # how many times a failing phase is re-run
   wrap:
     steps:
-      - { name: review }
-      - { name: summarize }
+      - { name: review, use: { type: agent, name: wrap-review } }
+      - { name: summarize, use: { type: agent, name: wrap-summarize } }
 
   fields:                             # data model of a task (the task-file)
     schema_version:  int
@@ -80,13 +80,13 @@ task:
 epic:
   plan:
     steps:
-      - { name: discover }            # probe the situation/scope (shared with task.plan)
-      - { name: scaffold }            # goal prose → coarse task-stubs
+      - { name: discover, use: { type: agent, name: plan-discover } }            # probe the situation/scope (shared with task.plan)
+      - { name: scaffold, use: { type: agent, name: epic-scaffold } }            # goal prose → coarse task-stubs
   refine:                             # D2: a real epic refine — get concrete
     steps:
-      - { name: epic-plan-check }     # check stubs/scope against the real code
-      - { name: epic-decompose }      # work out OUTCOME task acceptance criteria per stub (acceptance_criteria)
-      - { name: walk, involve: high-only }   # settle open questions with you
+      - { name: epic-plan-check, use: { type: agent, name: epic-plan-check } }     # check stubs/scope against the real code
+      - { name: epic-decompose, use: { type: agent, name: epic-decompose } }       # work out OUTCOME task acceptance criteria per stub (acceptance_criteria)
+      - { name: walk, use: { type: skill, name: walk }, involve: high-only }   # settle open questions with you
   build:                              # loop over task
     each: task                        # intrinsic — fixed per tier (epic→task), not configurable (docs only)
     stop:
@@ -94,7 +94,7 @@ epic:
     retry_limit: 3
   wrap:
     steps:
-      - { name: roll-up }             # definition of done against epic.acceptance + retro
+      - { name: roll-up, use: { type: agent, name: epic-roll-up } }             # definition of done against epic.acceptance + retro
 
   fields:                             # data model of an epic (the _epic.yml)
     schema_version: int

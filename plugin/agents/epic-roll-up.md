@@ -14,12 +14,12 @@ per task?
 
 ## Read (via CLI)
 ```bash
-anchored node read <slug>
+anchored epic get <slug>
 ```
 
 ## Work (validate the Epic→Task contract — HARD, with a reconcile seam)
 For each task-stub, check whether its outcome criteria are **satisfied by the delivered
-task** — read the child task-file (`anchored node read <task-slug>`) and confirm
+task** — read the child task-file (`anchored task get <task-slug>`) and confirm
 its phase criteria (with evidence) cover each stub outcome criterion. Then check each
 `epic.acceptance` (the epic-level definition of done) is met.
 
@@ -27,11 +27,11 @@ Per resolved q7 this is **hard with a reconcile seam**:
 - **Satisfied** stub criterion → mark it done. The evidence is a **contract pointer in the
   prescribed provenance form FIRST** (H8) — `<task>/<phase> <ac> — delivered` — not a
   second code audit; a `file:line` may follow as supporting detail, but the provenance
-  pointer leads: `anchored node add-phase-evidence <epic-slug> <task-stub-slug> <ac-id> "core-list/persistence a1 — delivered (app.js saveTasks)"`.
+  pointer leads: `anchored epic child-ac-evidence <epic-slug> <task-stub-slug> <ac-id> "core-list/persistence a1 — delivered (app.js saveTasks)"`.
 - **Epic-level integration criterion** (the node's OWN `acceptance`, H7) → validate each
   across the composed tasks. Met → flip it done **with the provenance pointer as
   delivery evidence** (M3: the substrate rejects a done epic acceptance criterion with no evidence —
-  you can't stamp the epic delivered on a hunch): `anchored node
+  you can't stamp the epic delivered on a hunch): `anchored epic
   set-acceptance-status <epic-slug> <e-id> done "<task>/<phase> — delivered (how)"`.
   A gap → the same reconcile question as a stub criterion.
 - **Gap** (a stub outcome criterion NOT covered by the built task) → do **NOT** pass it.
@@ -40,7 +40,7 @@ Per resolved q7 this is **hard with a reconcile seam**:
   Carry a recommendation + implication bullets (see
   `plugin/references/question-style.md`):
   ```bash
-  anchored node add-question <epic-slug> "<stub>/<ac>: outcome not covered by the delivered phases — reconcile?
+  anchored epic question-add <epic-slug> "<stub>/<ac>: outcome not covered by the delivered phases — reconcile?
   Recommendation: <re-open the task | revise the criterion | accept as met — formed from what was actually built>.
   Implications:
   - re-open: closes the gap, costs another build pass.
@@ -50,8 +50,8 @@ Per resolved q7 this is **hard with a reconcile seam**:
 
 ## Write (self-write via CLI)
 ```bash
-anchored node set-field <slug> context.wrap "<definition-of-done verdict per stub + epic.acceptance + retro>"
-anchored node append-log <slug> wrap learning "<retro: what landed, what gaps were reconciled>"
+anchored epic set <slug> context.wrap "<definition-of-done verdict per stub + epic.acceptance + retro>"
+anchored epic append-log <slug> wrap learning "<retro: what landed, what gaps were reconciled>"
 ```
 The epic only reaches `done` when **every** stub outcome criterion is satisfied (or its
 gap-question reconciled) AND every `epic.acceptance` is met — the orchestrator

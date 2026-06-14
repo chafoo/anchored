@@ -27,72 +27,87 @@ task:
 
 ## A step
 
-A step is an entry in `steps`. `name` is required; everything else depends on the
-type.
+A step is an entry in `steps`. Its shape is uniform across every tier and stage:
 
-| Field | Built-in step | Custom `run:` step | Custom `use:` step |
-|---|---|---|---|
-| `name` | **required** (reserved name) | **required** | **required** |
-| `run` | ✗ | **required** (shell/prose) | ✗ |
-| `use` | ✗ | ✗ | **required** (worker) |
-| `type` | ✗ | ✗ | optional · `agent` (default) \| `skill` |
-| `instructions` | optional (steers the built-in) | optional (guides the `run:`) | optional (to the worker) |
-| `involve` | on `walk` only · `all`\|`high-only`\|`none` | ✗ | ✗ |
-| `each` (+`steps`) | on `loop` only (see below) | ✗ | ✗ |
+```
+{ name, instructions?, use?: { type, name }, execute? }
+```
 
-**Invariants:** `run` **XOR** `use` (never both) · `type` only with `use` ·
-`instructions` is allowed on **every** step (run/use/built-in) · built-ins carry
-neither `run` nor `use` (they dispatch themselves) · built-ins are
+| Field | Required | Value |
+|---|---|---|
+| `name` | **required** | the step's label (reserved name for a default step; any name for a custom one) |
+| `instructions` | optional | prose the main thread follows when it runs the step — a command lives **here**, as prose |
+| `use` | optional | the worker to spawn: `{ type: agent\|skill, name: <worker> }` |
+| `execute` | optional | `sequential` (default) \| `workflow` — the per-step fan-out knob (see below) |
+| `involve` | on `walk` only | `all` \| `high-only` \| `none` |
+| `each` (+`steps`) | on the build loop only (see below) | the child tier to iterate |
+
+**There is no `run:` step key** — commands are not a separate step type. Whatever a
+step should execute (a shell command, a CLI call, an ordering condition) is expressed
+as prose in `instructions:`. Likewise there is no bare `worker:` / `type:` field on a
+step: the worker is always the nested `use: { type, name }`.
+
+**Invariants:** `instructions` is allowed on **every** step (worker step or
+prose-only) · `type` lives inside `use`, never as a top-level step key · default steps
+carry the worker that matches [`anchored.default.yml`](anchored.default.yml) and are
 **not removable / not reorderable** — only extendable via `instructions` (append).
 
 ```yaml
-# Built-in, steered only:
+# Default step, steered only (instructions appended to its built-in worker):
 - { name: implement, instructions: "always test-driven development: red → green → refactor" }
 
-# Built-in walk with involve:
-- { name: walk, involve: high-only }
+# Default walk with involve:
+- { name: walk, use: { type: skill, name: walk }, involve: high-only }
 
-# Custom run-step (shell):
-- { name: lint, run: 'npm run check' }
+# Custom prose-only step (the command lives in instructions):
+- { name: lint, instructions: "run `npm run check`; fail the step on a non-zero exit" }
 
-# Custom use-step, isolated subagent (default):
-- { name: docu-scan, use: docu-scan }
+# Custom worker step, isolated subagent:
+- { name: docu-scan, use: { type: agent, name: docu-scan } }
 
-# Custom use-step, in-session skill, with instruction:
-- { name: pr-review, use: pr-reviewer, type: skill, instructions: 're-scan touched modules only' }
+# Custom worker step, in-session skill, with instruction:
+- { name: pr-review, use: { type: skill, name: pr-reviewer }, instructions: "re-scan touched modules only" }
 ```
 
 > **`instructions:` is allowed on EVERY step** — prose the AI follows when it runs
-> or dispatches the step. Uniform across `run` / `use` / worker: on a `run:` step it
-> guides HOW the AI runs the command (conditions, how to treat output/errors,
-> ordering — e.g. *"run this AFTER the task has flipped to done"*); on a `use:` step
-> it is passed through to the worker; on a built-in it extends its behaviour
-> (append). There is no special flag for "after done" — the ordering lives in the
-> `instructions`.
+> or dispatches the step. On a prose-only step it carries the command itself plus HOW
+> to run it (conditions, how to treat output/errors, ordering — e.g. *"run this AFTER
+> the task has flipped to done"*); on a `use:` step it is passed through to the worker;
+> on a default step it extends its behaviour (append). There is no special flag for
+> "after done" — the ordering lives in the `instructions`.
 
-### Variables in `run:` steps
+### `execute:` — the per-step fan-out knob
 
-The orchestrator passes every `run:` step these values as **real environment
-variables** (`${NAME}` expands in the shell command; never text them in by hand).
-Which are available depends on the stage:
+`execute` controls how a **single** step runs:
 
-| Variable | Value | Available in |
+- `execute: sequential` (default) — the step runs once, in order.
+- `execute: workflow` — **this** step fans out (the main thread spawns its work in
+  parallel rather than running it as one sequential pass).
+
+`execute` is the **only** parallelism knob in the config, and it is scoped to one
+step. **Build-loop parallelism is not a config flag** — there is no `mode:` on
+`build`. Running several children of a build loop at once is plugin orchestration via
+`depends_on`: ready children fan out, and the dependency chain sequences the rest. The
+config never declares "run the loop in parallel"; it only declares, per step, whether
+that step fans out (`execute: workflow`).
+
+### Referring to slugs in `instructions:`
+
+A step's `instructions:` prose can reference the unit it runs against by slug. Which
+slugs are in scope depends on the stage:
+
+| Slug | Meaning | In scope for |
 |---|---|---|
-| `TASK_SLUG` | the task (the task-file); for an epic child, the child slug | all build/wrap `run:` steps |
-| `PHASE_SLUG` | the phase just built | `phase.build` only |
-| `PHASE_NAME` | the phase's plain-text name | `phase.build` only |
-| `EPIC_SLUG` | the parent epic slug, otherwise empty | all build/wrap `run:` steps |
-
-There is **no** `$SLUG` — the correct name is always `${TASK_SLUG}`. A commit
-message like `git commit -am "$SLUG"` silently commits with an **empty** message.
+| the task slug | the task (the task-file); for an epic child, the child slug | all build/wrap steps |
+| the phase slug | the phase just built | `phase.build` only |
+| the phase name | the phase's plain-text name | `phase.build` only |
+| the epic slug | the parent epic slug, otherwise empty | all build/wrap steps |
 
 > **branch-per-task — flatten the slug:** an epic child slug is *nested*
-> (`myepic/core-list`). A raw branch `task/${TASK_SLUG}` can collide with a
-> prefix-related sibling (git ref dir/file conflict: `task/x` vs `task/x/y`).
-> Turn slashes into `-` in the branch name and it becomes collision-safe:
-> ```bash
-> BRANCH="task/$(printf '%s' "${TASK_SLUG}" | tr '/' '-')"   # myepic/core-list → task/myepic-core-list
-> ```
+> (`myepic/core-list`). A raw branch `task/<slug>` can collide with a prefix-related
+> sibling (git ref dir/file conflict: `task/x` vs `task/x/y`). Turn slashes into `-`
+> in the branch name and it becomes collision-safe (e.g. `myepic/core-list` →
+> `task/myepic-core-list`). Spell this out in the step's `instructions:`.
 
 ### Position: `after:` / `before:`
 
@@ -105,14 +120,14 @@ name lands at the anchor position, a known name extends the existing step in pla
 phase:
   build:
     steps:
-      - { name: commit, after: code-validate, run: '…' }   # AFTER the gates, on a green phase
-      - { name: lint,   before: task-validate, run: '…' }  # BEFORE the evidence gate
+      - { name: commit, after: code-validate, instructions: '…' }   # AFTER the gates, on a green phase
+      - { name: lint,   before: task-validate, instructions: '…' }  # BEFORE the evidence gate
 ```
 
 > **Caution — silent append:** if `after:`/`before:` points at a name that does not
 > exist in the stage, it does **not** fail — the step lands silently at the end
-> (`ok:true`). After editing, check the actual **order** with
-> `anchored steps <tier> <stage>`, not just presence.
+> (`ok:true`). After editing, check the actual **order** in the stage plan returned by
+> `anchored <tier> <stage> <slug>` (its `steps[]`), not just presence.
 
 ## Built-in steps per stage
 
@@ -138,13 +153,13 @@ a **body** (`steps`) that runs **interleaved** per child (child A fully, then ch
 epic:
   build:
     steps:
-      - { name: notify-start, run: '…' }      # once, before the loop
+      - { name: notify-start, instructions: '…' }   # once, before the loop
       - name: loop
-        each: task                            # loop body = the task tier, per stub
+        each: task                                  # loop body = the task tier, per stub
         steps:
-          - { name: run }                      # built-in: run this unit
-          - { name: commit, run: 'git commit -am "${TASK_SLUG}"' }  # right after, per task
-      - { name: report, run: '…' }            # once, afterwards
+          - { name: run }                            # built-in: run this unit
+          - { name: commit, instructions: 'commit the unit by its task slug' }  # right after, per task
+      - { name: report, instructions: '…' }         # once, afterwards
 ```
 
 - **Short form** `build: { each: task }` ≙ `steps: [{ name: loop, each: task, steps: [run] }]`.
@@ -197,8 +212,9 @@ task:
 - Default fields are **not** repeated here — `fields` is **additive** (the base comes
   from `anchored.default.yml`); a custom name lands additionally in the node schema, while an
   **un**declared key is still rejected on write.
-- Set/read at runtime: `anchored node set-field <slug> <name> <value>`. On a
-  **child** (stub/phase): `anchored node set-child-field <slug> <child> <name> <value>`.
+- Set/read at runtime: `anchored <tier> set <slug> <name> <value>`. On a **child**:
+  a stub via `anchored epic child-set-field <epic> <stub> <name> <value>`; a phase
+  via `anchored phase set <task>/<phase> <name> <value>` (the phase's slash-joined slug).
 
 ### Commit anchors: `commit_sha` vs. `merge_commit` (two-anchor semantics)
 
@@ -208,9 +224,10 @@ task-file carries **two** anchors — additive, no rename (existing specs/docs s
 intact):
 
 - **`commit_sha`** = the **per-phase anchor** (interim). Your per-phase commit step
-  writes the `HEAD` SHA here itself after each phase (`anchored node set-field …
-  "$(git rev-parse HEAD)"` inside `run:`). Caution: the phase branch this SHA points
-  at **can be deleted by the task-wrap `--no-ff` merge** — `commit_sha` is then an
+  writes the `HEAD` SHA here itself after each phase (an `anchored task set …
+  "$(git rev-parse HEAD)"` call, expressed in the step's `instructions:`). Caution:
+  the phase branch this SHA points at **can be deleted by the task-wrap `--no-ff`
+  merge** — `commit_sha` is then an
   orphaned (interim) pointer.
 - **`merge_commit`** = the **surviving task-level merge commit**. This is the stable
   anchor on `develop`/`main` that persists after the wrap merge (while the per-phase
@@ -218,23 +235,25 @@ intact):
 
 Both are ordinary custom fields (`string`), additively declared.
 
-#### SHA anchors: wire them yourself in the `run:` step
+#### SHA anchors: wire them yourself in the commit step
 
 The framework does **not** fill these fields automatically — git is entirely yours.
-In your own commit step you write the SHA via `set-field` yourself:
+In your own commit step you write the SHA via `set-field` yourself; the command lives
+in the step's `instructions:` prose:
 
 ```yaml
 - name: commit
   after: code-validate
-  run: |
-    git add -A -- ':!.claude/tasks'
-    git diff --cached --quiet || git commit -m "phase: ${PHASE_SLUG}"
-    anchored node set-field "${TASK_SLUG}" commit_sha "$(git rev-parse HEAD)"
+  instructions: |
+    Commit the phase, then record the SHA on the task-file:
+      git add -A -- ':!.claude/tasks'
+      git diff --cached --quiet || git commit -m "phase: <phase-slug>"
+      anchored task set <task-slug> commit_sha "$(git rev-parse HEAD)"
 ```
 
-The framework writes only to the task-file (via the CLI you call inside `run:`) — it
+The framework writes only to the task-file (via the CLI you call from the step) — it
 **never** runs git for you. WHAT gets committed, WHICH field receives the SHA, and
-WHEN: all **policy** in your `run:`. See
+WHEN: all **policy** in your `instructions:`. See
 [`anchored.example-comprehensive.yml`](anchored.example-comprehensive.yml).
 
 ## `_lib` — reusable steps (`anchored.yml` only)
@@ -246,7 +265,7 @@ reuse steps. Node-files stay alias-free.
 _lib:
   research: &research
     name: research-best-practices
-    use: researcher
+    use: { type: agent, name: researcher }
     instructions: "Current code first (.claude/rules + docs), then online."
 
 epic:

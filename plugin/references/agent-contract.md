@@ -6,6 +6,15 @@
 > exclusively through the `anchored` CLI, never through raw Write/Edit on task-files
 > (only build-implement mutates source-code files, via Write/Edit/Bash).
 
+## The CLI grammar is TIER-FIRST
+
+Every call is `anchored <tier> <verb> [slug] [args]` — the tier (`phase` · `task` ·
+`epic` · `project`) is always the first token, the verb second. There is no `anchored
+node …` surface any more. The CLI emits one JSON envelope per call:
+`{ ok, command, result | error }`.
+
+Meta-verbs (no tier): `anchored validate` · `anchored help` · `anchored version`.
+
 ## What the skill hands each agent (input)
 
 On spawn (Task tool), the skill passes at least the following in the prompt:
@@ -14,33 +23,76 @@ On spawn (Task tool), the skill passes at least the following in the prompt:
 |---|---|
 | `task-slug` | the **task** slug (the task-file). ALWAYS the task, never the phase slug. |
 | `phase-slug` | (build/leaf only) the target **phase** inside the task-file. |
-| `tier` | `phase` \| `task` \| `epic` — which level is being worked on. |
+| `tier` | `phase` \| `task` \| `epic` \| `project` — which level is being worked on. |
 | `stage` | `plan` \| `refine` \| `build` \| `wrap` — which stage. |
 | `context` | prose context: the phase/node `context`, the `plan` trail, resolved questions. |
 | `rules` | the `rules[]` of the phase/task (`{ path, why }`) — the agent reads them and adheres to them. |
-| `instructions` | optional step `instructions` from the (merged) config — passed through verbatim. |
+| `instructions` | optional step `instructions` from the (merged) template — passed through verbatim. |
 
-The skill determines the worker identity (which agent) **not** by hardcoding it, but
-from `anchored steps <tier> <stage>` (→ the `agent` reference per worker step).
+The skill determines the worker identity (which agent) from the **stage verb's plan**:
+`anchored <tier> <stage> <slug>` returns `{ steps: [{ name, use: { type, name }, involve, … }],
+each?, stop?, retry_limit?, node }` — the `use: { type, name }` is **inline data** on each
+step (the plugin agent/skill to spawn). There is no separate `anchored steps` command.
 
 ## Phase addressing (critical)
 
 A **phase is a child inside the task-file** — it has NO node-file of its own. So a
-phase-level agent addresses its writes via **`<task-slug> <phase-slug>`**, never as a
-standalone node:
+phase is addressed by **one slash-joined slug** `<task-slug>/<phase-slug>` on the
+`phase` tier, never as two args:
 
-- Evidence per phase acceptance criterion → `anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "<proof>"`
+- Evidence per phase acceptance criterion → `anchored phase ac-evidence <task-slug>/<phase-slug> <ac-id> "<proof>"`
   — **anchor the evidence on the symbol, NO raw line numbers (H6, tightened):**
   lead with the function/symbol/file (`saveTasks() in app.js`) plus a short code
   snippet where the proof lives. Do **not** append "(line NN)" — a line number goes
-  stale *within the same task* the moment a later phase inserts code above it (in the
-  dogfood, evidence drifted ~40 lines onto unrelated code). Symbol + snippet is
-  stable; the line number is only stale-going noise.
-- Set phase status → `anchored node set-child-status <task-slug> <phase-slug> <status>`
+  stale *within the same task* the moment a later phase inserts code above it. Symbol
+  + snippet is stable; the line number is only stale-going noise.
+- Set phase status → `anchored phase status <task-slug>/<phase-slug> <status>`
+- (a nested task is `<epic>/<task>`, so its phase is `<epic>/<task>/<phase>` — still
+  one slash-joined slug; the last segment is always the phase.)
 
-A **node-level** agent (task/epic, e.g. wrap-summarize, epic-roll-up) instead
-addresses the node by its own `<slug>` (`set-field <slug> …`, `set-status <slug> …`) —
-that is its own file.
+A **node-level** verb (task/epic/project — e.g. wrap-summarize, epic-roll-up) instead
+addresses the node by its own `<slug>` (`anchored task set <slug> …`, `anchored epic
+status <slug> …`) — that is its own file.
+
+## The verb map (the only surface — old `node …` is gone)
+
+| do this | command |
+|---|---|
+| read a node | `anchored <tier> get <slug>` |
+| create a node | `anchored <tier> create <slug> "<title>"` |
+| get the stage plan (steps + node) | `anchored <tier> plan\|refine\|build\|wrap <slug>` |
+| set a field (dotted ok: `context.wrap`) | `anchored <tier> set <slug> <field> "<value>"` |
+| advance status | `anchored <tier> status <slug> <to>` |
+| append an audit-log entry | `anchored <tier> append-log <slug> <at> <kind> "<note>"` |
+| raise / resolve a question | `anchored <tier> question-add <slug> "<text>" [priority]` · `anchored <tier> question-resolve <slug> <id> "<answer>" [user\|ai] ["<reasoning>"]` |
+| raise / resolve a concern | `anchored <tier> concern-add <slug> "<text>" [priority]` · `anchored <tier> concern-resolve <slug> <id> "<answer>" [user\|ai] ["<reasoning>"]` |
+| — TASK owns phase EXISTENCE — | |
+| add a phase | `anchored task add-phase <task-slug> <phase-slug> "<name>"` |
+| list / next / ready phases | `anchored task list-phases\|next-phase\|ready-phases <task-slug>` |
+| — PHASE owns its CONTENT — | |
+| add an acceptance criterion | `anchored phase ac-add <task>/<phase> "<text>"` (id auto a1, a2, …) |
+| evidence an AC (flips it done) | `anchored phase ac-evidence <task>/<phase> <ac-id> "<proof>"` |
+| reject an AC (back to pending) | `anchored phase ac-fail <task>/<phase> <ac-id> "<why>"` |
+| defer an AC (out of scope here) | `anchored phase ac-defer <task>/<phase> <ac-id> "<reason>"` |
+| attach a rule to a phase | `anchored phase rule-add <task>/<phase> <path> "<why>"` |
+| set the phase executor | `anchored phase set-executor <task>/<phase> <implement\|workflow>` |
+| — EPIC/PROJECT own STUB existence — | |
+| add a child-stub | `anchored epic child-add <epic-slug> <task-stub-slug> ["<goal>"]` (project: `anchored project child-add <project> <epic-stub>`) |
+| advance a child-stub | `anchored epic child-status <epic-slug> <stub-slug> <pending\|active\|done\|blocked>` |
+| set a stub field (e.g. depends_on) | `anchored epic child-set-field <epic> <stub> depends_on "a,b"` |
+| add a stub outcome-AC | `anchored epic child-ac-add <epic> <stub> "<text>"` (project: `anchored project child-ac-add <project> <stub> "<text>"`) |
+| evidence a stub outcome-AC (flips it done) | `anchored epic child-ac-evidence <epic> <stub> <ac-id> "<proof>"` (project: `anchored project child-ac-evidence …`) |
+| reject a stub outcome-AC (back to pending) | `anchored epic child-ac-fail <epic> <stub> <ac-id> "<why>"` (project: `anchored project child-ac-fail …`) |
+| defer a stub outcome-AC (out of scope) | `anchored epic child-ac-defer <epic> <stub> <ac-id> "<reason>"` (project: `anchored project child-ac-defer …`) |
+| add / flip an epic DoD item | `anchored epic add-acceptance <epic> "<text>"` · `anchored epic set-acceptance-status <epic> <id> done "<delivery evidence>"` |
+| roll up (reads child files) | `anchored epic roll-up <epic-slug>` |
+
+> No `question-list` verb — read the node (`anchored <tier> get <slug>`) and filter
+> `questions[]` / `concerns[]` in-session.
+>
+> **`set-child-status` split by tier:** a *phase* (task's child) → `anchored phase
+> status <task>/<phase> …`; a *task-stub* (epic's child) → `anchored epic child-status
+> <epic> <stub> …`; an *epic-stub* (project's child) → `anchored project child-status …`.
 
 ## What the agent writes back out (output = self-write via CLI)
 
@@ -49,13 +101,13 @@ directly via the CLI. Per agent role:
 
 | Role | self-write commands |
 |---|---|
-| plan-discover / plan-rules-scan / refine-* / wrap-review / validators | `anchored node append-log <task-slug> <stage> <kind> "<note>"` |
-| plan-decompose | `anchored node add-phase <task-slug> <phase-slug> "<name>"` · `anchored node add-ac <task-slug> <phase-slug> "<text>"` (id auto a1, a2, …) |
-| epic-scaffold | `anchored node add-child <epic-slug> <task-stub-slug>` |
-| build-implement | `anchored node add-phase-evidence <task-slug> <phase-slug> <ac-id> "<proof>"` (evidence-only — symbol anchor; NEVER flips the phase status itself, G4) |
-| build-task-validate / build-code-validate | pure inspector (no code write); REJECT an acceptance criterion via `anchored node set-failures <task-slug> <phase-slug> <ac-id> "<why>"` (flips it pending → re-do loop) + rollup via `append-log … build learning` |
-| wrap-summarize | `anchored node set-field <node-slug> context.wrap "<summary>"` (dotted-path → nested) |
-| epic-roll-up | `anchored node append-log <epic-slug> wrap <kind> "<definition-of-done / retro>"` · `anchored node set-status <epic-slug> done` |
+| plan-discover / plan-rules-scan / refine-* / wrap-review / validators | `anchored <tier> append-log <task-slug> <stage> <kind> "<note>"` |
+| plan-decompose | `anchored task add-phase <task-slug> <phase-slug> "<name>"` · `anchored phase ac-add <task-slug>/<phase-slug> "<text>"` |
+| epic-scaffold | `anchored epic child-add <epic-slug> <task-stub-slug> "<goal>"` |
+| build-implement | `anchored phase ac-evidence <task-slug>/<phase-slug> <ac-id> "<proof>"` (evidence-only — symbol anchor; the AC flips done atomically; NEVER flips the phase status itself, G4) |
+| build-task-validate / build-code-validate | pure inspector (no code write); REJECT a criterion via `anchored phase ac-fail <task-slug>/<phase-slug> <ac-id> "<why>"` (flips it pending → re-do loop) + rollup via `append-log … build learning` |
+| wrap-summarize | `anchored <tier> set <node-slug> context.wrap "<summary>"` (dotted-path → nested) |
+| epic-roll-up | `anchored epic roll-up <epic-slug>` (read child statuses) · `anchored epic set-acceptance-status <epic> <id> done "<evidence>"` · `anchored epic append-log <epic-slug> wrap <kind> "<retro>"` · `anchored epic status <epic-slug> done` |
 
 Each agent doc names, at its head, the fields it expects plus the commands it runs —
 this contract is the shared reference. When an agent needs a field that is not listed

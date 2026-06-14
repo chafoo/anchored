@@ -6,11 +6,12 @@
 # Demonstrates:
 #   • custom field `research` filled by a web-research step in PLAN
 #   • custom field `commit_sha` filled by a per-phase commit step in BUILD (the
-#     step's own run: writes it via `anchored node set-field` — git is all yours)
+#     step's own instructions write it via `anchored task set` — git is all yours)
 #   • a global TDD methodology instruction on the implement worker (the "architecture")
 #   • custom steps across plan / refine / build / wrap (all four stages fire)
 #
-# Variables in run:-steps: ${TASK_SLUG} ${PHASE_SLUG} ${PHASE_NAME} (phase.build) ${EPIC_SLUG}.
+# A command lives in a step's `instructions:` prose (there is no `run` key); the
+# variables it may reference: ${TASK_SLUG} ${PHASE_SLUG} ${PHASE_NAME} (phase.build) ${EPIC_SLUG}.
 
 # ─── task ────────────────────────────────────────────────────────────
 task:
@@ -23,48 +24,52 @@ task:
 
   plan:
     steps:
-      - { name: discover }                                  # built-in, kept
+      - { name: discover, use: { type: agent, name: plan-discover } } # built-in, kept
       # custom use-step: a researcher worker does web research and writes its
       # findings into the `research` field via the CLI. `after: discover` lands it
       # before decompose so the findings inform the decomposition. The orchestrator
       # dispatches it as a subagent and threads `instructions` to it.
       - name: research
-        use: researcher
-        type: agent
+        use: { type: agent, name: researcher }
         after: discover
         instructions: >-
           Web-research the problem domain + prior art. Write a tight findings
           summary into the research field:
-          `anchored node set-field <task-slug> research "<findings>"`.
-      - { name: rules-scan }
-      - { name: decompose }
+          `anchored task set <task-slug> research "<findings>"`.
+      - { name: rules-scan, use: { type: agent, name: plan-rules-scan } }
+      - { name: decompose, use: { type: agent, name: plan-decompose } }
 
   refine:
     steps:
-      - { name: plan-check }
-      - { name: rules-check }
-      # a custom run-step in refine (e.g. a dependency/security audit gate)
-      - { name: audit, after: rules-check, run: "echo 'dependency audit clean'" }
-      - { name: walk, involve: high-only }
+      - { name: plan-check, use: { type: agent, name: refine-plan-check } }
+      - { name: rules-check, use: { type: agent, name: refine-rules-check } }
+      # a custom step in refine (e.g. a dependency/security audit gate). The command
+      # lives in prose: the main thread runs the audit and confirms it is clean.
+      - name: audit
+        after: rules-check
+        instructions: "Run a dependency/security audit and confirm it is clean (e.g. `echo 'dependency audit clean'`)."
+      - { name: walk, use: { type: skill, name: walk }, involve: high-only }
 
   wrap:
     steps:
-      - { name: review }
-      - { name: summarize }
-      # custom run-step in wrap: merge the finished task branch locally (no PR).
-      # The SHA capture is hand-wired in the run: itself — the surviving --no-ff
-      # merge commit (HEAD on main after the merge) is written into merge_commit, the
-      # stable task-level anchor. Git lives entirely in your run-step; the framework
+      - { name: review, use: { type: agent, name: wrap-review } }
+      - { name: summarize, use: { type: agent, name: wrap-summarize } }
+      # custom step in wrap: merge the finished task branch locally (no PR). The SHA
+      # capture is hand-wired in the command itself — the surviving --no-ff merge
+      # commit (HEAD on main after the merge) is written into merge_commit, the
+      # stable task-level anchor. Git lives entirely in your step; the framework
       # never touches it. (commit_sha pointed at a phase branch that this merge may
-      # prune; merge_commit is the durable pointer.)
+      # prune; merge_commit is the durable pointer.) The command lives in prose:
       - name: merge
         after: summarize
-        run: |
-          BRANCH="task/$(echo "${TASK_SLUG}" | tr '/' '-')"
-          git add -A -- ':!.claude/tasks'
-          git diff --cached --quiet || git commit -m "wrap: ${TASK_SLUG}"
-          git checkout main && git merge --no-ff -X theirs "$BRANCH" -m "merge: ${TASK_SLUG}"
-          anchored node set-field "${TASK_SLUG}" merge_commit "$(git rev-parse HEAD)"
+        instructions: >-
+          Merge the finished task branch locally (no PR) and capture the surviving
+          merge commit into merge_commit. Run:
+          `BRANCH="task/$(echo "${TASK_SLUG}" | tr '/' '-')";
+          git add -A -- ':!.claude/tasks';
+          git diff --cached --quiet || git commit -m "wrap: ${TASK_SLUG}";
+          git checkout main && git merge --no-ff -X theirs "$BRANCH" -m "merge: ${TASK_SLUG}";
+          anchored task set "${TASK_SLUG}" merge_commit "$(git rev-parse HEAD)"`.
       # OPT-IN: commit the audit-trail (.claude/tasks) as a SEPARATE commit so the
       # evidence/decisions survive the run. The framework ships NO git default —
       # committing is your policy; this is how you opt in. The ordering lives in
@@ -73,10 +78,11 @@ task:
       # merge step above excludes .claude/tasks via `:!.claude/tasks` precisely so
       # this step owns the task-files.)
       - name: commit-audit-trail
-        instructions: "Run this AFTER the task is flipped to done, so the committed task-file shows the terminal status and the tree stays clean."
-        run: |
-          git add .claude/tasks >/dev/null 2>&1 || exit 0
-          git diff --cached --quiet || git commit -q -m "chore(${TASK_SLUG}): audit trail"
+        instructions: >-
+          Run this AFTER the task is flipped to done, so the committed task-file
+          shows the terminal status and the tree stays clean. Run:
+          `git add .claude/tasks >/dev/null 2>&1 || exit 0;
+          git diff --cached --quiet || git commit -q -m "chore(${TASK_SLUG}): audit trail"`.
 
 # ─── phase ───────────────────────────────────────────────────────────
 phase:
@@ -92,26 +98,27 @@ phase:
           TDD is mandatory: write the FAILING test first (red), then the minimal
           code to pass it (green), then refactor. Never write production code before
           a test exists for it. Cite the test in the AC evidence.
-      - { name: task-validate }
-      - { name: code-validate }
-      # per-phase commit — the SHA write-back is hand-wired in the run: itself. After
+      - { name: task-validate, use: { type: agent, name: build-task-validate } }
+      - { name: code-validate, use: { type: agent, name: build-code-validate } }
+      # per-phase commit — the SHA write-back is hand-wired in the command itself. After
       # committing, capture `git rev-parse HEAD` and write it into `commit_sha` with
-      # a `set-field` call. Git is entirely yours: the framework writes only to the
+      # a `set` call. Git is entirely yours: the framework writes only to the
       # task-file (via the CLI you call here), it never runs git on your behalf.
       - name: commit
         after: code-validate
-        run: |
-          git add -A -- ':!.claude/tasks'
-          git diff --cached --quiet || git commit -m "phase: ${PHASE_SLUG} — ${PHASE_NAME}"
-          anchored node set-field "${TASK_SLUG}" commit_sha "$(git rev-parse HEAD)"
+        instructions: >-
+          Commit the phase and write its SHA into commit_sha. Run:
+          `git add -A -- ':!.claude/tasks';
+          git diff --cached --quiet || git commit -m "phase: ${PHASE_SLUG} — ${PHASE_NAME}";
+          anchored task set "${TASK_SLUG}" commit_sha "$(git rev-parse HEAD)"`.
 
 # ─── epic ────────────────────────────────────────────────────────────
 epic:
   plan:
     steps:
-      - { name: discover }
+      - { name: discover, use: { type: agent, name: plan-discover } }
       # research also at the epic level → epic-wide research field
-      - { name: research, use: researcher, type: agent, after: discover, instructions: "Survey the whole-epic domain." }
-      - { name: scaffold }
+      - { name: research, use: { type: agent, name: researcher }, after: discover, instructions: "Survey the whole-epic domain." }
+      - { name: scaffold, use: { type: agent, name: epic-scaffold } }
   fields:
     research: string

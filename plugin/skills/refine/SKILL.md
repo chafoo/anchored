@@ -27,12 +27,12 @@ words.
 
 The skill is the **orchestrator**: it consults the `anchored` CLI for the
 step-plan + node ops and spawns the refine agents itself via the **Task tool**
-(agents self-write via `anchored node …`, see
+(agents self-write via `anchored <tier> …`, see
 `plugin/references/agent-contract.md`). The CLI never spawns.
 
 ## Pre-flight + plan
 
-1. `anchored refine <slug>` → `{ stage, tier, node, steps }` (tier derived from the
+1. `anchored <tier> refine <slug>` → `{ stage, tier, node, steps }` (tier derived from the
    node; does NOT spawn). State gate: refine expects `drafted`.
 2. `steps` is the resolved refine pipeline: for a task
    `[plan-check, rules-check, walk]`, for an **epic**
@@ -44,7 +44,7 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
 **Task tier:**
 - **plan-check → refine-plan-check** — validates the plan against current code
   (stale paths, unacknowledged handlers, hidden defaults); self-writes the rollup:
-  `anchored node append-log <slug> refine learning "<plan-check rollup>"`. Any
+  `anchored task append-log <slug> refine learning "<plan-check rollup>"`. Any
   drift it can't auto-fix becomes an open question.
 - **rules-check → refine-rules-check** — verifies each phase covers the applicable
   `.claude/rules/*.md`; self-writes the coverage rollup via `append-log`. A missing
@@ -58,14 +58,14 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   sound); writes the grounding rollup to `context.refine`; genuine
   scope/architecture ambiguities → open questions.
 - **epic-decompose → epic-decompose** — authors **outcome-level task acceptance
-  criteria per stub** (`anchored node add-ac <epic> <stub> "<outcome acceptance criterion>"`,
+  criteria per stub** (`anchored epic child-ac-add <epic> <stub> "<outcome acceptance criterion>"`,
   the Epic→Task contract). These seed the just-in-time `plan task`'s phase
   decomposition at build (so the contract is never lost — the G8 fix) and are what
   the wrap roll-up validates the built task against.
 - **walk** — the consolidated Q&A walk. **First, pick the walk-style** (this is the
   v1 Stage-0 choice, ephemeral — never persisted): read the open questions
-  (`anchored node question-list <slug> open`), count them by priority, and ask
-  the user via `AskUserQuestion`:
+  (`anchored <tier> get <slug>` and filter `questions[]` for open), count them by
+  priority, and ask the user via `AskUserQuestion`:
 
   Phrase it for a human — **plain priority words, no raw enum tokens, and the
   walk-style codes stay INTERNAL** (they're only the value you pass to
@@ -82,7 +82,7 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   the threshold goes to the user (`resolve … user "<answer>"`); the rest the AI
   decides WITH reasoning (`resolve … ai "<answer>" "<why>"` — reasoning is
   required for `source=ai`).
-  `anchored node resolve-question <slug> <id> "<answer>" <user|ai> ["<reasoning>"]`
+  `anchored <tier> question-resolve <slug> <id> "<answer>" <user|ai> ["<reasoning>"]`
 
 ### Epic-wide question policy (H3 — epics only)
 
@@ -119,13 +119,13 @@ styles; its build-time decisions are already covered by the stop-conditions).
 
 ## Custom run/use steps (the config's own steps)
 
-`anchored steps <tier> refine` returns the FULL plan — a user can add their own
+`anchored <tier> refine <slug>` returns the FULL plan — a user can add their own
 refine steps beyond the gates. Dispatch them in declaration order at their plan
 position: **`kind: 'run'`** → execute via Bash with the variable contract as real
 env vars (`TASK_SLUG` = the node, `EPIC_SLUG` = parent epic or empty); a non-zero
 run-step is a real failure → surface it, stay `drafted`. **`kind: 'use'`** → spawn
 the named subagent / skill with its `instructions`; a worker writes results to a
-declared custom field via `anchored node set-field <slug> <field> "<value>"`. Keep
+declared custom field via `anchored <tier> set <slug> <field> "<value>"`. Keep
 the plumbing out of chat — narrate the outcome, not the command.
 
 ## Failure-handling
@@ -141,7 +141,7 @@ phases as a parallel per-criterion Dynamic Workflow). What was missing is the **
 so by default every phase ran sequentially (a ~44-min epic for ~200 lines). Refine
 is where that call belongs, because the phases + their acceptance criteria are now settled.
 
-**Default to the fastest safe path.** For each phase (`anchored node list-phases
+**Default to the fastest safe path.** For each phase (`anchored task list-phases
 <slug>`), the call is about **correctness, never quality** — parallel and sequential
 build the exact same thing:
 
@@ -152,7 +152,7 @@ build the exact same thing:
   race → corruption. That's the only thing the floor protects.
 - **Within "safe" → default to `workflow`** (the fastest path), not sequential. A
   phase with **≥2 independent acceptance criteria fans out by default**:
-  `anchored node set-executor <slug> <phase> workflow`.
+  `anchored phase set-executor <slug>/<phase> workflow`.
 - **`implement`** (sequential) only when the floor doesn't hold — a single
   criterion, or criteria that share sequential state / build on each other / touch
   the same region — **or** when you're genuinely unsure two criteria are independent
@@ -178,8 +178,8 @@ separate lever (the epic build loop), not this decision.
 Write the refine-trail (the plan-check + rules-check rollups) to context.refine,
 then — only when **every** question is resolved — flip the status:
 ```bash
-anchored node set-field <slug> context.refine "<plan-check + rules-check rollups>"
-anchored node set-status <slug> refined
+anchored <tier> set <slug> context.refine "<plan-check + rules-check rollups>"
+anchored <tier> status <slug> refined
 ```
 Tell the user: *"Plan's been talked through — N+M auto-fixes, K questions settled. Run `/a:build`."*
 No MCP, no raw node-file edit.

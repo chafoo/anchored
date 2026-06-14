@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Configure and extend the project's `anchored.yml` — add or edit custom lifecycle steps (run/use), gate instructions, the per-tier retry_limit + stop-conditions, custom phase fields. USE THIS whenever the user wants to create, change, extend, or tidy their `anchored.yml` in ANY way — adding a step, wiring an agent or skill into a stage, tuning a gate, setting up test-driven development / commit / PR automation — even when they don't say "anchored.yml" or "setup" (e.g. "make anchored run my linter after each phase", "have it open a PR when the task is done", "commit each phase"). Also the ONBOARDING entry — when a `/a:*` skill runs in a project with no `anchored.yml`, this is where the user optionally sets it up together. Translates the user's stated requirements into correct, schema-valid config, clarifies genuine ambiguities WITH the user, advises on request — but never pushes a setup the user didn't ask for.
+description: Configure and extend the project's `anchored.yml` — add or edit custom lifecycle steps (each with `name` + `instructions`, optional `use: { type, name }`), gate instructions, the per-tier retry_limit + stop-conditions, custom phase fields. USE THIS whenever the user wants to create, change, extend, or tidy their `anchored.yml` in ANY way — adding a step, wiring an agent or skill into a stage, tuning a gate, setting up test-driven development / commit / PR automation — even when they don't say "anchored.yml" or "setup" (e.g. "make anchored run my linter after each phase", "have it open a PR when the task is done", "commit each phase"). Also the ONBOARDING entry — when a `/a:*` skill runs in a project with no `anchored.yml`, this is where the user optionally sets it up together. Translates the user's stated requirements into correct, schema-valid config, clarifies genuine ambiguities WITH the user, advises on request — but never pushes a setup the user didn't ask for.
 ---
 
 # /a:setup — configure anchored.yml
@@ -24,13 +24,15 @@ question; suggest at most a one-liner. No salesmanship, no funnel.
 - **Never sell a setup.** There is no "let me set you up as a power user" pipeline.
   Do not proactively dump tiers, templates, or features the user didn't ask for.
 - **Clarify real ambiguity — don't guess silently.** Real forks worth a question:
-  which stage (plan/refine/build/wrap)? a deterministic shell step (`run`) or a
-  delegated worker (`use`)? for `use`, an isolated subagent (`type: agent`) or an
-  in-session skill (`type: skill`)? what exact command does their toolchain use?
+  which stage (plan/refine/build/wrap)? a main-thread step (`instructions` prose
+  only — a command goes HERE) or a delegated worker (`use: { type, name }`)? for
+  `use`, an isolated subagent (`type: agent`) or an in-session skill (`type:
+  skill`)? what exact command does their toolchain use?
 - **Suggest only when it genuinely helps, and lightly.** One nudge they can
   decline, not a funnel.
 - **Every custom step gets `name` + `instructions`.** `instructions` documents what
-  the step does and _why_; on a `use` step it is additionally threaded to the worker.
+  the step does and _why_ (a command to run lives in this prose); on a `use` step it
+  is additionally threaded to the worker.
 - **anchored.yml is deltas only.** The default template
   (`core/default-template/anchored.default.yml`, mirrored at
   `plugin/references/anchored.default.yml`) is the base — the user file overrides via deep
@@ -42,20 +44,22 @@ question; suggest at most a one-liner. No salesmanship, no funnel.
    the defaults — everything is a default the user overrides; an empty file = "use
    all defaults").
 2. **Map the request to the right slot** (see `plugin/references/config.md`):
-   - a **custom step** under `<tier>.<stage>.steps` (`run:` or `use:` +
-     `type`/`instructions`),
+   - a **custom step** under `<tier>.<stage>.steps` (`name` + `instructions`, plus
+     an optional `use: { type, name }` worker and `execute: sequential|workflow`),
    - **gate instructions** (the refine/build gate `instructions` slots),
    - the per-tier **`build.retry_limit`** / **`build.stop`** conditions,
    - **custom phase fields** (`task.phase.fields`).
-3. **Make the edit** — write `name` + `instructions` on any custom step, `type` on
-   `use` steps. Preserve the user's existing config. Two things bite if you wing
-   them — see `plugin/references/config.md` ("A step"):
+3. **Make the edit** — write `name` + `instructions` on any custom step, and
+   `use: { type, name }` when it delegates to a worker. Preserve the user's existing
+   config. Two things bite if you wing them — see `plugin/references/config.md`
+   ("A step"):
    - **Position with `after:`/`before:`** a named step (else it appends to the end).
      A bad anchor does NOT error — it silently appends, so verify the *order* in
      step 4, not just that the step is present.
-   - **Env vars in `run:` steps** are exactly `${TASK_SLUG}`, `${PHASE_SLUG}`,
-     `${PHASE_NAME}` (phase.build only), `${EPIC_SLUG}` — passed as real env vars.
-     There is **no `$SLUG`**; `git commit -am "$SLUG"` commits an empty message.
+   - **A command goes in `instructions:` prose**, not a step key. The runtime env
+     vars available to a main-thread command are exactly `${TASK_SLUG}`,
+     `${PHASE_SLUG}`, `${PHASE_NAME}` (phase.build only), `${EPIC_SLUG}`. There is
+     **no `$SLUG`**; `git commit -am "$SLUG"` commits an empty message.
 4. **Validate + check order**, then **show the changed region** so the user sees what
    landed. Run **`anchored validate`** as the final check — it parses + merges +
    validates the WHOLE yml and reports the resolved shape across every tier×stage

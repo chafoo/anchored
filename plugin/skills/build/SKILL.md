@@ -1,6 +1,6 @@
 ---
 name: build
-description: Execute the build stage of an anchored node — orchestrate its children to completion in-session, spawning the build agents and driving the failures-driven re-do loop. Triggers ONLY on the explicit `/a:build <slug>` command. Use for `/a:build`, not for general "build the app" requests.
+description: Execute the build stage of an anchored tier node — orchestrate its children to completion in-session, spawning the build agents and driving the failures-driven re-do loop. Triggers ONLY on the explicit `/a:build <slug>` command. Use for `/a:build`, not for general "build the app" requests.
 ---
 
 # /a:build — fractal build stage (skill-orchestrated)
@@ -30,15 +30,15 @@ The skill is the **orchestrator**: it runs in-session (it has the plugin + agent
 loaded), consults the `anchored` CLI for the deterministic step-plan + all node
 ops, and spawns each worker itself via the **Task tool**. The CLI never spawns
 agents — a headless subprocess can't reach the session's Task tool. Agents
-self-write their results via `anchored node …` (see
+self-write their results via `anchored <tier> …` (see
 `plugin/references/agent-contract.md`).
 
 ## Pre-flight
 
-1. `anchored node read <slug>` — the **tier is derived from the node**. (A
+1. `anchored <tier> get <slug>` — the **tier is derived from the node**. (A
    missing `anchored.yml` is fine — the CLI falls back to the framework defaults;
    it lazy-inits a minimal one + the `Bash(anchored *)` allowlist on first use.)
-2. State gate: `refined` → flip up front `anchored node set-status <slug> build`
+2. State gate: `refined` → flip up front `anchored <tier> status <slug> build`
    (so the terminal `build → wrap` is legal); `build` → resume directly; `plan`/
    `drafted` → tell the user to run `/a:plan` + `/a:refine` first; `wrap`/`done`
    → already past build.
@@ -55,39 +55,44 @@ self-write their results via `anchored node …` (see
 ## Get the orchestration plan
 
 ```bash
-anchored build <slug>      # → { stage, tier, node, steps }   (does NOT spawn)
+anchored <tier> build <slug>      # → { stage, tier, node, steps }   (does NOT spawn)
 ```
 
-`steps` is the resolved, config-driven plan. For a **looping tier** it is a single
-`{ kind: 'loop', each: <child-tier>, stop, retry_limit }` — that is the recursion
-edge you drive below. For a **leaf phase** it is the worker pipeline
-(`implement → task-validate → code-validate`).
+`steps` is the resolved, config-driven plan. For a **looping tier** the plan carries
+`each: <child-tier>` (plus `stop`, `retry_limit`) — that is the recursion edge you
+drive below. For a **leaf phase** it is the worker pipeline
+(`implement → task-validate → code-validate`). Each step has the shape
+`{ name, instructions?, use?: { type: agent|skill, name }, execute?: sequential|workflow }`:
+`use` names the worker to spawn, `instructions` is prose you read and follow (a
+command lives HERE, as prose — there is no `run` step key), and `execute: workflow`
+fans THAT single step out (see "Workflow mode" below).
 
 ## Drive the loop (task.build.each: phase / epic.build.each: task)
 
-While `anchored node next-child <slug>` returns a child (else done):
+While `anchored task child-next <slug>` returns a child (else done):
 
 1. **Mark the child in-flight** — the marker word is **tier-dependent** (the CLI
    rejects the wrong one with `InvalidChildStatus`):
-   - **task → phase**: `anchored node set-child-status <slug> <phase> in-progress`
-   - **epic → task**: `anchored node set-child-status <slug> <task> active`
+   - **task → phase**: `anchored phase status <slug>/<phase> in-progress`
+   - **epic → task**: `anchored epic child-status <slug> <task> active`
      (a task-stub is a loop-queue marker: `pending|active|done|blocked`, NOT the
      phase word `in-progress` — that mismatch bricked an epic in the dogfood).
 2. **Per-child body:**
-   - **task → phase** (leaf): `anchored steps phase build` gives
+   - **task → phase** (leaf): `anchored phase build <slug>/<phase>` gives
      `[implement, task-validate, code-validate]`. Spawn **build-implement** via the
      Task tool with the agent-contract input `{ task-slug: <slug>, phase-slug:
      <child>, tier: phase, stage: build, context, rules }`. It writes code +
-     self-writes evidence: `anchored node add-phase-evidence <slug> <child> <ac-id>
+     self-writes evidence: `anchored phase ac-evidence <slug>/<child> <ac-id>
      "<proof>"` per acceptance criterion. Then spawn the two gates **in parallel**
      (build-task-validate + build-code-validate) — pure inspectors.
    - **epic → task**: the child runs its OWN full just-in-time lifecycle, then the
      epic-child is marked delivered. Per ready child (the loop's body is the child's
      plan→refine→build→wrap, NOT a phase pipeline):
-     1. **just-in-time plan** — `anchored plan task <child-slug>` creates the child task-file.
+     1. **just-in-time plan** — `anchored task create <child-slug> "<title>"` then
+        `anchored task plan <child-slug>` creates the child task-file.
         **Seed its decomposition from the stub's outcome acceptance criteria** (the Epic→Task
         contract epic-decompose wrote): read them
-        (`anchored node read <epic-slug>` → `tasks[].acceptance_criteria`) and pass
+        (`anchored epic get <epic-slug>` → `tasks[].acceptance_criteria`) and pass
         them to plan-decompose as the outcome bar the phases must meet — so the
         goal/contract is never lost (the G8 fix). Run plan's steps → `drafted`.
      2. **Refine the child** (`/a:refine`-style: plan-check + rules-check + walk) →
@@ -103,66 +108,70 @@ While `anchored node next-child <slug>` returns a child (else done):
      3. **Build the child** — recurse THIS loop on the child task (`each: phase`).
      4. **Wrap the child** (review + summarize) → child task `done`.
      5. Mark the epic-child delivered:
-        `anchored node set-child-status <epic-slug> <child> done`.
+        `anchored epic child-status <epic-slug> <child> done`.
      The stub's outcome acceptance criteria are validated at the EPIC wrap (epic-roll-up,
      hard-with-reconcile), not here.
 3. **Gates + failures (the re-do loop):** the gates REJECT a bad acceptance criterion
-   by self-writing `anchored node set-failures <slug> <phase> <ac-id> "<why>"` — that
+   by self-writing `anchored phase ac-fail <slug>/<phase> <ac-id> "<why>"` — that
    flips the criterion back to `pending` with its `failures` recorded. Read the child
-   back (`anchored node read <slug>`); for each criterion carrying `failures`, re-spawn
+   back (`anchored task get <slug>`); for each criterion carrying `failures`, re-spawn
    build-implement with those failures as the fix-list, then re-run the gates. Retry
    up to `retry_limit` (default 3); on exhaustion → blocked (see Failure-handling).
 4. **Advance:** when all the child's acceptance criteria are `done` (with evidence) and both gates
-   pass → `anchored node set-child-status <slug> <child> done`. This is the **only**
+   pass → `anchored phase status <slug>/<child> done`. This is the **only**
    place a phase reaches `done` — the build-implement agent is evidence-only and
    never flips the phase status (G4: that flip must come AFTER the gates, never
    before, or the gates would inspect an already-`done` phase).
 5. **Run the phase's trailing custom steps (commit, etc.)** — only now, on a green
-   phase. See "Custom run/use steps" below. A `kind: 'run'` step that fails is a
+   phase. See "Custom steps" below. A custom step whose command fails is a
    real failure: surface it and stop the loop (do not silently swallow a failed
    commit), it does not re-open the already-`done` phase.
 
-## Custom run/use steps (the config's own steps — commit, push, coverage …)
+## Custom steps (the config's own steps — commit, push, coverage …)
 
-`anchored steps <tier> <stage>` returns the FULL config-driven plan, not just the
-known workers. Besides `kind: 'worker'` (spawn the plugin agent) and `kind: 'loop'`
-(the recursion edge), a step can be:
+`anchored <tier> <stage> <slug>` returns the FULL config-driven plan, not just the
+known workers. Every step has the uniform shape `{ name, instructions?, use?, execute? }`.
+Besides the known-worker steps (a `use: { type: agent }` you spawn) and the recursion
+edge (the looping tier's `each`), a custom step is one of:
 
-- **`kind: 'run'`** — a shell command from the user's `anchored.yml` (e.g. a
-  per-phase `commit`, a `push`, a `coverage` gate). **YOU execute it via Bash**, in
-  declaration order, at the point it sits in the plan. For `phase.build` the
-  trailing run-steps fire in step 5 above (after the gates + advance, on a green
-  phase); a run-step positioned *before* a worker runs before that worker. A `run:`
-  step may carry **`instructions:`** — prose you read and follow when executing the
-  command (conditions, how to treat its output/errors, ordering hints). This is
-  uniform with the `use:` step's `instructions`.
-- **`kind: 'use'`** — spawn the named subagent (or, with `type: skill`, invoke the
-  skill) with the step's `instructions` + the same phase/task context the workers get.
+- **An instructions-only step** — a step carrying `instructions:` but **no `use:`**,
+  e.g. a per-phase `commit`, a `push`, a `coverage` gate. **YOU follow the prose and
+  run any command it describes via Bash**, in declaration order, at the point it sits
+  in the plan. The command lives **in the prose** — there is no `run` step key. For
+  `phase.build` the trailing custom steps fire in step 5 above (after the gates +
+  advance, on a green phase); a step positioned *before* a worker runs before that
+  worker. The `instructions:` prose tells you the conditions, how to treat
+  output/errors, and ordering hints.
+- **A `use:` step** — spawn the named subagent (`use: { type: agent, name }`) or, with
+  `use: { type: skill, name }`, invoke the skill, with the step's `instructions` + the
+  same phase/task context the workers get.
 
-**Variable contract (every `run` step gets these as environment variables).** The
-config author writes `${TASK_SLUG}` / `${PHASE_SLUG}` etc.; you make them real env
-vars so the shell expands them — never string-substitute by hand:
+**Variable contract (every command you run from an instructions step gets these as
+environment variables).** The config author writes `${TASK_SLUG}` / `${PHASE_SLUG}`
+etc. in the prose; you make them real env vars so the shell expands them — never
+string-substitute by hand:
 
 | Variable | Value | Available in |
 |---|---|---|
-| `TASK_SLUG` | the task-file being built (an epic child → the child's slug) | all build run-steps |
-| `PHASE_SLUG` | the phase just built | `phase.build` run-steps |
-| `PHASE_NAME` | the phase's plain-text name | `phase.build` run-steps |
-| `EPIC_SLUG` | the parent epic slug, or empty when not in an epic | all build run-steps |
+| `TASK_SLUG` | the task-file being built (an epic child → the child's slug) | all build steps |
+| `PHASE_SLUG` | the phase just built | `phase.build` steps |
+| `PHASE_NAME` | the phase's plain-text name | `phase.build` steps |
+| `EPIC_SLUG` | the parent epic slug, or empty when not in an epic | all build steps |
 
 Run it as, e.g.:
 ```bash
-TASK_SLUG='core-list' PHASE_SLUG='persistence' PHASE_NAME='Local persistence' EPIC_SLUG='' bash -c "$STEP_RUN"
+TASK_SLUG='core-list' PHASE_SLUG='persistence' PHASE_NAME='Local persistence' EPIC_SLUG='' bash -c "$STEP_CMD"
 ```
-where `$STEP_RUN` is the step's `run` string verbatim. **Per-phase commits don't
+where `$STEP_CMD` is the command the step's `instructions` prose names, verbatim.
+**Per-phase commits don't
 leak into chat** — narrate the phase outcome ("Phase 2 green, committed."), not the
 git plumbing (see communication-style.md). Git is never the framework's concern: if
-the user wants to capture a SHA into a field, their own `run:` script does it
-(`anchored node set-field "${TASK_SLUG}" commit_sha "$(git rev-parse HEAD)"`).
+the user wants to capture a SHA into a field, their own custom step's command does it
+(`anchored task set "${TASK_SLUG}" commit_sha "$(git rev-parse HEAD)"`).
 
 > **Fan-out runs under git worktree isolation — directive, not caveat.** Every
 > fan-out worker runs in its **own git worktree** — both the per-criterion **phase** fan-out
-> (workflow mode, below) and the **task-level** parallel fan-out (epic). A per-task
+> (`execute: workflow`, below) and the **task-level** parallel fan-out (epic). A per-task
 > branch (`task/<slug>`) assumes a single working tree, so N parallel workers
 > `git switch`-ing one shared checkout would clobber each other; isolated worktrees
 > never contend. This is what makes "fastest where safe" robust even against a wrong
@@ -178,7 +187,7 @@ same dependency level (e.g. three comfort-features that all depend only on `core
 have no reason to build one-after-another. When the runtime has the **Workflow
 tool**, fan them out:
 
-1. **Get the batch:** `anchored node ready-children <epic-slug>` returns ALL
+1. **Get the batch:** `anchored epic child-ready <epic-slug>` returns ALL
    currently-runnable children (pending + every dependency done) — the fan-out set,
    not just the first. If it has ≤1 entry, just run the sequential loop.
 2. **Mark + dispatch:** set each batch child `active`, then dispatch them as a
@@ -186,23 +195,23 @@ tool**, fan them out:
    just-in-time lifecycle (plan→refine→build→wrap, the epic→task body above). Up to the
    hard ≤16 parallel ceiling; larger batches run in waves.
 3. **Lock-safety:** each child writes its OWN task-file; the only shared surface is
-   the epic's `tasks[]` status updates (`set-child-status`). The CLI's cross-process
+   the epic's `tasks[]` status updates (`epic child-status`). The CLI's cross-process
    lock + validate-before-write (G1) serialize those safely — concurrent child
    status writes never corrupt the epic.
 4. **Walk-questions are BUFFERED:** a child's refine walk can't prompt the user from
    a background unit. In a fan-out run, the child AI-resolves whatever the epic-wide
    question policy (H3) lets it, and **records any question the policy routes to the
-   user on its task-file** (`add-question`) instead of prompting — exactly like the
+   user on its task-file** (`task question-add`) instead of prompting — exactly like the
    phase-workflow buffering. At the **join**, the orchestrator reads each child's open
    questions and walks those buffered ones with the user (per the same policy), then
    continues.
 5. **Join + advance:** when a unit's child task reaches `done`, mark its epic-child
-   delivered (`set-child-status <epic-slug> <child> done`). Re-run `ready-children`
+   delivered (`epic child-status <epic-slug> <child> done`). Re-run `child-ready`
    for the next wave until the queue drains, then terminate as below.
 
 Fall back to the sequential loop when the Workflow tool is unavailable (same
 feature-detection + fallback contract as the phase-level fan-out). Phase-level
-fan-out (executor, G12) and this task-level fan-out are independent levers that
+fan-out (`execute: workflow`, G12) and this task-level fan-out are independent levers that
 compose: a workflow phase inside a workflow child-task.
 
 ## Emergent decisions → document or stop (the decision-trail)
@@ -214,46 +223,58 @@ error shape, extend-vs-replace) in its build-notes (`append-log <slug> build
 learning "…"`). For EACH such decision, run the **stop-check**:
 
 - **Does it match a `build.stop` rule?** (the `stop[]` array comes from `anchored
-  steps <tier> build`; the shipped default is *"a decision deviates from the
+  <tier> build <slug>`; the shipped default is *"a decision deviates from the
   plan"*.) Judge the decision against those rules — a genuine plan/architecture
   deviation matches; a within-plan local call does not.
 - **No match → proceed + document autonomously:** mint/resolve a question so the
   decision + its WHY are on the record (read by `/a:wrap`):
   ```bash
-  anchored node add-question <slug> "<the decision>" high          # → q<n>
-  anchored node resolve-question <slug> q<n> "<the decision>" ai "<why, the reasoning>"
+  anchored <tier> question-add <slug> "<the decision>" high          # → q<n>
+  anchored <tier> question-resolve <slug> q<n> "<the decision>" ai "<why, the reasoning>"
   ```
-  (`resolve-question` with `source=ai` REQUIRES the reasoning — the substrate
+  (`question-resolve` with `source=ai` REQUIRES the reasoning — the substrate
   rejects an AI decision with no recorded why.) Then keep building.
-- **Match → STOP + escalate:** `anchored node add-question <slug> "Build halted by
+- **Match → STOP + escalate:** `anchored <tier> question-add <slug> "Build halted by
   stop-rule: <decision>" high`, surface it to the user, walk it
-  (`resolve-question … user "<answer>"`), then continue. Minimise stops — proceed-
+  (`question-resolve … user "<answer>"`), then continue. Minimise stops — proceed-
   and-document within-plan calls; stop only on a genuine deviation.
 
 ## Failure-handling (never silent — a5)
 
 - **Agent returns nothing / errors** → treat as a failed acceptance criterion:
   record it as a `failures` entry and retry (counts toward `retry_limit`).
-- **retry_limit exhausted** → `anchored node set-child-status <slug> <child>
-  blocked`, note what was tried in `anchored node append-log <slug> build blocker
+- **retry_limit exhausted** → mark the child blocked — tier-dependent: a phase →
+  `anchored phase status <slug>/<child> blocked`; a task-stub →
+  `anchored epic child-status <slug> <child> blocked`. Note what was tried in
+  `anchored <tier> append-log <slug> build blocker
   "<phase> blocked after N attempts: <acceptance criteria>"`, then continue with the next child
   (the wrap reviewer surfaces blocked phases). Retry-exhaustion is a bounded
   mechanical limit, NOT a stop.
 - **stop-condition** (a worker flags a decision matching a `build.stop` rule, e.g.
   *"a decision deviates from the plan"*) → **halt** the loop, record the decision
-  `anchored node append-log <slug> build decision "STOP: <decision>"`, surface it to
+  `anchored <tier> append-log <slug> build decision "STOP: <decision>"`, surface it to
   the user, and walk it before continuing. Minimise stops — proceed-and-document
   within-plan calls; stop only on a genuine deviation.
 
-## Workflow mode (fan-out) — the skill drives it via the Workflow tool
+## `execute: workflow` (fan-out) — the skill drives it via the Workflow tool
 
-When a phase carries `executor: workflow` (set via `anchored node set-executor
-<slug> <phase> workflow`) and the `Workflow` tool is available, **the SKILL** fans
-the phase's acceptance criteria out as a Dynamic Workflow — one parallel unit per
-not-yet-evidenced criterion (the engine's `loop-workflow.ts` is a headless reference; the
-live fan-out lives here). The flow, sibling to the sequential implement path:
+**Step-level fan-out is config, build-loop parallelism is not.** A single step may
+carry `execute: sequential | workflow` (default `sequential`). `execute: workflow`
+means **the SKILL fans THAT one step out** as a Dynamic Workflow instead of running it
+once. That is the *only* config flag for parallelism — there is **no `mode:` on
+`build`**. Running several phases (or several child-tasks) at once is the plugin's own
+orchestration, NOT a config flag: ready children fan out and the dependency chain
+sequences them — you discover the ready set via `anchored phase ready-phases <slug>` /
+`anchored epic child-ready <epic-slug>` and the `depends_on` graph, then dispatch (see
+"Epic task-level fan-out" above). The `each:` recursion edge stays intrinsic per tier.
 
-1. **Plan the units.** Read the phase (`anchored node read <slug>`). A unit = one criterion
+When the `implement` step carries `execute: workflow` and the `Workflow` tool is
+available, **the SKILL** fans the phase's acceptance criteria out as a Dynamic Workflow
+— one parallel unit per not-yet-evidenced criterion (the engine's `loop-workflow.ts` is
+a headless reference; the live fan-out lives here). The flow, sibling to the sequential
+implement path:
+
+1. **Plan the units.** Read the phase (`anchored task get <slug>`). A unit = one criterion
    that is `pending` OR carries `failures` (skip criteria already `done` with evidence —
    resume-safety). ≤16 units in parallel; >16 → waves of 16.
 2. **Dispatch (Workflow tool).** One `agent({ agentType: 'a:build-workflow',
@@ -261,7 +282,7 @@ live fan-out lives here). The flow, sibling to the sequential implement path:
    per-criterion fan-out worker), each in its **own git worktree** per the fan-out directive
    above, so parallel units never contend on one checkout. Each unit does its criterion's
    work and **self-writes its own evidence/failures via the CLI**
-   (`anchored node add-phase-evidence …` on success, `anchored node set-failures …`
+   (`anchored phase ac-evidence …` on success, `anchored phase ac-fail …`
    on a blocker). Background — emit one progress line, then return; the await is
    **re-invocation**, not polling.
 3. **Collect (evidence-driven, resume-safe).** On re-engage, re-read the task-file;
@@ -280,8 +301,8 @@ to the sequential implement path** (never hard-error).
 
 ## Termination
 
-When `next-child` returns null and at least one child is `done` (none
-in-progress): `anchored node set-status <slug> wrap`. Tell the user in plain words —
+When `child-next` returns null and at least one child is `done` (none
+in-progress): `anchored <tier> status <slug> wrap`. Tell the user in plain words —
 no status word, no `P/Q` codes: *"Build's done — P of Q finished (R still pending).
 Next step: `/a:wrap`."* (drop the bracketed clause when nothing is blocked.)
 No MCP, no raw node-file edit — every mutation goes through the `anchored` CLI.
