@@ -3,22 +3,27 @@
 // SERVE the steps + custom fields. The step order + the worker per step are DATA in the
 // template — `steps()` is a trivial accessor, there is no plan algorithm. Interface-only.
 
-/** One step in a stage — pure DATA (the worker ref is inline, not resolved by code). */
+/** One step in a stage — pure DATA (the worker ref is INLINE, not resolved by code). */
 export interface Step {
   name: string
   worker?: string // the plugin agent/skill to spawn (inline template data)
+  type?: 'agent' | 'skill' // how to dispatch the worker (walk is a skill)
   run?: string // a bash command
-  each?: string // loop: the child tier to iterate
-  stop?: string[]
-  retry_limit?: number
+  involve?: 'all' | 'high-only' | 'none' // the q&a walk style (walk step)
+  before?: string // merge: insert this user step before a built-in
+  after?: string // merge: insert after a built-in
   instructions?: string
 }
 
-/** A resolved tier/stage step plan — the menu a skill reads + executes. */
+/** A resolved tier/stage step plan — the menu a skill reads + executes. The loop edge
+ *  (`each` + stop/retry) is stage-level, carried here, not on a step. */
 export interface StepPlan {
   tier: string
   stage: string
   steps: Step[]
+  each?: string // the fractal child tier to iterate (build stage)
+  stop?: string[]
+  retry_limit?: number
 }
 
 export interface TemplatePort {
