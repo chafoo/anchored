@@ -201,6 +201,8 @@ test('e2e: questions block build · optional skips · deferred AC — real CLI',
     await ok('phase', 'ac-add', 'rt/p1', 'nice-to-have polish') // a1
     expect(await cli.run(['phase', 'ac-defer', 'rt/p1', 'a1'])).toBe(1) // no reason → rejected
     expect(lastOk()).toBe(false)
+    const noReason = JSON.parse(out[out.length - 1]!) as { error?: { name?: string } }
+    expect(noReason.error?.name).toBe('AcNoReason') // clean message, not a raw ZodError
     await ok('phase', 'ac-defer', 'rt/p1', 'a1', 'punted to the next milestone')
     const ph = (await readNode('rt')) as {
       phases: { acceptance_criteria: { status: string; reason?: string }[] }[]

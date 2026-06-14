@@ -88,6 +88,11 @@ test('mutators throw on an unknown id', () => {
   expect(() => deferAc(addAc(empty, 'x'), 'a9', 'r')).toThrow(/no acceptance criterion 'a9'/)
 })
 
+test('deferAc: a missing/blank reason throws a clean AcNoReason (not a raw schema error)', () => {
+  expect(() => deferAc(addAc(empty, 'x'), 'a1', '')).toThrow(/without a reason/)
+  expect(() => deferAc(addAc(empty, 'x'), 'a1', '   ')).toThrow(/without a reason/)
+})
+
 test('retireFailures: no-op when there are no failures', () => {
   const ac = { id: 'a1', text: 'x', status: 'done' as const, evidence: ['p'] }
   expect(retireFailures(ac)).toBe(ac)

@@ -66,8 +66,14 @@ export function doneAc<T extends AcLike>(acs: T[], acId: string): T[] {
   return mapAc(acs, acId, (ac) => retireFailures({ ...ac, status: 'done' }))
 }
 
-/** Defer an AC: record the reason + flip to deferred (the schema enforces a non-empty reason).
- *  A deferred AC is terminal — the completion floors do not block on it. */
+/** Defer an AC: record the reason + flip to deferred. A deferred AC is terminal — the
+ *  completion floors do not block on it. The reason is required (the schema also enforces it,
+ *  but we check here for a clean message instead of a raw schema error). */
 export function deferAc<T extends AcLike>(acs: T[], acId: string, reason: string): T[] {
+  if (!(reason && reason.trim())) {
+    throw anchoredError('AcNoReason', `cannot defer '${acId}' without a reason`, [
+      'pass why it is postponed: ac-defer <slug> <ac-id> "<reason>"',
+    ])
+  }
   return mapAc(acs, acId, (ac) => retireFailures({ ...ac, status: 'deferred', reason }))
 }
