@@ -4,6 +4,11 @@ Decision record for the v3 rewrite. Companion to `architecture.md` (the code lay
 and `api.md` (the CLI surface). This file captures the **why** + the binding rules we
 agreed; `architecture.md` reflects the resulting structure.
 
+> **⚠️ See `requirements-2.md` for the next iteration on the `cli/` internal structure.**
+> The four-layer model below (`lib → modules → services → cli`) still holds; v2 refines
+> only how `cli/` is organised internally (orchestrators-only, `createTier(condition)`).
+> The shipped `cli/` with `node-router/` + `commands/` is v2 ballast, not the target.
+
 ## The shape: four layers, dependency one-way
 
 ```
