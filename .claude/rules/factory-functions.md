@@ -23,13 +23,15 @@ clear input/output contract.
 
 ## Always
 
-- **Deps get injected** — `spawn`, `ops`, `parser`/`render`, `validate`/`state`,
-  `config` come in as the `deps` argument. Never directly imported + called
-  where they serve as an effect seam.
-- **Swappable for fakes in tests** — `createStepRunner({ spawn: fakeSpawn, ops: fakeOps })`
-  must be enough to test the layer without real CC/FS.
+- **Deps get injected by CONTRACT** — `store`, `template`, `fs`/`lock`/`yaml` come in as
+  the `deps` argument, typed by `lib/contracts/*` (the interface, never the concrete
+  impl). A module may also demand another module's `Tier` (epic→task for roll-up). The
+  one assembly point (`cli/cli.ts`) injects the implementations.
+- **Swappable for fakes in tests** — `createTask({ store: createFakeStore(), template })`
+  (or `createStore({ fs: fakeFs, lock, yaml })`) must be enough to test the unit without
+  real FS. `store.fake.ts` is the reusable in-memory double.
 - **Deeper helpers in `scope/`** — every factory may have helpers in its `scope/` folder,
-  also with a clear input/output (e.g. `services/config/resolve-steps/resolve-steps.ts`).
+  also with a clear input/output (e.g. `services/store/scope/safe-write.ts`).
 - **`cfg` = the merged effectiveConfig** (or a part of it), loaded once at
   bootstrap and passed through.
 

@@ -25,17 +25,19 @@ directory.
   governs *where* a test lives; *which* kind-suffix it carries
   (`*.spec.ts`/`*.int.ts`/`*.e2e.ts`) is the orthogonal concern of
   [[test-file-naming]].
-- **Local helpers in `scope/`** — a factory's deeper helpers continue to live in
-  their `scope/` subfolder (existing convention, see `services/store/codec/`,
-  `services/config/resolve-steps/`). `scope/` files follow the same naming + colocate their own
-  specs.
-- **A single file without companions** needs no folder — only once a second
-  related file appears is the folder created.
+- **Local helpers in `scope/`** — a factory's deeper helpers live in their `scope/`
+  subfolder (e.g. `services/store/scope/safe-write.ts`). `scope/` files follow the same
+  naming + colocate their own specs.
+- **A single file without companions** needs no folder — only once a second related file
+  appears is the folder created. **The content suffixes are exactly that trigger**: a lone
+  `phase.ts` stays flat; `phase.ts` + `phase.schemas.ts` + `phase.spec.ts` becomes a
+  `phase/` folder. The content-suffix axis (`.types`/`.schemas`/`.fixtures`/`.fake`) lives
+  in [[test-file-naming]] — it and this folder rule are one convention from two sides.
 
 ## Naming — the folder file is named after the folder
 
 **Instead of `index.ts`, the main file of a folder is always named after the folder:**
-`foo/foo.ts`, `cli/cli.ts`, `node-store/node-store.ts`, `io/io.ts`. No `index.ts` as the
+`foo/foo.ts`, `cli/cli.ts`, `store/store.ts`, `phase/phase.ts`. No `index.ts` as the
 entry point of a subfolder.
 
 - Import paths thereby become explicit + greppable: `from './io/io.js'`, not
@@ -50,16 +52,16 @@ entry point of a subfolder.
 **No re-export-only file** whose sole purpose is to bundle and pass through symbols
 from sibling modules (`export * from './a'`).
 
-- **Import directly from the source module** — `from './services/store/node-store/node-store.js'`,
-  not from an aggregating `store.ts` that re-exports everything.
-- A factory file that contains real wiring logic (e.g. `cli/anchored.ts` builds
-  `createAnchored`) is **not** a barrel — it does work, it doesn't just pass through.
+- **Import directly from the source module** — `from './services/store/store.js'`,
+  not from an aggregating file that re-exports everything.
+- A factory file that contains real wiring logic (e.g. `cli/cli.ts` builds
+  `createCli`) is **not** a barrel — it does work, it doesn't just pass through.
   Forbidden is only the pure aggregation/pass-through file.
 - **Exception: the package entry** (`core/src/index.ts`) MAY be a pure re-export —
   it is the deliberate public-interface boundary of the npm package, re-exporting the
-  orchestrator's surface (`createAnchored`, types) from `cli/`. This is permitted
-  precisely because it is the package's one published seam, not an internal
-  aggregation file hiding the dependency graph between sibling modules.
+  orchestrator's surface (`createCli`, types) from `cli/`. This is permitted precisely
+  because it is the package's one published seam, not an internal aggregation file
+  hiding the dependency graph between sibling modules.
 
 ## Why
 

@@ -11,9 +11,10 @@ a CC built-in.
 
 ## Always
 
-- **Mutations + reads go through `anchored <verb>`** — stage verbs
-  (`plan`/`refine`/`build`/`wrap`) drive the engine; generic node verbs
-  (read/set-status/add-evidence/log …) drive the ops.
+- **Mutations + reads go through `anchored <tier> <verb> [slug]`** — the tier-first
+  grammar (api.md). The lifecycle verbs (`plan`/`refine`/`build`/`wrap`) return the
+  orchestration plan; the node + collection verbs (`get`/`status`/`ac-add`/`child-add`/
+  `roll-up` …) mutate. `validate`/`help`/`version` are the meta-verbs.
 - **CLI outputs JSON** — structured, machine-parsable, for skills + agents.
 - **Agents read + write directly via CLI** — no more pure-thinker workaround
   (that was a v1 MCP bug workaround). The agent calls `anchored …` over Bash.

@@ -20,6 +20,32 @@ foo.e2e.ts    # end-to-end   — real filesystem and/or real process spawn
   It is `foo.e2e.ts`, never `foo.e2e.spec.ts`; `foo.int.ts`, never
   `foo.int.spec.ts`. The kind suffix replaces `.spec`, it does not stack on it.
 
+## The orthogonal CONTENT axis (`.types` · `.schemas` · `.fixtures` · `.fake`)
+
+The three above are the **test-kind** axis. A second, orthogonal axis names a file's
+**content kind**, so an implementation file stays logic-only:
+
+```
+foo.ts            # the implementation — LOGIC ONLY (no exported type/schema declarations)
+foo.types.ts      # hand-written types (interfaces · unions · fn signatures) for foo
+foo.schemas.ts    # Zod schemas for foo + their z.infer types (a schema + its type stay together)
+foo.fixtures.ts   # shared test DATA (sample nodes · YAML) — test-support, build-excluded
+foo.fake.ts       # a reusable test DOUBLE (an in-memory impl of a port) — test-support, build-excluded
+```
+
+- **The impl `.ts` declares no exported types or schemas** — it imports them from its
+  `.types.ts` / `.schemas.ts` sibling. (A trivial one-off *local* type may stay inline.)
+- **A `z.infer` type lives WITH its schema** in `.schemas.ts`, never split into `.types.ts`
+  — split types by *origin*: schema-derived → `.schemas.ts`, hand-written → `.types.ts`.
+- **`lib/contracts/*` are exempt** — they ARE the boundary type files; they stay bare in
+  `contracts/` (no `store.types.ts`; the folder is the signal).
+- **`.fake.ts` / `.fixtures.ts` are test-support** — build-excluded (`tsconfig.build.json`)
+  and skipped by the spec-coverage gate (they need no spec of their own).
+- A file carries **at most one** content suffix; it may *also* carry a test-kind suffix on
+  its companion test (`foo.ts` + `foo.spec.ts`), never both on one file.
+- Rejected: `.const.ts` (local constants live in a named file), `.errors.ts` (one shared
+  `anchoredError`), `.guards.ts` (`.schemas.ts` covers validation data).
+
 ### Classification criteria (apply these per file)
 
 The kind is decided by **what the test touches**, not by what it is named after:
