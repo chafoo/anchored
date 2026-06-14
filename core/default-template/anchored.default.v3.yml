@@ -1,0 +1,119 @@
+# anchored.default.yml (v3) — the shipped default template. Every tier (phase ▸ task ▸ epic
+# ▸ project) with its stage steps + fields. A real user anchored.yml is almost empty — it
+# carries deltas only; this runs when you write nothing.
+#
+# v3 change: each step carries its WORKER inline (the plugin agent/skill to spawn) — there is
+# no worker-dispatch code; `anchored <tier> <stage>` serves these steps verbatim. The HARD
+# INVARIANT (an ac → done only with evidence) lives in the node schema, not in a step.
+
+phase:
+  plan:
+    steps: [] # the acceptance criteria are the phase's "plan" data
+  refine:
+    steps: []
+  build:
+    steps:
+      - { name: implement, worker: build-implement, type: agent }
+      - { name: task-validate, worker: build-task-validate, type: agent }
+      - { name: code-validate, worker: build-code-validate, type: agent }
+  wrap:
+    steps: []
+  fields:
+    name: string
+    slug: kebab
+    status: pending | in-progress | done | blocked | deferred
+    context: markdown
+    rules: list<{ path, why }>
+    acceptance_criteria: list<{ id, text, status, evidence? }>
+    evidence: list<string>
+    failures: list<string>
+
+task:
+  plan:
+    steps:
+      - { name: discover, worker: plan-discover, type: agent }
+      - { name: rules-scan, worker: plan-rules-scan, type: agent }
+      - { name: decompose, worker: plan-decompose, type: agent }
+  refine:
+    steps:
+      - { name: plan-check, worker: refine-plan-check, type: agent }
+      - { name: rules-check, worker: refine-rules-check, type: agent }
+      - { name: walk, worker: walk, type: skill, involve: high-only }
+  build:
+    each: phase # intrinsic — fixed per tier (task→phase)
+    stop:
+      - 'a decision deviates from the plan'
+    retry_limit: 3
+  wrap:
+    steps:
+      - { name: review, worker: wrap-review, type: agent }
+      - { name: summarize, worker: wrap-summarize, type: agent }
+  fields:
+    schema_version: int
+    slug: kebab | nested
+    title: string
+    created: date
+    status: plan | drafted | refined | build | wrap | done
+    context: { plan?, refine?, build?, wrap? }
+    questions: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
+    concerns: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
+    log: list<{ at, kind, note }>
+    phases: list<phase>
+
+epic:
+  plan:
+    steps:
+      - { name: discover, worker: plan-discover, type: agent }
+      - { name: scaffold, worker: epic-scaffold, type: agent }
+  refine:
+    steps:
+      - { name: epic-plan-check, worker: epic-plan-check, type: agent }
+      - { name: epic-decompose, worker: epic-decompose, type: agent }
+      - { name: walk, worker: walk, type: skill, involve: high-only }
+  build:
+    each: task # intrinsic — fixed per tier (epic→task)
+    stop:
+      - 'an architectural boundary is crossed (a layer, the task dependency order, a contract)'
+    retry_limit: 3
+  wrap:
+    steps:
+      - { name: roll-up, worker: epic-roll-up, type: agent }
+  fields:
+    schema_version: int
+    slug: kebab
+    title: string
+    status: plan | drafted | refined | build | wrap | done
+    goal: markdown
+    context: { plan?, refine?, build?, wrap? }
+    acceptance: list<{ id, text, status, evidence? }>
+    questions: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
+    concerns: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
+    tasks: list<{ slug, goal, status, depends_on, acceptance_criteria? }>
+    log: list<{ at, kind, note }>
+
+project:
+  plan:
+    steps:
+      - { name: discover, worker: plan-discover, type: agent }
+      - { name: scaffold, worker: project-scaffold, type: agent }
+  refine:
+    steps:
+      - { name: walk, worker: walk, type: skill, involve: high-only }
+  build:
+    each: epic # intrinsic — fixed per tier (project→epic)
+    retry_limit: 3
+  wrap:
+    steps:
+      - { name: roll-up, worker: project-roll-up, type: agent }
+  fields:
+    schema_version: int
+    slug: kebab
+    title: string
+    status: plan | drafted | refined | build | wrap | done
+    goal: markdown
+    context: { plan?, refine?, build?, wrap? }
+    acceptance: list<{ id, text, status, evidence? }>
+    questions: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
+    concerns: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
+    epics: list<{ slug, goal, status, depends_on, acceptance_criteria? }>
+    log: list<{ at, kind, note }>
