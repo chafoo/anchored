@@ -2,11 +2,14 @@ import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { merge } from './merge.js'
-import { ConfigSchema, type Config } from '../domain/config-schema/config.js'
+import { ConfigSchema, type Config } from '../../domain/config-schema/config.js'
 
 const defaultCfg = ConfigSchema.parse(
   parse(
-    readFileSync(new URL('../../default-template/anchored.default.yml', import.meta.url), 'utf8'),
+    readFileSync(
+      new URL('../../../default-template/anchored.default.yml', import.meta.url),
+      'utf8',
+    ),
   ),
 )
 

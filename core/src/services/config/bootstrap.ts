@@ -3,8 +3,8 @@
 // the shipped default + the project's anchored.yml, parsing YAML) come through
 // injected seams — no direct node:fs in the logic.
 import { merge as realMerge } from './merge.js'
-import { ConfigSchema, type Config } from '../domain/config-schema/config.js'
-import { anchoredError } from '../domain/invariants/invariants.js'
+import { ConfigSchema, type Config } from '../../domain/config-schema/config.js'
+import { anchoredError } from '../../domain/invariants/invariants.js'
 
 export interface BootstrapDeps {
   /** Read the shipped default-template/anchored.default.yml (the reference). */
