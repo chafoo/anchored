@@ -1,8 +1,8 @@
 import { test, expect } from 'bun:test'
 import { parse } from 'yaml'
 import { createParser } from './parse.js'
-import { TaskNodeSchema } from '../../../../domain/tiers/task.js'
-import { EpicNodeSchema } from '../../../../domain/tiers/epic.js'
+import { TaskNodeSchema } from '../../../../modules/task/task.js'
+import { EpicNodeSchema } from '../../../../modules/epic/epic.js'
 import { ConfigSchema } from '../../../../services/config/config-schema/config.js'
 
 const realSchemas = {

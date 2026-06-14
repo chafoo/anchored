@@ -1,11 +1,18 @@
-// schema/tiers/project.ts — the project tier descriptor (childTier = 'epic'). Same
-// fractal form as every other non-leaf tier: it walks the uniform plan→done
-// lifecycle and carries epic STUBS as its loop-queue (mirroring epic's task-stubs).
+// modules/project/project.ts — the project tier module: a PURE condition bundle.
+// childTier = 'epic'. Same fractal form as every other non-leaf tier — it walks the
+// uniform plan→done lifecycle and carries epic STUBS as its loop-queue (mirroring
+// epic's task-stubs). Imports only lib + the shared schema base.
 import { z } from 'zod'
-import { KebabSlug, AcceptanceCriterion } from './phase.js'
-import { QuestionSchema, LogEntrySchema, ContextTrails } from './task.js'
-import { stubStatusValues } from './epic.js'
-import { lifecycleStatusValues } from '../../lib/constants/statuses.js'
+import { lifecycleStatusValues, stubStatusValues } from '../../lib/constants/statuses.js'
+import { lifecycleTransitions } from '../../lib/constants/transitions.js'
+import type { TierCondition } from '../../lib/contracts/tier.js'
+import {
+  KebabSlug,
+  AcceptanceCriterion,
+  QuestionSchema,
+  LogEntrySchema,
+  ContextTrails,
+} from '../shared/schema.js'
 
 // D1 (project): mirrors the task/epic lifecycle EXACTLY — uniform stage-transitions
 // on every tier (no tier-branching). The old reduced planning/building/done is gone.
@@ -16,8 +23,8 @@ const AcceptanceItem = z.strictObject({
   id: z.string(),
   text: z.string(),
   status: z.enum(['pending', 'done']),
-  // M3: the project DoD item carries delivery evidence (the roll-up's provenance),
-  // same evidence-honesty floor as epic — required before the item flips done.
+  // M3: the project DoD item carries delivery evidence — same evidence-honesty floor
+  // as epic, one tier up. Required before the item flips done.
   evidence: z.array(z.string()).optional(),
 })
 
@@ -51,9 +58,14 @@ export const ProjectNodeSchema = z.strictObject({
 
 export type ProjectNode = z.infer<typeof ProjectNodeSchema>
 
-export const projectDescriptor = {
+export const project: TierCondition = {
   tier: 'project',
-  statusEnum: projectStatusValues,
-  childTier: 'epic',
   schema: ProjectNodeSchema,
-} as const
+  statusValues: projectStatusValues,
+  transitions: lifecycleTransitions,
+  defaultStatus: 'plan',
+  childTier: 'epic',
+  childField: 'epics',
+  childStatusValues: stubStatusValues,
+  childTerminalOk: ['done'],
+}

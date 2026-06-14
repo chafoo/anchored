@@ -6,7 +6,7 @@ import {
   assertNodeCompletable,
 } from './invariants.js'
 import { type AnchoredError } from '../../../lib/utils/error.js'
-import { AcceptanceCriterion } from '../../../domain/tiers/phase.js'
+import { AcceptanceCriterion } from '../../../modules/phase/phase.js'
 
 // a1 — assertAcDoneHasEvidence throws without evidence, no-op with
 test('assertAcDoneHasEvidence enforces evidence for done', () => {

@@ -2,7 +2,7 @@ import { test, expect } from 'bun:test'
 import { addQuestion, resolveQuestion } from './questions.js'
 import { appendLog } from '../log.js'
 import { createNodeOps, type NodeOpsDeps } from '../node-store/node-store.js'
-import { taskDescriptor } from '../../../domain/tiers/task.js'
+import { task as taskDescriptor } from '../../../modules/task/task.js'
 
 // a1 — add → resolve cycle over the default-template field shape
 test('add-question then resolve-question', () => {

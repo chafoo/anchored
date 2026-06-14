@@ -21,20 +21,22 @@ import { createParser } from './services/store/codec/parse/parse.js'
 import { createRenderer, defaultSchemaUrl } from './services/store/codec/render/render.js'
 import { createIo, type IoDeps } from './services/store/io/io.js'
 import { createBootstrap } from './services/config/bootstrap.js'
-import { phaseDescriptor, PhaseNodeSchema } from './domain/tiers/phase.js'
-import { taskDescriptor, TaskNodeSchema } from './domain/tiers/task.js'
-import { epicDescriptor, EpicNodeSchema } from './domain/tiers/epic.js'
+import { phase, PhaseNodeSchema } from './modules/phase/phase.js'
+import { task, TaskNodeSchema } from './modules/task/task.js'
+import { epic, EpicNodeSchema } from './modules/epic/epic.js'
+import { project, ProjectNodeSchema } from './modules/project/project.js'
 import { ConfigSchema, type Config } from './services/config/config-schema/config.js'
 import { extendSchemaWithFields } from './services/config/config-schema/custom-fields.js'
 
 export { tierOfNode }
 
-const DESCRIPTORS: Record<string, TierDescriptor> = {
-  phase: phaseDescriptor as TierDescriptor,
-  task: taskDescriptor as TierDescriptor,
-  epic: epicDescriptor as TierDescriptor,
-}
-const DEFAULT_STATUS: Record<string, string> = { phase: 'pending', task: 'plan', epic: 'plan' }
+// the condition bundles — each a pure `modules/<tier>` export, collected here at the
+// wiring root and injected into the generic store (the orchestrator is the one place
+// modules + services meet).
+const CONDITIONS: Record<string, TierDescriptor> = { phase, task, epic, project }
+const DEFAULT_STATUS: Record<string, string> = Object.fromEntries(
+  Object.values(CONDITIONS).map((c) => [c.tier, c.defaultStatus]),
+)
 
 // ── shared substrate builder (parser + renderer + io + per-tier node-ops) ──
 interface Substrate {
@@ -54,12 +56,14 @@ function buildSubstrate(
   const taskSchema = extendSchemaWithFields(TaskNodeSchema, fieldsByTier?.task)
   const epicSchema = extendSchemaWithFields(EpicNodeSchema, fieldsByTier?.epic)
   const phaseSchema = extendSchemaWithFields(PhaseNodeSchema, fieldsByTier?.phase)
+  const projectSchema = extendSchemaWithFields(ProjectNodeSchema, fieldsByTier?.project)
   const parser = createParser({
     yaml: { parse },
     schemas: {
       task: taskSchema,
       epic: epicSchema,
       phase: phaseSchema,
+      project: projectSchema,
       config: ConfigSchema,
     },
   })
@@ -71,18 +75,22 @@ function buildSubstrate(
     pathFor,
   })
   // descriptors carry the EXTENDED schema so persist (G1) accepts declared customs.
-  const descFor = (tier: string, schema: z.ZodType): TierDescriptor => ({
-    ...DESCRIPTORS[tier]!,
-    schema,
-  })
-  const opsByTier: Record<string, TierOps> = {
-    phase: createNodeOpsFn(
-      descFor('phase', phaseSchema),
-      opsDepsFor('phase'),
-    ) as unknown as TierOps,
-    task: createNodeOpsFn(descFor('task', taskSchema), opsDepsFor('task')) as unknown as TierOps,
-    epic: createNodeOpsFn(descFor('epic', epicSchema), opsDepsFor('epic')) as unknown as TierOps,
+  const schemaByTier: Record<string, z.ZodType> = {
+    phase: phaseSchema,
+    task: taskSchema,
+    epic: epicSchema,
+    project: projectSchema,
   }
+  const descFor = (tier: string): TierDescriptor => ({
+    ...CONDITIONS[tier]!,
+    schema: schemaByTier[tier]!,
+  })
+  const opsByTier: Record<string, TierOps> = Object.fromEntries(
+    Object.keys(CONDITIONS).map((tier) => [
+      tier,
+      createNodeOpsFn(descFor(tier), opsDepsFor(tier)) as unknown as TierOps,
+    ]),
+  )
   return { opsByTier, opsFor: (tier) => opsByTier[tier] ?? opsByTier.task! }
 }
 

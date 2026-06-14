@@ -4,8 +4,8 @@ import { parse, stringify } from 'yaml'
 import { createParser } from './parse/parse.js'
 import { createRenderer, defaultSchemaUrl } from './render/render.js'
 import { createIo, type IoDeps } from '../io/io.js'
-import { TaskNodeSchema } from '../../../domain/tiers/task.js'
-import { EpicNodeSchema } from '../../../domain/tiers/epic.js'
+import { TaskNodeSchema } from '../../../modules/task/task.js'
+import { EpicNodeSchema } from '../../../modules/epic/epic.js'
 
 const schemas = { task: TaskNodeSchema, epic: EpicNodeSchema }
 const parser = createParser({ yaml: { parse }, schemas })

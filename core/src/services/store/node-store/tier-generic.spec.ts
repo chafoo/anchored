@@ -1,8 +1,8 @@
 import { test, expect } from 'bun:test'
 import { createNodeOps, type NodeOpsDeps, type TierDescriptor } from './node-store.js'
-import { phaseDescriptor } from '../../../domain/tiers/phase.js'
-import { taskDescriptor } from '../../../domain/tiers/task.js'
-import { epicDescriptor } from '../../../domain/tiers/epic.js'
+import { phase as phaseDescriptor } from '../../../modules/phase/phase.js'
+import { task as taskDescriptor } from '../../../modules/task/task.js'
+import { epic as epicDescriptor } from '../../../modules/epic/epic.js'
 
 function makeDeps() {
   const store = new Map<string, string>()
@@ -40,7 +40,7 @@ function completeNodeFor(desc: TierDescriptor): {
   status: string
   [k: string]: unknown
 } {
-  const status = desc.statusEnum[0]!
+  const status = desc.statusValues[0]!
   if (desc.tier === 'phase') return { name: 'N', slug: 'n', status }
   return { schema_version: 2, slug: 'n', title: 'N', status } // task + epic
 }

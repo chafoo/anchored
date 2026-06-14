@@ -4,7 +4,7 @@
 // The hard invariant (no ac→done without evidence) and forward-only transitions
 // are enforced HERE, at the writing op. Pure substrate functions (assert*) are
 // imported directly; the only effect (io) is injected.
-import { assertTransition } from '../../../domain/lifecycle/transitions/transitions.js'
+import { assertTransition } from '../transitions/transitions.js'
 import {
   assertAcDoneHasEvidence,
   assertEpicAcHasEvidence,
@@ -26,38 +26,13 @@ import {
   type Question,
 } from '../questions/questions.js'
 import { appendLog as appendLogOf, type LogEntry } from '../log.js'
-import {
-  phaseExecutorValues,
-  phaseStatusValues,
-  stubStatusValues,
-} from '../../../lib/constants/statuses.js'
+import type { TierCondition } from '../../../lib/contracts/tier.js'
 
-// G2: valid status values for a CHILD, keyed by the child tier. A phase child uses
-// the phase status enum; a task/epic STUB uses the loop-queue marker enum (NOT the
-// child's own lifecycle). setChildStatus guards against this at the op for a clear,
-// located error (defence-in-depth alongside G1's full-node validation in persist).
-const CHILD_STATUS: Record<string, readonly string[]> = {
-  phase: phaseStatusValues,
-  task: stubStatusValues,
-  epic: stubStatusValues,
-}
-
-// M1 (harden-2): a parent only reaches `done` when every child is in a
-// terminal-OK state. `deferred` = consciously skipped (doesn't block); `blocked`/
-// pending/active/in-progress keep the parent OPEN. Phases can be deferred; loop-
-// queue stubs cannot (their enum has no `deferred`), so a stub must be `done`.
-const CHILD_TERMINAL_OK: Record<string, readonly string[]> = {
-  phase: ['done', 'deferred'],
-  task: ['done'],
-  epic: ['done'],
-}
-
-export interface TierDescriptor {
-  tier: string
-  statusEnum: readonly string[]
-  childTier: string | undefined
-  schema: { parse(input: unknown): unknown }
-}
+// The store is told its tier entirely through the injected condition bundle — it
+// imports no module. Everything formerly hardcoded by child-tier (the child field,
+// the child status axis, the terminal-OK set, the executor axis, the transitions)
+// now rides on the descriptor (a `modules/<tier>` export, injected at the root).
+export type TierDescriptor = TierCondition
 
 export interface NodeOpsDeps {
   io: {
@@ -88,8 +63,6 @@ interface AnyNode {
   acceptance_criteria?: Ac[]
   [k: string]: unknown
 }
-
-const CHILD_FIELD: Record<string, string> = { phase: 'phases', task: 'tasks', epic: 'epics' }
 
 /** Immutably set a nested field by path (e.g. ['context','wrap']). Used by
  *  set-field's dotted-path form so a worker can write context.wrap without
@@ -145,7 +118,7 @@ function asInvalidNodeError(tier: string, slug: string, err: unknown): AnchoredE
 
 export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
   const { io, render, parse, pathFor } = deps
-  const childField = tierSchema.childTier ? CHILD_FIELD[tierSchema.childTier] : undefined
+  const childField = tierSchema.childField
 
   const persist = async (node: AnyNode): Promise<AnyNode> => {
     // Fail-closed: validate the post-mutation node against its tier schema BEFORE
@@ -220,7 +193,7 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
         // task/epic have no own ACs, so without this their done was a vacuum pass —
         // an epic could complete with a still-pending task-stub.
         if (childField && tierSchema.childTier) {
-          const ok = CHILD_TERMINAL_OK[tierSchema.childTier] ?? ['done']
+          const ok = tierSchema.childTerminalOk ?? ['done']
           const open = childrenOf(node).filter((c) => !ok.includes(c.status))
           if (open.length > 0) {
             throw anchoredError(
@@ -471,11 +444,13 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
     },
 
     async setExecutor(node: AnyNode, phaseRef: string, value: string): Promise<AnyNode> {
-      // enum-validate first — a bogus value throws and NOTHING is written
-      if (!(phaseExecutorValues as readonly string[]).includes(value)) {
+      // enum-validate first — a bogus value throws and NOTHING is written. The valid
+      // executor axis rides on the descriptor (the task tier's childExecutorValues).
+      const executorValues = tierSchema.childExecutorValues ?? []
+      if (!executorValues.includes(value)) {
         throw anchoredError(
           'InvalidExecutor',
-          `executor must be one of ${phaseExecutorValues.join(' | ')} (got '${value}')`,
+          `executor must be one of ${executorValues.join(' | ')} (got '${value}')`,
         )
       }
       const field = requireChildField()
@@ -557,7 +532,7 @@ export function createNodeOps(tierSchema: TierDescriptor, deps: NodeOpsDeps) {
       // G2 — guard the value against the child tier's status enum BEFORE the write,
       // so an illegal word (e.g. the phase-only 'in-progress' on an epic task-stub,
       // which bricked an epic in the dogfood) fails with a clear, located error.
-      const allowed = CHILD_STATUS[tierSchema.childTier ?? ''] ?? []
+      const allowed = tierSchema.childStatusValues ?? []
       if (!allowed.includes(status)) {
         throw anchoredError(
           'InvalidChildStatus',

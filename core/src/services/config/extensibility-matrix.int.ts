@@ -11,9 +11,9 @@ import { createStepsPlanner } from './plan-for.js'
 import { merge } from '../../services/config/merge.js'
 import { ConfigSchema } from '../../services/config/config-schema/config.js'
 import { extendSchemaWithFields } from '../../services/config/config-schema/custom-fields.js'
-import { PhaseNodeSchema } from '../../domain/tiers/phase.js'
-import { TaskNodeSchema } from '../../domain/tiers/task.js'
-import { EpicNodeSchema } from '../../domain/tiers/epic.js'
+import { PhaseNodeSchema } from '../../modules/phase/phase.js'
+import { TaskNodeSchema } from '../../modules/task/task.js'
+import { EpicNodeSchema } from '../../modules/epic/epic.js'
 import { STAGES } from '../../lib/constants/stages.js'
 
 const TIERS = ['phase', 'task', 'epic'] as const

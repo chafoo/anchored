@@ -202,6 +202,7 @@ export function createSlugFacade(deps: FacadeDeps): NodeOpsFacade {
         if (now) base.created = now() // stamped via the injected clock seam
       }
       if (tier === 'epic') base.tasks = [] // seed epic shape → reads derive 'epic'
+      if (tier === 'project') base.epics = [] // seed project shape → reads derive 'project'
       return opsFor(tier).create({ ...base, ...rest } as AnyRec)
     },
     read: async (slug) => opsFor(await tierFor(slug)).read(slug),

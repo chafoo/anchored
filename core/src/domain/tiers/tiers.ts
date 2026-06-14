@@ -12,9 +12,11 @@ interface AnyRec {
   [k: string]: unknown
 }
 
-/** Derive a node's tier from its child collection (epic→tasks, task→phases). */
+/** Derive a node's tier from its child collection (project→epics, epic→tasks,
+ *  task→phases). */
 export function tierOfNode(node: unknown): string {
   const n = node as AnyRec
+  if (Array.isArray(n.epics)) return 'project'
   if (Array.isArray(n.tasks)) return 'epic'
   if (Array.isArray(n.phases)) return 'task'
   return 'task'
@@ -36,11 +38,13 @@ export function makeTierFor(
   return async (slug: string): Promise<string> => {
     try {
       const n = parse(await io.readFile(pathFor(slug))) as {
+        epics?: unknown
         tasks?: unknown
         phases?: unknown
         schema_version?: unknown
         acceptance_criteria?: unknown
       }
+      if (Array.isArray(n.epics)) return 'project'
       if (Array.isArray(n.tasks)) return 'epic'
       if (Array.isArray(n.phases)) return 'task'
       if (n.schema_version === undefined && n.acceptance_criteria !== undefined) return 'phase'

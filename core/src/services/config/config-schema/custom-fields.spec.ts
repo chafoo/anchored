@@ -3,7 +3,7 @@
 // `task.fields.commit_sha` could not be set — persist rejected the unknown key.)
 import { describe, it, expect } from 'bun:test'
 import { extendSchemaWithFields } from './custom-fields.js'
-import { TaskNodeSchema } from '../../../domain/tiers/task.js'
+import { TaskNodeSchema } from '../../../modules/task/task.js'
 
 const base = {
   schema_version: 2,
