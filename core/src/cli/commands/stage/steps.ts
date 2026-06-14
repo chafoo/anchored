@@ -5,7 +5,7 @@
 // the orchestrator (it has the plugin + agents loaded); the CLI stays the
 // deterministic planner + ops. No spawning happens here.
 import { cliError, type CliDeps } from '../../cli.js'
-import type { PlanStep, StepPlan } from '../../../domain/steps/plan.js'
+import type { PlanStep, StepPlan } from '../../../contracts/config.js'
 
 export type { PlanStep, StepPlan }
 

@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
-import { createStepsPlanner } from './steps-planner.js'
+import { createStepsPlanner } from './plan-for.js'
 
 const defaultCfg = parse(
   readFileSync(new URL('../../../default-template/anchored.default.yml', import.meta.url), 'utf8'),

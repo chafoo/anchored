@@ -4,10 +4,10 @@
 // Pure + deterministic; reuses resolve-steps (the each-shorthand + order) and
 // worker-dispatch (the step-name → agent mapping). The skill is the orchestrator;
 // this is only the menu it reads.
-import { createResolveSteps } from '../../domain/steps/resolve-steps/resolve-steps.js'
-import { createWorkerDispatch } from '../worker-dispatch/worker-dispatch.js'
-import type { Step } from '../../domain/steps/step.js'
-import type { PlanStep, StepPlan } from '../../domain/steps/plan.js'
+import { createResolveSteps } from './resolve-steps/resolve-steps.js'
+import { createWorkerDispatch } from './worker-dispatch/worker-dispatch.js'
+import type { Step } from './step.js'
+import type { PlanStep, StepPlan } from '../../contracts/config.js'
 
 interface BuildCfg {
   stop?: string[]

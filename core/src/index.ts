@@ -15,7 +15,7 @@ import {
 } from './services/store/node-store/node-store.js'
 import { createSlugFacade, type TierOps } from './services/store/node-router/node-router.js'
 import { tierOfNode, makeTierFor } from './domain/tiers/tiers.js'
-import { createStepsPlanner } from './orchestration/steps-planner/steps-planner.js'
+import { createStepsPlanner } from './services/config/plan-for.js'
 import { createValidator } from './services/store/validate/validate.js'
 import { createParser } from './services/store/codec/parse/parse.js'
 import { createRenderer, defaultSchemaUrl } from './services/store/codec/render/render.js'

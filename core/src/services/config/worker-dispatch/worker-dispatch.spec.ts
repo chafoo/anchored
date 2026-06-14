@@ -2,8 +2,8 @@ import { test, expect } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { createWorkerDispatch } from './worker-dispatch.js'
-import { createResolveSteps } from '../../domain/steps/resolve-steps/resolve-steps.js'
-import { STAGES } from '../../services/config/stages.js'
+import { createResolveSteps } from '../resolve-steps/resolve-steps.js'
+import { STAGES } from '../stages.js'
 
 const NAMES = [
   'implement',
@@ -45,7 +45,7 @@ test('worker refs match the agent roster; walk is skill-routing', () => {
 test('no default worker-step is left unmapped across all tiers', () => {
   const defaultCfg = parse(
     readFileSync(
-      new URL('../../../default-template/anchored.default.yml', import.meta.url),
+      new URL('../../../../default-template/anchored.default.yml', import.meta.url),
       'utf8',
     ),
   ) as Record<string, unknown>
