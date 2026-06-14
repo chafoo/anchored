@@ -37,6 +37,23 @@ export function addQuestion(questions: Question[], init: QuestionInit, idPrefix 
   return [...questions, q]
 }
 
+/** The `→ build` gate (requirements-3 §5): a tier cannot advance into build while any
+ *  question is still open. Throws `QuestionsOpen` LISTING the open questions, so the message
+ *  itself tells the agent what to walk first. The asking is the skill's job; this only keeps
+ *  the door shut and says why. */
+export function assertNoOpenQuestions(questions: Question[], tier = 'node'): void {
+  const open = questions.filter((q) => q.status === 'open')
+  if (open.length > 0) {
+    throw anchoredError(
+      'QuestionsOpen',
+      `cannot advance ${tier} to build: ${open.length} open question(s) — ${open
+        .map((q) => `${q.id} (${q.priority})`)
+        .join(', ')}`,
+      ['resolve every open question first (the refine walk does this)'],
+    )
+  }
+}
+
 export function resolveQuestion(
   questions: Question[],
   id: string,

@@ -6,12 +6,15 @@ import { anchoredError } from '../../lib/utils/error.js'
 /** Allowed forward edges keyed by from-status. X→X is idempotent (handled by the asserter). */
 export type TransitionMap = Record<string, readonly string[]>
 
-// epic·task·project — the uniform lifecycle, incl. the single backward update-mode re-entry.
+// epic·task·project — the uniform lifecycle. `refine` and `wrap` are OPTIONAL (requirements-3
+// §1), so the map carries the skip edges `drafted → build` and `build → done` alongside the
+// full path. Order can never be jumped (no plan → build); only the two optional stages skip.
+// `drafted` is also the single backward update-mode re-entry from every later state.
 export const lifecycleTransitions: TransitionMap = {
   plan: ['drafted'],
-  drafted: ['refined'],
+  drafted: ['refined', 'build'],
   refined: ['build', 'drafted'],
-  build: ['wrap', 'drafted'],
+  build: ['wrap', 'done', 'drafted'],
   wrap: ['done', 'drafted'],
   done: ['drafted'],
 }

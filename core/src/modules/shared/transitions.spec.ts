@@ -28,3 +28,10 @@ test('update-mode backedge to drafted allowed; other backedges forbidden', () =>
   expect(() => assertTransition(lifecycleTransitions, 'build', 'drafted')).not.toThrow()
   expect(() => assertTransition(lifecycleTransitions, 'build', 'refined')).toThrow()
 })
+
+test('optional stages skip: drafted → build and build → done are legal; order cannot jump', () => {
+  expect(() => assertTransition(lifecycleTransitions, 'drafted', 'build')).not.toThrow() // skip refine
+  expect(() => assertTransition(lifecycleTransitions, 'build', 'done')).not.toThrow() // skip wrap
+  expect(() => assertTransition(lifecycleTransitions, 'plan', 'build')).toThrow() // no order-jump
+  expect(() => assertTransition(lifecycleTransitions, 'drafted', 'done')).toThrow()
+})

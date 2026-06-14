@@ -33,9 +33,10 @@ function setup(node: Node = epicNode(), task = fakeTask()) {
   const store = createFakeStore({ 'my-epic': node })
   return { store, epic: createEpic({ store, template, task }) }
 }
+type StubAc = { id: string; status: string; evidence?: string[]; failures?: string[] }
 type EpicDisk = {
   status: string
-  tasks: { slug: string; status: string }[]
+  tasks: { slug: string; status: string; acceptance_criteria?: StubAc[] }[]
   acceptance: { id: string; status: string; evidence?: string[] }[]
 }
 const on = (store: ReturnType<typeof createFakeStore>) =>
@@ -51,6 +52,54 @@ test('task-stub add/next + enum-guarded child-status', async () => {
   )
   await epic.run('child-status', ['my-epic', 'login', 'active'])
   expect(on(store).tasks[0]!.status).toBe('active')
+})
+
+// a1b — per-stub outcome ACs: add → evidence flips them done → that unblocks child-status done;
+// a stub can't go done while a stub-AC is unbacked, and fail reverts an AC to pending.
+test('stub outcome ACs gate child-status done', async () => {
+  const { epic, store } = setup()
+  await epic.run('child-add', ['my-epic', 'login', 'build login'])
+  await epic.run('child-ac-add', ['my-epic', 'login', 'auth handler tested'])
+  expect(on(store).tasks[0]!.acceptance_criteria![0]).toMatchObject({ id: 'a1', status: 'pending' })
+
+  // stub can't be done while its AC is open
+  await expect(epic.run('child-status', ['my-epic', 'login', 'done'])).rejects.toThrow(
+    /ACs not terminal/,
+  )
+
+  // fail records the why + keeps it pending; evidence then flips it done
+  await epic.run('child-ac-fail', ['my-epic', 'login', 'a1', 'no test yet'])
+  expect(on(store).tasks[0]!.acceptance_criteria![0]).toMatchObject({ status: 'pending' })
+  await epic.run('child-ac-evidence', ['my-epic', 'login', 'a1', 'src/login.ts — tested'])
+  const ac = on(store).tasks[0]!.acceptance_criteria![0] as { status: string; evidence?: string[] }
+  expect(ac).toMatchObject({ status: 'done', evidence: ['src/login.ts — tested'] })
+
+  // now the stub goes done
+  await epic.run('child-status', ['my-epic', 'login', 'done'])
+  expect(on(store).tasks[0]!.status).toBe('done')
+})
+
+// a1c — a deferred stub-AC is terminal (documented reason) → does not block child-status done
+test('child-ac-defer: a documented deferral unblocks the stub', async () => {
+  const { epic, store } = setup()
+  await epic.run('child-add', ['my-epic', 'login', 'build login'])
+  await epic.run('child-ac-add', ['my-epic', 'login', 'rate-limiting'])
+  await epic.run('child-ac-defer', ['my-epic', 'login', 'a1', 'moved to the hardening epic'])
+  expect(on(store).tasks[0]!.acceptance_criteria![0]).toMatchObject({
+    status: 'deferred',
+    reason: 'moved to the hardening epic',
+  })
+  await epic.run('child-status', ['my-epic', 'login', 'done'])
+  expect(on(store).tasks[0]!.status).toBe('done')
+})
+
+// a1d — the →build gate also guards the epic tier
+test('open questions block the epic advance to build', async () => {
+  const { epic } = setup(epicNode({ status: 'drafted' }))
+  await epic.run('question-add', ['my-epic', 'monolith or service?', 'high'])
+  await expect(epic.run('status', ['my-epic', 'build'])).rejects.toThrow(/open question/i)
+  await epic.run('question-resolve', ['my-epic', 'q1', 'service', 'user'])
+  await epic.run('status', ['my-epic', 'build'])
 })
 
 // a2 — DoD acceptance items: add (auto e-id) + done requires delivery evidence

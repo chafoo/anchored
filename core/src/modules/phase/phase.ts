@@ -10,14 +10,8 @@ import type { StorePort, Node, Schema } from '../../lib/contracts/store.js'
 import type { Tier } from '../../lib/contracts/tier.js'
 import { anchoredError } from '../../lib/utils/error.js'
 import { assertTransition, phaseTransitions } from '../shared/transitions.js'
+import { addAc, evidenceAc, failAc, doneAc, deferAc, type AcLike } from '../shared/acceptance.js'
 
-interface AcLike {
-  id: string
-  text?: string
-  status: string
-  evidence?: string[]
-  failures?: string[]
-}
 interface PhaseLike {
   slug: string
   status: string
@@ -32,22 +26,6 @@ interface TaskFile extends Node {
 }
 
 const EXECUTORS = ['implement', 'workflow']
-
-function nextAcId(acs: AcLike[]): string {
-  const max = acs.reduce((m, ac) => {
-    const n = /^a(\d+)$/.exec(ac.id)
-    return n ? Math.max(m, Number(n[1])) : m
-  }, 0)
-  return `a${max + 1}`
-}
-
-// when an AC flips done after a failures-driven redo, retire its transient failures.
-function retireFailures(ac: AcLike): AcLike {
-  if (!('failures' in ac)) return ac
-  const { failures: _drop, ...rest } = ac
-  void _drop
-  return rest
-}
 
 export function createPhase(deps: { store: StorePort; taskSchema: Schema }): Tier {
   const { store, taskSchema } = deps
@@ -86,14 +64,12 @@ export function createPhase(deps: { store: StorePort; taskSchema: Schema }): Tie
     )
   }
 
-  const mutateAc = (slug: string, acId: string, fn: (ac: AcLike) => AcLike) =>
-    mutate(slug, (phase) => {
-      const acs = phase.acceptance_criteria ?? []
-      if (!acs.some((a) => a.id === acId)) {
-        throw anchoredError('UnknownAc', `no acceptance criterion '${acId}'`)
-      }
-      return { ...phase, acceptance_criteria: acs.map((a) => (a.id === acId ? fn(a) : a)) }
-    })
+  // shape the phase's acceptance_criteria via a shared transform.
+  const onAcs = (slug: string, fn: (acs: AcLike[]) => AcLike[]) =>
+    mutate(slug, (phase) => ({
+      ...phase,
+      acceptance_criteria: fn(phase.acceptance_criteria ?? []),
+    }))
 
   const verbs: Record<string, (...args: string[]) => Promise<unknown>> = {
     async get(slug) {
@@ -106,45 +82,35 @@ export function createPhase(deps: { store: StorePort; taskSchema: Schema }): Tie
       mutate(slug, (phase) => {
         assertTransition(phaseTransitions, phase.status, to, 'phase')
         if (to === 'done') {
-          const open = (phase.acceptance_criteria ?? []).filter((a) => a.status !== 'done')
+          // an AC is terminal-OK when done OR deferred (a documented deferral does not block).
+          const open = (phase.acceptance_criteria ?? []).filter(
+            (a) => !['done', 'deferred'].includes(a.status),
+          )
           if (open.length > 0) {
             throw anchoredError(
               'PhaseIncomplete',
-              `cannot mark '${phase.slug}' done: acceptance criteria not done — ${open.map((a) => a.id).join(', ')}`,
-              ['evidence each AC first (ac-evidence flips it done)'],
+              `cannot mark '${phase.slug}' done: acceptance criteria not terminal — ${open.map((a) => a.id).join(', ')}`,
+              ['evidence each AC (ac-evidence flips it done) or defer it with a reason (ac-defer)'],
             )
           }
         }
         return { ...phase, status: to }
       }),
 
-    'ac-add': (slug, text, id) =>
-      mutate(slug, (phase) => {
-        const acs = phase.acceptance_criteria ?? []
-        const acId = id ?? nextAcId(acs)
-        if (acs.some((a) => a.id === acId))
-          throw anchoredError('DuplicateAc', `ac '${acId}' already exists`)
-        return { ...phase, acceptance_criteria: [...acs, { id: acId, text, status: 'pending' }] }
-      }),
+    'ac-add': (slug, text, id) => onAcs(slug, (acs) => addAc(acs, text, id)),
 
     // evidence makes the AC pass: add the proof + flip done (the schema then validates
     // evidence-present) + retire any prior failures (it re-passed).
-    'ac-evidence': (slug, acId, text) =>
-      mutateAc(slug, acId, (ac) =>
-        retireFailures({ ...ac, evidence: [...(ac.evidence ?? []), text], status: 'done' }),
-      ),
+    'ac-evidence': (slug, acId, text) => onAcs(slug, (acs) => evidenceAc(acs, acId, text)),
 
     // a gate rejecting the AC: record why + flip back to pending (prior evidence stays history).
-    'ac-fail': (slug, acId, text) =>
-      mutateAc(slug, acId, (ac) => ({
-        ...ac,
-        failures: [...(ac.failures ?? []), text],
-        status: 'pending',
-      })),
+    'ac-fail': (slug, acId, text) => onAcs(slug, (acs) => failAc(acs, acId, text)),
+
+    // defer the AC: record a reason + flip to deferred (terminal; the schema enforces a reason).
+    'ac-defer': (slug, acId, reason) => onAcs(slug, (acs) => deferAc(acs, acId, reason)),
 
     // explicit done (only succeeds if evidence is already present — the store's write enforces it).
-    'ac-done': (slug, acId) =>
-      mutateAc(slug, acId, (ac) => retireFailures({ ...ac, status: 'done' })),
+    'ac-done': (slug, acId) => onAcs(slug, (acs) => doneAc(acs, acId)),
 
     'rule-add': (slug, path, why) =>
       mutate(slug, (phase) => {

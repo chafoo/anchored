@@ -4,7 +4,14 @@ import { createFakeStore } from '../../services/store/store.fake.js'
 import { TaskNodeSchema } from '../task/task.schemas.js'
 import type { Node } from '../../lib/contracts/store.js'
 
-type Ac = { id: string; text?: string; status: string; evidence?: string[]; failures?: string[] }
+type Ac = {
+  id: string
+  text?: string
+  status: string
+  evidence?: string[]
+  failures?: string[]
+  reason?: string
+}
 type Phase = { slug: string; status: string; acceptance_criteria?: Ac[]; rules?: unknown[] }
 
 function taskWith(phase: Partial<Phase> = {}): Node {
@@ -40,7 +47,7 @@ test('ac lifecycle: add → evidence (done) → phase status done', async () => 
   expect(onPhase(store).acceptance_criteria![0]!.id).toBe('a1')
   await phase.run('status', [PH, 'in-progress'])
   // can't finish while the AC is still pending
-  await expect(phase.run('status', [PH, 'done'])).rejects.toThrow(/not done/)
+  await expect(phase.run('status', [PH, 'done'])).rejects.toThrow(/not terminal/)
   await phase.run('ac-evidence', [PH, 'a1', 'src/x.ts:1 — proof'])
   expect(onPhase(store).acceptance_criteria![0]).toMatchObject({
     status: 'done',
@@ -61,6 +68,23 @@ test('ac-fail records the rejection; a bare ac-done without evidence is refused'
     failures: ['gate red: 2 tests'],
   })
   await expect(phase.run('ac-done', [PH, 'a1'])).rejects.toThrow() // schema: done needs evidence
+})
+
+// a3b — ac-defer records a reason + makes the AC terminal so the phase can reach done; the
+// schema refuses a deferred AC with no reason.
+test('ac-defer: a documented deferral is terminal and does not block phase done', async () => {
+  const { store, phase } = setup({
+    acceptance_criteria: [{ id: 'a1', text: 't', status: 'pending' }],
+  })
+  await phase.run('status', [PH, 'in-progress'])
+  await phase.run('ac-defer', [PH, 'a1', 'depends on the billing epic — out of scope here'])
+  expect(onPhase(store).acceptance_criteria![0]).toMatchObject({
+    status: 'deferred',
+    reason: 'depends on the billing epic — out of scope here',
+  })
+  // deferred is terminal → the phase can finish
+  await phase.run('status', [PH, 'done'])
+  expect(onPhase(store).status).toBe('done')
 })
 
 // a4 — rule-add (dedup by path) + set-executor enum guard

@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { addQuestion, resolveQuestion } from './questions.js'
+import { addQuestion, resolveQuestion, assertNoOpenQuestions } from './questions.js'
 import type { AnchoredError } from '../../lib/utils/error.js'
 
 test('addQuestion assigns sequential id + open status (prefix configurable)', () => {
@@ -25,4 +25,23 @@ test('resolveQuestion sets answer/source; an AI resolution requires reasoning', 
   expect(
     resolveQuestion(open, 'q1', { answer: 'x', source: 'ai', reasoning: 'because' })[0]!.reasoning,
   ).toBe('because')
+})
+
+test('assertNoOpenQuestions: blocks while any open, lists them; passes when all resolved', () => {
+  const open = addQuestion(addQuestion([], { text: 'a', priority: 'high' }), {
+    text: 'b',
+    priority: 'low',
+  })
+  let err: unknown
+  try {
+    assertNoOpenQuestions(open, 'task')
+  } catch (e) {
+    err = e
+  }
+  expect((err as AnchoredError).kind).toBe('QuestionsOpen')
+  expect((err as AnchoredError).message).toContain('q1 (high)')
+
+  const resolved = open.map((q) => ({ ...q, status: 'resolved' }))
+  expect(() => assertNoOpenQuestions(resolved, 'task')).not.toThrow()
+  expect(() => assertNoOpenQuestions([], 'task')).not.toThrow()
 })

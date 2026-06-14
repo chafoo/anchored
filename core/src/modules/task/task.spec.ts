@@ -47,6 +47,18 @@ test('status transitions are guarded; set refuses reserved fields', async () => 
   expect(on(store).title).toBe('Renamed')
 })
 
+// a2b — the →build gate: an open question blocks advancing into build (with a listing message);
+// resolving it opens the door (requirements-3 §5).
+test('open questions block the advance to build', async () => {
+  const node = taskNode({ status: 'drafted' })
+  const { task, store } = setup(node)
+  await task.run('question-add', ['my-task', 'which auth provider?', 'high'])
+  await expect(task.run('status', ['my-task', 'build'])).rejects.toThrow(/open question/i)
+  await task.run('question-resolve', ['my-task', 'q1', 'OAuth', 'user'])
+  await task.run('status', ['my-task', 'build'])
+  expect(on(store).status).toBe('build')
+})
+
 // a3 — an open concern blocks done; phases must be terminal
 test('done requires no open concern + every phase terminal', async () => {
   const node = taskNode({

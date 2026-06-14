@@ -1,6 +1,0 @@
-# Open questions — core/domain
-
-| Question | Suggestion | Decision | Status |
-|---|---|---|---|
-| **`workflow`-mode / `PhaseExecutor` runtime semantics** — *`Phase.mode: 'sequential' \| 'workflow'` and `executor: 'implement' \| 'workflow'` are declared (reserved, epic e9) in `domain/config-schema/config.ts` + `domain/tiers/phase.ts`, but the actual runtime behaviour difference — what a `workflow` phase does vs. a `sequential` one, what an `executor: workflow` worker is — has no code basis in the domain layer (it lives, if anywhere, in the in-session skill / orchestration that consumes these flags).* | Document as **reserved** in the domain pages (definition only); pin the behavioural contract once e9 (workflow-mode) is built. | — | open |
-| **`project` tier activation** — *`domain/tiers/project.ts` defines a `projectDescriptor` with a reduced `planning → building → done` status enum, and `domain/lifecycle/transitions.ts` does not yet wire it in. When does the `project` tier get exercised, does it gain an `executor`, and is its reduced enum replaced by the task-style six-state enum at that point?* | Keep `project` reserved/out-of-scope until a feature exercises it; revisit the enum then. | — | open |

@@ -17,12 +17,17 @@ export const NestedSlug = z
 
 export const Rule = z.strictObject({ path: z.string(), why: z.string() })
 
-const AcStatus = z.enum(['pending', 'done'])
+const AcStatus = z.enum(['pending', 'done', 'deferred'])
 
-// Acceptance criterion — THE universal evidence invariant lives here as a `.refine`: a `done`
-// AC must carry non-empty evidence. Defined once, reused by every tier schema; because the
-// store runs `schema.parse` on every write, the rule is unskippable (the store never learns
-// what evidence is).
+const isReasonFilled = (reason: unknown): boolean =>
+  typeof reason === 'string' && reason.trim() !== ''
+
+// Acceptance criterion — THE universal substrate invariants live here as `.refine`s, defined
+// once and reused by every tier schema. Because the store runs `schema.parse` on every write,
+// they are unskippable (the store never learns what evidence or a reason is):
+//   • a `done` AC must carry non-empty evidence (the evidence-honesty floor);
+//   • a `deferred` AC must carry a non-empty reason (a deferral is documented, never silent).
+// The completion floors then treat `done` + `deferred` as terminal and block only `pending`.
 export const AcceptanceCriterion = z
   .strictObject({
     id: z.string(),
@@ -30,9 +35,13 @@ export const AcceptanceCriterion = z
     status: AcStatus,
     evidence: z.array(z.string()).optional(),
     failures: z.array(z.string()).optional(),
+    reason: z.string().optional(),
   })
   .refine((ac) => ac.status !== 'done' || isEvidenceFilled(ac.evidence), {
     error: "an acceptance criterion with status 'done' must have non-empty evidence",
+  })
+  .refine((ac) => ac.status !== 'deferred' || isReasonFilled(ac.reason), {
+    error: "an acceptance criterion with status 'deferred' must have a non-empty reason",
   })
 
 export const QuestionSchema = z.strictObject({

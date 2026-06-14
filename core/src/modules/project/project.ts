@@ -10,14 +10,16 @@ import { anchoredError } from '../../lib/utils/error.js'
 import { assertTransition, lifecycleTransitions } from '../shared/transitions.js'
 import { stubStatusValues } from '../shared/statuses.js'
 import { nextChild, readyChildren, addChild, type ChildLike } from '../shared/children.js'
-import { addQuestion, resolveQuestion, type Question } from '../shared/questions.js'
+import {
+  addQuestion,
+  resolveQuestion,
+  assertNoOpenQuestions,
+  type Question,
+} from '../shared/questions.js'
 import { appendLog, type LogEntry } from '../shared/log.js'
+import { addAc, evidenceAc, failAc, deferAc, type AcLike } from '../shared/acceptance.js'
 import { ProjectNodeSchema } from './project.schemas.js'
 
-interface AcLike {
-  id: string
-  status: string
-}
 interface Stub extends ChildLike {
   goal?: string
   acceptance_criteria?: AcLike[]
@@ -116,6 +118,7 @@ export function createProject(deps: {
     async status(slug, to) {
       const node = await read(slug)
       assertTransition(lifecycleTransitions, node.status, to, 'project')
+      if (to === 'build') assertNoOpenQuestions(node.questions ?? [], 'project')
       if (to === 'done') assertProjectCompletable(node)
       return write(slug, { ...node, status: to })
     },
@@ -149,11 +152,13 @@ export function createProject(deps: {
           ])
         }
         if (status === 'done') {
-          const openAcs = (s.acceptance_criteria ?? []).filter((a) => a.status !== 'done')
+          const openAcs = (s.acceptance_criteria ?? []).filter(
+            (a) => !['done', 'deferred'].includes(a.status),
+          )
           if (openAcs.length > 0) {
             throw anchoredError(
               'ChildIncomplete',
-              `cannot mark '${childSlug}' done: ACs not done — ${openAcs.map((a) => a.id).join(', ')}`,
+              `cannot mark '${childSlug}' done: ACs not terminal — ${openAcs.map((a) => a.id).join(', ')}`,
             )
           }
         }
@@ -169,6 +174,29 @@ export function createProject(deps: {
           [field]: field === 'depends_on' ? value.split(',').map((x) => x.trim()) : value,
         }
       }),
+
+    // outcome-level ACs PER epic-stub (project-refine works these out) — same shape + evidence
+    // invariant as a phase AC; gates the stub's child-status done (see child-status above).
+    'child-ac-add': (slug, childSlug, text) =>
+      mutateStub(slug, childSlug, (s) => ({
+        ...s,
+        acceptance_criteria: addAc(s.acceptance_criteria ?? [], text),
+      })),
+    'child-ac-evidence': (slug, childSlug, acId, proof) =>
+      mutateStub(slug, childSlug, (s) => ({
+        ...s,
+        acceptance_criteria: evidenceAc(s.acceptance_criteria ?? [], acId, proof),
+      })),
+    'child-ac-fail': (slug, childSlug, acId, why) =>
+      mutateStub(slug, childSlug, (s) => ({
+        ...s,
+        acceptance_criteria: failAc(s.acceptance_criteria ?? [], acId, why),
+      })),
+    'child-ac-defer': (slug, childSlug, acId, reason) =>
+      mutateStub(slug, childSlug, (s) => ({
+        ...s,
+        acceptance_criteria: deferAc(s.acceptance_criteria ?? [], acId, reason),
+      })),
 
     async 'add-acceptance'(slug, text) {
       const node = await read(slug)
@@ -223,6 +251,17 @@ export function createProject(deps: {
         questions: addQuestion(node.questions ?? [], {
           text,
           priority: (priority ?? 'medium') as 'low' | 'medium' | 'high',
+        }),
+      })
+    },
+    async 'question-resolve'(slug, id, answer, source, reasoning) {
+      const node = await read(slug)
+      return write(slug, {
+        ...node,
+        questions: resolveQuestion(node.questions ?? [], id, {
+          answer,
+          source: (source ?? 'user') as 'user' | 'ai',
+          ...(reasoning !== undefined ? { reasoning } : {}),
         }),
       })
     },

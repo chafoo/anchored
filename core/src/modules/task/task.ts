@@ -11,7 +11,12 @@ import type { Tier } from '../../lib/contracts/tier.js'
 import { anchoredError } from '../../lib/utils/error.js'
 import { assertTransition, lifecycleTransitions } from '../shared/transitions.js'
 import { nextChild, readyChildren } from '../shared/children.js'
-import { addQuestion, resolveQuestion, type Question } from '../shared/questions.js'
+import {
+  addQuestion,
+  resolveQuestion,
+  assertNoOpenQuestions,
+  type Question,
+} from '../shared/questions.js'
 import { appendLog, type LogEntry } from '../shared/log.js'
 import { TaskNodeSchema } from './task.schemas.js'
 
@@ -99,6 +104,7 @@ export function createTask(deps: { store: StorePort; template: TemplatePort }): 
     async status(slug, to) {
       const node = await read(slug)
       assertTransition(lifecycleTransitions, node.status, to, 'task')
+      if (to === 'build') assertNoOpenQuestions(node.questions ?? [], 'task')
       if (to === 'done') assertTaskCompletable(node)
       return write(slug, { ...node, status: to })
     },
