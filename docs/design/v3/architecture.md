@@ -29,12 +29,14 @@ This is the **code layout** that mirrors the surface 1:1.
 - **`lib/` is the base** — `lib/contracts/` (the ports), `lib/utils/` (zero-dep
   primitives: error factory, predicates, the evidence predicate, arg/envelope helpers),
   `lib/constants/`. Imported by all, imports nothing internal.
-- **One effect** — the whole engine is a pure core around a single IO seam
-  (`services/store/io`). `config` executes nothing — its readers are injected; the real
-  fs · yaml · lock effects live solely in `bin.ts`.
-- **Universal substrate rules stay generic** — the hard invariant (no ac→done without
-  evidence) is universal, enforced ONCE inside `store.mutate` (every write), never
-  duplicated per module.
+- **One effect** — the whole engine is a pure core around a single effect seam: the
+  filesystem (`fs`). `store` is built on injected `fs` + `lock` + `yaml`; `config`
+  executes nothing — its readers are injected. The real fs · lock effects live solely in
+  `bin.ts`. There is no separate `io`/`codec` layer.
+- **The universal rule lives in the SCHEMA, not the service** — the only universal guard
+  (no ac→done without evidence) is a Zod `.refine` on the shared `AcceptanceCriterion`
+  fragment. Because `store.write` runs `schema.parse` on every write, it is unskippable —
+  and the store never learns what evidence is. The schema is the law.
 
 ## Layers + the dependency rule
 
@@ -42,20 +44,21 @@ This is the **code layout** that mirrors the surface 1:1.
 lib/         primitives — contracts (ports) · utils · constants. Imported by all, imports nothing.
 modules/     tier FACTORIES (createPhase·createTask·createEpic·createProject) — own their rules + verbs,
              DI'd the services they demand (by contract). May compose another module (by contract).
-services/    generic mechanisms (store · config) — know no tier. store exposes for(condition) → { read, mutate }.
+services/    generic mechanisms (store · config) — know no tier. store = read/write a node, validated by a given schema.
 cli/         createCli(deps): instantiate services, instantiate the tier factories (DI), route argv → tier → verb.
 ```
 
 - **A module never imports a concrete service or a sibling module.** It demands them by
   contract (`StorePort`, `ConfigPort`, `Tier`) and receives the implementation injected at
   `createCli`. That is the whole inversion: the tiers compose without coupling.
-- **The store primitive is the seam.** `services/store` is a generic guarded
-  read-modify-write — `for(condition) → { read, mutate }`. A tier factory binds it to its
-  own condition and writes its verbs as `ops.mutate(slug, pureTransform)`. The generic part
-  (schema-validate · transitions · atomic-write+CAS · evidence invariant) is shared; the
-  transforms are the tier's.
+- **The store is the seam — and it is dumb.** `createStore({ fs, lock, yaml })` exposes
+  `read(slug, schema)` / `write(slug, node, schema)` (+ `move`/`remove`): load/persist a
+  node *safely* (yaml ⇄ object · atomic temp+rename under `lock` + compare-and-swap) and
+  validate against **the schema it is handed**. It knows no tier, no evidence, no
+  transition. A tier factory does `store.write(slug, transform(node), mySchema)`; the
+  schema (with its evidence `.refine`) is the only law the store enforces.
 - A capability used by **only one** consumer is **not** a service — it colocates inside
-  that consumer (codec lives inside store).
+  that consumer (the atomic-write dance is store-internal).
 
 ## Tree (target)
 
@@ -66,35 +69,38 @@ core/src/
 │
 ├── lib/                            # the base · imported by all · imports nothing internal
 │   ├── contracts/                  # the ports (interface-only) — each carries a conformance spec
-│   │   ├── io.ts                   # Io          { atomicWrite, readFile, move, remove, statVersion }
-│   │   ├── store.ts                # StorePort   { for(condition) → { read, mutate } } + NodeGateway
+│   │   ├── fs.ts                   # FileSystem  { readFile, writeFile, rename, unlink, mkdir, stat } — the effect seam
+│   │   ├── store.ts                # StorePort   { read(slug,schema), write(slug,node,schema), move, remove }
 │   │   ├── config.ts               # ConfigPort  { planFor, fields, raw } + PlanStep/StepPlan
-│   │   ├── tier.ts                 # Tier (a module factory's OUTPUT: the verb surface) + Condition
+│   │   ├── tier.ts                 # Tier (a module factory's OUTPUT: the verb surface) + Schema
 │   │   └── cli.ts                  # Cli         { run(argv) → exitCode } + Anchored
 │   ├── utils/                      # zero-dep primitives · no special knowledge
 │   │   ├── error.ts                # the typed-error factory (anchoredError + AnchoredError)
-│   │   ├── evidence/evidence.ts    # isEvidenceFilled — the pure predicate the store's invariant uses
+│   │   ├── evidence/evidence.ts    # isEvidenceFilled — the pure predicate the schema's .refine uses
+│   │   ├── assert-transition.ts    # assertTransition(map, from, to) — pure guard the tier factories call
 │   │   ├── envelope/envelope.ts    # { ok, command, result|error } JSON serializer (cli-only-transport)
 │   │   └── args/args.ts            # argv → typed args (parse/validate) — shared by the tier factories' cli parts
-│   └── constants/                  # fixed axes: stages · statuses · transitions
+│   └── constants/                  # fixed axes: stages · statuses · transitions (the maps)
 │
 ├── modules/                        # tier FACTORIES · demand contracts · DI'd at createCli · 100% covered
-│   ├── shared/schema.ts            # cross-tier zod FRAGMENTS (slugs · AC · question · log · context) — the modules' base
+│   ├── shared/                     # the modules' own base (pure, imported by the tier factories)
+│   │   ├── schema.ts               # cross-tier zod FRAGMENTS (slugs · AC-with-evidence-refine · question · log · context)
+│   │   ├── children.ts             # child-list transforms (next · ready · add · move) — DAG/loop-queue logic
+│   │   ├── questions.ts            # question/concern transforms (add id · resolve)
+│   │   └── log.ts                  # append-only audit-log transform
 │   ├── phase/
 │   │   ├── phase.ts                # createPhase(deps) → Tier: leaf · owns PhaseSchema + ac/evidence verbs
-│   │   ├── schema.ts               # the condition DATA (schema · transitions · childTier) — internal to the module
+│   │   ├── schema.ts               # the tier's schema + transition map — internal to the module
 │   │   └── phase.spec.ts
 │   ├── task/task.ts                # createTask({ store, config }) → Tier · phase-collection + lifecycle verbs
 │   ├── epic/epic.ts                # createEpic({ store, config, task }) → Tier · task-STUB verbs + roll-up (reads task files)
-│   └── project/project.ts          # createProject({ store, config, epic }) → Tier · epic-STUB verbs
+│   ├── project/project.ts          # createProject({ store, config, epic }) → Tier · epic-STUB verbs
+│   └── validate/validate.ts        # createValidate({ config }) → the validate unit (parse anchored.yml vs ConfigSchema)
 │
 ├── services/                       # generic mechanisms · know NO tier · import only lib
-│   ├── store/                      # the node mechanism: guarded read-modify-write a node
-│   │   ├── store.ts                # createStore({ io, codec }) → StorePort: for(condition) → { read, mutate }
-│   │   ├── io/io.ts                # ⚡ the ONLY effect: atomic write (mkdir → lock → temp → rename → CAS)
-│   │   ├── codec/{parse,render}    # store-internal (yaml ⇆ node) — has the yaml dep + $schema header, NOT a util
-│   │   ├── invariants/             # the UNIVERSAL guard (ac→done needs evidence) — applied inside mutate
-│   │   └── transitions/            # the generic assertTransition — reads condition.transitions
+│   ├── store/                      # the ONE substrate service — read/write a node, validated by a given schema
+│   │   ├── store.ts                # createStore({ fs, lock, yaml }) → { read(slug,schema), write(slug,node,schema), move, remove }
+│   │   └── scope/safe-write.ts     # store-internal: the atomic-write dance (mkdir → lock → temp → rename → CAS)
 │   └── config/                     # createConfig({ readDefault, readUser, merge }) → ConfigPort
 │       ├── config.ts · merge.ts · plan-for.ts · config-schema/ · …
 │
@@ -113,29 +119,35 @@ target folds the verbs into the factories and deletes `node-router`/`tier-of`/`c
 
 ```ts
 // modules/epic/epic.ts — a factory, DI'd the services it demands by contract
-import type { StorePort }  from '../../lib/contracts/store.js'    // never io/io.ts, never node-store.ts
+import type { StorePort }  from '../../lib/contracts/store.js'    // never the concrete store, never fs
 import type { ConfigPort } from '../../lib/contracts/config.js'
-import { EpicSchema, epicTransitions } from './schema.js'         // the condition DATA — internal
+import { assertTransition } from '../../lib/utils/assert-transition.js'
+import { lifecycleTransitions } from '../../lib/constants/transitions.js'
+import { EpicSchema } from './schema.js'   // the tier's schema — carries the evidence .refine; the store's only law
 
 export function createEpic(deps: { store: StorePort; config: ConfigPort }) {
-  const condition = { tier: 'epic', schema: EpicSchema, transitions: epicTransitions, childTier: 'task', … }
-  const ops = deps.store.for(condition)             // bind the generic RMW primitive to epic's rules
+  const { store, config } = deps
+  const read  = (slug)       => store.read(slug, EpicSchema)
+  const write = (slug, node) => store.write(slug, node, EpicSchema)   // store runs schema.parse → evidence enforced
   return {
-    plan:     (input) => ({ node: …, steps: deps.config.planFor('epic', 'plan') }),  // lifecycle (config)
-    get:      (slug)    => ops.read(slug),                                            // node — delegate CRUD
-    status:   (slug, s) => ops.mutate(slug, (n) => ({ ...n, status: s })),            // (invariant inside mutate)
-    childAdd: (slug, c) => ops.mutate(slug, addStub(c)),                              // collection / tier-specific
-    rollUp:   (slug)    => …,                                                         // epic-only, encapsulated here
+    plan:     (input)    => ({ node: …, steps: config.planFor('epic', 'plan') }),   // lifecycle (config)
+    get:      (slug)     => read(slug),                                             // node — trivial read
+    status:   async (slug, s) => {                                                  // pure guard, then write
+      const n = await read(slug); assertTransition(lifecycleTransitions, n.status, s)
+      return write(slug, { ...n, status: s })
+    },
+    childAdd: async (slug, c) => write(slug, addStub(await read(slug), c)),         // collection / tier-specific
+    rollUp:   (slug)     => …,                                                      // epic-only, reads task files via deps.task
   }
 }
 ```
 
-`phase` / `task` / `project` are the same shape — they differ in their condition (schema ·
-transitions · child) and their tier-specific verbs. `epic` additionally demands `task`
-(by the `Tier` contract) because its roll-up reads child task files. **No tier factory
-imports a service or a sibling concretely** — everything arrives injected. Common CRUD delegates to
-the bound `ops`; tier-specifics (roll-up, evidence-flip) live in the factory. Same RMW
-mechanism, different verbs. That is the fractal.
+`phase` / `task` / `project` are the same shape — they differ in their schema, transition
+map, and tier-specific verbs. `epic` additionally demands `task` (by the `Tier` contract)
+because its roll-up reads child task files. **No tier factory imports a service or a
+sibling concretely** — everything arrives injected. Common CRUD is a trivial
+read/transform/write; tier-specifics (roll-up, evidence-flip) live in the factory. Same
+store, different verbs. That is the fractal.
 
 ## Contracts (the only thing crossing a boundary)
 
@@ -143,10 +155,12 @@ Every capability ships an interface in `lib/contracts/`; an implementation — a
 module factory — imports only the *interface* it needs, never a concrete neighbour:
 
 ```ts
-// services/store/store.ts — the generic mechanism implements a port
-import type { Io }        from '../../lib/contracts/io.js'        // the effect seam
-import type { StorePort } from '../../lib/contracts/store.js'
-export function createStore(deps: { io: Io; codec: Codec }): StorePort { /* for(condition) → {read,mutate} */ }
+// services/store/store.ts — the generic mechanism, built on the fs effect seam
+import type { FileSystem } from '../../lib/contracts/fs.js'       // the one effect seam
+import type { StorePort }  from '../../lib/contracts/store.js'
+export function createStore(deps: { fs: FileSystem; lock: Lock; yaml: Yaml }): StorePort {
+  /* read(slug, schema) = fs.readFile → yaml.parse → schema.parse ; write = schema.parse → yaml.stringify → safe-write */
+}
 
 // modules/epic/epic.ts — a factory demands ports + (optionally) another module's Tier contract
 import type { StorePort } from '../../lib/contracts/store.js'
@@ -154,9 +168,9 @@ import type { Tier }      from '../../lib/contracts/tier.js'      // the module-
 export function createEpic(deps: { store: StorePort; config: ConfigPort }): Tier { … }
 ```
 
-`lib/` imports nothing internal and is imported by everyone. A service is fully fakeable by
-a stub `Io`; a module is fakeable by a stub `StorePort`. Concrete implementations meet
-their contracts in exactly one place: `cli/cli.ts`.
+`lib/` imports nothing internal and is imported by everyone. The store is fully fakeable by
+a stub `FileSystem`; a module is fakeable by a stub `StorePort`. Concrete implementations
+meet their contracts in exactly one place: `cli/cli.ts`.
 
 ## Assembly (the one place factories meet their services)
 
@@ -171,7 +185,7 @@ import { createProject }from '../modules/project/project.js'
 import { envelope }     from '../lib/utils/envelope/envelope.js'
 
 export function createCli(deps): Anchored {
-  const store  = createStore({ io: createIo(deps.io), codec: createCodec(deps) })  // StorePort
+  const store  = createStore({ fs: deps.fs, lock: deps.lock, yaml: deps.yaml })     // StorePort
   const config = createConfig(deps).load(deps.projectRoot)                          // ConfigPort
 
   const phase   = createPhase({ store, config })
@@ -207,20 +221,27 @@ that spawns workers and drives the loop. `build.each` recursion is the skill cal
 |---|---|---|---|
 | `bin.ts` | entry | the only real effects (process · fs · yaml · lock); injects them, calls createCli | — |
 | `lib/contracts/*` | lib | interface-only ports; imported by all, imports nothing | pure types |
-| `lib/utils/*` · `lib/constants/*` | lib | zero-dep primitives (error · evidence · envelope · args) + fixed axes | pure |
+| `lib/utils/*` · `lib/constants/*` | lib | zero-dep primitives (error · evidence-predicate · assert-transition · envelope · args) + fixed axes | pure |
 | `cli/cli.ts` | orchestrator | THE root: build services, instantiate tier factories (DI), route `<tier> <verb>` | `createCli(deps) → { run, config }` |
-| `modules/<tier>/<tier>.ts` | module | a **factory**: owns the condition + the tier's verbs (lifecycle · node · collection), built on injected services | `createEpic(deps) → Tier` |
-| `services/store` | service | the generic guarded read-modify-write + the only effect (atomic write, lock+CAS) + codec + the universal invariant | `createStore({ io, codec }) → { for(condition) → { read, mutate } }` |
+| `modules/<tier>/<tier>.ts` | module | a **factory**: owns the schema + the tier's verbs (lifecycle · node · collection), built on the injected store | `createEpic(deps) → Tier` |
+| `modules/shared/*` | module | the modules' pure base: schema fragments (incl. the evidence `.refine`) + child/question/log transforms | pure |
+| `services/store` | service | read/write a node **safely** (yaml ⇄ object · atomic temp+rename, lock+CAS, on `fs`) validated by a **given schema** — knows no tier | `createStore({ fs, lock, yaml }) → { read(slug,schema), write(slug,node,schema), move, remove }` |
 | `services/config` | service | load + merge (default ⊕ user, once) AND derive `planFor(tier,stage)` → step-plan | `createConfig({ readDefault, readUser, merge }) → ConfigPort` |
 
 ### What dissolved (and where it went)
 
 | was | why it changes | new home |
 |---|---|---|
-| `modules/<tier>` = pure condition bundle | a module is now a factory that owns its verbs | `modules/<tier>/<tier>.ts` = `createX(deps) → Tier` (condition kept internal) |
-| `services/store/node-store` (generic god-kernel) | per-verb transforms belong to the tier; only the RMW is generic | `services/store/store.ts` keeps `for(condition) → {read,mutate}`; transforms move INTO the factories |
+| `modules/<tier>` = pure condition bundle | a module is now a factory that owns its verbs | `modules/<tier>/<tier>.ts` = `createX(deps) → Tier` (schema kept internal) |
+| `services/store/node-store` (generic god-kernel) | per-verb transforms belong to the tier | `services/store/store.ts` shrinks to `read(slug,schema)`/`write(slug,node,schema)`; transforms → the factories |
+| `services/store/io` | the effect is just the filesystem | dissolved — `fs` + `lock` are injected seams into `createStore`; the atomic-write dance is store-internal (`scope/safe-write.ts`) |
+| `services/store/codec` (parse/render) | yaml⇄object is the `yaml` lib; the schema comes from the module | dissolved — `store` calls `yaml.parse`/`stringify` + the injected schema |
+| `services/store/invariants` | the service must not know what evidence is | dissolved — a Zod `.refine` on the shared `AcceptanceCriterion` (the schema is the law) |
+| `services/store/transitions` | a pure per-tier-data guard, not a service | `lib/utils/assert-transition.ts` + the maps in `lib/constants`; the module calls it |
+| `services/store/{children,questions,log}` | pure transform helpers, no effect | `modules/shared/` (the modules' transform toolkit) |
+| `services/store/validate` | a read-only config inspection | `modules/validate` (a module unit) |
 | `cli/node-router` (slug facade) | routing is a direct tier lookup (tier-first grammar) | gone — `createCli` dispatch |
-| `cli/tier-of` | not needed for routing (tier is explicit in the grammar) | gone (or a guard inside `services/store`) |
+| `cli/tier-of` | not needed for routing (tier is explicit in the grammar) | gone |
 | `cli/commands/{stage,node,lifecycle}/*` | the verb logic belongs to the tier | folds INTO each `createX` |
 | `cli/anchored.ts` (createAnchored) | the assembly IS createCli | merged into `cli/cli.ts` |
 | `domain/` (the whole layer) | dissolved already in v1 reshape | gone |
