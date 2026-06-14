@@ -97,6 +97,14 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
 
   const verbs: Record<string, (...args: string[]) => Promise<unknown>> = {
     get: (slug) => read(slug),
+    create: (slug, title) =>
+      write(slug, {
+        schema_version: 2,
+        slug,
+        title: title ?? slug,
+        status: 'plan',
+        tasks: [],
+      } as EpicNodeLike),
     plan: (slug) => stagePlan('plan', slug),
     refine: (slug) => stagePlan('refine', slug),
     build: (slug) => stagePlan('build', slug),

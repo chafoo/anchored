@@ -84,6 +84,13 @@ export function createTask(deps: { store: StorePort; template: TemplatePort }): 
 
   const verbs: Record<string, (...args: string[]) => Promise<unknown>> = {
     get: (slug) => read(slug),
+    create: (slug, title) =>
+      write(slug, {
+        schema_version: 2,
+        slug,
+        title: title ?? slug,
+        status: 'plan',
+      } as TaskNodeLike),
     plan: (slug) => stagePlan('plan', slug),
     refine: (slug) => stagePlan('refine', slug),
     build: (slug) => stagePlan('build', slug),
