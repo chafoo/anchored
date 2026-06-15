@@ -33,10 +33,10 @@ the **build-task-validate** checker independently verifies and records the proof
 the whole fan-out has landed. Anchor the note on the SYMBOL, never a raw line number:
 ```bash
 # done — a per-criterion build-note for the checker to confirm:
-anchored task append-log <task-slug> build note "<ac-id>: <symbol/file> — <what you implemented + how it meets the criterion; gate green>"
+anchored task log add <task-slug> build note "<ac-id>: <symbol/file> — <what you implemented + how it meets the criterion; gate green>"
 
 # honest blocker — so the build skill's re-do loop and the checker both see it:
-anchored task append-log <task-slug> build note "<ac-id>: BLOCKED — <what blocks it + why>"
+anchored task log add <task-slug> build note "<ac-id>: BLOCKED — <what blocks it + why>"
 ```
 If you hit a decision the plan didn't nail down, record it:
-`anchored task append-log <task-slug> build learning "<decision + why>"`.
+`anchored task log add <task-slug> build learning "<decision + why>"`.

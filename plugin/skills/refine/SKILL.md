@@ -44,10 +44,10 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
 **Task tier:**
 - **plan-check → refine-plan-check** — validates the plan against current code
   (stale paths, unacknowledged handlers, hidden defaults); self-writes the rollup:
-  `anchored task append-log <slug> refine learning "<plan-check rollup>"`. Any
+  `anchored task log add <slug> refine learning "<plan-check rollup>"`. Any
   drift it can't auto-fix becomes an open question.
 - **rules-check → refine-rules-check** — verifies each phase covers the applicable
-  `.claude/rules/*.md`; self-writes the coverage rollup via `append-log`. A missing
+  `.claude/rules/*.md`; self-writes the coverage rollup via `task log add`. A missing
   rule-enforcement is an **auto-fix** (the agent adds an enforcing acceptance
   criterion itself), NOT a user question — project rules are framework requirements that get enforced, not
   negotiated. Only a genuine architecture/code ambiguity becomes an open question.
@@ -58,7 +58,7 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   sound); writes the grounding rollup to `context.refine`; genuine
   scope/architecture ambiguities → open questions.
 - **epic-decompose → epic-decompose** — authors **outcome-level task acceptance
-  criteria per stub** (`anchored epic child-ac-add <epic> <stub> "<outcome acceptance criterion>"`,
+  criteria per stub** (`anchored epic child ac add <epic> <stub> "<outcome acceptance criterion>"`,
   the Epic→Task contract). These seed the just-in-time `plan task`'s phase
   decomposition at build (so the contract is never lost — the G8 fix) and are what
   the wrap roll-up validates the built task against.
@@ -69,7 +69,7 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
 
   Phrase it for a human — **plain priority words, no raw enum tokens, and the
   walk-style codes stay INTERNAL** (they're only the value you pass to
-  `resolve-question`, never a user-visible label):
+  `question resolve`, never a user-visible label):
 
   > "N questions — X important, Y medium, Z minor. Which do you want a say in?"
   > - **Just the important ones** (internal threshold `high` — the recommended default)
@@ -90,9 +90,9 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
     the AI decides; priority is ignored, the topic is what matters.
 
   Whatever is below the bar (or off-topic) the AI decides WITH reasoning
-  (`resolve … ai "<answer>" "<why>"`; reasoning is required for `source=ai`); the rest
-  the user answers (`resolve … user "<answer>"`).
-  `anchored <tier> question-resolve <slug> <id> "<answer>" <user|ai> ["<reasoning>"]`
+  (`question resolve … ai "<answer>" "<why>"`; reasoning is required for `source=ai`); the rest
+  the user answers (`question resolve … user "<answer>"`).
+  `anchored <tier> question resolve <slug> <id> "<answer>" <user|ai> ["<reasoning>"]`
 
 ### Question policy — the epic and the tasks are SEPARATE (epics only)
 
@@ -170,14 +170,14 @@ so by default every phase ran sequentially (a ~44-min epic for ~200 lines). Refi
 is where that call belongs, because the phases + their acceptance criteria are now settled.
 Two levers live here, both recorded ON THE PHASE (never global config):
 
-- **Phase intra-fan-out** — a phase's `execute` mode (`set-execute`): do this phase's
+- **Phase intra-fan-out** — a phase's `execute` mode: do this phase's
   acceptance criteria fan out in parallel (`workflow`) or land sequentially (`sequential`)?
-- **Multi-phase parallelism** — a phase's `depends_on` (`set-depends`): which sibling
+- **Multi-phase parallelism** — a phase's `depends_on` (`phase set <slug> depends_on`): which sibling
   phases must finish before this one? Independent phases build in parallel via
-  `ready-phases`; the dependency chain sequences. Set the edges where one phase truly
+  `task phase ready`; the dependency chain sequences. Set the edges where one phase truly
   needs another's output; leave independent phases free of each other.
 
-**Default to the fastest safe path.** For each phase (`anchored task list-phases
+**Default to the fastest safe path.** For each phase (`anchored task phase list
 <slug>`), the call is about **correctness, never quality** — parallel and sequential
 build the exact same thing:
 
@@ -187,14 +187,13 @@ build the exact same thing:
   criteria mutate the same region of the same file. Non-independent criteria would
   race → corruption. That's the only thing the floor protects.
 - **Within "safe" → default to `workflow`** (the fastest path), not sequential. A
-  phase with **≥2 independent acceptance criteria fans out by default**:
-  `anchored phase set-execute <slug>/<phase> workflow`.
+  phase with **≥2 independent acceptance criteria fans out by default**.
 - **`sequential`** only when the floor doesn't hold — a single
   criterion, or criteria that share sequential state / build on each other / touch
   the same region — **or** when you're genuinely unsure two criteria are independent
   (when the doubt is about *correctness*, stay sequential; leave it unset, absent ⇒ sequential).
 - **Phase dependencies** follow the same independence test, one tier up: record
-  `anchored phase set-depends <slug>/<phase> "<comma-separated phase slugs>"` only
+  `anchored phase set <slug>/<phase> depends_on "<comma-separated phase slugs>"` only
   where a phase genuinely consumes another's output. Phases left without a dependency
   edge are treated as independent and build in parallel.
 
@@ -209,7 +208,7 @@ quality is identical. So offer it once, ephemeral (like the walk-style), phrased
 
 Hold the answer in memory for this refine. If they pick "sequential to watch", leave
 `execute` unset regardless of the floor and don't add parallelizing phase edges. The
-user can always override a single phase with `set-execute` / `set-depends` before build.
+user can always override a single phase's `depends_on` (`phase set <slug>/<phase> depends_on`) before build.
 Epics have no phases — task-level fan-out across independent child-tasks is a
 separate lever (the epic build loop), not this decision.
 

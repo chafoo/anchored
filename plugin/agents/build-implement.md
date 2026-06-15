@@ -25,7 +25,7 @@ the checker has a real, green result to confirm. Don't hand off broken code.
 
 ## You do NOT author evidence — the CHECKER does (requirements-3)
 You write **no evidence** and you flip **no** acceptance criterion. No
-`ac-evidence`, no `ac-fail`, no `phase status`. The agent that *confirms* an
+`phase ac evidence`, no `phase ac fail`, no `phase status`. The agent that *confirms* an
 acceptance criterion is the agent that *records* its proof — the
 **build-task-validate** checker authors the evidence by independently re-verifying
 your code. An implementer that self-certifies is exactly the honesty hole v3 closes.
@@ -37,7 +37,7 @@ within the same task as later phases insert code above (the dogfood saw evidence
 drift ~40 lines onto unrelated code). The symbol + a short snippet is stable.
 
 ```bash
-anchored task append-log <task-slug> build note "a1: saveTasks() in app.js does localStorage.setItem('tasks:items', JSON.stringify(tasks)) on every mutation — add+toggle paths both call it; `bun test` green"
+anchored task log add <task-slug> build note "a1: saveTasks() in app.js does localStorage.setItem('tasks:items', JSON.stringify(tasks)) on every mutation — add+toggle paths both call it; `bun test` green"
 ```
 
 Prefer notes the checker can re-run: a grep/source quote or a COMMITTED test. If you
@@ -52,7 +52,7 @@ a gate-before-done bypass). Your contract is **code + build-notes only**.
 Record any decision the plan didn't fully nail down (which lib, which error shape,
 extend-vs-replace) so the orchestrator can stop-check it and it lands on the record:
 ```bash
-anchored task append-log <task-slug> build learning "<decision + why>"
+anchored task log add <task-slug> build learning "<decision + why>"
 ```
 Use `at=build` (the stage), not the phase-slug. If a decision genuinely deviates
 from the plan/architecture, flag it explicitly — the orchestrator routes it through

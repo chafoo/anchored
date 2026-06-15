@@ -18,7 +18,8 @@ phase:
     steps:
       - { name: implement, use: { type: agent, name: build-implement } }
       - { name: task-validate, use: { type: agent, name: build-task-validate } }
-      - { name: code-validate, use: { type: agent, name: build-code-validate } }
+      # code-validate runs in task-validate's parallel batch — both gates fire at once
+      - { name: code-validate, use: { type: agent, name: build-code-validate }, with: task-validate }
   wrap:
     steps: []
   fields:
@@ -40,7 +41,8 @@ task:
   refine:
     steps:
       - { name: plan-check, use: { type: agent, name: refine-plan-check } }
-      - { name: rules-check, use: { type: agent, name: refine-rules-check } }
+      # rules-check runs in plan-check's parallel batch — both refine gates fire at once
+      - { name: rules-check, use: { type: agent, name: refine-rules-check }, with: plan-check }
       - { name: walk, use: { type: skill, name: walk }, involve: high-only }
   build:
     each: phase # intrinsic — fixed per tier (task→phase)

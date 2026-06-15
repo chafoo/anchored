@@ -211,7 +211,7 @@ task:
 - Default fields are **not** repeated here — `fields` is **additive** (the base comes from the default template); a custom name lands additionally in the node schema, while an
   **un**declared key is still rejected on write.
 - Set/read at runtime: `anchored <tier> set <slug> <name> <value>`. On a **child**:
-  a stub via `anchored epic child-set-field <epic> <stub> <name> <value>`; a phase
+  a stub via `anchored epic child set <epic> <stub> <name> <value>`; a phase
   via `anchored phase set <task>/<phase> <name> <value>` (the phase's slash-joined slug).
 
 ### Commit anchors: `commit_sha` vs. `merge_commit` (two-anchor semantics)
@@ -236,7 +236,7 @@ Both are ordinary custom fields (`string`), additively declared.
 #### SHA anchors: wire them yourself in the commit step
 
 The framework does **not** fill these fields automatically — git is entirely yours.
-In your own commit step you write the SHA via `set-field` yourself; the command lives
+In your own commit step you write the SHA via `set` yourself; the command lives
 in the step's `instructions:` prose:
 
 ```yaml

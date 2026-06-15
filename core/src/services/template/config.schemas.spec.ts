@@ -23,6 +23,28 @@ test('StepSchema: use{type,name} + instructions + execute ok; no run; involve on
   expect(StepSchema.safeParse({ name: 'notwalk', involve: 'all' }).success).toBe(false)
 })
 
+test('StepSchema: `with` is a valid third positioner; at most one of before|after|with', () => {
+  // `with: <step-name>` — run in the named step's parallel batch (sibling of before/after).
+  expect(
+    StepSchema.safeParse({
+      name: 'code-validate',
+      use: { type: 'agent', name: 'build-code-validate' },
+      with: 'task-validate',
+    }).success,
+  ).toBe(true)
+  // each positioner alone is fine
+  expect(StepSchema.safeParse({ name: 'x', before: 'task-validate' }).success).toBe(true)
+  expect(StepSchema.safeParse({ name: 'x', after: 'task-validate' }).success).toBe(true)
+  expect(StepSchema.safeParse({ name: 'x', with: 'task-validate' }).success).toBe(true)
+  // but they are mutually exclusive — pick at most one
+  expect(StepSchema.safeParse({ name: 'x', with: 'a', before: 'b' }).success).toBe(false)
+  expect(StepSchema.safeParse({ name: 'x', with: 'a', after: 'b' }).success).toBe(false)
+  expect(StepSchema.safeParse({ name: 'x', before: 'a', after: 'b' }).success).toBe(false)
+  expect(StepSchema.safeParse({ name: 'x', with: 'a', before: 'b', after: 'c' }).success).toBe(
+    false,
+  )
+})
+
 test('ConfigSchema: tier blocks with build each/stop/retry; rejects an unknown top-level key', () => {
   const ok = ConfigSchema.safeParse({
     task: {

@@ -36,6 +36,6 @@ is no `_archive` yet, skip silently.)
 Append BOTH the codebase findings AND the relevant history to the node's log — never return
 text for a skill to apply:
 ```bash
-anchored <tier> append-log <slug> discover learning "<affected paths · similar code · patterns>"
-anchored <tier> append-log <slug> discover learning "history: <prior decision / where it lives / why it matters here>"
+anchored <tier> log add <slug> discover learning "<affected paths · similar code · patterns>"
+anchored <tier> log add <slug> discover learning "history: <prior decision / where it lives / why it matters here>"
 ```

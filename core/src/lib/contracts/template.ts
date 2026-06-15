@@ -22,6 +22,7 @@ export interface Step {
   involve?: 'all' | 'high-only' | 'none' // the q&a walk style (walk step only)
   before?: string // merge: insert this user step before a built-in
   after?: string // merge: insert after a built-in
+  with?: string // parallel positioner: run in this named step's parallel batch (sibling of before/after)
 }
 
 /** A resolved tier/stage step plan — the menu a skill reads + executes. The loop edge

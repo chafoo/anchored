@@ -17,7 +17,10 @@ const StepUseSchema = z.strictObject({ type: StepType, name: z.string().min(1) }
 // A step (requirements-3): prose for the main thread (`instructions`), an optional worker
 // (`use: {type, name}`), an optional fan-out mode (`execute`). No `run` (a command goes in
 // prose, never an enforced shell), no bare `worker`/`type` (folded into `use`). `involve` is
-// the walk-only q&a knob; `before`/`after` are merge anchors.
+// the walk-only q&a knob; `before`/`after`/`with` are the three positioners — `before`/`after`
+// anchor a step sequentially, `with` runs it in a named step's parallel batch (the batch joins
+// before the next sequential step). All three share the "relative to a named anchor" idiom and
+// are mutually exclusive (a step picks at most one positioner).
 export const StepSchema: z.ZodType<Step> = z
   .strictObject({
     name: z.string().min(1),
@@ -27,13 +30,16 @@ export const StepSchema: z.ZodType<Step> = z
     involve: InvolveLevel.optional(),
     before: z.string().optional(),
     after: z.string().optional(),
+    with: z.string().optional(),
   })
   .refine((s) => s.involve === undefined || s.name === 'walk', {
     error: 'involve is only valid on a walk step',
   })
-  .refine((s) => !(s.before !== undefined && s.after !== undefined), {
-    error: 'a step sets at most one of before | after',
-  }) as z.ZodType<Step>
+  .refine(
+    (s) =>
+      [s.before, s.after, s.with].filter((v) => v !== undefined).length <= 1,
+    { error: 'a step sets at most one positioner of before | after | with' },
+  ) as z.ZodType<Step>
 
 const StepList = z.array(StepSchema)
 const Stage = z.strictObject({ steps: StepList.optional() })

@@ -1,6 +1,6 @@
 ---
 name: build-code-validate
-description: Leaf (phase) build checker — Rule-Adherence inspector (no code Write/Edit): checks the phase against the applicable rules and REJECTS violating acceptance criteria via the anchored CLI (ac-fail) to drive the re-do loop. Authors no evidence — that is build-task-validate's job; this one only vetoes on rule violations.
+description: Leaf (phase) build checker — Rule-Adherence inspector (no code Write/Edit): checks the phase against the applicable rules and REJECTS violating acceptance criteria via the anchored CLI (phase ac fail) to drive the re-do loop. Authors no evidence — that is build-task-validate's job; this one only vetoes on rule violations.
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---
@@ -27,9 +27,9 @@ flips it back to `pending` for a fix.
 For each acceptance criterion whose code violates a rule, write its failures (flips it back to
 `pending`):
 ```bash
-anchored phase ac-fail <task-slug>/<phase-slug> <ac-id> "rule violation: <file:line + rule>"
+anchored phase ac fail <task-slug>/<phase-slug> <ac-id> "rule violation: <file:line + rule>"
 ```
 Record the rollup via the log:
 ```bash
-anchored task append-log <task-slug> build learning "code-validate: <N adhered, M violations>"
+anchored task log add <task-slug> build learning "code-validate: <N adhered, M violations>"
 ```

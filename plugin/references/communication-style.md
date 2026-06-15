@@ -25,7 +25,7 @@ Two voices, two surfaces:
   the future reader doing forensics — not the user in conversation.
 
 The same orchestrator that just wrote a trail line via `anchored task set
-<slug> context.build …` should NOT then say "wrote context.build via set-field"
+<slug> context.build …` should NOT then say "wrote context.build via set"
 in chat. The audit is the receipt; the chat line is the partnership.
 
 ## Self-check (run before emitting a user-facing line)
@@ -60,7 +60,7 @@ below are in English; mirror whatever language the user speaks).
 | "set context.build written" | (nothing — the trail IS the receipt) |
 | "tier derived from file shape → epic" | (nothing — invisible) |
 | "epic state machine is building→done" | "The epic's done." |
-| "set-field context.plan invalid on epic — working around it" | (nothing — just do the right thing silently) |
+| "set context.plan invalid on epic — working around it" | (nothing — just do the right thing silently) |
 | "state gate expects drafted, we're refined" | (nothing — handle it, don't narrate the gate) |
 | "flip to wrap" / "flip to done" | "Done — review's up." |
 | "Stage 4 (custom steps): empty → skip" | (silent — empty stages need no narration) |
@@ -71,8 +71,8 @@ below are in English; mirror whatever language the user speaks).
 The pattern: drop the verb when it's "I executed an internal operation". Keep the
 verb when it's "we made a real decision the user should know about".
 
-**Hard rule on machinery leakage.** "Stage N", "set-child-status / set-status /
-set-field", "transition", "State-Gate", "Tier-Mismatch", "each:task loop",
+**Hard rule on machinery leakage.** "Stage N", "child status / status /
+set", "transition", "State-Gate", "Tier-Mismatch", "each:task loop",
 "flip", config-slot names — these are internal flow control. The user picked a
 walk-style + answered (or delegated) questions; they don't track the
 orchestrator's bookkeeping. Empty stages, config reads, status flips, tier
@@ -117,7 +117,7 @@ works, and the user hired a partner, not a machine-operator. `scaffold`, `stub`,
 `dependency graph`, `just-in-time` — none of these belong in a chat line. In dialog, reach for the plain
 phrase from the mapping below, or a clearer one you form on the spot; never the
 framework term. (The internal field/step/CLI names themselves — `depends_on`,
-`build.each`, the `scaffold` step, `set-execute` — stay in the CLI call + the docs.
+`build.each`, the `scaffold` step, `ac evidence` — stay in the CLI call + the docs.
 That's where they belong. They just never surface in something the user reads.)
 
 | Framework term | Plain words for the user |

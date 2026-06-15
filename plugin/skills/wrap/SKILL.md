@@ -39,12 +39,12 @@ step-plan + node ops and spawns the wrap agents itself via the **Task tool**
 ## Spawn each step's agent (Task tool, in order)
 
 - **review → wrap-review** — final review pass over the built node; self-writes
-  findings: `anchored <tier> append-log <slug> wrap learning "<review findings>"`.
+  findings: `anchored <tier> log add <slug> wrap learning "<review findings>"`.
 - **summarize → wrap-summarize** — writes a tight summary (what was built + the
   source='ai' decisions) into the node's own context:
   `anchored <tier> set <slug> context.wrap "<summary>"` (dotted-path → nested).
 - **roll-up → epic-roll-up** (epic) — definition of done against `epic.acceptance`
-  + a retro; self-writes via `append-log`, then advances the epic.
+  + a retro; self-writes via `epic log add`, then advances the epic.
 
 ## Custom run/use steps (the config's own steps — merge, tag, push …)
 
@@ -75,7 +75,7 @@ the human outcome ("core-list ist auf develop gemerged."), not the commands.
 ## Concern-walk — the "check at the end" threads (harden-3)
 
 During the build, workers + gates raise unexpected things that need a final look as
-**concerns** on the node (`anchored <tier> concern-add <slug> "<what>" <priority>`) —
+**concerns** on the node (`anchored <tier> concern add <slug> "<what>" <priority>`) —
 a failing gate command, a deferred edge, a decision the build flagged. This is the v1
 `task.context` "still to discuss" surface, made a real surface. **The substrate
 blocks `done` while ANY concern is open (`ConcernsOpen`)** — nothing slips past.
@@ -95,8 +95,8 @@ So before you finish, run a **concern-walk** — the SAME shape as the refine Q&
 3. **Resolve each open concern** by that threshold (at-or-above → user, below → you) —
    with reasoning:
    ```bash
-   anchored <tier> concern-resolve <slug> <id> "<how it's addressed>" user
-   anchored <tier> concern-resolve <slug> <id> "<decision>" ai "<why — read later>"
+   anchored <tier> concern resolve <slug> <id> "<how it's addressed>" user
+   anchored <tier> concern resolve <slug> <id> "<decision>" ai "<why — read later>"
    ```
    "Addressed" = fixed, turned into a tracked follow-up, or explicitly accepted with
    a reason. A failed-gate concern means the work isn't actually green — that's a

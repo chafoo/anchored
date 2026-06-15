@@ -19,5 +19,5 @@ Review the built node for correctness + cleanup. Read-only.
 
 ## Write (self-write via CLI)
 ```bash
-anchored <tier> append-log <slug> wrap learning "<review findings>"
+anchored <tier> log add <slug> wrap learning "<review findings>"
 ```

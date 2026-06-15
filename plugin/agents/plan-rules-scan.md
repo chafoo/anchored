@@ -22,5 +22,5 @@ Scan `.claude/rules/` for the rules relevant to this task (keyword + path match)
 
 ## Write (self-write via CLI)
 ```bash
-anchored task append-log <slug> plan learning "<relevant rules: path · why>"
+anchored task log add <slug> plan learning "<relevant rules: path · why>"
 ```

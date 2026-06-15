@@ -42,7 +42,7 @@ the failure mode; tag by impact). **Every question carries a worked-out
 recommendation + 1–3 implication bullets** baked into its text (see
 `plugin/references/question-style.md`) — never a bare question:
 ```bash
-anchored epic question-add <slug> "<the scope/architecture ambiguity>
+anchored epic question add <slug> "<the scope/architecture ambiguity>
 Recommendation: <your recommended answer, formed from the code>.
 Implications:
 - <what option A breaks/enables/costs>

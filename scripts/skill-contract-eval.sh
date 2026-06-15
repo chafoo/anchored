@@ -11,14 +11,17 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN="${ANCHORED:-anchored}"; command -v "$BIN" >/dev/null 2>&1 || BIN="node $ROOT/core/dist/bin.js"
 PROBE="$(mktemp -d)"; trap 'rm -rf "$PROBE"' EXIT
 
-# probe the binary for each tier's known verbs (an unknown verb prints "known: a, b, c"),
-# one verb-per-line file per tier (bash 3.2 has no associative arrays).
+# probe the binary for each tier's known verbs. An unknown verb prints a single line ending in
+#   … · fix: known: get, status, set, ac add, ac evidence, …
+# (plain text, no quotes). We take everything after the last "known: " and split on ", " into
+# one verb-per-line file per tier (bash 3.2 has no associative arrays). Verbs may be two-token
+# namespaced verbs ("ac add", "child add", "phase list") — kept verbatim, one per line.
 for tier in phase task epic; do
   (cd "$PROBE" && $BIN "$tier" __probe__ 2>&1) \
-    | grep -o '"known: [^"]*"' | sed 's/"known: //; s/"$//; s/, /\'$'\n''/g' > "$PROBE/$tier.verbs"
+    | grep -o 'known: .*$' | sed 's/^known: //; s/, /\'$'\n''/g; s/ *$//' > "$PROBE/$tier.verbs"
 done
 
-has() { # has <tier> <verb>
+has() { # has <tier> <verb>   (verb may be a two-token namespaced verb, e.g. "ac add")
   case "$2" in plan|refine|build|wrap) return 0 ;; esac   # the 4 stage verbs exist on every tier
   grep -qxF "$2" "$PROBE/$1.verbs"
 }
@@ -27,20 +30,24 @@ bad=0; total=0
 echo "anchored skill-contract eval — binary: $BIN"
 echo
 
-# scan every plugin doc; pull concrete `anchored <tier> <verb>` calls (placeholders like
-# `anchored <tier> …` don't match — only real tier tokens do).
+# scan every plugin doc; pull concrete `anchored <tier> <verb> [subverb]` calls (placeholders like
+# `anchored <tier> …` don't match — only real tier tokens do). Verbs are either a single token
+# (`get`, `status`) or a two-token namespaced verb (`ac add`, `child add`, `phase list`); the
+# regex captures the optional second word and we prefer the two-token match before the single.
 while IFS= read -r f; do
-  hits="$(grep -noE "anchored (phase|task|epic) [a-z][a-z-]*" "$f" 2>/dev/null || true)"
+  hits="$(grep -noE "anchored (phase|task|epic) [a-z][a-z-]+( [a-z][a-z-]+)?" "$f" 2>/dev/null || true)"
   [ -z "$hits" ] && continue
   filebad=""
   while IFS= read -r line; do
     ln="${line%%:*}"; call="${line#*:}"
-    tier="$(printf '%s' "$call" | awk '{print $2}')"; verb="$(printf '%s' "$call" | awk '{print $3}')"
+    tier="$(printf '%s' "$call" | awk '{print $2}')"
+    w1="$(printf '%s' "$call" | awk '{print $3}')"; w2="$(printf '%s' "$call" | awk '{print $4}')"
     total=$((total+1))
-    if ! has "$tier" "$verb"; then
-      filebad+=$'\n'"    INVALID  $f:$ln  →  anchored $tier $verb   (no such verb on $tier)"
-      bad=$((bad+1))
-    fi
+    if [ -n "$w2" ] && has "$tier" "$w1 $w2"; then continue; fi   # two-token verb is valid
+    if has "$tier" "$w1"; then continue; fi                       # single-token verb is valid
+    verb="$w1"; [ -n "$w2" ] && verb="$w1 $w2"
+    filebad+=$'\n'"    INVALID  $f:$ln  →  anchored $tier $verb   (no such verb on $tier)"
+    bad=$((bad+1))
   done <<< "$hits"
   [ -n "$filebad" ] && printf '  %s%s\n' "${f#"$ROOT"/}" "$filebad"
 done < <(find "$ROOT/plugin" -name "*.md" | sort)

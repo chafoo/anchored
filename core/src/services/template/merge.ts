@@ -2,7 +2,8 @@
 //   - scalars: user wins
 //   - objects: deep-merge by key
 //   - `steps` lists: KEYED by name, extend-only — built-ins never drop; a known name merges
-//     in place (instructions append), a new name inserts by before/after (else appended)
+//     in place (instructions append), a new name inserts by before/after/with (else appended).
+//     before/after are consumed at merge time; `with` is kept (a runtime parallel-batch marker)
 //   - keyless value lists (stop): union-append + dedupe
 //   - `each`: intrinsic — always the default's
 import type { Config } from './config.schemas.js'
@@ -47,6 +48,10 @@ function mergeSteps(def: unknown[], user: unknown[]): unknown[] {
       }
       result[idx] = merged
     } else {
+      // before/after are merge-time directives — consumed here and dropped. `with` is a
+      // RUNTIME positioner (the skill reads it to form the parallel batch): keep it on the
+      // served step, and position the step right after its named anchor so it lands in that
+      // anchor's batch ordering.
       const step: Rec = { ...us }
       delete step.before
       delete step.after
@@ -57,6 +62,9 @@ function mergeSteps(def: unknown[], user: unknown[]): unknown[] {
       } else if (typeof us.before === 'string') {
         const bi = result.findIndex((s) => s.name === us.before)
         if (bi >= 0) pos = bi
+      } else if (typeof us.with === 'string') {
+        const wi = result.findIndex((s) => s.name === us.with)
+        if (wi >= 0) pos = wi + 1
       }
       result.splice(pos, 0, step)
     }

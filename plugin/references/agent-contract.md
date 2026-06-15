@@ -40,7 +40,7 @@ A **phase is a child inside the task-file** — it has NO node-file of its own. 
 phase is addressed by **one slash-joined slug** `<task-slug>/<phase-slug>` on the
 `phase` tier, never as two args:
 
-- Evidence per phase acceptance criterion → `anchored phase ac-evidence <task-slug>/<phase-slug> <ac-id> "<proof>"`
+- Evidence per phase acceptance criterion → `anchored phase ac evidence <task-slug>/<phase-slug> <ac-id> "<proof>"`
   — **anchor the evidence on the symbol, NO raw line numbers (H6, tightened):**
   lead with the function/symbol/file (`saveTasks() in app.js`) plus a short code
   snippet where the proof lives. Do **not** append "(line NN)" — a line number goes
@@ -63,36 +63,35 @@ status <slug> …`) — that is its own file.
 | get the stage plan (steps + node) | `anchored <tier> plan\|refine\|build\|wrap <slug>` |
 | set a field (dotted ok: `context.wrap`) | `anchored <tier> set <slug> <field> "<value>"` |
 | advance status | `anchored <tier> status <slug> <to>` |
-| append an audit-log entry | `anchored <tier> append-log <slug> <at> <kind> "<note>"` |
-| raise / resolve a question | `anchored <tier> question-add <slug> "<text>" [priority]` · `anchored <tier> question-resolve <slug> <id> "<answer>" [user\|ai] ["<reasoning>"]` |
-| raise / resolve a concern | `anchored <tier> concern-add <slug> "<text>" [priority]` · `anchored <tier> concern-resolve <slug> <id> "<answer>" [user\|ai] ["<reasoning>"]` |
+| append an audit-log entry | `anchored <tier> log add <slug> <at> <kind> "<note>"` |
+| raise / resolve a question | `anchored <tier> question add <slug> "<text>" [priority]` · `anchored <tier> question resolve <slug> <id> "<answer>" [user\|ai] ["<reasoning>"]` |
+| raise / resolve a concern | `anchored <tier> concern add <slug> "<text>" [priority]` · `anchored <tier> concern resolve <slug> <id> "<answer>" [user\|ai] ["<reasoning>"]` |
 | — TASK owns phase EXISTENCE — | |
-| add a phase | `anchored task add-phase <task-slug> <phase-slug> "<name>"` |
-| list / next / ready phases | `anchored task list-phases\|next-phase\|ready-phases <task-slug>` |
+| add a phase | `anchored task phase add <task-slug> <phase-slug> "<name>"` |
+| list / next / ready phases | `anchored task phase list\|next\|ready <task-slug>` |
 | — PHASE owns its CONTENT — | |
-| add an acceptance criterion | `anchored phase ac-add <task>/<phase> "<text>"` (id auto a1, a2, …) |
-| evidence an AC (flips it done) | `anchored phase ac-evidence <task>/<phase> <ac-id> "<proof>"` |
-| reject an AC (back to pending) | `anchored phase ac-fail <task>/<phase> <ac-id> "<why>"` |
-| defer an AC (out of scope here) | `anchored phase ac-defer <task>/<phase> <ac-id> "<reason>"` |
-| attach a rule to a phase | `anchored phase rule-add <task>/<phase> <path> "<why>"` |
-| set how a phase builds | `anchored phase set-execute <task>/<phase> <sequential\|workflow>` |
-| set a phase's dependencies | `anchored phase set-depends <task>/<phase> "<phase-slugs>"` |
+| add an acceptance criterion | `anchored phase ac add <task>/<phase> "<text>"` (id auto a1, a2, …) |
+| evidence an AC (flips it done) | `anchored phase ac evidence <task>/<phase> <ac-id> "<proof>"` |
+| reject an AC (back to pending) | `anchored phase ac fail <task>/<phase> <ac-id> "<why>"` |
+| defer an AC (out of scope here) | `anchored phase ac defer <task>/<phase> <ac-id> "<reason>"` |
+| attach a rule to a phase | `anchored phase rule add <task>/<phase> <path> "<why>"` |
+| set a phase's dependencies | `anchored phase set <task>/<phase> depends_on "<phase-slugs>"` |
 | — EPIC owns STUB existence — | |
-| add a child-stub | `anchored epic child-add <epic-slug> <task-stub-slug> ["<goal>"]` |
-| advance a child-stub | `anchored epic child-status <epic-slug> <stub-slug> <pending\|active\|done\|blocked>` |
-| set a stub field (e.g. depends_on) | `anchored epic child-set-field <epic> <stub> depends_on "a,b"` |
-| add a stub outcome-AC | `anchored epic child-ac-add <epic> <stub> "<text>"` |
-| evidence a stub outcome-AC (flips it done) | `anchored epic child-ac-evidence <epic> <stub> <ac-id> "<proof>"` |
-| reject a stub outcome-AC (back to pending) | `anchored epic child-ac-fail <epic> <stub> <ac-id> "<why>"` |
-| defer a stub outcome-AC (out of scope) | `anchored epic child-ac-defer <epic> <stub> <ac-id> "<reason>"` |
-| add / flip an epic DoD item | `anchored epic add-acceptance <epic> "<text>"` · `anchored epic set-acceptance-status <epic> <id> done "<delivery evidence>"` |
-| roll up (reads child files) | `anchored epic roll-up <epic-slug>` |
+| add a child-stub | `anchored epic child add <epic-slug> <task-stub-slug> ["<goal>"]` |
+| advance a child-stub | `anchored epic child status <epic-slug> <stub-slug> <pending\|active\|done\|blocked>` |
+| set a stub field (e.g. depends_on) | `anchored epic child set <epic> <stub> depends_on "a,b"` |
+| add a stub outcome-AC | `anchored epic child ac add <epic> <stub> "<text>"` |
+| evidence a stub outcome-AC (flips it done) | `anchored epic child ac evidence <epic> <stub> <ac-id> "<proof>"` |
+| reject a stub outcome-AC (back to pending) | `anchored epic child ac fail <epic> <stub> <ac-id> "<why>"` |
+| defer a stub outcome-AC (out of scope) | `anchored epic child ac defer <epic> <stub> <ac-id> "<reason>"` |
+| add / flip an epic DoD item | `anchored epic acceptance add <epic> "<text>"` · `anchored epic acceptance status <epic> <id> done "<delivery evidence>"` |
+| roll up (reads child files) | `anchored epic child roll-up <epic-slug>` |
 
 > No `question-list` verb — read the node (`anchored <tier> get <slug>`) and filter
 > `questions[]` / `concerns[]` in-session.
 >
-> **`set-child-status` split by tier:** a *phase* (task's child) → `anchored phase
-> status <task>/<phase> …`; a *task-stub* (epic's child) → `anchored epic child-status
+> **child-status split by tier:** a *phase* (task's child) → `anchored phase
+> status <task>/<phase> …`; a *task-stub* (epic's child) → `anchored epic child status
 > <epic> <stub> …`.
 
 ## What the agent writes back out (output = self-write via CLI)
@@ -102,15 +101,15 @@ directly via the CLI. Per agent role:
 
 | Role | self-write commands |
 |---|---|
-| plan-discover / plan-rules-scan / refine-* / wrap-review / validators | `anchored <tier> append-log <task-slug> <stage> <kind> "<note>"` |
-| plan-decompose | `anchored task add-phase <task-slug> <phase-slug> "<name>"` · `anchored phase ac-add <task-slug>/<phase-slug> "<text>"` · MAY record how a phase builds (`anchored phase set-execute <task-slug>/<phase-slug> <sequential\|workflow>`) and its cross-phase deps (`anchored phase set-depends <task-slug>/<phase-slug> "<phase-slugs>"`) |
-| epic-scaffold | `anchored epic child-add <epic-slug> <task-stub-slug> "<goal>"` |
-| build-implement | code (Write/Edit) + a build-NOTE per criterion: `anchored task append-log <task-slug> build note "<ac-id>: <symbol> — <what + gate green>"`. Authors **NO** evidence, flips nothing — the checker records the proof (requirements-3). |
-| build-task-validate | the **EVIDENCE AUTHOR**: independently re-verifies each criterion, then `anchored phase ac-evidence <task-slug>/<phase-slug> <ac-id> "<proof>"` on pass (flips it done; symbol anchor) or `anchored phase ac-fail <task-slug>/<phase-slug> <ac-id> "<why>"` on fail (→ pending, re-do loop). NEVER flips the phase status (G4). |
-| build-code-validate | rule inspector (no evidence): `anchored phase ac-fail <task-slug>/<phase-slug> <ac-id> "<rule violation>"` on a violation (→ pending, re-do — may veto a criterion the checker already evidenced) + rollup via `append-log … build learning` |
-| build-workflow | fan-out unit-worker: code + a build-NOTE via `append-log … build note` (authors **NO** evidence, like build-implement; the checker records it post-fan-out) |
+| plan-discover / plan-rules-scan / refine-* / wrap-review / validators | `anchored <tier> log add <task-slug> <stage> <kind> "<note>"` |
+| plan-decompose | `anchored task phase add <task-slug> <phase-slug> "<name>"` · `anchored phase ac add <task-slug>/<phase-slug> "<text>"` · MAY record a phase's cross-phase deps (`anchored phase set <task-slug>/<phase-slug> depends_on "<phase-slugs>"`) |
+| epic-scaffold | `anchored epic child add <epic-slug> <task-stub-slug> "<goal>"` |
+| build-implement | code (Write/Edit) + a build-NOTE per criterion: `anchored task log add <task-slug> build note "<ac-id>: <symbol> — <what + gate green>"`. Authors **NO** evidence, flips nothing — the checker records the proof (requirements-3). |
+| build-task-validate | the **EVIDENCE AUTHOR**: independently re-verifies each criterion, then `anchored phase ac evidence <task-slug>/<phase-slug> <ac-id> "<proof>"` on pass (flips it done; symbol anchor) or `anchored phase ac fail <task-slug>/<phase-slug> <ac-id> "<why>"` on fail (→ pending, re-do loop). NEVER flips the phase status (G4). |
+| build-code-validate | rule inspector (no evidence): `anchored phase ac fail <task-slug>/<phase-slug> <ac-id> "<rule violation>"` on a violation (→ pending, re-do — may veto a criterion the checker already evidenced) + rollup via `log add … build learning` |
+| build-workflow | fan-out unit-worker: code + a build-NOTE via `log add … build note` (authors **NO** evidence, like build-implement; the checker records it post-fan-out) |
 | wrap-summarize | `anchored <tier> set <node-slug> context.wrap "<summary>"` (dotted-path → nested) |
-| epic-roll-up | `anchored epic roll-up <epic-slug>` (read child statuses) · `anchored epic set-acceptance-status <epic> <id> done "<evidence>"` · `anchored epic append-log <epic-slug> wrap <kind> "<retro>"` · `anchored epic status <epic-slug> done` |
+| epic-roll-up | `anchored epic child roll-up <epic-slug>` (read child statuses) · `anchored epic acceptance status <epic> <id> done "<evidence>"` · `anchored epic log add <epic-slug> wrap <kind> "<retro>"` · `anchored epic status <epic-slug> done` |
 
 Each agent doc names, at its head, the fields it expects plus the commands it runs —
 this contract is the shared reference. When an agent needs a field that is not listed

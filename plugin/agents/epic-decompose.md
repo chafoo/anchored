@@ -49,12 +49,12 @@ per-stub outcome criteria.
 The stub's outcome criteria are written with the dedicated child-acceptance verb (the
 stub carries `acceptance_criteria`, D2) — `<epic-slug> <task-stub-slug>` as TWO separate args:
 ```bash
-anchored epic child-ac-add <epic-slug> <task-stub-slug> "<outcome-level acceptance criterion text>"   # id auto-assigned a1, a2, …; status pending, no evidence
+anchored epic child ac add <epic-slug> <task-stub-slug> "<outcome-level acceptance criterion text>"   # id auto-assigned a1, a2, …; status pending, no evidence
 ```
 The epic-level integration acceptance criterion (H7) is the node's OWN acceptance, written with a
 different verb (auto-id e1, e2, …):
 ```bash
-anchored epic add-acceptance <epic-slug> "<whole-epic integration outcome>"
+anchored epic acceptance add <epic-slug> "<whole-epic integration outcome>"
 ```
 Acceptance criteria start `status: pending` with NO evidence — the roll-up marks them done WITH
 evidence (the delivering phase criteria / cross-task check) at wrap. You never write
@@ -72,7 +72,7 @@ the failure mode; "I'll just split it as X" = that IS the question; tag by impac
 and phrase it with a recommendation + implications per
 `plugin/references/question-style.md`:
 ```bash
-anchored epic question-add <epic-slug> "<the scope/split ambiguity>
+anchored epic question add <epic-slug> "<the scope/split ambiguity>
 Recommendation: <recommended split, formed from the code/goal>.
 Implications:
 - <what each split breaks/enables/costs>" <priority>

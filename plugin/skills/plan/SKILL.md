@@ -85,15 +85,15 @@ instructions }`:
 - **discover → plan-discover** — scans the codebase **and the project history**
   (`.claude/anchored/_archive/` — prior decisions, finished epics/tasks, what was already
   tried), so the plan is grounded in the past and doesn't re-litigate settled forks;
-  self-writes findings: `anchored <tier> append-log <slug> plan learning "<affected paths /
+  self-writes findings: `anchored <tier> log add <slug> plan learning "<affected paths /
   patterns / relevant history>"`.
 - **rules-scan → plan-rules-scan** — collects applicable `.claude/rules/`:
-  `anchored <tier> append-log <slug> plan learning "<relevant rules>"`.
+  `anchored <tier> log add <slug> plan learning "<relevant rules>"`.
 - **decompose → plan-decompose** (task) — writes phases + testable acceptance
-  criteria: `anchored task add-phase <slug> <phase-slug> "<name>"` then
-  `anchored phase ac-add <slug>/<phase-slug> "<testable acceptance criterion>"` (id auto-assigned).
+  criteria: `anchored task phase add <slug> <phase-slug> "<name>"` then
+  `anchored phase ac add <slug>/<phase-slug> "<testable acceptance criterion>"` (id auto-assigned).
 - **scaffold → epic-scaffold** (epic) — coarse task stubs:
-  `anchored epic child-add <slug> <task-stub-slug>` (dependency order via depends_on).
+  `anchored epic child add <slug> <task-stub-slug>` (dependency order via depends_on).
 
 ## Custom run/use steps (the config's own steps — research, scaffolding, …)
 
@@ -124,7 +124,7 @@ Keep the plumbing out of chat — narrate the outcome ("Research's done — resu
 the research field."), not the command.
 
 Surface generously: any ambiguity the decompose agent hits becomes an open
-question (`anchored <tier> question-add <slug> "<q>" high`), NOT a silent decision —
+question (`anchored <tier> question add <slug> "<q>" high`), NOT a silent decision —
 `/a:refine` walks them. Every question carries a worked-out recommendation + 1–3
 implication bullets in its text (`plugin/references/question-style.md`) — never a
 bare question. The same applies to **every `AskUserQuestion` this skill itself

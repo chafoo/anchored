@@ -17,7 +17,8 @@ trap 'rm -rf "$DIR"' EXIT
 #   ok  → JSON envelope with "ok":true   ·   err → "ok":false   ·   out → plain text, exit 0 (meta verbs)
 run() {
   local expect="$1"; shift
-  local out code; out="$(cd "$DIR" && $BIN "$@" 2>&1)"; code=$?
+  # --json so the envelope (with "ok":true/false) is emitted — the default output is the readable line.
+  local out code; out="$(cd "$DIR" && $BIN "$@" --json 2>&1)"; code=$?
   local got; got="$(printf '%s' "$out" | grep -o '"ok":[a-z]*' | head -1 | cut -d: -f2)"
   local good=1
   case "$expect" in
@@ -42,72 +43,67 @@ run ok validate
 
 echo "== phase content verbs (on a task file) =="
 run ok task create t1 "Task one"
-run ok task add-phase t1 setup "Setup"
+run ok task phase add t1 setup "Setup"
 run ok phase status t1/setup in-progress
-run ok phase ac-add t1/setup "the handler is validated"   # a1
-run ok phase ac-add t1/setup "edge cases covered"         # a2
-run ok phase ac-add t1/setup "perf acceptable"            # a3
-run ok phase ac-evidence t1/setup a1 "src/h.ts saveTasks() — bun test green"
-run ok phase ac-fail t1/setup a2 "missing the empty-input case"
-run ok phase ac-evidence t1/setup a2 "src/h.ts — empty-input guarded; test added"
-run ok phase ac-defer t1/setup a3 "perf work moved to the hardening milestone"
-run err phase ac-defer t1/setup a3            # no reason → AcNoReason
-run ok phase ac-done t1/setup a1             # already evidenced → re-done ok
-run ok phase rule-add t1/setup .claude/rules/factory-functions.md "factory pattern"
-run ok phase set-execute t1/setup workflow
-run err phase set-execute t1/setup bogus     # enum-guarded
-run ok phase set-execute t1/setup sequential
-run err phase set-execute t1/setup implement  # old value gone
+run ok phase ac add t1/setup "the handler is validated"   # a1
+run ok phase ac add t1/setup "edge cases covered"         # a2
+run ok phase ac add t1/setup "perf acceptable"            # a3
+run ok phase ac evidence t1/setup a1 "src/h.ts saveTasks() — bun test green"
+run ok phase ac fail t1/setup a2 "missing the empty-input case"
+run ok phase ac evidence t1/setup a2 "src/h.ts — empty-input guarded; test added"
+run ok phase ac defer t1/setup a3 "perf work moved to the hardening milestone"
+run err phase ac defer t1/setup a3            # no reason → AcNoReason
+run ok phase ac done t1/setup a1             # already evidenced → re-done ok
+run ok phase rule add t1/setup .claude/rules/factory-functions.md "factory pattern"
 run ok phase set t1/setup context "a free-text phase context"
 run ok phase status t1/setup done             # all ACs terminal (2 done, 1 deferred)
 run ok phase get t1/setup
 
 echo "== task node + phase-existence verbs =="
 run ok task get t1
-run ok task list-phases t1
-run ok task next-phase t1
-run ok task ready-phases t1
+run ok task phase list t1
+run ok task phase next t1
+run ok task phase ready t1
 run ok task set t1 title "Task one (renamed)"
-run ok task question-add t1 "which storage backend?" high
+run ok task question add t1 "which storage backend?" high
 run err task status t1 build                  # open question blocks build (still drafted? we're at plan)
 run ok task status t1 drafted
 run err task status t1 build                  # still blocked by the open question
-run ok task question-resolve t1 q1 "localStorage" user
+run ok task question resolve t1 q1 "localStorage" user
 run ok task status t1 build                   # skip-refine edge, question resolved
-run ok task append-log t1 build note "smoke build note"
-run ok task concern-add t1 "double-check rollout" medium
+run ok task log add t1 build note "smoke build note"
+run ok task concern add t1 "double-check rollout" medium
 run err task status t1 done                   # open concern blocks done
-run ok task concern-resolve t1 c1 "fine" user
+run ok task concern resolve t1 c1 "fine" user
 run ok task status t1 done                    # skip-wrap edge (build→done), phase terminal
 
 echo "== epic tier (stubs, outcome-ACs, DoD, roll-up) =="
 run ok epic create e1 "Epic one"
-run ok epic child-add e1 login "login flow"
-run ok epic child-add e1 audit "audit log"
-run ok epic child-set-field e1 audit depends_on "login"
-run ok epic child-next e1
-run ok epic child-ready e1
-run ok epic child-ac-add e1 login "auth path proven"      # a1
-run err epic child-status e1 login done                   # outcome-AC open
-run ok epic child-ac-evidence e1 login a1 "login/auth a1 — delivered"
-run ok epic child-status e1 login active
-run ok epic child-status e1 login done
-run ok epic child-ac-add e1 audit "retention policy decided"
-run ok epic child-ac-defer e1 audit a1 "compliance epic owns it"
-run ok epic child-status e1 audit done
-run ok epic add-acceptance e1 "ships end to end"          # e1
-run ok epic add-acceptance e1 "dashboard"                 # e2 (deferred)
-run ok epic roll-up e1
-run ok epic question-add e1 "monolith or service?" high
+run ok epic child add e1 login "login flow"
+run ok epic child add e1 audit "audit log"
+run ok epic child set e1 audit depends_on "login"
+run ok epic child next e1
+run ok epic child ready e1
+run ok epic child ac add e1 login "auth path proven"      # a1
+run ok epic child ac evidence e1 login a1 "login/auth a1 — delivered"
+run ok epic child status e1 login active
+run ok epic child status e1 login done
+run ok epic child ac add e1 audit "retention policy decided"
+run ok epic child ac defer e1 audit a1 "compliance epic owns it"
+run ok epic child status e1 audit done
+run ok epic acceptance add e1 "ships end to end"          # e1
+run ok epic acceptance add e1 "dashboard"                 # e2 (deferred)
+run ok epic child roll-up e1
+run ok epic question add e1 "monolith or service?" high
 run err epic status e1 build                              # open question blocks build (at plan)
-run ok epic question-resolve e1 q1 "service" user
+run ok epic question resolve e1 q1 "service" user
 run ok epic status e1 drafted
 run ok epic status e1 build
 run ok epic status e1 wrap
 run err epic status e1 done                               # DoD items not terminal
-run ok epic set-acceptance-status e1 e1 done "login+audit — delivered"
-run err epic set-acceptance-status e1 e2 deferred          # no reason
-run ok epic set-acceptance-status e1 e2 deferred "next quarter"
+run ok epic acceptance status e1 e1 done "login+audit — delivered"
+run err epic acceptance status e1 e2 deferred          # no reason
+run ok epic acceptance status e1 e2 deferred "next quarter"
 run ok epic status e1 done
 
 echo "== negative: illegal transition + unknown verb/slug =="
