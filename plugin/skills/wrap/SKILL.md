@@ -122,6 +122,14 @@ action.
 - **Flip:** `anchored <tier> status <slug> done` — the **same `wrap → done`
   transition on every tier** (D1: the epic mirrors the task lifecycle, no
   tier-special casing).
+- **Archive (the closing move):** once `done`, the **last step is always**
+  `anchored <tier> archive <slug>` — it moves the finished node into
+  `.claude/anchored/_archive/` so the workspace shows only OPEN work (an epic moves its
+  whole folder; a standalone task moves its file). **One exception:** a task that lives
+  *inside an epic* (its slug carries a `/`, e.g. `my-epic/login`) is **not** archived
+  on its own wrap — it stays in the epic folder and moves to `_archive/` together with
+  the epic when the **epic** wraps. So: archive on wrap for an **epic** or a
+  **standalone task**; skip the archive for an in-epic task.
 
-Then tell the user: *"Wrap's done — summary's in context.wrap. Status: done."* No MCP, no
-raw node-file edit.
+Then tell the user: *"Wrap's done — summary's in context.wrap. Status: done, archived."* No
+MCP, no raw node-file edit.
