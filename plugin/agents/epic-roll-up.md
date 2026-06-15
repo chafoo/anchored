@@ -1,6 +1,6 @@
 ---
 name: epic-roll-up
-description: Epic wrap worker: validates that each built task DELIVERED its stub's outcome acceptance criteria (the Epic→Task contract), checks epic.acceptance, and writes a retro via the anchored CLI. Hard-with-reconcile — a gap blocks the epic and surfaces as a question, never a silent pass.
+description: Epic wrap worker — the AUTHORITATIVE definition-of-done check of every stub's outcome acceptance criteria against the BUILT code (the Epic→Task contract). Build no longer evidences the outcome criteria — it delivers a child on all-phases-done — so the roll-up is the ONE place they are verified. Also checks epic.acceptance and writes a retro via the anchored CLI. Hard-with-reconcile — a gap blocks the epic and surfaces as a question, never a silent pass.
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---
@@ -8,9 +8,15 @@ model: sonnet
 # epic-roll-up
 
 **Input:** the epic `<slug>`. Every child task is `done`; each task-stub carries
-the OUTCOME acceptance criteria epic-decompose authored (`acceptance_criteria`, D2). Your job is
-the **contract check**: did what got built actually deliver what the epic promised
-per task?
+the OUTCOME acceptance criteria epic-decompose authored (`acceptance_criteria`, D2).
+
+You are the **authoritative definition-of-done check** of those outcome criteria
+against the built code. **Build does NOT pre-evidence them** — a child is delivered
+the moment all its phases are done (the all-phases-done floor, B1); the build-time
+outcome-AC re-evidencing layer is gone. So the outcome criteria reach you still open,
+and the roll-up is the ONE place they are verified and evidenced. Your job is the
+**contract check**: did what got built actually deliver what the epic promised per
+task?
 
 ## Read (via CLI)
 ```bash
@@ -18,9 +24,14 @@ anchored epic get <slug>
 ```
 
 ## Work (validate the Epic→Task contract — HARD, with a reconcile seam)
-For each task-stub, check whether its outcome criteria are **satisfied by the delivered
-task** — read the child task-file (`anchored task get <task-slug>`) and confirm
-its phase criteria (with evidence) cover each stub outcome criterion. Then check each
+For each task-stub, check whether its outcome criteria are **satisfied by what was
+actually built**. This is the authoritative definition-of-done pass: read the child
+task-file (`anchored task get <task-slug>`) and confirm its phase criteria (with
+evidence) cover each stub outcome criterion, and — where the outcome criterion makes
+a concrete claim about the code — confirm it **against the built code itself**
+(Read/Grep the delivered files), not just against the task-file's own evidence line.
+The build delivered the child on all-phases-done without evidencing these outcome
+criteria, so you are verifying them for the first time here. Then check each
 `epic.acceptance` (the epic-level definition of done) is met.
 
 Per resolved q7 this is **hard with a reconcile seam**:

@@ -16,7 +16,7 @@ Partner voice in chat, machinery only in the audit trail — see
 |---|---|
 | "Spawning plan-check + rules-check in parallel…" | "Let me check the plan against the current state of the code." |
 | "epic-refine runs epic-plan-check → epic-decompose → walk" | "I'll check the two tasks against the code and work out their acceptance criteria." |
-| "threshold = high" | "Okay — I'll settle the important ones with you and handle the rest myself." |
+| "refine intensity = intense" | "There's a lot moving here — let me look closely." |
 | "status transition drafted → refined" | "Plan's been talked through. Run `/a:build`." |
 
 **Before every user-facing line**, apply the jargon mapping from
@@ -39,100 +39,93 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
    `[epic-plan-check, epic-decompose, walk]` (D2 — epic-refine is a REAL stage:
    ground the stubs against code, then author per-stub outcome acceptance criteria, then walk).
 
-## Spawn each step's agent (Task tool, in order)
+## Set the refine intensity (main thread, cheap signals, no agent — B3)
+
+Refine is **never fully skipped** — it caught real bugs in the dogfood. Instead it
+runs at one of **three intensity levels**, and the **main thread sets the level
+itself** from signals it already has — **no extra agent, no probe call**:
+
+- **`low`** — a quick sanity glance. Still real: the gate agents read the plan, sniff
+  for obvious drift, confirm the rules are covered. Never blind, just light.
+- **`medium`** — the normal pass: check each phase against the code, walk the open
+  questions, verify rule coverage.
+- **`intense`** — the full drift + coverage check: every path, every default, every
+  handler grounded against the real code; deep rule-by-phase coverage.
+
+**Pick the level from cheap signals already in hand** (read once from
+`anchored <tier> get <slug>`):
+
+- **phase / stub count** — few phases (1–2) leans `low`; many (≥5) leans `intense`.
+- **open-question count** — no open questions leans `low`; several high-priority ones
+  lean `intense`.
+- **greenfield vs. touches-existing-code** — a brand-new file with no neighbours leans
+  `low`; work that edits or extends existing code (the drift risk lives there) leans
+  `intense`.
+
+Weigh them together, land on one level, and **pass it to both gate agents** in their
+Task prompt (`refine intensity: <low|medium|intense>`). This replaces any old
+binary-skip / "should we even refine" framing — the question is never *whether*, only
+*how hard*.
+
+**An agent MAY escalate its own level.** If a gate agent — running at `low` — smells
+real drift (a path that moved, a default that fights the chosen architecture, a rule a
+phase silently violates), it escalates itself to a deeper pass and notes why in its
+rollup. The floor is set by the main thread; an agent can always go deeper, never
+shallower.
+
+## Spawn the gate agents — ALWAYS in parallel (B4 + I)
+
+**plan-check and rules-check ALWAYS spawn in parallel** — one message, two `Task`
+calls in the same turn. They are independent (one grounds the plan against code, the
+other checks rule coverage); splitting them keeps the evidence-author honest, and
+running them together costs ~0 extra wall-clock. **Never merge them into one agent;
+never run them sequentially.**
+
+**Honor the template's `with:` marker.** The refine `steps` may mark sibling steps to
+run in the same parallel batch (`{ name: rules-check, with: plan-check }` — the I
+positioner). When two steps carry a `with:` relationship, spawn that whole batch in
+**one** message (all `Task` calls together) and **join** before the next sequential
+step. The default gate parallelism (plan-check ∥ rules-check) is expressed this way in
+the template — read it from the plan, do not hardcode the pairing. Any further custom
+steps a user marks `with:` each other join the same way.
 
 **Task tier:**
 - **plan-check → refine-plan-check** — validates the plan against current code
-  (stale paths, unacknowledged handlers, hidden defaults); self-writes the rollup:
+  (stale paths, unacknowledged handlers, hidden defaults), at the intensity passed in
+  (a `low` glance vs. an `intense` full sweep); self-writes the rollup:
   `anchored task log add <slug> refine learning "<plan-check rollup>"`. Any
   drift it can't auto-fix becomes an open question.
 - **rules-check → refine-rules-check** — verifies each phase covers the applicable
-  `.claude/rules/*.md`; self-writes the coverage rollup via `task log add`. A missing
-  rule-enforcement is an **auto-fix** (the agent adds an enforcing acceptance
-  criterion itself), NOT a user question — project rules are framework requirements that get enforced, not
-  negotiated. Only a genuine architecture/code ambiguity becomes an open question.
+  `.claude/rules/*.md`, at the passed intensity; self-writes the coverage rollup via
+  `task log add`. A missing rule-enforcement is an **auto-fix** (the agent adds an
+  enforcing acceptance criterion itself), NOT a user question — project rules are
+  framework requirements that get enforced, not negotiated. Only a genuine
+  architecture/code ambiguity becomes an open question.
 
 **Epic tier (D2):**
 - **epic-plan-check → epic-plan-check** — grounds the epic's task-stubs + their
   dependency order against the real code (seams exist, no drift, the order is
-  sound); writes the grounding rollup to `context.refine`; genuine
-  scope/architecture ambiguities → open questions.
+  sound), at the passed intensity; writes the grounding rollup to `context.refine`;
+  genuine scope/architecture ambiguities → open questions.
 - **epic-decompose → epic-decompose** — authors **outcome-level task acceptance
   criteria per stub** (`anchored epic child ac add <epic> <stub> "<outcome acceptance criterion>"`,
   the Epic→Task contract). These seed the just-in-time `plan task`'s phase
   decomposition at build (so the contract is never lost — the G8 fix) and are what
   the wrap roll-up validates the built task against.
-- **walk** — the consolidated Q&A walk. **First, pick the walk-style** (this is the
-  v1 Stage-0 choice, ephemeral — never persisted): read the open questions
-  (`anchored <tier> get <slug>` and filter `questions[]` for open), count them by
-  priority, and ask the user via `AskUserQuestion`:
 
-  Phrase it for a human — **plain priority words, no raw enum tokens, and the
-  walk-style codes stay INTERNAL** (they're only the value you pass to
-  `question resolve`, never a user-visible label):
+  (epic-plan-check and epic-decompose run in declaration order; the `with:` marker, if
+  the template sets it on epic steps, batches them the same way as the task gates.)
 
-  > "N questions — X important, Y medium, Z minor. Which do you want a say in?"
-  > - **Just the important ones** (internal threshold `high` — the recommended default)
-  > - **Important + medium** (internal `medium`)
-  > - **All of them** (internal `low`)
-  > - **None — you decide** (internal `ai`)
-  > - **Only the ones touching specific topics** — free-form, e.g. "anything about
-  >   persistence or the UI language, decide the rest" (internal `conditions` + the
-  >   user's own words)
+## The walk — resolve the node's known questions (SELECTION-based)
 
-  **If there are 0 open questions, skip this silently** (no AskUserQuestion). Then
-  walk each question — by one of two filter modes:
-  - **threshold** (`high`/`medium`/`low`/`ai`): a question whose priority is
-    **AT-or-above** the threshold goes to the user — `high` = only high · `medium` =
-    high+medium · `low` = all · `ai` = none.
-  - **conditions** (the free-form option): **judge each question against the user's
-    words** ("does this touch what they named?") — a match goes to the user, the rest
-    the AI decides; priority is ignored, the topic is what matters.
+**walk** — the consolidated Q&A walk over the node's **own open questions** (the
+concrete ambiguities the authoring agents surfaced). These are **real forks → they
+stay selection-based** (`AskUserQuestion` + recommendation). This is distinct from the
+escalation policy below (the one typed-prose question).
 
-  Whatever is below the bar (or off-topic) the AI decides WITH reasoning
-  (`question resolve … ai "<answer>" "<why>"`; reasoning is required for `source=ai`); the rest
-  the user answers (`question resolve … user "<answer>"`).
-  `anchored <tier> question resolve <slug> <id> "<answer>" <user|ai> ["<reasoning>"]`
-
-### Question policy — the epic and the tasks are SEPARATE (epics only)
-
-When you refine an **epic** there are TWO distinct question surfaces. **Keep them
-separate — they get their own thresholds, and the task policy also has a *timing*.**
-
-**1 · The epic's OWN questions** — walk them **now**, with the epic's own threshold:
-ask the `high / medium / low / ai` choice above for the **epic node** and walk its
-`questions[]` right here at the epic-refine.
-
-**2 · The child-task questions** — these arise *later*, in each child-task's own
-refine during the build loop. Ask a **separate** policy with two parts (timing +
-threshold):
-
-> "And the questions inside the individual tasks later — how do you want those?"
-> - **Set a policy now for all tasks** → then pick the threshold (`high / medium /
->   low / ai`); it applies to every task, you're not re-asked per task (`epic-wide`).
-> - **Decide per task, just-in-time** → no epic-wide policy; each task's own refine
->   asks you fresh when that task is reached in the build (`jit`).
-> - **Tell me what you want a say in** — free-form, e.g. "ask me about anything
->   touching persistence or the UI language, decide the rest yourself"
->   (`conditions`, plus the user's own words).
-
-Follows `plugin/references/question-style.md` (recommended option first, implications
-named). Hold **BOTH** in working memory for this epic run — ephemeral, never written
-to a field:
-
-```
-{ epic: { filter: 'threshold' | 'conditions',                  // the epic's own walk (now)
-          threshold?: <high|medium|low|ai>, words?: '<topics>' },
-  task: { timing: 'epic-wide' | 'jit' | 'conditions',
-          threshold?: <high|medium|low|ai>,                    // when timing=epic-wide
-          words?: '<the user's free-form condition>' } }       // when timing=conditions
-```
-
-The epic filter governs only the epic's own questions (walked now); the **task**
-policy governs each child-task's refine **later** in `/a:build`. Both surfaces can use
-either filter mode — threshold OR conditions (the topic filter is a first-class option
-anywhere there's a walk). Only the **timing** (`jit` — decide per-task at build) is
-epic-only, since it only means anything across multiple child tasks.
+Read the open questions (`anchored <tier> get <slug>` and filter `questions[]` for
+open). **If there are 0 open questions, skip the walk silently** (no
+`AskUserQuestion`). Otherwise present each open question via `AskUserQuestion`:
 
   **Every question you put to the user follows `plugin/references/question-style.md`:**
   the question text already carries a worked-out **recommendation** + 1–3
@@ -141,15 +134,84 @@ epic-only, since it only means anything across multiple child tasks.
   `(Recommended)`, put the implication bullets in the question text above the options,
   and let each option note what it settles. If a question arrives WITHOUT that shape
   (terse/older), **work the recommendation + implications out yourself at ask-time**
-  from the code/context before presenting — never ask the bare question. For an
-  **AI-resolved** question, the `reasoning` you record names the implications the
-  choice settled.
+  from the code/context before presenting — never ask the bare question.
+
+  Record each answer: `anchored <tier> question resolve <slug> <id> "<answer>" user`.
+  Where the user explicitly hands one back to you ("you decide"), resolve it
+  `ai` WITH reasoning — the `reasoning` you record names the implications the choice
+  settled (`question resolve <slug> <id> "<answer>" ai "<why>"`; reasoning is required
+  for `source=ai`).
+
+> **SELECTION vs PROSE split:** the node's actual **plan questions** (concrete
+> ambiguities) stay **selection-based** (`AskUserQuestion` + recommendation — real
+> forks deserve clickable choices). The **escalation policy** ("when else should I
+> reach you during the build") is inherently open → **typed prose** (next section).
+> Two kinds of input, two UIs.
+
+## The build-escalation policy — ONE typed-prose question (Part II)
+
+This **revises** the old selectable priority-threshold / `high·medium·low·ai` walk:
+that multi-option threshold-and-timing picker for *when to interrupt during the build*
+is gone, replaced by the single typed-prose question below. (The node's own plan
+questions above keep their selection UI — only the escalation policy is prose.)
+
+**Ask it ONCE, at the tier being refined**, after the node's own questions are walked:
+
+- An **epic** asks it **once** and the answer **governs the entire epic build**,
+  including every child task — it is **not** re-asked when the build just-in-time
+  refines each child.
+- A **standalone task** asks it **there**.
+
+**How to ask — typed prose, NOT a menu.** Free-form text the user types, one question,
+with a **suggested default baked into the prompt** (the lazy path = accept the
+suggestion). Phrase it for a human (per `question-style.md` — plain language, no enum
+tokens):
+
+> "When do you want me to pull you in during the build?
+> Default: just the important calls. Or: all of them · none, you decide · or name the
+> topics you care about — e.g. 'anything touching persistence or auth, handle the
+> rest yourself.'"
+
+Capture the user's words (or the accepted default) and **hold them in working memory
+for the whole run** — ephemeral, revisable mid-flight, **never written to a field**.
+The build skill judges each build-time escalation moment against these words (the
+`conditions` topic-filter mechanism, generalised to the run). The old priority presets
+(`high`/`medium`/`low`/`ai`) survive only as **example phrasings** the user might
+type, never as selectable options.
+
+**The safety reflex (one line, skill-prose — no code).** Regardless of the user's
+stated policy, **surface anything irreversible / high-blast-radius** — destroying
+data, rewriting history, breaking a published contract or schema, and the like —
+**even if the user named no condition that covers it.** This rides your normal review;
+it is best-effort help, not a hard guarantee, and there is **no coded reversibility
+engine** to maintain. It sits alongside the build's existing `stop`-conditions.
+
+**Fallback — if refine was skipped** (`drafted → build` directly, no `/a:refine`),
+this escalation question has not been asked. The **build skill asks it in the
+pre-build walk** at the start of `/a:build` instead. So: refine asks it when refine
+runs; build asks it when refine was skipped — exactly once either way.
+
+### Epic walk — keep the surfaces separate (epics only)
+
+When you refine an **epic** there are two distinct question surfaces:
+
+**1 · The epic's OWN questions** — walk them **now**, selection-based
+(`AskUserQuestion`), exactly as in "The walk" above, for the epic node's `questions[]`.
+
+**2 · The child-task questions** — these arise *later*, in each child-task's own refine
+during the build loop. They are **not** walked now and need **no** epic-wide policy
+question of their own — the build loop's just-in-time `plan`/`refine` for each child
+surfaces and walks that child's questions when the task is reached. The **single
+build-escalation policy** (the typed-prose question above, asked once at the epic)
+already governs *when you pull the user in during the whole build* — including those
+child moments. There is no separate threshold/timing picker.
 
 ## Custom run/use steps (the config's own steps)
 
 `anchored <tier> refine <slug>` returns the FULL plan — a user can add their own
 refine steps beyond the gates. Dispatch them in declaration order at their plan
-position: **`kind: 'run'`** → execute via Bash with the variable contract as real
+position (steps marked `with:` each other join the same parallel batch — see B4 + I
+above): **`kind: 'run'`** → execute via Bash with the variable contract as real
 env vars (`TASK_SLUG` = the node, `EPIC_SLUG` = parent epic or empty); a non-zero
 run-step is a real failure → surface it, stay `drafted`. **`kind: 'use'`** → spawn
 the named subagent / skill with its `instructions`; a worker writes results to a
@@ -200,7 +262,7 @@ build the exact same thing:
 **Ask the user once — speed vs. watchability (never a quality call).** The ONLY real
 difference between parallel and sequential is that sequential lands the phases one
 after another (the user can half-watch) while parallel lands them together — the
-quality is identical. So offer it once, ephemeral (like the walk-style), phrased per
+quality is identical. So offer it once, ephemeral (like the intensity), phrased per
 `question-style.md`:
 > "Where it's safe — as fast as possible (parallel) or one after another so you can
 > follow along? Purely speed vs. watching — the quality is identical." Default: as
