@@ -82,6 +82,22 @@ test('add-phase + next-phase (parent owns child existence)', async () => {
   expect(task.verbs()).toContain('add-phase')
 })
 
+// a4b — ready-phases honours phase depends_on (the multi-phase fan-out level): independent
+// phases are ready together, a phase with unmet deps waits.
+test('ready-phases honours phase depends_on', async () => {
+  const node = taskNode({
+    status: 'build',
+    phases: [
+      { name: 'A', slug: 'css', status: 'pending' },
+      { name: 'B', slug: 'markup', status: 'pending' },
+      { name: 'C', slug: 'logic', status: 'pending', depends_on: ['css', 'markup'] },
+    ],
+  })
+  const { task } = setup(node)
+  const ready = (await task.run('ready-phases', ['my-task'])) as { slug: string }[]
+  expect(ready.map((p) => p.slug)).toEqual(['css', 'markup']) // logic waits on its deps
+})
+
 // a5 — archive + reset + unknown verb
 test('archive/reset go through the store; unknown verb throws', async () => {
   const { task, store } = setup()

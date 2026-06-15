@@ -1,7 +1,7 @@
 // _v3/modules/phase/phase.ts — createPhase({store, taskSchema}) → Tier. A phase has no own
 // file: it lives in its task file (task.phases[]). So the phase factory owns the phase
 // CONTENT verbs (child owns its content: status · ac add/done/evidence/fail · rule-add ·
-// set-executor) and operates on the TASK file — slug `<…>/<task>/<phase>` splits into the
+// set-execute · set-depends) and operates on the TASK file — slug `<…>/<task>/<phase>` splits into the
 // task slug (all but the last segment) + the phase slug (last). `taskSchema` is INJECTED (the
 // orchestrator passes the task module's schema) so phase needs no task-module runtime dep.
 // Every mutation: read task → transform the matching phase → store.write (the schema enforces
@@ -18,14 +18,15 @@ interface PhaseLike {
   name?: string
   acceptance_criteria?: AcLike[]
   rules?: { path: string; why: string }[]
-  executor?: string
+  execute?: string
+  depends_on?: string[]
   [k: string]: unknown
 }
 interface TaskFile extends Node {
   phases?: PhaseLike[]
 }
 
-const EXECUTORS = ['implement', 'workflow']
+const EXECUTE_MODES = ['sequential', 'workflow']
 
 export function createPhase(deps: { store: StorePort; taskSchema: Schema }): Tier {
   const { store, taskSchema } = deps
@@ -121,22 +122,39 @@ export function createPhase(deps: { store: StorePort; taskSchema: Schema }): Tie
         return { ...phase, rules: next }
       }),
 
-    'set-executor': (slug, value) =>
+    // execute: how this phase builds — sequential (the implement path) or workflow (fan its
+    // acceptance criteria out). plan/refine sets it; the build skill reads it.
+    'set-execute': (slug, value) =>
       mutate(slug, (phase) => {
-        if (!EXECUTORS.includes(value)) {
+        if (!EXECUTE_MODES.includes(value)) {
           throw anchoredError(
-            'InvalidExecutor',
-            `executor must be one of ${EXECUTORS.join(' | ')} (got '${value}')`,
+            'InvalidExecute',
+            `execute must be one of ${EXECUTE_MODES.join(' | ')} (got '${value}')`,
           )
         }
-        return { ...phase, executor: value }
+        return { ...phase, execute: value }
       }),
+
+    // depends_on: comma-separated phase slugs that must finish before this phase — plan/refine
+    // sets it so ready-phases can run independent phases in parallel (multi-phase fan-out).
+    'set-depends': (slug, value) =>
+      mutate(slug, (phase) => ({
+        ...phase,
+        depends_on: value
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+      })),
 
     set: (slug, field, value) =>
       mutate(slug, (phase) => {
-        if (['status', 'acceptance_criteria', 'rules', 'slug', 'executor'].includes(field)) {
+        if (
+          ['status', 'acceptance_criteria', 'rules', 'slug', 'execute', 'depends_on'].includes(
+            field,
+          )
+        ) {
           throw anchoredError('ReservedField', `phase field '${field}' is reserved`, [
-            'use the dedicated verb (status, ac-add, rule-add, set-executor)',
+            'use the dedicated verb (status, ac-add, rule-add, set-execute, set-depends)',
           ])
         }
         return { ...phase, [field]: value }

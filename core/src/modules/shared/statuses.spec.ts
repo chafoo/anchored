@@ -3,7 +3,7 @@ import {
   lifecycleStatusValues,
   phaseStatusValues,
   stubStatusValues,
-  phaseExecutorValues,
+  phaseExecuteValues,
 } from './statuses.js'
 
 test('the fixed axes have their exact shape', () => {
@@ -11,5 +11,5 @@ test('the fixed axes have their exact shape', () => {
   expect(phaseStatusValues).toEqual(['pending', 'in-progress', 'done', 'blocked', 'deferred'])
   expect(stubStatusValues).toEqual(['pending', 'active', 'done', 'blocked'])
   expect(stubStatusValues).not.toContain('in-progress')
-  expect(phaseExecutorValues).toEqual(['implement', 'workflow'])
+  expect(phaseExecuteValues).toEqual(['sequential', 'workflow'])
 })

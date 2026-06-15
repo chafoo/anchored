@@ -87,12 +87,20 @@ test('ac-defer: a documented deferral is terminal and does not block phase done'
   expect(onPhase(store).status).toBe('done')
 })
 
-// a4 — rule-add (dedup by path) + set-executor enum guard
-test('rule-add dedups by path; set-executor is enum-guarded', async () => {
+// a4 — rule-add (dedup by path) + set-execute enum guard
+test('rule-add dedups by path; set-execute is enum-guarded', async () => {
   const { store, phase } = setup()
   await phase.run('rule-add', [PH, 'src/x.ts', 'why-1'])
   await phase.run('rule-add', [PH, 'src/x.ts', 'why-2']) // replace, not duplicate
   expect(onPhase(store).rules).toHaveLength(1)
-  await phase.run('set-executor', [PH, 'workflow'])
-  await expect(phase.run('set-executor', [PH, 'bogus'])).rejects.toThrow(/executor/)
+  await phase.run('set-execute', [PH, 'workflow'])
+  expect((onPhase(store) as { execute?: string }).execute).toBe('workflow')
+  await expect(phase.run('set-execute', [PH, 'bogus'])).rejects.toThrow(/execute/)
+})
+
+// a5 — set-depends records the inter-phase dependency graph (for multi-phase fan-out)
+test('set-depends parses a comma list into depends_on', async () => {
+  const { store, phase } = setup()
+  await phase.run('set-depends', [PH, 'css-tokens, markup'])
+  expect((onPhase(store) as { depends_on?: string[] }).depends_on).toEqual(['css-tokens', 'markup'])
 })
