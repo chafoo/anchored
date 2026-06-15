@@ -104,9 +104,27 @@ workarounds in the dogfood (none are open *decisions* — they are clear fixes).
 
 ## D — Setup / infra
 
-- **D1** — `anchored` reliably on PATH (global link / committed `plugin/bin`
-  shim) so subagents reach the CLI without an agent having to create the shim
-  mid-run.
+- **D1 — the `anchored` CLI must be available the instant the plugin is
+  installed** (marketplace OR GitHub), with **zero manual setup** — this is the
+  real distribution/install requirement, not just a dev PATH shim. On first use the
+  CLI must resolve for the main session AND subagents; if it doesn't, the plugin
+  **auto-provisions** it. Mechanism (pick after the CC-plugin research):
+  - **(a) bundle** the compiled CLI under the plugin and call it via
+    `${CLAUDE_PLUGIN_ROOT}/bin/anchored` — zero-network, version-locked to the
+    plugin (skills/agents reference that path, or a hook puts it on PATH);
+  - **(b)** `npm i -g` the published package (needs network + npm + global perms);
+  - **(c)** a **SessionStart hook** that ensures it's on PATH / symlinked.
+  Auto-trigger via the **setup skill** (the onboarding entry already runs on first
+  `/a:*` use — extend it to verify+provision the CLI) and/or a dedicated **install
+  command/hook**. The setup skill must *verify and repair* the CLI as part of
+  onboarding, not assume a bare `anchored` is already on PATH. *(Elevated from
+  "reliably on PATH" to the full install story — 2026-06-15.)*
+  **✅ BUILT (2026-06-15):** chose mechanism (a). Claude Code auto-adds a plugin's
+  `bin/` to PATH (main + subagents) on install, so the plugin ships a self-contained
+  bundled CLI at `plugin/bin/anchored` (`bun build`, all deps inlined, 0 refs to
+  `core/dist`) + `plugin/default-template/` + `plugin/package.json` sidecars (read
+  relative to the binary). Zero-install, offline, version-locked. Regenerate via
+  `npm --prefix core run bundle:plugin`. Setup skill verifies (not installs) the CLI.
 
 ## E — Docs
 

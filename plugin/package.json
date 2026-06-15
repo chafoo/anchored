@@ -1,0 +1,6 @@
+{
+  "name": "anchored-cli",
+  "version": "0.1.13",
+  "private": true,
+  "description": "Bundled anchored CLI shipped with the plugin (do not publish)."
+}

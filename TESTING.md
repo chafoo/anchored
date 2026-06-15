@@ -3,16 +3,25 @@
 The `anchored` CLI is the whole product surface (CLI-only transport — no MCP). This is a
 hands-on guide to poke every function and *watch the enforcement bite*. No AI needed.
 
-## 1. Get `anchored` on your PATH
+## 1. How `anchored` becomes available
+
+**Shipped with the plugin — zero install.** Claude Code automatically adds a plugin's
+`bin/` directory to the Bash tool's PATH (main session AND subagents) while the plugin is
+enabled. So the plugin ships a **self-contained bundled CLI** at `plugin/bin/anchored`
+(all npm deps inlined) plus its `plugin/default-template/` + `plugin/package.json`
+sidecars (the binary reads them relative to itself). Installing the plugin from the
+marketplace or GitHub is all a user does — `anchored …` then resolves everywhere, no
+`npm i -g`, no PATH setup, no symlink.
+
+**Regenerate the bundle after any `core/` change** (release/dev discipline):
 
 ```bash
-cd core && npm install && npm run build && npm link    # exposes `anchored` globally
-anchored version          # → anchored 0.1.0
+npm --prefix core run bundle:plugin    # rebuilds plugin/bin/anchored + copies the template
+plugin/bin/anchored version            # → anchored 0.1.13
 ```
 
-`npm link` is already done in this checkout. After any code change: `npm --prefix core run
-build` (the build re-sets the executable bit via the postbuild hook). To remove later:
-`npm --prefix core unlink`.
+For local hacking you can also run the unbundled CLI directly: `node core/dist/bin.js …`
+(after `npm --prefix core run build`).
 
 ## 2. Smoke everything at once
 

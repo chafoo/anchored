@@ -1,0 +1,97 @@
+# anchored.default.yml (v3) — the shipped default template. Every tier (phase ▸ task ▸ epic
+# ▸ project) with its stage steps + fields. A real user anchored.yml is almost empty — it
+# carries deltas only; this runs when you write nothing.
+#
+# v3 change: each step carries its worker inline as `use: { type, name }` (the plugin agent or
+# skill to spawn) — there is no worker-dispatch code; `anchored <tier> <stage>` serves these
+# steps verbatim. A step is prose (`instructions`) + an optional worker (`use`) + an optional
+# fan-out mode (`execute: sequential|workflow`); there is no `run` (a command goes in prose).
+# The HARD INVARIANTS (an ac → done only with evidence; deferred only with a reason) live in
+# the node schema, not in a step.
+
+phase:
+  plan:
+    steps: [] # the acceptance criteria are the phase's "plan" data
+  refine:
+    steps: []
+  build:
+    steps:
+      - { name: implement, use: { type: agent, name: build-implement } }
+      - { name: task-validate, use: { type: agent, name: build-task-validate } }
+      # code-validate runs in task-validate's parallel batch — both gates fire at once
+      - { name: code-validate, use: { type: agent, name: build-code-validate }, with: task-validate }
+  wrap:
+    steps: []
+  fields:
+    name: string
+    slug: kebab
+    status: pending | in-progress | done | blocked | deferred
+    context: markdown
+    rules: list<{ path, why }>
+    acceptance_criteria: list<{ id, text, status, evidence?, reason? }>
+    evidence: list<string>
+    failures: list<string>
+
+task:
+  plan:
+    steps:
+      - { name: discover, use: { type: agent, name: plan-discover } }
+      - { name: rules-scan, use: { type: agent, name: plan-rules-scan } }
+      - { name: decompose, use: { type: agent, name: plan-decompose } }
+  refine:
+    steps:
+      - { name: plan-check, use: { type: agent, name: refine-plan-check } }
+      # rules-check runs in plan-check's parallel batch — both refine gates fire at once
+      - { name: rules-check, use: { type: agent, name: refine-rules-check }, with: plan-check }
+      - { name: walk, use: { type: skill, name: walk }, involve: high-only }
+  build:
+    each: phase # intrinsic — fixed per tier (task→phase)
+    stop:
+      - 'a decision deviates from the plan'
+    retry_limit: 3
+  wrap:
+    steps:
+      - { name: review, use: { type: agent, name: wrap-review } }
+      - { name: summarize, use: { type: agent, name: wrap-summarize } }
+  fields:
+    schema_version: int
+    slug: kebab | nested
+    title: string
+    created: date
+    status: plan | drafted | refined | build | wrap | done
+    context: { plan?, refine?, build?, wrap? }
+    questions: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
+    concerns: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
+    log: list<{ at, kind, note }>
+    phases: list<phase>
+
+epic:
+  plan:
+    steps:
+      - { name: discover, use: { type: agent, name: plan-discover } }
+      - { name: scaffold, use: { type: agent, name: epic-scaffold } }
+  refine:
+    steps:
+      - { name: epic-plan-check, use: { type: agent, name: epic-plan-check } }
+      - { name: epic-decompose, use: { type: agent, name: epic-decompose } }
+      - { name: walk, use: { type: skill, name: walk }, involve: high-only }
+  build:
+    each: task # intrinsic — fixed per tier (epic→task)
+    stop:
+      - 'an architectural boundary is crossed (a layer, the task dependency order, a contract)'
+    retry_limit: 3
+  wrap:
+    steps:
+      - { name: roll-up, use: { type: agent, name: epic-roll-up } }
+  fields:
+    schema_version: int
+    slug: kebab
+    title: string
+    status: plan | drafted | refined | build | wrap | done
+    goal: markdown
+    context: { plan?, refine?, build?, wrap? }
+    acceptance: list<{ id, text, status, evidence?, reason? }>
+    questions: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
+    concerns: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
+    tasks: list<{ slug, goal, status, depends_on, acceptance_criteria? }>
+    log: list<{ at, kind, note }>

@@ -74,6 +74,14 @@ When invoked because a `/a:*` skill found no `anchored.yml` (or the user is
 starting fresh), do the **minimum** by default and **offer** more — never force a
 tour:
 
+0. **Verify the CLI resolves** (defensive — it should, automatically). The plugin
+   ships a bundled `anchored` in its `bin/`, which Claude Code adds to PATH on
+   install, so `anchored` is normally already callable with zero setup. Run a quick
+   `anchored version`. If it errors (`command not found`), the plugin isn't enabled
+   or `bin/anchored` is missing/not executable — tell the user to enable the
+   anchored plugin (and, for a dev checkout, run `npm --prefix core run
+   bundle:plugin`). Do **not** attempt an `npm i -g`; the `bin/` mechanism is the
+   install path. If `anchored version` works, say nothing and continue.
 1. The CLI already lazy-inits a minimal `anchored.yml` (deltas-only, = all
    defaults) + the `Bash(anchored *)` allowlist on first use. That is enough to
    run; say so in one line.
