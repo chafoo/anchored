@@ -45,7 +45,7 @@ The rules of this model:
    must read its child *task files*; rather than re-bind the store to task's schema, epic
    demands `task: Tier` in its `deps` and calls `task.get(childSlug)`. `createCli` injects
    it. Never a sibling concrete import — so the tiers compose without coupling, and epic
-   need not know task's internals.
+   (the top tier) need not know task's internals.
 
 4. **The `store` service is dumb: read/write a node, validated by a schema you give it.**
    It is the ONE substrate service — `createStore({ fs, lock, yaml }) → { read(slug,
@@ -113,9 +113,8 @@ function createCli(deps) {                          // deps = the seams from bin
   // ── modules: each a factory, DI'd ONLY the contracts it demands (may demand another module) ──
   const phase   = createPhase({ store, template })
   const task    = createTask({ store, template })
-  const epic    = createEpic({ store, template, task })    // epic reads child task files in roll-up — task injected
-  const project = createProject({ store, template, epic })
-  const tiers   = { phase, task, epic, project }
+  const epic    = createEpic({ store, template, task })    // epic (top tier) reads child task files in roll-up — task injected
+  const tiers   = { phase, task, epic }
 
   // ── route: tier-first grammar → direct lookup; meta-verbs handled here ──
   return async (argv) => {                                 // argv → modules[tier].run(verb, rest) → JSON envelope
@@ -190,7 +189,7 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort }) {
 
 `requirements.md` rule 6 chose a single generic verb kernel fed pure-data conditions. We
 are reversing that: the tiers are **not** uniform (epic carries task-STUBS, phase carries
-real ACs + evidence, epic/project roll up), so the generic kernel pays for its DRY-ness
+real ACs + evidence, epic rolls up), so the generic kernel pays for its DRY-ness
 with ugly `if (tier === …)` branches in one ~600-LOC function. The factory model keeps the
 genuinely-generic part (`store`: safe read/write validated by a schema) shared, and
 **encapsulates each tier's specifics in its own factory** — common CRUD is a trivial

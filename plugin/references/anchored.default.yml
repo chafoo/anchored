@@ -1,6 +1,6 @@
 # anchored.default.yml — draft / design spec
 #
-# COMPLETE default view: every tier (phase ▸ task ▸ epic ▸ project) with its
+# COMPLETE default view: every tier (phase ▸ task ▸ epic) with its
 # stage steps AND its `fields` (data model). Provided by the framework. A real
 # user anchored.yml is almost empty — it carries deltas only; what's here runs
 # automatically when you write nothing.

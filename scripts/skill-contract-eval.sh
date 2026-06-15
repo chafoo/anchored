@@ -13,7 +13,7 @@ PROBE="$(mktemp -d)"; trap 'rm -rf "$PROBE"' EXIT
 
 # probe the binary for each tier's known verbs (an unknown verb prints "known: a, b, c"),
 # one verb-per-line file per tier (bash 3.2 has no associative arrays).
-for tier in phase task epic project; do
+for tier in phase task epic; do
   (cd "$PROBE" && $BIN "$tier" __probe__ 2>&1) \
     | grep -o '"known: [^"]*"' | sed 's/"known: //; s/"$//; s/, /\'$'\n''/g' > "$PROBE/$tier.verbs"
 done
@@ -30,7 +30,7 @@ echo
 # scan every plugin doc; pull concrete `anchored <tier> <verb>` calls (placeholders like
 # `anchored <tier> …` don't match — only real tier tokens do).
 while IFS= read -r f; do
-  hits="$(grep -noE "anchored (phase|task|epic|project) [a-z][a-z-]*" "$f" 2>/dev/null || true)"
+  hits="$(grep -noE "anchored (phase|task|epic) [a-z][a-z-]*" "$f" 2>/dev/null || true)"
   [ -z "$hits" ] && continue
   filebad=""
   while IFS= read -r line; do

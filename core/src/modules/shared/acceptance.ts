@@ -1,6 +1,6 @@
 // _v3/modules/shared/acceptance.ts — acceptance-criterion list transforms (pure). The shared
 // AC primitives, reused by every place that owns an `acceptance_criteria[]`: the phase CONTENT
-// verbs (task file) AND the epic/project task-/epic-STUB outcome ACs (the loop-queue stubs).
+// verbs (task file) AND the epic task-STUB outcome ACs (the loop-queue stubs).
 // One source of truth for id-allocation + the evidence/failures lifecycle. Tier-agnostic — the
 // evidence invariant itself is enforced downstream by the schema on every store.write.
 import { anchoredError } from '../../lib/utils/error.js'

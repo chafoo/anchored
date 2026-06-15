@@ -2,7 +2,7 @@
 // modules use them (in their schemas + child relationships) now that the store is dumb,
 // so they live with the modules, not in lib.
 
-// The lifecycle axis shared by epic·task·project — the uniform plan→done form.
+// The lifecycle axis shared by epic·task — the uniform plan→done form.
 export const lifecycleStatusValues = [
   'plan',
   'drafted',
@@ -15,7 +15,7 @@ export const lifecycleStatusValues = [
 // The phase (leaf) axis — worked once, no sub-lifecycle.
 export const phaseStatusValues = ['pending', 'in-progress', 'done', 'blocked', 'deferred'] as const
 
-// The child-STUB loop-queue marker (epic's task-stubs, project's epic-stubs). 'active' is
+// The child-STUB loop-queue marker (epic's task-stubs). 'active' is
 // the in-flight marker (never the phase word 'in-progress' — that mismatch bricked an epic).
 export const stubStatusValues = ['pending', 'active', 'done', 'blocked'] as const
 

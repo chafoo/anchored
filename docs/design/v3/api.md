@@ -8,7 +8,7 @@ anchored <tier> <verb> [slug] [args]
 ```
 
 Two axes, one shape:
-- **tier** — the resource, nested: `project ▸ epic ▸ task ▸ phase`
+- **tier** — the resource, nested: `epic ▸ task ▸ phase` (project removed — YAGNI, see add-ons.md)
 - **verb** — what you do, in three levels (below)
 
 Nesting lives in the **slug** (`my-epic/login/setup`), never in the grammar.
@@ -61,7 +61,6 @@ anchored epic  child next   my-epic
 
 | tier    | lifecycle              | node           | collections                             |
 |---------|------------------------|----------------|-----------------------------------------|
-| project | plan refine build wrap | get set status | child · acceptance · question · concern |
 | epic    | plan refine build wrap | get set status | child · acceptance · question · concern |
 | task    | plan refine build wrap | get set status | phase · question · concern              |
 | phase   | (leaf — no stages)     | get set status | ac · rule                               |

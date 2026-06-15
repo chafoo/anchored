@@ -13,7 +13,6 @@ import { createTemplate } from '../services/template/template.js'
 import { createTask } from '../modules/task/task.js'
 import { createPhase } from '../modules/phase/phase.js'
 import { createEpic } from '../modules/epic/epic.js'
-import { createProject } from '../modules/project/project.js'
 import { TaskNodeSchema } from '../modules/task/task.schemas.js'
 import { envelope, type Envelope } from './envelope.js'
 
@@ -61,8 +60,7 @@ export function createCli(deps: CliDeps): Anchored {
   const task = createTask({ store, template })
   const phase = createPhase({ store, taskSchema: TaskNodeSchema })
   const epic = createEpic({ store, template, task })
-  const project = createProject({ store, template, epic })
-  const tiers: Record<string, Tier> = { phase, task, epic, project }
+  const tiers: Record<string, Tier> = { phase, task, epic }
 
   const emit = (env: Envelope): number => {
     deps.out(JSON.stringify(env))

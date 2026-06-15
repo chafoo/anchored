@@ -8,9 +8,9 @@
 
 ## Structure: tiers × stages × steps
 
-The top level is the **tiers** (`phase` · `task` · `epic` · `project`). Every tier
-has the same four **stages** (`plan` · `refine` · `build` · `wrap`), and each stage
-has an ordered `steps` list.
+The top level is the **tiers** (`phase` · `task` · `epic`; epic is the top tier).
+Every tier has the same four **stages** (`plan` · `refine` · `build` · `wrap`), and
+each stage has an ordered `steps` list.
 
 ```yaml
 task:
@@ -163,7 +163,7 @@ epic:
 ```
 
 - **Short form** `build: { each: task }` ≙ `steps: [{ name: loop, each: task, steps: [run] }]`.
-- `each` is **intrinsic** (fixed per tier: task→phase, epic→task, project→epic) —
+- `each` is **intrinsic** (fixed per tier: task→phase, epic→task) —
   documentation only, not freely choosable.
 - The per-iteration mechanics (advance status, log, `stop` check) are built in.
 

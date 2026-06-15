@@ -93,30 +93,3 @@ epic:
     concerns: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
     tasks: list<{ slug, goal, status, depends_on, acceptance_criteria? }>
     log: list<{ at, kind, note }>
-
-project:
-  plan:
-    steps:
-      - { name: discover, use: { type: agent, name: plan-discover } }
-      - { name: scaffold, use: { type: agent, name: project-scaffold } }
-  refine:
-    steps:
-      - { name: walk, use: { type: skill, name: walk }, involve: high-only }
-  build:
-    each: epic # intrinsic — fixed per tier (project→epic)
-    retry_limit: 3
-  wrap:
-    steps:
-      - { name: roll-up, use: { type: agent, name: project-roll-up } }
-  fields:
-    schema_version: int
-    slug: kebab
-    title: string
-    status: plan | drafted | refined | build | wrap | done
-    goal: markdown
-    context: { plan?, refine?, build?, wrap? }
-    acceptance: list<{ id, text, status, evidence?, reason? }>
-    questions: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
-    concerns: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
-    epics: list<{ slug, goal, status, depends_on, acceptance_criteria? }>
-    log: list<{ at, kind, note }>

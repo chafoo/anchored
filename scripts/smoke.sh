@@ -110,19 +110,6 @@ run err epic set-acceptance-status e1 e2 deferred          # no reason
 run ok epic set-acceptance-status e1 e2 deferred "next quarter"
 run ok epic status e1 done
 
-echo "== project tier (mirror one tier up) =="
-run ok project create p1 "Project one"
-run ok project child-add p1 e1 "the epic"
-run ok project child-ac-add p1 e1 "epic delivered"
-run ok project child-ac-evidence p1 e1 a1 "e1 — done"
-run ok project child-status p1 e1 done
-run ok project add-acceptance p1 "project shipped"
-run ok project set-acceptance-status p1 e1 done "delivered"
-run ok project roll-up p1
-run ok project status p1 drafted
-run ok project status p1 build
-run ok project status p1 done
-
 echo "== negative: illegal transition + unknown verb/slug =="
 run ok task create t2 "Task two"
 run err task status t2 done                   # plan→done illegal (can't skip drafted)

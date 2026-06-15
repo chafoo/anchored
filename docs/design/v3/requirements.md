@@ -26,7 +26,7 @@ agreed; `architecture.md` reflects the resulting structure.
 ```
 lib/         primitives — zero special knowledge, the base everyone may use
    ▲ imported by everyone, imports nothing
-modules/     tier units (epic·task·phase·project) — PURE tier knowledge ("conditions")
+modules/     tier units (epic·task·phase) — PURE tier knowledge ("conditions")
    ·         import ONLY lib (utils + contracts). NEVER import a service.
 services/    generic effectful mechanism (node/store). Knows NO concrete tier —
    ·         receives the tier conditions via DI. Imports ONLY lib.
@@ -59,8 +59,8 @@ functions) and a service tier-agnostic.
 
 3. **`services/` are generic + DI-fed.** The node/store service is one tier-generic
    read-modify-write kernel. It knows no concrete tier; it receives the tier conditions
-   via a factory, e.g. `createNodeOps({ epic, task, phase, project }, deps)` (or a
-   `const nodeConditions = { epic, task, phase, project }` injected at the root). It
+   via a factory, e.g. `createNodeOps({ epic, task, phase }, deps)` (or a
+   `const nodeConditions = { epic, task, phase }` injected at the root). It
    imports only `lib/`. The codec (yaml⇆node) is service-internal (it has the yaml dep +
    `$schema` knowledge — NOT a util).
 
@@ -97,18 +97,16 @@ functions) and a service tier-agnostic.
    conformance specs (tsc is their real gate; the specs catch interface drift). Only
    `bin.ts` (the effect shell) and `index.ts` (the package re-export) are spec-exempt.
 
-8. **Project gets built out** (no longer a reserved stub). **DECIDED + DONE:** project is
-   the fourth tier module (`modules/project/`) with its own condition bundle, on the SAME
-   uniform `plan→drafted→refined→build→wrap→done` lifecycle as task/epic (the old reduced
-   `planning/building/done` is gone). Semantics: `project → epics` (childTier `epic`),
-   carrying epic STUBS as its loop-queue exactly as epic carries task-stubs — no distinct
-   roll-up shape; the uniform tier form suffices. Tier-derivation detects `epics[]` →
-   project.
+8. **The top tier is epic.** _(project tier removed — YAGNI, see add-ons.md.)_ The tiers
+   are exactly `phase ▸ task ▸ epic`, epic being the top. The uniform
+   `plan→drafted→refined→build→wrap→done` lifecycle (the old reduced
+   `planning/building/done` is gone) and the stub-as-loop-queue shape (epic carries
+   task-stubs) hold for the surviving tiers.
 
 ## Resolved decisions
 - **Name of the condition bundle:** `condition` (the user's term). Each `modules/<tier>`
   exports the bundle named after the tier (`export const task = { … }`); collectively the
-  orchestrator injects them as `conditions = { phase, task, epic, project }`. The bundle
+  orchestrator injects them as `conditions = { phase, task, epic }`. The bundle
   type is `TierCondition` (`lib/contracts/tier.ts`); `TierDescriptor` is a back-compat
   alias. The bundle is broader than a boolean — schema + statusValues + transitions +
   defaultStatus + child relationship (childField/childStatusValues/childTerminalOk/
@@ -116,13 +114,13 @@ functions) and a service tier-agnostic.
 - **Generic kernel vs per-tier verbs:** generic kernel in the service, each module
   injects its conditions (rule 6). `createNodeOps(condition, deps)` reads every
   tier-specific fact off the injected bundle — no module import, no hardcoded child maps.
-- **Project semantics:** rule 8 above.
+- **Top tier:** epic (project tier removed — YAGNI, see add-ons.md; rule 8 above).
 
 ## Status of the rewrite — COMPLETE on branch `v3-rebuild`
 The reshape this document specifies has landed, all gates green:
 - `lib/` — contracts (io·store·config·tier·cli ports) · utils (error · evidence predicate)
   · constants (stages · statuses · transitions axes).
-- `modules/<tier>/` — phase·task·epic·project as PURE condition bundles (+ `shared/schema`
+- `modules/<tier>/` — phase·task·epic as PURE condition bundles (+ `shared/schema`
   fragments); import only lib; no I/O.
 - `services/` — `store` (generic node kernel fed conditions via DI, codec, io, invariants,
   transitions, children, questions, log, validate) + `config` (bootstrap, merge, plan-for,

@@ -5,7 +5,7 @@
 import { z } from 'zod'
 import type { Step } from '../../lib/contracts/template.js'
 
-export const tierNames = ['phase', 'task', 'epic', 'project'] as const
+export const tierNames = ['phase', 'task', 'epic'] as const
 export type TierName = (typeof tierNames)[number]
 export const TierNameSchema = z.enum(tierNames)
 
@@ -64,7 +64,6 @@ export const ConfigSchema = z.strictObject({
   phase: TierBlock.optional(),
   task: TierBlock.optional(),
   epic: TierBlock.optional(),
-  project: TierBlock.optional(),
   _lib: z.unknown().optional(),
 })
 

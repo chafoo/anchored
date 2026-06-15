@@ -1,12 +1,12 @@
 // _v3/modules/shared/transitions.ts — the forward-only state-machine edges (as pure data)
 // + the guard a tier module calls in its `status` verb. Tier knowledge — only the modules
-// use it now that the store is dumb. epic·task·project share one identical lifecycle map.
+// use it now that the store is dumb. epic·task share one identical lifecycle map.
 import { anchoredError } from '../../lib/utils/error.js'
 
 /** Allowed forward edges keyed by from-status. X→X is idempotent (handled by the asserter). */
 export type TransitionMap = Record<string, readonly string[]>
 
-// epic·task·project — the uniform lifecycle. `refine` and `wrap` are OPTIONAL (requirements-3
+// epic·task — the uniform lifecycle. `refine` and `wrap` are OPTIONAL (requirements-3
 // §1), so the map carries the skip edges `drafted → build` and `build → done` alongside the
 // full path. Order can never be jumped (no plan → build); only the two optional stages skip.
 // `drafted` is also the single backward update-mode re-entry from every later state.

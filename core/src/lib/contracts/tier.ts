@@ -4,7 +4,7 @@
 // this contract) to read across files. Interface-only.
 
 export interface Tier {
-  /** the tier name (phase·task·epic·project). */
+  /** the tier name (phase·task·epic). */
   tier: string
   /** run a verb (the api.md grammar's <verb>) with its positional args → result. */
   run(verb: string, args: string[]): Promise<unknown>

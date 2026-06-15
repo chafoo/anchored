@@ -9,7 +9,7 @@
 ## The CLI grammar is TIER-FIRST
 
 Every call is `anchored <tier> <verb> [slug] [args]` — the tier (`phase` · `task` ·
-`epic` · `project`) is always the first token, the verb second. There is no `anchored
+`epic`) is always the first token, the verb second. There is no `anchored
 node …` surface any more. The CLI emits one JSON envelope per call:
 `{ ok, command, result | error }`.
 
@@ -23,7 +23,7 @@ On spawn (Task tool), the skill passes at least the following in the prompt:
 |---|---|
 | `task-slug` | the **task** slug (the task-file). ALWAYS the task, never the phase slug. |
 | `phase-slug` | (build/leaf only) the target **phase** inside the task-file. |
-| `tier` | `phase` \| `task` \| `epic` \| `project` — which level is being worked on. |
+| `tier` | `phase` \| `task` \| `epic` — which level is being worked on. |
 | `stage` | `plan` \| `refine` \| `build` \| `wrap` — which stage. |
 | `context` | prose context: the phase/node `context`, the `plan` trail, resolved questions. |
 | `rules` | the `rules[]` of the phase/task (`{ path, why }`) — the agent reads them and adheres to them. |
@@ -50,7 +50,7 @@ phase is addressed by **one slash-joined slug** `<task-slug>/<phase-slug>` on th
 - (a nested task is `<epic>/<task>`, so its phase is `<epic>/<task>/<phase>` — still
   one slash-joined slug; the last segment is always the phase.)
 
-A **node-level** verb (task/epic/project — e.g. wrap-summarize, epic-roll-up) instead
+A **node-level** verb (task/epic — e.g. wrap-summarize, epic-roll-up) instead
 addresses the node by its own `<slug>` (`anchored task set <slug> …`, `anchored epic
 status <slug> …`) — that is its own file.
 
@@ -77,14 +77,14 @@ status <slug> …`) — that is its own file.
 | attach a rule to a phase | `anchored phase rule-add <task>/<phase> <path> "<why>"` |
 | set how a phase builds | `anchored phase set-execute <task>/<phase> <sequential\|workflow>` |
 | set a phase's dependencies | `anchored phase set-depends <task>/<phase> "<phase-slugs>"` |
-| — EPIC/PROJECT own STUB existence — | |
-| add a child-stub | `anchored epic child-add <epic-slug> <task-stub-slug> ["<goal>"]` (project: `anchored project child-add <project> <epic-stub>`) |
+| — EPIC owns STUB existence — | |
+| add a child-stub | `anchored epic child-add <epic-slug> <task-stub-slug> ["<goal>"]` |
 | advance a child-stub | `anchored epic child-status <epic-slug> <stub-slug> <pending\|active\|done\|blocked>` |
 | set a stub field (e.g. depends_on) | `anchored epic child-set-field <epic> <stub> depends_on "a,b"` |
-| add a stub outcome-AC | `anchored epic child-ac-add <epic> <stub> "<text>"` (project: `anchored project child-ac-add <project> <stub> "<text>"`) |
-| evidence a stub outcome-AC (flips it done) | `anchored epic child-ac-evidence <epic> <stub> <ac-id> "<proof>"` (project: `anchored project child-ac-evidence …`) |
-| reject a stub outcome-AC (back to pending) | `anchored epic child-ac-fail <epic> <stub> <ac-id> "<why>"` (project: `anchored project child-ac-fail …`) |
-| defer a stub outcome-AC (out of scope) | `anchored epic child-ac-defer <epic> <stub> <ac-id> "<reason>"` (project: `anchored project child-ac-defer …`) |
+| add a stub outcome-AC | `anchored epic child-ac-add <epic> <stub> "<text>"` |
+| evidence a stub outcome-AC (flips it done) | `anchored epic child-ac-evidence <epic> <stub> <ac-id> "<proof>"` |
+| reject a stub outcome-AC (back to pending) | `anchored epic child-ac-fail <epic> <stub> <ac-id> "<why>"` |
+| defer a stub outcome-AC (out of scope) | `anchored epic child-ac-defer <epic> <stub> <ac-id> "<reason>"` |
 | add / flip an epic DoD item | `anchored epic add-acceptance <epic> "<text>"` · `anchored epic set-acceptance-status <epic> <id> done "<delivery evidence>"` |
 | roll up (reads child files) | `anchored epic roll-up <epic-slug>` |
 
@@ -93,7 +93,7 @@ status <slug> …`) — that is its own file.
 >
 > **`set-child-status` split by tier:** a *phase* (task's child) → `anchored phase
 > status <task>/<phase> …`; a *task-stub* (epic's child) → `anchored epic child-status
-> <epic> <stub> …`; an *epic-stub* (project's child) → `anchored project child-status …`.
+> <epic> <stub> …`.
 
 ## What the agent writes back out (output = self-write via CLI)
 

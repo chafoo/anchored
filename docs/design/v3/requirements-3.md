@@ -42,17 +42,18 @@ The lifecycle status walks `plan → drafted → refined → build → wrap → 
 The map is the mechanism (verb guard, `assertTransition`). No stage can be jumped *out of
 order* (no `plan → build`, no `refined → wrap`); only the two optional stages may be skipped.
 
-### 2. Tier hierarchy + completion floors — `project ▸ epic ▸ task ▸ phase`
+### 2. Tier hierarchy + completion floors — `epic ▸ task ▸ phase`
 
 A parent cannot reach `done` until its children are terminal. Enforced by the verb guards
 (the `assertXCompletable` floors + roll-up): a `phase` is terminal when every AC is terminal
 (§3); a `task` `done` needs every phase terminal; an `epic` `done` needs every task-stub done
-+ every DoD item evidenced + no open concern; a `project` `done` mirrors it one tier up.
++ every DoD item evidenced + no open concern. (Epic is the top tier — project tier removed,
+YAGNI, see add-ons.md.)
 
 ### 3. Acceptance criteria — every AC is `done` ∨ `deferred`, nothing left `pending`
 
 This is the heart. **Everywhere there are acceptance criteria — phase ACs, task-stub outcome
-ACs, epic/project stub outcome ACs, epic/project DoD items — the same rule binds.** An AC has
+ACs, epic stub outcome ACs, epic DoD items — the same rule binds.** An AC has
 three states:
 
 | status | requires | meaning |
@@ -76,7 +77,7 @@ deliberately do not model "what kind" or "who authored". (See "NOT enforced" bel
 > default: the **checker** agent for a tier writes that tier's evidence — the implementer
 > authors none. The entity that *confirms* is the entity that *records*, so evidence reads
 > "I, the checker, verified X." Fractal: every tier has ACs → every tier has a checker that
-> evidences them (phase → task-validate/code-validate · task → task review · epic/project →
+> evidences them (phase → task-validate/code-validate · task → task review · epic →
 > roll-up review). This is a **plugin-role convention**, not a core guarantee — the core only
 > enforces *evidence-present*, never *who wrote it* (that would be provenance, which we cut).
 

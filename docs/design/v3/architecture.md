@@ -46,7 +46,7 @@ This is the **code layout** that mirrors the surface 1:1.
 
 ```
 lib/         the base — contracts (the five ports) + utils/error. Imported by all, imports nothing.
-modules/     tier FACTORIES (createPhase·createTask·createEpic·createProject) — own their rules + verbs,
+modules/     tier FACTORIES (createPhase·createTask·createEpic) — own their rules + verbs,
              DI'd the services they demand (by contract). May compose another module (by contract).
 services/    two dumb mechanisms (store · template) — know no tier. store = read/write a node validated by a given schema; template = merge + serve the settings.
 cli/         createCli(deps): instantiate services, instantiate the tier factories (DI), route argv → tier → verb.
@@ -97,8 +97,8 @@ core/src/
 │   │   ├── phase.types.ts          # any hand-written types for phase (if needed)
 │   │   └── phase.spec.ts
 │   ├── task/task.ts                # createTask({ store, template }) → Tier · phase-collection + lifecycle verbs
-│   ├── epic/epic.ts                # createEpic({ store, template, task }) → Tier · task-STUB verbs + roll-up (reads task files)
-│   └── project/project.ts          # createProject({ store, template, epic }) → Tier · epic-STUB verbs
+│   └── epic/epic.ts                # createEpic({ store, template, task }) → Tier · task-STUB verbs + roll-up (reads task files) — the TOP tier
+│                                   #   (project tier removed — YAGNI, see add-ons.md)
 │                                   #   (no validate module — it is template.validate(); no help module — it lives in cli)
 │
 ├── services/                       # the two dumb mechanisms · know NO tier · import only lib
@@ -154,8 +154,8 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort }) {
 }
 ```
 
-`phase` / `task` / `project` are the same shape — they differ in their schema, transition
-map, and tier-specific verbs. `epic` additionally demands `task` (by the `Tier` contract)
+`phase` / `task` / `epic` are the same shape — they differ in their schema, transition
+map, and tier-specific verbs. `epic` (the top tier) additionally demands `task` (by the `Tier` contract)
 because its roll-up reads child task files. **No tier factory imports a service or a
 sibling concretely** — everything arrives injected. Common CRUD is a trivial
 read/transform/write; tier-specifics (roll-up, evidence-flip) live in the factory. Same
@@ -193,7 +193,6 @@ import { createTemplate } from '../services/template/template.js'
 import { createPhase }  from '../modules/phase/phase.js'
 import { createTask }   from '../modules/task/task.js'
 import { createEpic }   from '../modules/epic/epic.js'
-import { createProject }from '../modules/project/project.js'
 import { envelope }     from './envelope.js'                       // cli-local — the transport format
 
 export function createCli(deps): Anchored {
@@ -202,9 +201,8 @@ export function createCli(deps): Anchored {
 
   const phase   = createPhase({ store, template })
   const task    = createTask({ store, template })
-  const epic    = createEpic({ store, template, task })    // roll-up reads child task files — task injected by contract
-  const project = createProject({ store, template, epic })
-  const tiers   = { phase, task, epic, project }
+  const epic    = createEpic({ store, template, task })    // roll-up reads child task files — task injected by contract; epic is the TOP tier
+  const tiers   = { phase, task, epic }
 
   return {
     template,
