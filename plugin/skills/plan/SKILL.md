@@ -82,8 +82,11 @@ For each worker step in `steps`, spawn its `agent` via the Task tool with the
 agent-contract input `{ task-slug: <node.slug>, tier, stage: plan, context, rules,
 instructions }`:
 
-- **discover → plan-discover** — scans the codebase; self-writes findings:
-  `anchored <tier> append-log <slug> plan learning "<affected paths / patterns>"`.
+- **discover → plan-discover** — scans the codebase **and the project history**
+  (`.claude/anchored/_archive/` — prior decisions, finished epics/tasks, what was already
+  tried), so the plan is grounded in the past and doesn't re-litigate settled forks;
+  self-writes findings: `anchored <tier> append-log <slug> plan learning "<affected paths /
+  patterns / relevant history>"`.
 - **rules-scan → plan-rules-scan** — collects applicable `.claude/rules/`:
   `anchored <tier> append-log <slug> plan learning "<relevant rules>"`.
 - **decompose → plan-decompose** (task) — writes phases + testable acceptance
