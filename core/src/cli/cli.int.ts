@@ -4,6 +4,7 @@
 import { test, expect } from 'bun:test'
 import { parse as yamlParse, stringify as yamlStringify } from 'yaml'
 import { createCli } from './cli.js'
+import * as layout from './layout.js'
 
 const DEFAULT = `
 task:
@@ -49,7 +50,8 @@ function makeCli() {
     fs,
     lock: { acquire: async () => async () => {} },
     yaml: { parse: (r, o) => yamlParse(r, o), stringify: (v, o) => yamlStringify(v, o) },
-    pathFor: (slug) => `/tasks/${slug}.yml`,
+    pathFor: (slug, tier) => layout.pathFor('', slug, tier),
+    archivePathFor: (slug, tier) => layout.archivePathFor('', slug, tier),
     rand: () => 'r',
     pid: () => 1,
     readDefault: () => DEFAULT,

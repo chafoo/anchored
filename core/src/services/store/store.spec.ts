@@ -46,6 +46,7 @@ function makeStore(over: Partial<StoreDeps> = {}) {
     lock: { acquire: async () => async () => {} },
     yaml: { parse: (raw, o) => yamlParse(raw, o), stringify: (v, o) => yamlStringify(v, o) },
     pathFor: (slug) => `/tasks/${slug}.yml`,
+    archivePathFor: (slug) => ({ from: `/tasks/${slug}.yml`, to: `/tasks/_archive/${slug}.yml` }),
     rand: () => 'r',
     pid: () => 1,
     ...over,
@@ -82,13 +83,13 @@ test('write rejects when the file changed since read (CAS)', async () => {
   expect((err as AnchoredError).kind).toBe('WriteContention')
 })
 
-// a4 — archive moves the file out; remove deletes it
-test('archive relocates into archive/, remove deletes', async () => {
+// a4 — archive moves the file per the INJECTED archivePathFor {from→to}; remove deletes it
+test('archive relocates per injected from→to, remove deletes', async () => {
   const { store, h } = makeStore()
   await store.write('t', { slug: 't', status: 'plan' }, Schema)
   await store.archive('t')
   expect(h.files.has('/tasks/t.yml')).toBe(false)
-  expect(h.files.has('/tasks/archive/t.yml')).toBe(true)
+  expect(h.files.has('/tasks/_archive/t.yml')).toBe(true)
 
   await store.write('u', { slug: 'u', status: 'plan' }, Schema)
   await store.remove('u')

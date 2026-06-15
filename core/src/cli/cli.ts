@@ -20,7 +20,9 @@ export interface CliDeps {
   fs: FileSystem
   lock: Lock
   yaml: Yaml
-  pathFor: (slug: string) => string
+  /** the on-disk layout (POLICY) — tier-aware so a bare epic slug ≠ a bare standalone task. */
+  pathFor: (slug: string, tier: string) => string
+  archivePathFor: (slug: string, tier: string) => { from: string; to: string }
   rand: () => string
   pid: () => number
   readDefault: () => string
@@ -43,23 +45,27 @@ function help(tiers: Record<string, Tier>): string {
 }
 
 export function createCli(deps: CliDeps): Anchored {
-  const store = createStore({
-    fs: deps.fs,
-    lock: deps.lock,
-    yaml: deps.yaml,
-    pathFor: deps.pathFor,
-    rand: deps.rand,
-    pid: deps.pid,
-  })
+  // one store per TIER — its layout (pathFor/archive) is bound to that tier, so a bare epic slug
+  // maps to its folder while a bare task slug maps to tasks/. phase reads task files → 'task'.
+  const storeFor = (tier: string) =>
+    createStore({
+      fs: deps.fs,
+      lock: deps.lock,
+      yaml: deps.yaml,
+      pathFor: (slug) => deps.pathFor(slug, tier),
+      archivePathFor: (slug) => deps.archivePathFor(slug, tier),
+      rand: deps.rand,
+      pid: deps.pid,
+    })
   const template = createTemplate({
     readDefault: deps.readDefault,
     readUser: deps.readUser,
     parseYaml: deps.parseYaml,
     projectRoot: deps.projectRoot,
   })
-  const task = createTask({ store, template })
-  const phase = createPhase({ store, taskSchema: TaskNodeSchema })
-  const epic = createEpic({ store, template, task })
+  const task = createTask({ store: storeFor('task'), template })
+  const phase = createPhase({ store: storeFor('task'), taskSchema: TaskNodeSchema })
+  const epic = createEpic({ store: storeFor('epic'), template, task })
   const tiers: Record<string, Tier> = { phase, task, epic }
 
   const emit = (env: Envelope): number => {

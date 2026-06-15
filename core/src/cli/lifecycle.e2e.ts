@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parse, stringify } from 'yaml'
 import { createCli } from './cli.js'
+import * as layout from './layout.js'
 import type { FileSystem } from '../lib/contracts/fs.js'
 
 const DEFAULT = `
@@ -44,7 +45,8 @@ async function makeCli() {
     fs,
     lock: { acquire: async () => async () => {} },
     yaml: { parse: (r, o) => parse(r, o), stringify: (v, o) => stringify(v, o) },
-    pathFor: (slug) => join(dir, `${slug}.yml`),
+    pathFor: (slug, tier) => layout.pathFor(dir, slug, tier),
+    archivePathFor: (slug, tier) => layout.archivePathFor(dir, slug, tier),
     rand: () => 'r',
     pid: () => 1,
     readDefault: () => DEFAULT,
@@ -67,7 +69,8 @@ async function makeCli() {
       throw new Error(`'${argv.join(' ')}' failed: ${JSON.stringify(env.error)}`)
     return env.result
   }
-  const readNode = async (slug: string) => parse(await readFile(join(dir, `${slug}.yml`), 'utf8'))
+  const readNode = async (slug: string, tier: string) =>
+    parse(await readFile(layout.pathFor(dir, slug, tier), 'utf8'))
   return { ok, readNode, cli, out, dir }
 }
 
@@ -116,7 +119,7 @@ test('e2e: an epic with 2 tasks driven all the way to done — no AI, real files
     await ok('epic', 'status', 'my-epic', 'done')
 
     // ── assert the real files on disk reflect a fully-built epic ──
-    const epic = (await readNode('my-epic')) as {
+    const epic = (await readNode('my-epic', 'epic')) as {
       status: string
       tasks: { status: string }[]
       acceptance: { status: string; evidence?: string[] }[]
@@ -128,7 +131,7 @@ test('e2e: an epic with 2 tasks driven all the way to done — no AI, real files
       evidence: ['login+logout — delivered'],
     })
 
-    const login = (await readNode('my-epic/login')) as {
+    const login = (await readNode('my-epic/login', 'task')) as {
       status: string
       phases: { status: string; acceptance_criteria: { status: string; evidence?: string[] }[] }[]
     }
@@ -173,7 +176,8 @@ test('e2e: the evidence gate blocks a premature done', async () => {
 test('e2e: questions block build · optional skips · deferred AC — real CLI', async () => {
   const { ok, cli, out, readNode, dir } = await makeCli()
   const lastOk = () => (JSON.parse(out[out.length - 1]!) as { ok: boolean }).ok
-  const statusOf = async (slug: string) => ((await readNode(slug)) as { status: string }).status
+  const statusOf = async (slug: string, tier: string) =>
+    ((await readNode(slug, tier)) as { status: string }).status
   try {
     await ok('task', 'create', 'rt', 'R')
     await ok('task', 'add-phase', 'rt', 'p1', 'P1')
@@ -194,7 +198,7 @@ test('e2e: questions block build · optional skips · deferred AC — real CLI',
     // resolve it → the skip-refine edge drafted → build now goes through
     await ok('task', 'question-resolve', 'rt', 'q1', 'localStorage', 'user')
     await ok('task', 'status', 'rt', 'build')
-    expect(await statusOf('rt')).toBe('build')
+    expect(await statusOf('rt', 'task')).toBe('build')
 
     // §3 — a deferred AC is reason-gated and then terminal (the phase finishes without evidence on it)
     await ok('phase', 'status', 'rt/p1', 'in-progress')
@@ -204,7 +208,7 @@ test('e2e: questions block build · optional skips · deferred AC — real CLI',
     const noReason = JSON.parse(out[out.length - 1]!) as { error?: { name?: string } }
     expect(noReason.error?.name).toBe('AcNoReason') // clean message, not a raw ZodError
     await ok('phase', 'ac-defer', 'rt/p1', 'a1', 'punted to the next milestone')
-    const ph = (await readNode('rt')) as {
+    const ph = (await readNode('rt', 'task')) as {
       phases: { acceptance_criteria: { status: string; reason?: string }[] }[]
     }
     expect(ph.phases[0]!.acceptance_criteria[0]).toMatchObject({
@@ -215,7 +219,7 @@ test('e2e: questions block build · optional skips · deferred AC — real CLI',
 
     // §1 — the build → done skip edge (wrap is optional); the task floor is satisfied (p1 done)
     await ok('task', 'status', 'rt', 'done')
-    expect(await statusOf('rt')).toBe('done')
+    expect(await statusOf('rt', 'task')).toBe('done')
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
@@ -258,7 +262,7 @@ test('e2e: epic stub outcome-ACs + DoD-item deferral gate completion — real CL
     await ok('epic', 'set-acceptance-status', 'ep', 'e2', 'deferred', 'next quarter')
     await ok('epic', 'status', 'ep', 'done')
 
-    const epic = (await readNode('ep')) as {
+    const epic = (await readNode('ep', 'epic')) as {
       status: string
       tasks: { status: string }[]
       acceptance: { status: string; reason?: string; evidence?: string[] }[]

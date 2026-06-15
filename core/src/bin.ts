@@ -9,6 +9,7 @@ import { randomBytes } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { parse, stringify } from 'yaml'
 import { createCli } from './cli/cli.js'
+import * as layout from './cli/layout.js'
 import type { FileSystem, Lock } from './lib/contracts/fs.js'
 
 const root = process.cwd()
@@ -93,7 +94,8 @@ const cli = createCli({
     parse: (raw, o) => parse(raw, { maxAliasCount: o?.maxAliasCount ?? 100 }),
     stringify: (v, o) => stringify(v, o),
   },
-  pathFor: (slug) => `${root}/.claude/tasks/${slug}.yml`,
+  pathFor: (slug, tier) => layout.pathFor(root, slug, tier),
+  archivePathFor: (slug, tier) => layout.archivePathFor(root, slug, tier),
   rand: () => randomBytes(4).toString('hex'),
   pid: () => process.pid,
   readDefault: () => readFileSync(defaultPath, 'utf8'),

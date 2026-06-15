@@ -14,22 +14,18 @@ export interface StoreDeps {
   fs: FileSystem
   lock: Lock
   yaml: Yaml
-  /** slug → task-file path (default `<root>/.claude/tasks/<slug>.yml`, nested for `epic/task`). */
+  /** slug → node-file path. The layout (incl. tier-awareness) is bound by the cli assembly. */
   pathFor: (slug: string) => string
+  /** slug → the archive move pair {from → to}. INJECTED policy (an epic moves a folder, a task
+   *  a file) — the dumb store just renames `from` to `to`. */
+  archivePathFor: (slug: string) => { from: string; to: string }
   /** temp-file uniqueness seams (injected effects). */
   rand: () => string
   pid: () => number
 }
 
 export function createStore(deps: StoreDeps): StorePort {
-  const { fs, lock, yaml, pathFor, rand, pid } = deps
-
-  // archive path = the file's dir + `archive/<slug>.yml` (tracks whatever pathFor produces).
-  const archivePathFor = (slug: string): string => {
-    const p = pathFor(slug)
-    const i = p.lastIndexOf('/')
-    return i < 0 ? `archive/${p}` : `${p.slice(0, i)}/archive/${p.slice(i + 1)}`
-  }
+  const { fs, lock, yaml, pathFor, archivePathFor, rand, pid } = deps
 
   return {
     async read(slug, schema: Schema): Promise<Node> {
@@ -52,9 +48,9 @@ export function createStore(deps: StoreDeps): StorePort {
     },
 
     async archive(slug): Promise<void> {
-      const to = archivePathFor(slug)
+      const { from, to } = archivePathFor(slug)
       await fs.mkdir(dirname(to), { recursive: true })
-      await fs.rename(pathFor(slug), to)
+      await fs.rename(from, to)
     },
 
     async remove(slug): Promise<void> {
