@@ -149,3 +149,13 @@ load-bearing (or mark it "deferred — see add-ons").
 
 Each on `v3-add-ons`, green-gated per the usual gates (core: lint/format/typecheck/test/
 coverage/build; plugin: guard-prose/contract-eval/smoke).
+
+---
+
+## Status — all three DONE (2026-06-15, branch v3-add-ons)
+
+- **Add-on 3 (project removal)** — `ab8298a`. `anchored project` → UnknownTier; epic is the top tier. Core + plugin + docs + tooling.
+- **Add-on 1 (storage layout)** — core seam `6d1c19b` + wrap-archive step `8d3f2e1`. `.claude/anchored/` with epic folders · tasks/ · _archive/; tier-aware pathFor via per-tier store binding; wrap archives the finished node (epic → folder, standalone task → file; in-epic task moves with the epic). Verified through the real binary.
+- **Add-on 2 (history-aware explore)** — `9ec7bfa`. plan-discover mines `_archive/` (wrap summaries, decision trails, ACs) so planning reads the project's past.
+
+Full gate green: core lint/format/typecheck/build/test (87 unit / 5 e2e / 5 int / coverage); plugin guard-prose / contract-eval / smoke.
