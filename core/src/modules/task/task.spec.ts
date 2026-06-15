@@ -52,9 +52,9 @@ test('status transitions are guarded; set refuses reserved fields', async () => 
 test('open questions block the advance to build', async () => {
   const node = taskNode({ status: 'drafted' })
   const { task, store } = setup(node)
-  await task.run('question-add', ['my-task', 'which auth provider?', 'high'])
+  await task.run('question', ['add', 'my-task', 'which auth provider?', 'high'])
   await expect(task.run('status', ['my-task', 'build'])).rejects.toThrow(/open question/i)
-  await task.run('question-resolve', ['my-task', 'q1', 'OAuth', 'user'])
+  await task.run('question', ['resolve', 'my-task', 'q1', 'OAuth', 'user'])
   await task.run('status', ['my-task', 'build'])
   expect(on(store).status).toBe('build')
 })
@@ -66,25 +66,25 @@ test('done requires no open concern + every phase terminal', async () => {
     phases: [{ name: 'P', slug: 'p1', status: 'done' }],
   })
   const { task, store } = setup(node)
-  await task.run('concern-add', ['my-task', 'check perf', 'high'])
+  await task.run('concern', ['add', 'my-task', 'check perf', 'high'])
   await expect(task.run('status', ['my-task', 'done'])).rejects.toThrow(/concern/i)
-  await task.run('concern-resolve', ['my-task', 'c1', 'fine', 'user'])
+  await task.run('concern', ['resolve', 'my-task', 'c1', 'fine', 'user'])
   await task.run('status', ['my-task', 'done'])
   expect(on(store).status).toBe('done')
 })
 
-// a4 — phase existence: add (rejects dup) + next-phase
-test('add-phase + next-phase (parent owns child existence)', async () => {
+// a4 — phase existence: phase add (rejects dup) + phase next
+test('phase add + phase next (parent owns child existence)', async () => {
   const { task } = setup()
-  await task.run('add-phase', ['my-task', 'setup', 'Setup'])
-  expect(((await task.run('next-phase', ['my-task'])) as { slug: string }).slug).toBe('setup')
-  await expect(task.run('add-phase', ['my-task', 'setup'])).rejects.toThrow(/already exists/)
-  expect(task.verbs()).toContain('add-phase')
+  await task.run('phase', ['add', 'my-task', 'setup', 'Setup'])
+  expect(((await task.run('phase', ['next', 'my-task'])) as { slug: string }).slug).toBe('setup')
+  await expect(task.run('phase', ['add', 'my-task', 'setup'])).rejects.toThrow(/already exists/)
+  expect(task.verbs()).toContain('phase add')
 })
 
-// a4b — ready-phases honours phase depends_on (the multi-phase fan-out level): independent
+// a4b — phase ready honours phase depends_on (the multi-phase fan-out level): independent
 // phases are ready together, a phase with unmet deps waits.
-test('ready-phases honours phase depends_on', async () => {
+test('phase ready honours phase depends_on', async () => {
   const node = taskNode({
     status: 'build',
     phases: [
@@ -94,7 +94,7 @@ test('ready-phases honours phase depends_on', async () => {
     ],
   })
   const { task } = setup(node)
-  const ready = (await task.run('ready-phases', ['my-task'])) as { slug: string }[]
+  const ready = (await task.run('phase', ['ready', 'my-task'])) as { slug: string }[]
   expect(ready.map((p) => p.slug)).toEqual(['css', 'markup']) // logic waits on its deps
 })
 

@@ -6,7 +6,7 @@ test('a Tier exposes run / verbs / get', async () => {
   const node = { slug: 'e1', status: 'plan' }
   const epic: Tier = {
     tier: 'epic',
-    verbs: () => ['get', 'status', 'child-add', 'roll-up'],
+    verbs: () => ['get', 'status', 'child add', 'child roll-up'],
     get: async () => node,
     run: async (verb, args) => {
       if (verb === 'get') return node
@@ -16,7 +16,7 @@ test('a Tier exposes run / verbs / get', async () => {
   }
 
   expect(epic.tier).toBe('epic')
-  expect(epic.verbs()).toContain('roll-up')
+  expect(epic.verbs()).toContain('child roll-up')
   expect(await epic.get('e1')).toEqual(node)
   expect(await epic.run('status', ['drafted'])).toEqual({ slug: 'e1', status: 'drafted' })
 })

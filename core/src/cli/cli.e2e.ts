@@ -50,6 +50,7 @@ async function makeCli() {
     parseYaml: (r) => parse(r),
     projectRoot: dir,
     out: (l) => out.push(l),
+    readStdin: () => '',
     version: '1.0.0',
   })
   return { cli, out, dir }
@@ -66,8 +67,8 @@ test('e2e: create → get → status persists to the real filesystem; archive mo
     expect(await cli.run(['task', 'create', 'my-task', 'My Task'])).toBe(0)
     expect(await readFile(taskPath, 'utf8')).toContain('slug: my-task')
 
-    // read it back THROUGH the cli (real yaml parse + schema validate)
-    await cli.run(['task', 'get', 'my-task'])
+    // read it back THROUGH the cli (real yaml parse + schema validate); --json for the envelope
+    await cli.run(['task', 'get', 'my-task', '--json'])
     expect(last(out).result!.title).toBe('My Task')
 
     // a real status transition persists to disk

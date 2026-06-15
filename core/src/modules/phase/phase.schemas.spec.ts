@@ -9,11 +9,11 @@ test('PhaseNodeSchema parses a valid phase; rejects a foreign (task) status + a 
   expect(PhaseNodeSchema.safeParse({ ...node, slug: 'a/b' }).success).toBe(false)
 })
 
-test('execute + depends_on optional with no injected default; a done AC needs evidence', () => {
+test('no execute field (dropped); depends_on optional; a done AC needs evidence', () => {
   const parsed = PhaseNodeSchema.parse(node)
   expect('execute' in parsed).toBe(false)
-  expect(PhaseNodeSchema.safeParse({ ...node, execute: 'workflow' }).success).toBe(true)
-  expect(PhaseNodeSchema.safeParse({ ...node, execute: 'implement' }).success).toBe(false) // old value gone
+  // execute is gone entirely — a phase is a sequential leaf, so any execute key is now rejected.
+  expect(PhaseNodeSchema.safeParse({ ...node, execute: 'workflow' }).success).toBe(false)
   expect(PhaseNodeSchema.safeParse({ ...node, depends_on: ['css-tokens'] }).success).toBe(true)
   const ac = (evidence?: string[]) => ({
     ...node,

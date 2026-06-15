@@ -1,15 +1,9 @@
 import { test, expect } from 'bun:test'
-import {
-  lifecycleStatusValues,
-  phaseStatusValues,
-  stubStatusValues,
-  phaseExecuteValues,
-} from './statuses.js'
+import { lifecycleStatusValues, phaseStatusValues, stubStatusValues } from './statuses.js'
 
 test('the fixed axes have their exact shape', () => {
   expect(lifecycleStatusValues).toEqual(['plan', 'drafted', 'refined', 'build', 'wrap', 'done'])
   expect(phaseStatusValues).toEqual(['pending', 'in-progress', 'done', 'blocked', 'deferred'])
   expect(stubStatusValues).toEqual(['pending', 'active', 'done', 'blocked'])
   expect(stubStatusValues).not.toContain('in-progress')
-  expect(phaseExecuteValues).toEqual(['sequential', 'workflow'])
 })

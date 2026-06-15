@@ -8,6 +8,7 @@ import type { StorePort, Node } from '../../lib/contracts/store.js'
 import type { TemplatePort } from '../../lib/contracts/template.js'
 import type { Tier } from '../../lib/contracts/tier.js'
 import { anchoredError } from '../../lib/utils/error.js'
+import { dispatch, type Collections, type NodeVerbs, type Verb } from '../shared/dispatch.js'
 import { assertTransition, lifecycleTransitions } from '../shared/transitions.js'
 import { stubStatusValues } from '../shared/statuses.js'
 import { nextChild, readyChildren, addChild, type ChildLike } from '../shared/children.js'
@@ -80,6 +81,20 @@ const RESERVED = new Set([
 const nextEid = (items: { id: string }[]) =>
   `e${items.reduce((m, a) => Math.max(m, Number(/^e(\d+)$/.exec(a.id)?.[1] ?? 0)), 0) + 1}`
 
+// set a (possibly dotted) path immutably — lets `epic set <slug> context.refine "…"` write into
+// the nested context trail correctly (C5 parity with task/phase), instead of a literal flat key.
+function setNested(
+  obj: Record<string, unknown>,
+  path: string[],
+  value: unknown,
+): Record<string, unknown> {
+  const [head, ...rest] = path as [string, ...string[]]
+  if (rest.length === 0) return { ...obj, [head]: value }
+  const cur = obj[head]
+  const child = cur && typeof cur === 'object' ? (cur as Record<string, unknown>) : {}
+  return { ...obj, [head]: setNested(child, rest, value) }
+}
+
 export function createEpic(deps: { store: StorePort; template: TemplatePort; task: Tier }): Tier {
   const { store, template, task } = deps
   const read = (slug: string) => store.read(slug, EpicNodeSchema) as Promise<EpicNodeLike>
@@ -98,7 +113,34 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
       return write(slug, { ...node, tasks: stubs.map((s, i) => (i === idx ? fn(s) : s)) })
     })
 
-  const verbs: Record<string, (...args: string[]) => Promise<unknown>> = {
+  // outcome-level ACs PER task-stub (epic-refine works these out) — same shape + evidence
+  // invariant as a phase AC. They DOCUMENT the outcomes; per B1 they no longer gate the stub's
+  // `child status done` (the child task's own phase-completion floor delivers the child, the
+  // roll-up/wrap verifies the outcomes). The nested `child ac <op>` collection routes here.
+  const childAc: Record<string, Verb> = {
+    add: (slug, childSlug, text) =>
+      mutateStub(slug, childSlug, (s) => ({
+        ...s,
+        acceptance_criteria: addAc(s.acceptance_criteria ?? [], text),
+      })),
+    evidence: (slug, childSlug, acId, proof) =>
+      mutateStub(slug, childSlug, (s) => ({
+        ...s,
+        acceptance_criteria: evidenceAc(s.acceptance_criteria ?? [], acId, proof),
+      })),
+    fail: (slug, childSlug, acId, why) =>
+      mutateStub(slug, childSlug, (s) => ({
+        ...s,
+        acceptance_criteria: failAc(s.acceptance_criteria ?? [], acId, why),
+      })),
+    defer: (slug, childSlug, acId, reason) =>
+      mutateStub(slug, childSlug, (s) => ({
+        ...s,
+        acceptance_criteria: deferAc(s.acceptance_criteria ?? [], acId, reason),
+      })),
+  }
+
+  const nodeVerbs: NodeVerbs = {
     get: (slug) => read(slug),
     create: (slug, title) =>
       write(slug, {
@@ -121,195 +163,23 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
       return write(slug, { ...node, status: to })
     },
     async set(slug, field, value) {
-      if (RESERVED.has(field.split('.')[0]!))
+      const path = field.split('.')
+      if (RESERVED.has(path[0]!))
         throw anchoredError('ReservedField', `field '${field}' is reserved`)
       const node = await read(slug)
-      return write(slug, { ...node, [field]: value })
+      const next = path.length > 1 ? setNested(node, path, value) : { ...node, [field]: value }
+      return write(slug, next as EpicNodeLike)
     },
 
-    // task-stub existence (the loop queue)
-    async 'child-add'(slug, childSlug, goal) {
-      const node = await read(slug)
-      const stub: Stub = {
-        slug: childSlug,
-        status: 'pending',
-        ...(goal !== undefined ? { goal } : {}),
-      }
-      return write(slug, { ...node, tasks: addChild(stubsOf(node), stub) })
-    },
-    async 'child-next'(slug) {
-      return nextChild(stubsOf(await read(slug)))
-    },
-    async 'child-ready'(slug) {
-      return readyChildren(stubsOf(await read(slug)))
-    },
-    'child-status': (slug, childSlug, status) =>
-      mutateStub(slug, childSlug, (s) => {
-        if (!stubStatusValues.includes(status as (typeof stubStatusValues)[number])) {
-          throw anchoredError('InvalidChildStatus', `'${status}' is not a valid task-stub status`, [
-            ...stubStatusValues,
-          ])
-        }
-        if (status === 'done') {
-          const openAcs = (s.acceptance_criteria ?? []).filter(
-            (a) => !['done', 'deferred'].includes(a.status),
-          )
-          if (openAcs.length > 0) {
-            throw anchoredError(
-              'ChildIncomplete',
-              `cannot mark '${childSlug}' done: ACs not terminal — ${openAcs.map((a) => a.id).join(', ')}`,
-            )
-          }
-        }
-        return { ...s, status }
-      }),
-    'child-set-field': (slug, childSlug, field, value) =>
-      mutateStub(slug, childSlug, (s) => {
-        if (['slug', 'status', 'acceptance_criteria'].includes(field)) {
-          throw anchoredError('ReservedField', `stub field '${field}' is reserved`)
-        }
-        return {
-          ...s,
-          [field]: field === 'depends_on' ? value.split(',').map((x) => x.trim()) : value,
-        }
-      }),
-
-    // outcome-level ACs PER task-stub (epic-refine works these out) — same shape + evidence
-    // invariant as a phase AC; gates the stub's child-status done (see child-status above).
-    'child-ac-add': (slug, childSlug, text) =>
-      mutateStub(slug, childSlug, (s) => ({
-        ...s,
-        acceptance_criteria: addAc(s.acceptance_criteria ?? [], text),
-      })),
-    'child-ac-evidence': (slug, childSlug, acId, proof) =>
-      mutateStub(slug, childSlug, (s) => ({
-        ...s,
-        acceptance_criteria: evidenceAc(s.acceptance_criteria ?? [], acId, proof),
-      })),
-    'child-ac-fail': (slug, childSlug, acId, why) =>
-      mutateStub(slug, childSlug, (s) => ({
-        ...s,
-        acceptance_criteria: failAc(s.acceptance_criteria ?? [], acId, why),
-      })),
-    'child-ac-defer': (slug, childSlug, acId, reason) =>
-      mutateStub(slug, childSlug, (s) => ({
-        ...s,
-        acceptance_criteria: deferAc(s.acceptance_criteria ?? [], acId, reason),
-      })),
-
-    // epic DoD acceptance items
-    async 'add-acceptance'(slug, text) {
-      const node = await read(slug)
-      const items = node.acceptance ?? []
-      return write(slug, {
-        ...node,
-        acceptance: [...items, { id: nextEid(items), text, status: 'pending' }],
-      })
-    },
-    // detail = delivery evidence for `done`, the deferral reason for `deferred`. The schema
-    // backstops both; these explicit checks give the better message.
-    async 'set-acceptance-status'(slug, id, status, detail) {
-      const node = await read(slug)
-      const items = node.acceptance ?? []
-      const item = items.find((a) => a.id === id)
-      if (!item) throw anchoredError('UnknownAcceptance', `no acceptance item '${id}'`)
-      let next: AcceptanceItem
-      if (status === 'done') {
-        const merged = detail ? [...(item.evidence ?? []), detail] : item.evidence
-        if (!(merged && merged.length > 0)) {
-          throw anchoredError(
-            'AcceptanceNoEvidence',
-            `acceptance item '${id}' cannot be done without delivery evidence`,
-            [
-              'pass provenance: set-acceptance-status <slug> <id> done "<task>/<phase> — delivered"',
-            ],
-          )
-        }
-        next = { ...item, status, evidence: merged }
-      } else if (status === 'deferred') {
-        if (!(detail && detail.trim())) {
-          throw anchoredError(
-            'AcceptanceNoReason',
-            `acceptance item '${id}' cannot be deferred without a reason`,
-            ['pass the reason: set-acceptance-status <slug> <id> deferred "<why postponed>"'],
-          )
-        }
-        next = { ...item, status, reason: detail }
-      } else {
-        next = { ...item, status }
-      }
-      return write(slug, { ...node, acceptance: items.map((a) => (a.id === id ? next : a)) })
-    },
-
-    // roll-up: read each stub's child TASK file (via the injected task module) → report status.
-    async 'roll-up'(slug) {
-      const node = await read(slug)
-      const children = await Promise.all(
-        stubsOf(node).map(async (s) => {
-          const childSlug = `${node.slug}/${s.slug}`
-          let childStatus: string
-          try {
-            childStatus = ((await task.get(childSlug)) as { status?: string }).status ?? 'unknown'
-          } catch {
-            childStatus = 'missing'
-          }
-          return { slug: s.slug, stubStatus: s.status, childStatus }
-        }),
-      )
-      return { epic: node.slug, children, acceptance: node.acceptance ?? [] }
-    },
-
-    async 'question-add'(slug, text, priority) {
-      const node = await read(slug)
-      return write(slug, {
-        ...node,
-        questions: addQuestion(node.questions ?? [], {
-          text,
-          priority: (priority ?? 'medium') as 'low' | 'medium' | 'high',
-        }),
-      })
-    },
-    async 'question-resolve'(slug, id, answer, source, reasoning) {
-      const node = await read(slug)
-      return write(slug, {
-        ...node,
-        questions: resolveQuestion(node.questions ?? [], id, {
-          answer,
-          source: (source ?? 'user') as 'user' | 'ai',
-          ...(reasoning !== undefined ? { reasoning } : {}),
-        }),
-      })
-    },
-    async 'concern-add'(slug, text, priority) {
-      const node = await read(slug)
-      return write(slug, {
-        ...node,
-        concerns: addQuestion(
-          node.concerns ?? [],
-          { text, priority: (priority ?? 'medium') as 'low' | 'medium' | 'high' },
-          'c',
-        ),
-      })
-    },
-    async 'concern-resolve'(slug, id, answer, source, reasoning) {
-      const node = await read(slug)
-      return write(slug, {
-        ...node,
-        concerns: resolveQuestion(node.concerns ?? [], id, {
-          answer,
-          source: (source ?? 'user') as 'user' | 'ai',
-          ...(reasoning !== undefined ? { reasoning } : {}),
-        }),
-      })
-    },
-    async 'append-log'(slug, at, kind, note) {
-      const node = await read(slug)
-      return write(slug, { ...node, log: appendLog(node.log ?? [], { at, kind, note }) })
-    },
-
+    // archive cascades: an epic moves its whole folder (child task files included), and we mark
+    // every delivered (status 'done') child stub as archived in the returned summary (C2).
     async archive(slug) {
+      const node = await read(slug).catch(() => undefined)
+      const delivered = (node?.tasks ?? [])
+        .filter((t) => t.status === 'done')
+        .map((t) => `${slug}/${t.slug}`)
       await store.archive(slug)
-      return { slug, archived: true }
+      return { slug, archived: true, children: delivered }
     },
     async reset(slug) {
       await store.remove(slug)
@@ -317,17 +187,174 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
     },
   }
 
-  return {
-    tier: 'epic',
-    verbs: () => Object.keys(verbs),
-    get: (slug) => read(slug),
-    run: async (verb, args) => {
-      const fn = verbs[verb]
-      if (!fn)
-        throw anchoredError('UnknownVerb', `epic has no verb '${verb}'`, [
-          `known: ${Object.keys(verbs).join(', ')}`,
-        ])
-      return fn(...args)
+  const collections: Collections = {
+    // task-stub existence + the per-stub outcome-AC sub-collection (`child ac <op>`).
+    child: {
+      async add(slug, childSlug, goal) {
+        const node = await read(slug)
+        const stub: Stub = {
+          slug: childSlug,
+          status: 'pending',
+          ...(goal !== undefined ? { goal } : {}),
+        }
+        return write(slug, { ...node, tasks: addChild(stubsOf(node), stub) })
+      },
+      async next(slug) {
+        return nextChild(stubsOf(await read(slug)))
+      },
+      async ready(slug) {
+        return readyChildren(stubsOf(await read(slug)))
+      },
+      // B1: flipping a stub to `done` no longer requires its outcome ACs to be terminal — the
+      // child task's own phase-completion floor delivers it; outcomes are verified at roll-up/wrap.
+      status: (slug, childSlug, status) =>
+        mutateStub(slug, childSlug, (s) => {
+          if (!stubStatusValues.includes(status as (typeof stubStatusValues)[number])) {
+            throw anchoredError(
+              'InvalidChildStatus',
+              `'${status}' is not a valid task-stub status`,
+              [...stubStatusValues],
+            )
+          }
+          return { ...s, status }
+        }),
+      set: (slug, childSlug, field, value) =>
+        mutateStub(slug, childSlug, (s) => {
+          if (['slug', 'status', 'acceptance_criteria'].includes(field)) {
+            throw anchoredError('ReservedField', `stub field '${field}' is reserved`)
+          }
+          return {
+            ...s,
+            [field]: field === 'depends_on' ? value.split(',').map((x) => x.trim()) : value,
+          }
+        }),
+      // the per-stub outcome-AC sub-collection: `epic child ac <op> <slug> <childSlug> …`.
+      ac: (subOp, ...rest) => {
+        const fn = childAc[subOp]
+        if (!fn) {
+          throw anchoredError('UnknownOp', `'epic child ac' has no op '${subOp}'`, [
+            `ops: ${Object.keys(childAc).join(', ')}`,
+          ])
+        }
+        return fn(...rest)
+      },
+      // roll-up: read each stub's child TASK file (via the injected task module) → report status.
+      async 'roll-up'(slug) {
+        const node = await read(slug)
+        const children = await Promise.all(
+          stubsOf(node).map(async (s) => {
+            const childSlug = `${node.slug}/${s.slug}`
+            let childStatus: string
+            try {
+              childStatus = ((await task.get(childSlug)) as { status?: string }).status ?? 'unknown'
+            } catch {
+              childStatus = 'missing'
+            }
+            return { slug: s.slug, stubStatus: s.status, childStatus }
+          }),
+        )
+        return { epic: node.slug, children, acceptance: node.acceptance ?? [] }
+      },
+    },
+
+    // epic DoD acceptance items
+    acceptance: {
+      async add(slug, text) {
+        const node = await read(slug)
+        const items = node.acceptance ?? []
+        return write(slug, {
+          ...node,
+          acceptance: [...items, { id: nextEid(items), text, status: 'pending' }],
+        })
+      },
+      // detail = delivery evidence for `done`, the deferral reason for `deferred`. The schema
+      // backstops both; these explicit checks give the better message.
+      async status(slug, id, status, detail) {
+        const node = await read(slug)
+        const items = node.acceptance ?? []
+        const item = items.find((a) => a.id === id)
+        if (!item) throw anchoredError('UnknownAcceptance', `no acceptance item '${id}'`)
+        let next: AcceptanceItem
+        if (status === 'done') {
+          const merged = detail ? [...(item.evidence ?? []), detail] : item.evidence
+          if (!(merged && merged.length > 0)) {
+            throw anchoredError(
+              'AcceptanceNoEvidence',
+              `acceptance item '${id}' cannot be done without delivery evidence`,
+              ['pass provenance: acceptance status <slug> <id> done "<task>/<phase> — delivered"'],
+            )
+          }
+          next = { ...item, status, evidence: merged }
+        } else if (status === 'deferred') {
+          if (!(detail && detail.trim())) {
+            throw anchoredError(
+              'AcceptanceNoReason',
+              `acceptance item '${id}' cannot be deferred without a reason`,
+              ['pass the reason: acceptance status <slug> <id> deferred "<why postponed>"'],
+            )
+          }
+          next = { ...item, status, reason: detail }
+        } else {
+          next = { ...item, status }
+        }
+        return write(slug, { ...node, acceptance: items.map((a) => (a.id === id ? next : a)) })
+      },
+    },
+
+    question: {
+      async add(slug, text, priority) {
+        const node = await read(slug)
+        return write(slug, {
+          ...node,
+          questions: addQuestion(node.questions ?? [], {
+            text,
+            priority: (priority ?? 'medium') as 'low' | 'medium' | 'high',
+          }),
+        })
+      },
+      async resolve(slug, id, answer, source, reasoning) {
+        const node = await read(slug)
+        return write(slug, {
+          ...node,
+          questions: resolveQuestion(node.questions ?? [], id, {
+            answer,
+            source: (source ?? 'user') as 'user' | 'ai',
+            ...(reasoning !== undefined ? { reasoning } : {}),
+          }),
+        })
+      },
+    },
+    concern: {
+      async add(slug, text, priority) {
+        const node = await read(slug)
+        return write(slug, {
+          ...node,
+          concerns: addQuestion(
+            node.concerns ?? [],
+            { text, priority: (priority ?? 'medium') as 'low' | 'medium' | 'high' },
+            'c',
+          ),
+        })
+      },
+      async resolve(slug, id, answer, source, reasoning) {
+        const node = await read(slug)
+        return write(slug, {
+          ...node,
+          concerns: resolveQuestion(node.concerns ?? [], id, {
+            answer,
+            source: (source ?? 'user') as 'user' | 'ai',
+            ...(reasoning !== undefined ? { reasoning } : {}),
+          }),
+        })
+      },
+    },
+    log: {
+      async add(slug, at, kind, note) {
+        const node = await read(slug)
+        return write(slug, { ...node, log: appendLog(node.log ?? [], { at, kind, note }) })
+      },
     },
   }
+
+  return dispatch('epic', nodeVerbs, collections, (slug) => read(slug))
 }

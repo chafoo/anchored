@@ -15,6 +15,9 @@ import { createPhase } from '../modules/phase/phase.js'
 import { createEpic } from '../modules/epic/epic.js'
 import { TaskNodeSchema } from '../modules/task/task.schemas.js'
 import { envelope, type Envelope } from './envelope.js'
+import { renderLine } from './scope/render-line.js'
+import { exitCode } from './scope/exit-code.js'
+import { readStdinArg } from './scope/read-stdin-arg.js'
 
 export interface CliDeps {
   fs: FileSystem
@@ -30,6 +33,8 @@ export interface CliDeps {
   parseYaml: (raw: string) => unknown
   projectRoot: string
   out: (line: string) => void
+  /** read exactly one body value from stdin — the input twin of `out` (G2/G3). bin.ts owns it. */
+  readStdin: () => string
   version?: string
 }
 
@@ -68,15 +73,20 @@ export function createCli(deps: CliDeps): Anchored {
   const epic = createEpic({ store: storeFor('epic'), template, task })
   const tiers: Record<string, Tier> = { phase, task, epic }
 
-  const emit = (env: Envelope): number => {
-    deps.out(JSON.stringify(env))
-    return env.ok ? 0 : 1
+  // the ONE output chokepoint. Default = one dense readable line (F1); `--json` = the raw
+  // envelope. The exit code is the kind-specific F3 mapping (0 ok, else a meaningful non-zero).
+  const emit = (env: Envelope, json: boolean): number => {
+    deps.out(json ? JSON.stringify(env) : renderLine(env))
+    return exitCode(env)
   }
 
   return {
     template,
     async run(argv: string[]): Promise<number> {
-      const [tier, verb, ...rest] = argv
+      // --json (F5) is a global flag — strip it anywhere in argv before grammar parsing, so a
+      // command's positional shape is unchanged whether or not the caller asked for JSON.
+      const json = argv.includes('--json')
+      const [tier, verb, ...rest] = json ? argv.filter((a) => a !== '--json') : argv
       if (tier === undefined || tier === 'help' || tier === '--help' || tier === '-h') {
         deps.out(help(tiers))
         return 0
@@ -87,9 +97,9 @@ export function createCli(deps: CliDeps): Anchored {
       }
       if (tier === 'validate') {
         try {
-          return emit(envelope('validate', template.validate()))
+          return emit(envelope('validate', template.validate()), json)
         } catch (e) {
-          return emit(envelope('validate', undefined, e))
+          return emit(envelope('validate', undefined, e), json)
         }
       }
       const t = tiers[tier]
@@ -102,6 +112,7 @@ export function createCli(deps: CliDeps): Anchored {
               `tiers: ${Object.keys(tiers).join(', ')}`,
             ]),
           ),
+          json,
         )
       }
       if (verb === undefined) {
@@ -111,12 +122,17 @@ export function createCli(deps: CliDeps): Anchored {
             undefined,
             anchoredError('NoVerb', `'${tier}' needs a verb`, [`verbs: ${t.verbs().join(', ')}`]),
           ),
+          json,
         )
       }
+      // G2/G3: a positional `-` reads exactly one body value from stdin (big prose or a bulk JSON
+      // payload). The substitution happens before dispatch; the tier verb parses + Zod-validates
+      // any structured payload (G4) — the cli only swaps the channel.
+      const args = readStdinArg(rest, deps.readStdin)
       try {
-        return emit(envelope(`${tier} ${verb}`, await t.run(verb, rest)))
+        return emit(envelope(`${tier} ${verb}`, await t.run(verb, args)), json)
       } catch (e) {
-        return emit(envelope(`${tier} ${verb}`, undefined, e))
+        return emit(envelope(`${tier} ${verb}`, undefined, e), json)
       }
     },
   }

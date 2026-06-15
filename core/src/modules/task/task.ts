@@ -1,14 +1,16 @@
 // _v3/modules/task/task.ts — createTask({store,template}) → Tier. The task factory: owns the
 // task lifecycle (plan/refine/build/wrap return the orchestration plan from template), the
-// task node verbs (get/set/status), and the phase-EXISTENCE verbs (parent owns child
-// existence: add-phase / list-phases / next-phase). The phase CONTENT verbs (status/ac/rule)
-// live in the phase module (it writes the same task file). Every verb = read → pure
-// transform → store.write(slug, …, TaskNodeSchema); the schema (with the evidence refine) is
-// the store's only law, so this code never re-checks evidence.
+// task node verbs (get/set/status), and the phase-EXISTENCE collection (parent owns child
+// existence: `phase add` / `phase list` / `phase next` / `phase ready`). The phase CONTENT
+// verbs (status/ac/rule) live in the phase module (it writes the same task file). Grammar is
+// the api.md two-token form: collections (`phase` · `question` · `concern`) dispatch as
+// `task <collection> <op>`. Every verb = read → pure transform → store.write(slug, …,
+// TaskNodeSchema); the schema (with the evidence refine) is the store's only law.
 import type { StorePort, Node } from '../../lib/contracts/store.js'
 import type { TemplatePort } from '../../lib/contracts/template.js'
 import type { Tier } from '../../lib/contracts/tier.js'
 import { anchoredError } from '../../lib/utils/error.js'
+import { dispatch, type Collections, type NodeVerbs } from '../shared/dispatch.js'
 import { assertTransition, lifecycleTransitions } from '../shared/transitions.js'
 import { nextChild, readyChildren } from '../shared/children.js'
 import {
@@ -87,7 +89,7 @@ export function createTask(deps: { store: StorePort; template: TemplatePort }): 
     node: await read(slug),
   })
 
-  const verbs: Record<string, (...args: string[]) => Promise<unknown>> = {
+  const nodeVerbs: NodeVerbs = {
     get: (slug) => read(slug),
     create: (slug, title) =>
       write(slug, {
@@ -115,82 +117,13 @@ export function createTask(deps: { store: StorePort; template: TemplatePort }): 
         throw anchoredError(
           'ReservedField',
           `field '${top}' is reserved and cannot be set via set`,
-          ['use the dedicated verb (status, add-phase, question-add, …)'],
+          ['use the dedicated verb (status, phase add, question add, …)'],
         )
       }
       const node = await read(slug)
       const path = field.split('.')
       const next = path.length > 1 ? setNested(node, path, value) : { ...node, [field]: value }
       return write(slug, next as TaskNodeLike)
-    },
-
-    async 'add-phase'(slug, phaseSlug, name) {
-      const node = await read(slug)
-      const phases = node.phases ?? []
-      if (phases.some((p) => p.slug === phaseSlug)) {
-        throw anchoredError('DuplicateSlug', `phase '${phaseSlug}' already exists`)
-      }
-      const phase: PhaseLike = { slug: phaseSlug, name: name ?? phaseSlug, status: 'pending' }
-      return write(slug, { ...node, phases: [...phases, phase] })
-    },
-
-    async 'list-phases'(slug) {
-      return (await read(slug)).phases ?? []
-    },
-    async 'next-phase'(slug) {
-      const phases = ((await read(slug)).phases ?? []) as { slug: string; status: string }[]
-      return nextChild(phases)
-    },
-    async 'ready-phases'(slug) {
-      const phases = ((await read(slug)).phases ?? []) as { slug: string; status: string }[]
-      return readyChildren(phases)
-    },
-
-    async 'question-add'(slug, text, priority) {
-      const node = await read(slug)
-      const questions = addQuestion((node.questions ?? []) as Question[], {
-        text,
-        priority: (priority ?? 'medium') as 'low' | 'medium' | 'high',
-      })
-      return write(slug, { ...node, questions })
-    },
-    async 'question-resolve'(slug, id, answer, source, reasoning) {
-      const node = await read(slug)
-      const questions = resolveQuestion((node.questions ?? []) as Question[], id, {
-        answer,
-        source: (source ?? 'user') as 'user' | 'ai',
-        ...(reasoning !== undefined ? { reasoning } : {}),
-      })
-      return write(slug, { ...node, questions })
-    },
-    async 'concern-add'(slug, text, priority) {
-      const node = await read(slug)
-      const concerns = addQuestion(
-        (node.concerns ?? []) as Question[],
-        {
-          text,
-          priority: (priority ?? 'medium') as 'low' | 'medium' | 'high',
-        },
-        'c',
-      )
-      return write(slug, { ...node, concerns })
-    },
-    async 'concern-resolve'(slug, id, answer, source, reasoning) {
-      const node = await read(slug)
-      const concerns = resolveQuestion((node.concerns ?? []) as Question[], id, {
-        answer,
-        source: (source ?? 'user') as 'user' | 'ai',
-        ...(reasoning !== undefined ? { reasoning } : {}),
-      })
-      return write(slug, { ...node, concerns })
-    },
-
-    async 'append-log'(slug, at, kind, note) {
-      const node = await read(slug)
-      return write(slug, {
-        ...node,
-        log: appendLog((node.log ?? []) as LogEntry[], { at, kind, note }),
-      })
     },
 
     async archive(slug) {
@@ -203,17 +136,82 @@ export function createTask(deps: { store: StorePort; template: TemplatePort }): 
     },
   }
 
-  return {
-    tier: 'task',
-    verbs: () => Object.keys(verbs),
-    get: (slug) => read(slug),
-    run: async (verb, args) => {
-      const fn = verbs[verb]
-      if (!fn)
-        throw anchoredError('UnknownVerb', `task has no verb '${verb}'`, [
-          `known: ${Object.keys(verbs).join(', ')}`,
-        ])
-      return fn(...args)
+  const collections: Collections = {
+    // phase EXISTENCE (parent owns child existence + order; the phase module owns content).
+    phase: {
+      async add(slug, phaseSlug, name) {
+        const node = await read(slug)
+        const phases = node.phases ?? []
+        if (phases.some((p) => p.slug === phaseSlug)) {
+          throw anchoredError('DuplicateSlug', `phase '${phaseSlug}' already exists`)
+        }
+        const phase: PhaseLike = { slug: phaseSlug, name: name ?? phaseSlug, status: 'pending' }
+        return write(slug, { ...node, phases: [...phases, phase] })
+      },
+      async list(slug) {
+        return (await read(slug)).phases ?? []
+      },
+      async next(slug) {
+        const phases = ((await read(slug)).phases ?? []) as { slug: string; status: string }[]
+        return nextChild(phases)
+      },
+      async ready(slug) {
+        const phases = ((await read(slug)).phases ?? []) as { slug: string; status: string }[]
+        return readyChildren(phases)
+      },
+    },
+    question: {
+      async add(slug, text, priority) {
+        const node = await read(slug)
+        const questions = addQuestion((node.questions ?? []) as Question[], {
+          text,
+          priority: (priority ?? 'medium') as 'low' | 'medium' | 'high',
+        })
+        return write(slug, { ...node, questions })
+      },
+      async resolve(slug, id, answer, source, reasoning) {
+        const node = await read(slug)
+        const questions = resolveQuestion((node.questions ?? []) as Question[], id, {
+          answer,
+          source: (source ?? 'user') as 'user' | 'ai',
+          ...(reasoning !== undefined ? { reasoning } : {}),
+        })
+        return write(slug, { ...node, questions })
+      },
+    },
+    concern: {
+      async add(slug, text, priority) {
+        const node = await read(slug)
+        const concerns = addQuestion(
+          (node.concerns ?? []) as Question[],
+          {
+            text,
+            priority: (priority ?? 'medium') as 'low' | 'medium' | 'high',
+          },
+          'c',
+        )
+        return write(slug, { ...node, concerns })
+      },
+      async resolve(slug, id, answer, source, reasoning) {
+        const node = await read(slug)
+        const concerns = resolveQuestion((node.concerns ?? []) as Question[], id, {
+          answer,
+          source: (source ?? 'user') as 'user' | 'ai',
+          ...(reasoning !== undefined ? { reasoning } : {}),
+        })
+        return write(slug, { ...node, concerns })
+      },
+    },
+    log: {
+      async add(slug, at, kind, note) {
+        const node = await read(slug)
+        return write(slug, {
+          ...node,
+          log: appendLog((node.log ?? []) as LogEntry[], { at, kind, note }),
+        })
+      },
     },
   }
+
+  return dispatch('task', nodeVerbs, collections, (slug) => read(slug))
 }

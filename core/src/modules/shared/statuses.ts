@@ -18,8 +18,3 @@ export const phaseStatusValues = ['pending', 'in-progress', 'done', 'blocked', '
 // The child-STUB loop-queue marker (epic's task-stubs). 'active' is
 // the in-flight marker (never the phase word 'in-progress' — that mismatch bricked an epic).
 export const stubStatusValues = ['pending', 'active', 'done', 'blocked'] as const
-
-// Phase execute axis — how a phase's build runs: `sequential` (the implement path) or
-// `workflow` (fan its acceptance criteria out). Aligned in name + values with the step-level
-// `execute` (requirements-3); plan/refine decides it and records it on the phase.
-export const phaseExecuteValues = ['sequential', 'workflow'] as const

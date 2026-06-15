@@ -66,13 +66,24 @@ export function doneAc<T extends AcLike>(acs: T[], acId: string): T[] {
   return mapAc(acs, acId, (ac) => retireFailures({ ...ac, status: 'done' }))
 }
 
+/** Edit an AC's text (the wording), leaving its status/evidence/failures untouched. Restores the
+ *  v1 `set_ac_text` capability so a badly-worded AC can be fixed instead of worked-around. */
+export function setAcText<T extends AcLike>(acs: T[], acId: string, text: string): T[] {
+  if (!(text && text.trim())) {
+    throw anchoredError('AcNoText', `cannot set '${acId}' text to empty`, [
+      "pass the new wording: ac set <slug> <id> text '<text>'",
+    ])
+  }
+  return mapAc(acs, acId, (ac) => ({ ...ac, text }))
+}
+
 /** Defer an AC: record the reason + flip to deferred. A deferred AC is terminal — the
  *  completion floors do not block on it. The reason is required (the schema also enforces it,
  *  but we check here for a clean message instead of a raw schema error). */
 export function deferAc<T extends AcLike>(acs: T[], acId: string, reason: string): T[] {
   if (!(reason && reason.trim())) {
     throw anchoredError('AcNoReason', `cannot defer '${acId}' without a reason`, [
-      'pass why it is postponed: ac-defer <slug> <ac-id> "<reason>"',
+      'pass why it is postponed: ac defer <slug> <ac-id> "<reason>"',
     ])
   }
   return mapAc(acs, acId, (ac) => retireFailures({ ...ac, status: 'deferred', reason }))

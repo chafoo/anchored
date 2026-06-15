@@ -9,6 +9,7 @@ import {
   failAc,
   doneAc,
   deferAc,
+  setAcText,
   nextAcId,
   retireFailures,
 } from './acceptance.js'
@@ -81,11 +82,28 @@ test('deferAc: records a reason, flips to deferred, retires failures', () => {
   expect('failures' in deferred[0]!).toBe(false)
 })
 
+test('setAcText: edits the wording, leaving status/evidence untouched', () => {
+  const done = evidenceAc(addAc(empty, 'old'), 'a1', 'proof')
+  const retitled = setAcText(done, 'a1', 'sharper wording')
+  expect(retitled[0]).toEqual({
+    id: 'a1',
+    text: 'sharper wording',
+    status: 'done',
+    evidence: ['proof'],
+  })
+})
+
+test('setAcText: a blank text throws AcNoText', () => {
+  expect(() => setAcText(addAc(empty, 'x'), 'a1', '')).toThrow(/empty/)
+  expect(() => setAcText(addAc(empty, 'x'), 'a1', '   ')).toThrow(/empty/)
+})
+
 test('mutators throw on an unknown id', () => {
   expect(() => evidenceAc(addAc(empty, 'x'), 'a9', 'p')).toThrow(/no acceptance criterion 'a9'/)
   expect(() => failAc(addAc(empty, 'x'), 'a9', 'w')).toThrow(/no acceptance criterion 'a9'/)
   expect(() => doneAc(addAc(empty, 'x'), 'a9')).toThrow(/no acceptance criterion 'a9'/)
   expect(() => deferAc(addAc(empty, 'x'), 'a9', 'r')).toThrow(/no acceptance criterion 'a9'/)
+  expect(() => setAcText(addAc(empty, 'x'), 'a9', 'new')).toThrow(/no acceptance criterion 'a9'/)
 })
 
 test('deferAc: a missing/blank reason throws a clean AcNoReason (not a raw schema error)', () => {

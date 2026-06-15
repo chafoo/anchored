@@ -9,6 +9,7 @@ import { randomBytes } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { parse, stringify } from 'yaml'
 import { createCli } from './cli/cli.js'
+import { renderLine } from './cli/scope/render-line.js'
 import * as layout from './cli/layout.js'
 import type { FileSystem, Lock } from './lib/contracts/fs.js'
 
@@ -114,6 +115,15 @@ const cli = createCli({
   parseYaml: (raw) => parse(raw, { maxAliasCount: 100 }),
   projectRoot: root,
   out: (line) => process.stdout.write(line + '\n'),
+  // the input twin of `out` — the ONLY site allowed to touch real stdin. fd 0 reads the whole
+  // body a `-` positional asks for (G2/G3); an empty/absent stdin yields '' (the cli/tier guards).
+  readStdin: () => {
+    try {
+      return readFileSync(0, 'utf8')
+    } catch {
+      return ''
+    }
+  },
   version,
 })
 
@@ -121,13 +131,16 @@ cli
   .run(process.argv.slice(2))
   .then((code) => process.exit(code))
   .catch((err) => {
+    // the pre-dispatcher crash path (the cli never got to emit). Render the same readable line
+    // (F1/F3 consistency) — unless --json was asked, then keep the raw envelope.
     const e = err as { name?: string; message?: string }
-    process.stdout.write(
-      JSON.stringify({
-        ok: false,
-        command: process.argv[2] ?? '',
-        error: { name: e.name || 'Error', message: e.message || String(err) },
-      }) + '\n',
-    )
+    const command = (process.argv[2] ?? '').startsWith('-') ? '' : (process.argv[2] ?? '')
+    const env = {
+      ok: false as const,
+      command,
+      error: { name: e.name || 'Error', message: e.message || String(err) },
+    }
+    const json = process.argv.includes('--json')
+    process.stdout.write((json ? JSON.stringify(env) : renderLine(env)) + '\n')
     process.exit(1)
   })
