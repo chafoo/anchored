@@ -23,62 +23,73 @@ build — into one clean, user-defined policy.
 build.** This is the `conditions` mechanism (the topic filter) elevated to a standing policy
 for the whole build run.
 
-### When it is asked — once, during plan
-- The escalation-policy question is a **plan-stage** question (the build is where oversight
-  loss is feared; the policy is set before it starts).
-- It fires **once per plan**, at the **tier being planned**:
-  - planning an **epic** → asked at the **epic plan**; it governs the **entire epic build**,
-    including every child task — it is **not** re-asked when the build just-in-time plans each
-    child.
-  - planning a **standalone task** → asked at **that task's plan**.
-- **Once per plan invocation.** Not re-asked per child during the build, not re-asked at
-  refine. The plan-time answer is the standing policy for that run (held in working memory;
-  the user can still revise it mid-flight — "actually, also loop me in on X").
+### When it is asked — in the refine walk, once
+- It fires **once**, in the **refine walk** — where the user is already in dialogue with the
+  node's questions, so it is **one** interaction point, not two. Fallback: if refine is skipped
+  (`drafted → build`), it is asked in the pre-build walk at the start of `/a:build`.
+- At the **tier being refined**: refining an **epic** asks it once and it governs the
+  **entire epic build**, including every child task — **not** re-asked when the build
+  just-in-time refines each child. Refining a **standalone task** asks it there.
+- The answer is the standing policy for that run (held in working memory; the user can still
+  revise it mid-flight — "actually, also loop me in on X").
 
-### What the user can say — free-form
-Their own words, e.g. *"pull me in for anything touching persistence, auth, or the public API
-— decide the rest yourself."* The simple priority presets (`high` / `medium` / `low` / `ai`)
-remain available for users who don't want to think in topics; `conditions` is the richer
-answer to the same question: **"when do you want me to pull you in?"**
+### How it is asked — typed prose, NOT a menu
+The escalation policy is captured as **free-form prose the user TYPES**, not a pick-list. One
+simple question — *"When do you want me to pull you in during the build?"* — with a **suggested
+default shown in the prompt**, so the lazy path is "accept the suggestion": e.g. *"Default: just
+the important calls. Or type: all of them · none, you decide · or topics like 'anything
+touching persistence or auth'."* The old priority presets (`high`/`medium`/`low`/`ai`) survive
+only as **example phrasings inside the prompt**, not as selectable options. The AI then judges
+each build-time escalation moment against the user's words (the `conditions` mechanism,
+generalised).
 
-## The safety floor (agreed in principle — definition to sharpen)
+> **SELECTION vs. PROSE split:** the node's actual **plan questions** (the concrete
+> ambiguities) stay **selection-based** (`AskUserQuestion` with options + a recommendation —
+> real forks deserve clickable choices). The **escalation policy** ("when else should I reach
+> you") is inherently open, so it is **typed prose**. Two kinds of input, two UIs.
 
-A pure free-form policy has one gap: the **unknown-unknowns** — the risks the user didn't
-think to name. If the build reaches a destructive migration / a force-push / a deleted record
-and the user never listed it, a naïve topic filter lets it through — exactly where the fear of
-losing control is highest.
+## The safety reflex — skill-prose, NOT a coded heuristic
 
-So **on top of** the user's conditions sits a floor the user cannot switch off: anchored
-**always** escalates the **irreversible / high-blast-radius / off-intent**, even when the
-user's conditions don't mention it. The user fills the topic-specific layer; anchored
-guarantees the dangerous layer.
+A free-form policy has one gap: the **unknown-unknowns** — the risks the user didn't think to
+name. We cover it with the simplest possible thing: a **one-line instruction in the refine +
+build skills** — *"surface anything irreversible / high-blast-radius (destroying data,
+rewriting history, breaking a contract/schema, …) regardless of the user's stated conditions."*
+It rides the AI's normal review at refine and at implementation; there is **no coded
+reversibility engine, no heuristic to maintain.** Decided: do **not** over-engineer this.
 
-- **Open:** what exactly counts as "irreversible / high-blast-radius" — a concrete, testable
-  heuristic (e.g. data deletion, history rewrite, a contract/schema break, a cross-boundary
-  change, anything the `stop`-conditions already name). To sharpen before building.
+Honest framing: this is a **best-effort help, not a hard guarantee.** anchored's *hard*
+guarantees live in the substrate (evidence, acceptance criteria); "when to interrupt" is, by
+design, soft helpful behaviour — we help the user keep oversight, we do not promise to catch
+every dangerous thing for them.
 
-## How it relates to what exists
-- **`conditions`** (the topic filter, already built into the refine walk) is the vehicle —
-  now elevated from "how to handle the child-task questions" to "the build run's standing
-  escalation policy," set at plan.
-- **Threshold presets** (`high/medium/low/ai`) stay as the simple default.
-- **`stop`-conditions** are the half-built floor — the reversibility/blast-radius floor is
-  their natural completion.
-- **Reconciliation (to work out at build):** this plan-time escalation policy overlaps the
-  refine walk's task-question timing (the `epic-wide` / `jit` / `conditions` we added). With
-  the escalation policy set at plan, the refine walk can focus on resolving the node's own
-  *known* questions; the *build-time* escalation is the plan-time policy + the floor.
+## How it relates to what exists — and what it REVISES
+- **`conditions`** (the topic filter already in the refine walk) is the vehicle, generalised
+  into the build run's standing escalation policy.
+- **REVISES the selectable threshold walk** (commits `900de48` / `98fbe83`): the multi-option
+  `high/medium/low/ai` + timing picker for the escalation policy becomes the single **typed
+  prose** question above (the presets survive only as example phrasings). The node's own plan
+  questions stay selection-based.
+- **`stop`-conditions** already carry the build's halt rules — the safety-reflex instruction
+  lives naturally alongside them.
+- **This resolves the earlier "reconciliation":** the refine walk now does two distinct things
+  — resolve the node's *known* questions (selection), and capture the *escalation policy* for
+  the unknowns that arise during build (prose). No overlap left to untangle.
 
 ## Build impact (skill-side, lean)
-- **plan SKILL:** trigger the escalation-policy question **once**, at the planned tier (epic
-  plan / standalone task plan); phrase it as "when do you want me to pull you in?"; hold the
-  answer in working memory for the run. Do not re-ask per child or at refine.
+- **refine SKILL:** the walk gains the **typed-prose** escalation question, asked **once** at
+  the refined tier (epic governs its children; standalone task asks there); hold the answer in
+  working memory for the run. Replaces the selectable threshold picker (the node's *known*
+  questions stay selection-based). Fallback: ask it in the pre-build walk if refine was skipped.
 - **build SKILL:** at every escalation moment (a build-time decision, an action about to run),
-  judge it against (a) the user's conditions and (b) the safety floor — escalate (ask the
-  user) on a match, else proceed-and-document with reasoning (`source: ai`).
-- **the floor:** a reversibility / blast-radius heuristic, folded into the build `stop` logic.
+  judge it against (a) the user's prose policy and (b) the **safety-reflex** instruction —
+  escalate (ask the user) on a match, else proceed-and-document with reasoning (`source: ai`).
+- **the safety reflex:** a one-line instruction in the refine + build skills, **no code** —
+  it sits alongside the existing `stop`-conditions.
 
 ## Status — DESIGN (not yet built)
-Decided: free-form, user-defined escalation policy, asked once at plan (per planned tier),
-governing the build; plus a non-disableable safety floor for the irreversible/dangerous.
-Open: the precise floor heuristic; the reconciliation with the refine-walk task policy.
+Decided: a **typed-prose** escalation policy, asked **once in the refine walk** (fallback:
+pre-build walk), at the refined tier, governing the whole build; the priority presets survive
+only as suggested phrasings; the node's own plan questions stay **selection**-based. A **safety
+reflex** as a one-line skill instruction (surface the irreversible/dangerous), deliberately
+**not** a coded heuristic — best-effort help, not a hard guarantee. When built: revise the
+refine walk (commits `900de48` / `98fbe83`) + the build skill to apply the prose policy.
