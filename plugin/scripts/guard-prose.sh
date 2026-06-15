@@ -23,7 +23,7 @@ else
 fi
 
 # 2) The mapping table carries every listed framework term (left column).
-terms=("dependency graph" "just-in-time" scaffold stub seam grounding "roll-up" "outcome acceptance criterion" executor "each:task" drafted refined concern)
+terms=("dependency graph" "just-in-time" scaffold stub seam grounding "roll-up" "outcome acceptance criterion" execute "each:task" drafted refined concern)
 missing=""
 for t in "${terms[@]}"; do
   # table rows look like:  | <term> ... | <plain language> |
@@ -39,7 +39,7 @@ fi
 #    table row) across communication-style.md + the four SKILLs. The left columns
 #    (Avoid demos + the mapping's own term column) may name jargon by design — we
 #    only scan the user-facing right-hand cell.
-jargon='refined|drafted|scaffold|[Ss]tub|seam|grounding|roll-up|outcome-AC|executor|each:task|concern|\bDAG\b|\bJIT\b'
+jargon='refined|drafted|scaffold|[Ss]tub|seam|grounding|roll-up|outcome-AC|each:task|concern|\bDAG\b|\bJIT\b'
 scan_prefer() {
   local file="$1"
   # last content cell of pipe-table rows, minus the mapping table's own plain-words
@@ -107,9 +107,9 @@ echo "== fanout-fastest-safe =="
 RF="$SKILLS/refine/SKILL.md"
 BF="$SKILLS/build/SKILL.md"
 
-# 1) executor default flipped to the fastest safe path (workflow), not sequential.
+# 1) execute default flipped to the fastest safe path (workflow), not sequential.
 if grep -qF "Default to the fastest safe path" "$RF"; then
-  pass "refine defaults the executor to the fastest safe path"
+  pass "refine defaults the execute mode to the fastest safe path"
 else
   bad "refine missing the 'fastest safe path' default"
 fi

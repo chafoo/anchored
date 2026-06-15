@@ -31,6 +31,28 @@ and criteria are children of the task-file, addressed by `<task-slug> <phase-slu
 the rules-scan findings) — so each phase carries a real `rules` array the
 code-validate gate checks against, not just a log note.
 
+## Decide the build mode (workflow levers)
+Once the phases + acceptance criteria are laid out, DECIDE and RECORD the two
+parallelism levers (per requirements-3). Default conservative: **sequential phases
+in a linear chain** unless there is a clear parallelism win.
+
+1. **Intra-phase acceptance-criteria fan-out.** When a phase's acceptance criteria
+   are genuinely INDEPENDENT and parallelizable, mark the phase `workflow` so its
+   criteria fan out in parallel:
+   ```bash
+   anchored phase set-execute <task-slug>/<phase-slug> workflow
+   ```
+   Otherwise leave it `sequential` — that is the default, so no call is needed.
+
+2. **Inter-phase order.** Record a dependency ONLY where a phase truly needs an
+   earlier one finished first; pass the earlier phase slug(s) it depends on:
+   ```bash
+   anchored phase set-depends <task-slug>/<phase-slug> "<earlier-phase-slugs>"
+   ```
+   Phases with no real dependency stay independent so they can build in parallel
+   (`ready-phases` surfaces independent phases together). Don't invent a chain just
+   to serialize — only encode dependencies that are real.
+
 **Question lens — task / phase:** feature + UX decisions the input left open —
 behavior, visual style, sort order, error-UX, empty-state, accessibility level,
 whether a sub-feature (delete, pagination, undo) is in scope. Surface generously:

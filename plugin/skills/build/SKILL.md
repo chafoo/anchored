@@ -22,7 +22,7 @@ each:task loop are plumbing; the user hears outcomes:
 
 **Before every user-facing line**, apply the jargon mapping from
 `communication-style.md` — framework terms (scaffold, stub, seam, grounding,
-roll-up, outcome acceptance criteria, executor, the each-loop, drafted/refined,
+roll-up, outcome acceptance criteria, execute, the each-loop, drafted/refined,
 concern, dependency graph, just-in-time) never belong in chat, only their plain
 words.
 
@@ -264,19 +264,29 @@ learning "…"`). For EACH such decision, run the **stop-check**:
 
 ## `execute: workflow` (fan-out) — the skill drives it via the Workflow tool
 
-**Step-level fan-out is config, build-loop parallelism is not.** A single step may
-carry `execute: sequential | workflow` (default `sequential`). `execute: workflow`
-means **the SKILL fans THAT one step out** as a Dynamic Workflow instead of running it
-once. That is the *only* config flag for parallelism — there is **no `mode:` on
-`build`**. Running several phases (or several child-tasks) at once is the plugin's own
+**Step-level fan-out is config, build-loop parallelism is not.** A step may carry
+`execute: sequential | workflow` (default `sequential`); `execute: workflow` means
+**the SKILL fans THAT one step out** as a Dynamic Workflow instead of running it once.
+That is the *only* config flag for parallelism — there is **no `mode:` on `build`**.
+Running several phases (or several child-tasks) at once is the plugin's own
 orchestration, NOT a config flag: ready children fan out and the dependency chain
 sequences them — you discover the ready set via `anchored task ready-phases <slug>` /
 `anchored epic child-ready <epic-slug>` and the `depends_on` graph, then dispatch (see
 "Epic task-level fan-out" above). The `each:` recursion edge stays intrinsic per tier.
 
-When the `implement` step carries `execute: workflow` and the `Workflow` tool is
-available, **the SKILL** fans the phase's acceptance criteria out as a Dynamic Workflow
-— one parallel unit per not-yet-evidenced criterion (the engine's `loop-workflow.ts` is
+**Per-PHASE override — the `execute` field.** The `execute` on the template's
+`implement` step is the project-wide default; a single phase opts in or out via its
+`execute` field (`sequential` · `workflow` = fan-out), set during planning
+with `anchored phase set-execute <task>/<phase> workflow`. **Read each phase's
+`execute` (from `anchored task get`): `workflow` → fan that phase's acceptance criteria
+out; `sequential` or unset → the sequential implement path** (unless the step default is
+`workflow`). This is what lets ONE task in an epic build sequentially while another fans
+out — the lever is per-phase, not global.
+
+When a phase's `execute` is `workflow` (or the `implement` step's `execute` default is)
+and the `Workflow` tool is available, **the SKILL** fans the phase's acceptance criteria
+out as a Dynamic Workflow — one parallel unit per not-yet-evidenced criterion (the
+engine's `loop-workflow.ts` is
 a headless reference; the live fan-out lives here). The flow, sibling to the sequential
 implement path:
 

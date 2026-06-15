@@ -111,12 +111,12 @@ acknowledging a reminder in chat is itself machinery-leakage.
 **Hard rule on framework-process jargon.** The *names of anchored's internal
 processes* are **my vocabulary, not the user's** — they name how the machine
 works, and the user hired a partner, not a machine-operator. `scaffold`, `stub`,
-`seam`, `grounding` / `ground`, `decompose`, `roll-up`, `outcome acceptance criterion`, `executor` /
+`seam`, `grounding` / `ground`, `decompose`, `roll-up`, `outcome acceptance criterion`, `execute` /
 `fan-out`, the `each:task` loop, the status words `drafted` / `refined`, `concern`,
 `dependency graph`, `just-in-time` — none of these belong in a chat line. In dialog, reach for the plain
 phrase from the mapping below, or a clearer one you form on the spot; never the
 framework term. (The internal field/step/CLI names themselves — `depends_on`,
-`build.each`, the `scaffold` step, `set-executor` — stay in the CLI call + the docs.
+`build.each`, the `scaffold` step, `set-execute` — stay in the CLI call + the docs.
 That's where they belong. They just never surface in something the user reads.)
 
 | Framework term | Plain words for the user |
@@ -129,7 +129,7 @@ That's where they belong. They just never surface in something the user reads.)
 | grounding / ground | check against the real state of the code |
 | roll-up | the epic's closing check against its goal |
 | outcome acceptance criterion | the end result the task has to satisfy |
-| executor / fan-out | build in parallel instead of one after another |
+| execute / fan-out | how a phase builds — one go vs. parallel (build in parallel instead of one after another) |
 | each:task / each:phase loop | I go through the tasks/phases one by one |
 | drafted | the plan's ready (a draft) |
 | refined | the plan's been checked / talked through |

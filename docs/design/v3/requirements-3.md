@@ -159,7 +159,10 @@ only serves it verbatim via `template.steps(tier, stage)`.
 
 The fractal recursion `build.each: <child-tier>` is intrinsic (unchanged). **Whether the
 children run sequentially or several at once is the plugin's orchestration decision, derived
-from `depends_on` — not a config field.** The core provides the primitives:
+from each child's `depends_on` — not a config field.** `depends_on` is the **multi-phase
+fan-out lever**: it lives **on the phase** (an array of sibling phase slugs that must finish
+first), is **decided by plan/refine**, and is recorded via `phase set-depends`. The core
+provides the primitives:
 
 - `child-ready <slug>` → every child runnable right now (pending, all `depends_on` done) — the
   fan-out batch.
@@ -167,8 +170,12 @@ from `depends_on` — not a config field.** The core provides the primitives:
   ready) — the sequential pick.
 
 The plugin fans out the `ready` batch and sequences the dependency chain. The `depends_on`
-graph *is* the parallelism control. So `execute` never appears on `build.each`; it only ever
-qualifies a **step**.
+graph *is* the multi-phase parallelism control. A separate, intra-phase lever — `execute:
+sequential | workflow` **on the phase** (also a plan/refine decision, recorded via `phase
+set-execute`) — governs whether *one* phase's acceptance criteria fan out in parallel. Both of
+those are plan/refine decisions recorded on the phase; the step-level `execute` field (above)
+is the orthogonal config lever on an individual step. So `execute` never appears on
+`build.each`; it qualifies a **step** or a **phase**, never the loop.
 
 ---
 

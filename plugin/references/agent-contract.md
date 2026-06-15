@@ -75,7 +75,8 @@ status <slug> …`) — that is its own file.
 | reject an AC (back to pending) | `anchored phase ac-fail <task>/<phase> <ac-id> "<why>"` |
 | defer an AC (out of scope here) | `anchored phase ac-defer <task>/<phase> <ac-id> "<reason>"` |
 | attach a rule to a phase | `anchored phase rule-add <task>/<phase> <path> "<why>"` |
-| set the phase executor | `anchored phase set-executor <task>/<phase> <implement\|workflow>` |
+| set how a phase builds | `anchored phase set-execute <task>/<phase> <sequential\|workflow>` |
+| set a phase's dependencies | `anchored phase set-depends <task>/<phase> "<phase-slugs>"` |
 | — EPIC/PROJECT own STUB existence — | |
 | add a child-stub | `anchored epic child-add <epic-slug> <task-stub-slug> ["<goal>"]` (project: `anchored project child-add <project> <epic-stub>`) |
 | advance a child-stub | `anchored epic child-status <epic-slug> <stub-slug> <pending\|active\|done\|blocked>` |
@@ -102,7 +103,7 @@ directly via the CLI. Per agent role:
 | Role | self-write commands |
 |---|---|
 | plan-discover / plan-rules-scan / refine-* / wrap-review / validators | `anchored <tier> append-log <task-slug> <stage> <kind> "<note>"` |
-| plan-decompose | `anchored task add-phase <task-slug> <phase-slug> "<name>"` · `anchored phase ac-add <task-slug>/<phase-slug> "<text>"` |
+| plan-decompose | `anchored task add-phase <task-slug> <phase-slug> "<name>"` · `anchored phase ac-add <task-slug>/<phase-slug> "<text>"` · MAY record how a phase builds (`anchored phase set-execute <task-slug>/<phase-slug> <sequential\|workflow>`) and its cross-phase deps (`anchored phase set-depends <task-slug>/<phase-slug> "<phase-slugs>"`) |
 | epic-scaffold | `anchored epic child-add <epic-slug> <task-stub-slug> "<goal>"` |
 | build-implement | code (Write/Edit) + a build-NOTE per criterion: `anchored task append-log <task-slug> build note "<ac-id>: <symbol> — <what + gate green>"`. Authors **NO** evidence, flips nothing — the checker records the proof (requirements-3). |
 | build-task-validate | the **EVIDENCE AUTHOR**: independently re-verifies each criterion, then `anchored phase ac-evidence <task-slug>/<phase-slug> <ac-id> "<proof>"` on pass (flips it done; symbol anchor) or `anchored phase ac-fail <task-slug>/<phase-slug> <ac-id> "<why>"` on fail (→ pending, re-do loop). NEVER flips the phase status (G4). |

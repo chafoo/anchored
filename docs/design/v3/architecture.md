@@ -84,7 +84,7 @@ core/src/
 ├── modules/                        # tier FACTORIES · demand contracts · DI'd at createCli · 100% covered
 │   ├── shared/                     # the modules' own base (pure, imported by the tier factories) — tier knowledge lives HERE
 │   │   ├── fragments.schemas.ts    # cross-tier zod FRAGMENTS (slugs · AC-with-evidence-refine · question · log · context)
-│   │   ├── statuses.ts             # the status enums (lifecycle · phase · stub · executor) — only modules use them
+│   │   ├── statuses.ts             # the status enums (lifecycle · phase · stub · execute) — only modules use them
 │   │   ├── transitions.ts          # the edge maps + assertTransition(map, from, to) — the status guard
 │   │   ├── evidence.ts             # isEvidenceFilled — the predicate the AC `.refine` uses
 │   │   ├── children.ts             # child-list transforms (next · ready · add · move) — DAG/loop-queue logic

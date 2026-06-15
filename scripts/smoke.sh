@@ -54,8 +54,10 @@ run ok phase ac-defer t1/setup a3 "perf work moved to the hardening milestone"
 run err phase ac-defer t1/setup a3            # no reason → AcNoReason
 run ok phase ac-done t1/setup a1             # already evidenced → re-done ok
 run ok phase rule-add t1/setup .claude/rules/factory-functions.md "factory pattern"
-run ok phase set-executor t1/setup workflow
-run err phase set-executor t1/setup bogus     # enum-guarded
+run ok phase set-execute t1/setup workflow
+run err phase set-execute t1/setup bogus     # enum-guarded
+run ok phase set-execute t1/setup sequential
+run err phase set-execute t1/setup implement  # old value gone
 run ok phase set t1/setup context "a free-text phase context"
 run ok phase status t1/setup done             # all ACs terminal (2 done, 1 deferred)
 run ok phase get t1/setup

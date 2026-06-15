@@ -21,7 +21,7 @@ Partner voice in chat, machinery only in the audit trail — see
 
 **Before every user-facing line**, apply the jargon mapping from
 `communication-style.md` — framework terms (scaffold, stub, seam, grounding,
-roll-up, outcome acceptance criteria, executor, the each-loop, drafted/refined,
+roll-up, outcome acceptance criteria, execute, the each-loop, drafted/refined,
 concern, dependency graph, just-in-time) never belong in chat, only their plain
 words.
 

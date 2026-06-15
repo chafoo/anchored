@@ -66,7 +66,7 @@ code/context before presenting — never ask the bare question.
   the internal ids (`q4`, `a1`, `e3`), raw enum tokens (`high`/`medium`/`low`),
   unexplained abbreviations (`DAG`, `AC`), **or the names of anchored's internal
   processes** (`scaffold`, `stub`, `seam`, `grounding`, `roll-up`, `outcome acceptance criterion`,
-  `executor`, the `each:task` loop, `drafted`/`refined`, `concern`). Say "the third
+  `execute`, the `each:task` loop, `drafted`/`refined`, `concern`). Say "the third
   acceptance criterion", "the dependency order", "an open point for the
   end" — apply the **jargon mapping table in `communication-style.md`** (its
   "framework-process jargon" hard rule) before presenting. The internal ids + term

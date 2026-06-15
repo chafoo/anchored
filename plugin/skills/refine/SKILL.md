@@ -21,7 +21,7 @@ Partner voice in chat, machinery only in the audit trail — see
 
 **Before every user-facing line**, apply the jargon mapping from
 `communication-style.md` — framework terms (scaffold, stub, seam, grounding,
-roll-up, outcome acceptance criteria, executor, the each-loop, drafted/refined,
+roll-up, outcome acceptance criteria, execute, the each-loop, drafted/refined,
 concern, dependency graph, just-in-time) never belong in chat, only their plain
 words.
 
@@ -134,12 +134,20 @@ If a gate agent errors, surface it and stay at `drafted` (do not flip). If the
 user aborts the walk, already-resolved questions persist; re-running `/a:refine`
 walks only the still-open ones.
 
-## Decide the per-phase executor (fan-out — task tier only, G12)
+## Decide the per-phase execute mode + phase dependencies (fan-out — task tier only, G12)
 
-The fan-out mechanism already exists (the build SKILL runs `executor: workflow`
+The fan-out mechanism already exists (the build SKILL runs `execute: workflow`
 phases as a parallel per-criterion Dynamic Workflow). What was missing is the **decision** —
 so by default every phase ran sequentially (a ~44-min epic for ~200 lines). Refine
 is where that call belongs, because the phases + their acceptance criteria are now settled.
+Two levers live here, both recorded ON THE PHASE (never global config):
+
+- **Phase intra-fan-out** — a phase's `execute` mode (`set-execute`): do this phase's
+  acceptance criteria fan out in parallel (`workflow`) or land sequentially (`sequential`)?
+- **Multi-phase parallelism** — a phase's `depends_on` (`set-depends`): which sibling
+  phases must finish before this one? Independent phases build in parallel via
+  `ready-phases`; the dependency chain sequences. Set the edges where one phase truly
+  needs another's output; leave independent phases free of each other.
 
 **Default to the fastest safe path.** For each phase (`anchored task list-phases
 <slug>`), the call is about **correctness, never quality** — parallel and sequential
@@ -152,11 +160,15 @@ build the exact same thing:
   race → corruption. That's the only thing the floor protects.
 - **Within "safe" → default to `workflow`** (the fastest path), not sequential. A
   phase with **≥2 independent acceptance criteria fans out by default**:
-  `anchored phase set-executor <slug>/<phase> workflow`.
-- **`implement`** (sequential) only when the floor doesn't hold — a single
+  `anchored phase set-execute <slug>/<phase> workflow`.
+- **`sequential`** only when the floor doesn't hold — a single
   criterion, or criteria that share sequential state / build on each other / touch
   the same region — **or** when you're genuinely unsure two criteria are independent
-  (when the doubt is about *correctness*, stay sequential; leave it unset, absent ⇒ implement).
+  (when the doubt is about *correctness*, stay sequential; leave it unset, absent ⇒ sequential).
+- **Phase dependencies** follow the same independence test, one tier up: record
+  `anchored phase set-depends <slug>/<phase> "<comma-separated phase slugs>"` only
+  where a phase genuinely consumes another's output. Phases left without a dependency
+  edge are treated as independent and build in parallel.
 
 **Ask the user once — speed vs. watchability (never a quality call).** The ONLY real
 difference between parallel and sequential is that sequential lands the phases one
@@ -168,8 +180,8 @@ quality is identical. So offer it once, ephemeral (like the walk-style), phrased
 > fast as is safe.
 
 Hold the answer in memory for this refine. If they pick "sequential to watch", leave
-the executors unset regardless of the floor. The user can always override a single
-phase with `set-executor` before build.
+`execute` unset regardless of the floor and don't add parallelizing phase edges. The
+user can always override a single phase with `set-execute` / `set-depends` before build.
 Epics have no phases — task-level fan-out across independent child-tasks is a
 separate lever (the epic build loop), not this decision.
 
