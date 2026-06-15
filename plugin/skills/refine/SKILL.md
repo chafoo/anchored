@@ -76,13 +76,22 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   > - **Important + medium** (internal `medium`)
   > - **All of them** (internal `low`)
   > - **None — you decide** (internal `ai`)
+  > - **Only the ones touching specific topics** — free-form, e.g. "anything about
+  >   persistence or the UI language, decide the rest" (internal `conditions` + the
+  >   user's own words)
 
   **If there are 0 open questions, skip this silently** (no AskUserQuestion). Then
-  walk each question in priority order: a question whose priority is **AT-or-above the
-  chosen threshold** goes to the user (`resolve … user "<answer>"`) — `high` = only
-  high · `medium` = high+medium · `low` = all · `ai` = none — and everything **below**
-  the threshold the AI decides WITH reasoning (`resolve … ai "<answer>" "<why>"`;
-  reasoning is required for `source=ai`).
+  walk each question — by one of two filter modes:
+  - **threshold** (`high`/`medium`/`low`/`ai`): a question whose priority is
+    **AT-or-above** the threshold goes to the user — `high` = only high · `medium` =
+    high+medium · `low` = all · `ai` = none.
+  - **conditions** (the free-form option): **judge each question against the user's
+    words** ("does this touch what they named?") — a match goes to the user, the rest
+    the AI decides; priority is ignored, the topic is what matters.
+
+  Whatever is below the bar (or off-topic) the AI decides WITH reasoning
+  (`resolve … ai "<answer>" "<why>"`; reasoning is required for `source=ai`); the rest
+  the user answers (`resolve … user "<answer>"`).
   `anchored <tier> question-resolve <slug> <id> "<answer>" <user|ai> ["<reasoning>"]`
 
 ### Question policy — the epic and the tasks are SEPARATE (epics only)
@@ -112,15 +121,18 @@ named). Hold **BOTH** in working memory for this epic run — ephemeral, never w
 to a field:
 
 ```
-{ epic: <high|medium|low|ai>,                                  // governs the epic's own walk (now)
+{ epic: { filter: 'threshold' | 'conditions',                  // the epic's own walk (now)
+          threshold?: <high|medium|low|ai>, words?: '<topics>' },
   task: { timing: 'epic-wide' | 'jit' | 'conditions',
           threshold?: <high|medium|low|ai>,                    // when timing=epic-wide
           words?: '<the user's free-form condition>' } }       // when timing=conditions
 ```
 
-The epic threshold governs only the epic's own questions (walked now); the **task**
-policy governs each child-task's refine **later** in `/a:build`. The `jit` + free-form
-options are epic-only (a standalone task-refine just uses the single threshold above).
+The epic filter governs only the epic's own questions (walked now); the **task**
+policy governs each child-task's refine **later** in `/a:build`. Both surfaces can use
+either filter mode — threshold OR conditions (the topic filter is a first-class option
+anywhere there's a walk). Only the **timing** (`jit` — decide per-task at build) is
+epic-only, since it only means anything across multiple child tasks.
 
   **Every question you put to the user follows `plugin/references/question-style.md`:**
   the question text already carries a worked-out **recommendation** + 1–3
