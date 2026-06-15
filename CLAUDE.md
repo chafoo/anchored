@@ -17,8 +17,16 @@ binding spec — **read `docs/design/` first**, before you touch code or docs:
    intrinsic (not configurable). `phase` is the leaf (build without `each`).
 2. **No built-ins** — everything is a step. The opinionated behaviour lives in the
    default template (`anchored.default.yml`), active by default, overridable.
-3. **Integrity in the substrate**: no `ac` to `done` without `evidence`. Enforced
-   in the data model (`services/store/invariants/invariants.ts`), NOT in a step.
+3. **Integrity in the substrate — and ONLY that**: no `ac` to `done` without
+   `evidence`. Enforced in the data model (`services/store/invariants/invariants.ts`),
+   NOT in a step. **The evidence invariant is the one and only thing we enforce
+   programmatically — we secure the _proof_, never the _work_.** Cutting
+   ceremony / wall-clock comes from better **CLI-API ergonomics** + leaner **skill
+   orchestration**, **never** from new built-ins, engine "smarts", or baked-in
+   automation. **Git stays the user's** — the engine never runs git for you;
+   branch/commit/merge are config/skill policy, not mechanism. When a fix is
+   tempting, ask: does it add enforcement of work, or just make the existing
+   substrate easier to drive? Only the latter is allowed.
 4. **CLI-only transport**: all ops through the `anchored` CLI via Bash. **No MCP.**
    Works in the main session AND subagents/headless. The CLI emits JSON.
 5. **Factory functions**: `createX(cfg, deps) → { run(input) → output }`,
