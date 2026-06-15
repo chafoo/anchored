@@ -1,6 +1,6 @@
 ---
 name: build-workflow
-description: Workflow fan-out unit-worker — builds ONE phase of a task (all its acceptance criteria as one coherent diff) and self-writes a per-criterion build-NOTE to the task-file via the anchored CLI. The background sibling of build-implement (one phase per worker, parallel); reached only via the build skill's Workflow-tool fan-out dispatch (agentType), never a step. Like build-implement, it authors NO evidence and owns its phase's commit — build-task-validate confirms and records the proof after the fan-out (requirements-3).
+description: Workflow fan-out unit-worker — builds ONE phase of a task (all its acceptance criteria as one coherent diff) and self-writes a per-criterion build-NOTE to the task-file via the anchored CLI. The background sibling of build-implement (one phase per worker, parallel); reached only via the build skill's Workflow-tool fan-out dispatch (agentType), never a step. Like build-implement, it authors NO evidence and makes NO commit — it owns its phase's WORK + build-notes; the per-phase commit, if any, is the orchestrator's trailing commit custom step on a green phase. build-task-validate confirms and records the proof after the fan-out (requirements-3).
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---
@@ -15,9 +15,10 @@ of the task — address it by task-slug + phase-slug (see
 `plugin/references/agent-contract.md`).
 
 This is the fan-out unit for the **task → phase** parallel loop: independent phases
-build in parallel, each in its own unit. You own this phase's branch/commit + its
-notes; you do NOT touch sibling phases. The orchestrator never merges or
-consolidates your diff for you.
+build in parallel, each in its own unit. You own this phase's WORK + its build-notes
+(you make NO commit yourself — the per-phase commit, if any, is the orchestrator's
+trailing commit custom step on a green phase); you do NOT touch sibling phases. The
+orchestrator never merges or consolidates your diff for you.
 
 ## Step 0 — resume-safety
 ```bash
@@ -33,7 +34,9 @@ Implement the code (Write/Edit) that satisfies **every** not-yet-done acceptance
 criterion of your phase, as one coherent change. If any criterion carries
 `failures`, treat them as the fix-list for that criterion. Then verify your own
 work — run the gate each criterion names so the phase is genuinely green before you
-hand off.
+hand off. This is a **pre-handoff sanity check**, NOT the authoritative gate: the
+authoritative evidence-gates (`build-task-validate` / `build-code-validate`) run at
+the fan-out join, after you hand off.
 
 ## Self-write a build-NOTE per criterion via the CLI — you author NO evidence
 There is no structured return for the orchestrator to apply, and (unlike a phase-step

@@ -217,21 +217,29 @@ the user wants to capture a SHA into a field, their own custom step's command do
 ## Fan-out — the loop step fans out ready children (A2/A3)
 
 **Fan-out lives on the loop step, not on acceptance criteria.** Only a unit that
-**owns its own branch + merge-back** is fanned out — a task (owns `task/<slug>` →
-main via its own wrap) and a phase (owns its per-phase commit). An acceptance
-criterion owns no branch, so **acceptance criteria are NEVER fanned out** — that is
+**owns its own deliverable boundary** is fanned out — a task (owns `task/<slug>` →
+main via its own wrap) and a phase (owns its own WORK + build-notes; its per-phase
+commit, if any, comes from the orchestrator's trailing `commit` custom step on a
+green phase — the phase worker makes no commit itself). An acceptance
+criterion owns no such boundary, so **acceptance criteria are NEVER fanned out** — that is
 exactly the per-criterion worktree fan-out that broke in the dogfood (the workers
 never merged back, the criteria collided on the same file region). It is **dropped
 entirely**. The fan-out is driven by the loop step's `execute: workflow` (read from
 the `task build` / `epic build` plan) plus each child's `depends_on` (read from the
 node) — no ad-hoc worktree join, no manual diff consolidation by the orchestrator.
+**Two senses of "join" — keep them apart:** the **synchronization join is KEPT** — a
+barrier where the ready units rejoin (the buffered-question walk + the gate batch run
+there); only the **worktree/diff-consolidation join is DROPPED** — the orchestrator no
+longer merges diffs by hand.
 
 **Both looping tiers fan out the same way:**
 - **epic → tasks:** ready child-tasks fan out in parallel; each runs its OWN full
   just-in-time lifecycle (plan→refine→build→wrap, the epic→task body above) and
   **owns its branch + merge-back via its own wrap**.
 - **task → phases:** ready phases fan out in parallel; each is the leaf pipeline
-  (implement → the gate batch → advance) and **owns its per-phase commit**.
+  (implement → the gate batch → advance) and **owns its own WORK + build-notes**; the
+  per-phase commit, if any, comes from the orchestrator's trailing `commit` custom step
+  on a green phase (the phase worker makes no commit itself).
 
 Run the fan-out when the loop step carries `execute: workflow` AND the **Workflow
 tool** is available; otherwise fall back to the sequential loop above (never
@@ -249,11 +257,14 @@ hard-error). The flow:
      body above) and owns its `task/<slug>` branch + merge-back via its own wrap;
    - a **task** unit builds ONE phase — dispatch `agent({ agentType:
      'a:build-workflow', … })` (the `build-workflow` plugin agent does the phase's code
-     + self-writes a build-note per criterion, authoring NO evidence); the phase owns
-     its per-phase commit.
+     + self-writes a build-note per criterion, authoring NO evidence and making NO
+     commit); the phase's per-phase commit, if any, comes from the orchestrator's
+     trailing `commit` custom step on a green phase.
 
-   Each unit owns its own branch/commit and merge-back — the orchestrator does NOT
-   merge or consolidate a diff for it. Up to the hard ≤16 parallel ceiling; larger
+   A task unit owns its own branch + merge-back (via its own wrap); a phase unit owns
+   its WORK + build-notes — either way the orchestrator does NOT merge or consolidate a
+   diff for it (the **worktree/diff-consolidation join is DROPPED**; the synchronization
+   join below is KEPT). Up to the hard ≤16 parallel ceiling; larger
    batches run in waves. After a task-fan-out batch joins, run the gate batch ONCE over
    the phases that landed (see "Parallel batches") — the checkers author the evidence,
    never the unit-workers.
@@ -268,7 +279,9 @@ hard-error). The flow:
    questions and walk those buffered ones with the user (per the same policy +
    escalation policy), then continue.
 5. **Join + advance.** When a unit reaches its terminal (a task `done`, a phase all
-   acceptance criteria evidenced + gates green) advance the parent: epic →
+   acceptance criteria evidenced + the authoritative gates green — those gates are
+   `build-task-validate` / `build-code-validate`, run ONCE over the landed phases at
+   this join, NOT the worker's own pre-handoff self-check) advance the parent: epic →
    `epic child status <slug> <child> done` (B1: all-phases-done delivers — no outcome-AC
    re-evidencing here); task → `phase status <slug>/<phase> done` then the phase's
    trailing custom steps. Re-run the ready verb for the next wave until the queue
