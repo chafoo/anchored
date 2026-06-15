@@ -16,7 +16,7 @@ Partner voice in chat, machinery only in the audit trail — see
 |---|---|
 | "Spawning plan-check + rules-check in parallel…" | "Let me check the plan against the current state of the code." |
 | "epic-refine runs epic-plan-check → epic-decompose → walk" | "I'll check the two tasks against the code and work out their acceptance criteria." |
-| "walk-style = high-together" | "Okay — I'll settle the important ones with you and handle the rest myself." |
+| "threshold = high" | "Okay — I'll settle the important ones with you and handle the rest myself." |
 | "status transition drafted → refined" | "Plan's been talked through. Run `/a:build`." |
 
 **Before every user-facing line**, apply the jargon mapping from
@@ -71,40 +71,56 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
   walk-style codes stay INTERNAL** (they're only the value you pass to
   `resolve-question`, never a user-visible label):
 
-  > "N questions — X important, Y medium, Z minor. How do you want to go through them?"
-  > - **Just the important ones — I'll decide the rest** (internal: `high-together`,
-  >   the recommended default / sweet spot)
-  > - **Go through all of them together** (internal: `all-together`)
-  > - **You decide everything** (internal: `AI-all`)
+  > "N questions — X important, Y medium, Z minor. Which do you want a say in?"
+  > - **Just the important ones** (internal threshold `high` — the recommended default)
+  > - **Important + medium** (internal `medium`)
+  > - **All of them** (internal `low`)
+  > - **None — you decide** (internal `ai`)
 
   **If there are 0 open questions, skip this silently** (no AskUserQuestion). Then
-  walk each question in priority order per the chosen style: a question AT-or-above
-  the threshold goes to the user (`resolve … user "<answer>"`); the rest the AI
-  decides WITH reasoning (`resolve … ai "<answer>" "<why>"` — reasoning is
-  required for `source=ai`).
+  walk each question in priority order: a question whose priority is **AT-or-above the
+  chosen threshold** goes to the user (`resolve … user "<answer>"`) — `high` = only
+  high · `medium` = high+medium · `low` = all · `ai` = none — and everything **below**
+  the threshold the AI decides WITH reasoning (`resolve … ai "<answer>" "<why>"`;
+  reasoning is required for `source=ai`).
   `anchored <tier> question-resolve <slug> <id> "<answer>" <user|ai> ["<reasoning>"]`
 
-### Epic-wide question policy (H3 — epics only)
+### Question policy — the epic and the tasks are SEPARATE (epics only)
 
-When you refine an **epic**, the choice above ALSO decides how the questions that
-arise *later* — in each child-task's own refine during the build loop — get handled.
-For an epic, offer a **fourth, richer option** and remember the choice for the build:
+When you refine an **epic** there are TWO distinct question surfaces. **Keep them
+separate — they get their own thresholds, and the task policy also has a *timing*.**
 
-> "How do you want to handle the questions — including the individual tasks later?"
-> - **Just the important ones — I'll decide the rest** (the recommended default;
->   internal: `high-together`)
-> - **Go through all of them together** (internal: `all-together`)
-> - **You decide everything** (internal: `AI-all`)
+**1 · The epic's OWN questions** — walk them **now**, with the epic's own threshold:
+ask the `high / medium / low / ai` choice above for the **epic node** and walk its
+`questions[]` right here at the epic-refine.
+
+**2 · The child-task questions** — these arise *later*, in each child-task's own
+refine during the build loop. Ask a **separate** policy with two parts (timing +
+threshold):
+
+> "And the questions inside the individual tasks later — how do you want those?"
+> - **Set a policy now for all tasks** → then pick the threshold (`high / medium /
+>   low / ai`); it applies to every task, you're not re-asked per task (`epic-wide`).
+> - **Decide per task, just-in-time** → no epic-wide policy; each task's own refine
+>   asks you fresh when that task is reached in the build (`jit`).
 > - **Tell me what you want a say in** — free-form, e.g. "ask me about anything
 >   touching persistence or the UI language, decide the rest yourself"
->   (internal: `conditions`, plus the user's own words)
+>   (`conditions`, plus the user's own words).
 
-This follows `plugin/references/question-style.md` (recommended option first,
-implications named). Hold the chosen policy **in your working memory for this epic
-run** — ephemeral, never written to a field. Within the same session it carries from
-refine into the `/a:build` loop, where it governs every child-task's refine. The
-free-form option is epic-only (a single task's refine just uses the three fixed
-styles; its build-time decisions are already covered by the stop-conditions).
+Follows `plugin/references/question-style.md` (recommended option first, implications
+named). Hold **BOTH** in working memory for this epic run — ephemeral, never written
+to a field:
+
+```
+{ epic: <high|medium|low|ai>,                                  // governs the epic's own walk (now)
+  task: { timing: 'epic-wide' | 'jit' | 'conditions',
+          threshold?: <high|medium|low|ai>,                    // when timing=epic-wide
+          words?: '<the user's free-form condition>' } }       // when timing=conditions
+```
+
+The epic threshold governs only the epic's own questions (walked now); the **task**
+policy governs each child-task's refine **later** in `/a:build`. The `jit` + free-form
+options are epic-only (a standalone task-refine just uses the single threshold above).
 
   **Every question you put to the user follows `plugin/references/question-style.md`:**
   the question text already carries a worked-out **recommendation** + 1–3

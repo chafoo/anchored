@@ -94,8 +94,9 @@ tasks.")
 
 **Hard rule on cryptic abbreviations + internal ids.** In user-facing chat, never
 use codes of 1–2 letters or internal ids — `e3`, `q4`, `a1`, the priority enum
-`high/medium/low` as raw tokens, the walk-style codes `high-together` /
-`all-together` / `AI-all`, or unexplained jargon like `DAG` / `AC`. Those live in
+`high/medium/low` as raw tokens, the question-threshold codes `high` / `medium` /
+`low` / `ai` or the task-policy timings `epic-wide` / `jit`, or unexplained jargon
+like `DAG` / `AC`. Those live in
 the file + the audit trail, not the conversation. Write them out for a human:
 `e3` → "the third acceptance criterion"; `DAG` → "the dependency order"
 (what has to be built first); `AC` → "acceptance criterion". The walk-style codes

@@ -43,8 +43,8 @@ self-write their results via `anchored <tier> …` (see
    `drafted` → tell the user to run `/a:plan` + `/a:refine` first; `wrap`/`done`
    → already past build.
 3. **Pre-build walk:** if the node still has open `questions[]` (e.g. a skip-refine
-   shortcut), clear them BEFORE the long run using the SAME walk-style choice as
-   `/a:refine` (all-together / high-together (default) / AI-all) — `AskUserQuestion`
+   shortcut), clear them BEFORE the long run using the SAME threshold choice as
+   `/a:refine` (`high` (default) / `medium` / `low` / `ai`) — `AskUserQuestion`
    first, then resolve each (`resolve-question … user|ai ["<reasoning>"]`). Each
    `AskUserQuestion` follows `plugin/references/question-style.md` — recommended
    option first (`(Recommended)`) + implication bullets in the text; work them out at
@@ -101,15 +101,19 @@ or `anchored epic child-next <slug>` (epic→task) — returns one (else done):
         them to plan-decompose as the outcome bar the phases must meet — so the
         goal/contract is never lost (the G8 fix). Run plan's steps → `drafted`.
      2. **Refine the child** (`/a:refine`-style: plan-check + rules-check + walk) →
-        `refined`. Apply the **epic-wide question policy** the user set at the
-        epic-refine (held in your working memory for this run, H3) — do NOT re-ask
-        the walk-style per child. For each child question, route it by that policy:
-        priority-threshold / all-user / all-AI, OR — if the user gave a free-form
-        condition — **judge each question against their words** ("does this touch
-        what they asked to be involved in?"): a match goes to the user, the rest you
-        resolve yourself with reasoning. If you reach the build WITHOUT a remembered
-        policy (fresh session, or refine was skipped), ask it once now — same choice
-        as the epic-refine walk (see refine SKILL "Epic-wide question policy").
+        `refined`. Apply the **task question policy** from the epic-refine (working
+        memory — the `task` half, SEPARATE from the epic's own policy):
+        - **`epic-wide`** → route each child question by the remembered threshold
+          (`high`/`medium`/`low`/`ai` — at-or-above goes to the user, the rest you
+          decide with reasoning). Do **not** re-ask per child.
+        - **`jit`** → ask the threshold **fresh for THIS task** (the same high/medium/
+          low/ai choice as a normal task-refine walk), then route by it.
+        - **`conditions`** → judge each question against the user's words ("does this
+          touch what they asked to be involved in?"): a match → the user, the rest you
+          resolve with reasoning.
+        If you reach the build with NO remembered task policy (fresh session, or
+        epic-refine was skipped), ask it once now (epic-wide vs. jit + threshold) —
+        see refine SKILL "Question policy — the epic and the tasks are SEPARATE".
      3. **Build the child** — recurse THIS loop on the child task (`each: phase`).
      4. **Wrap the child** (review + summarize) → child task `done`.
      5. Mark the epic-child delivered:

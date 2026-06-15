@@ -84,14 +84,15 @@ So before you finish, run a **concern-walk** — the SAME shape as the refine Q&
 
 1. List the open ones: read `anchored <tier> get <slug>` and filter `concerns[]` for
    the open ones in-session. If none, skip silently.
-2. **Pick the walk-style** (ephemeral, never persisted) via `AskUserQuestion`,
-   exactly like refine: *"N open points — X important … How do we go through them?"*
-   - **Just the important ones together — I'll decide the rest** (high-together, default)
-   - **Go through all of them together** (all-together)
-   - **You decide everything** (AI-all)
+2. **Pick the threshold** (ephemeral, never persisted) via `AskUserQuestion`,
+   exactly like refine: *"N open points — X important … Which do you want a say in?"*
+   - **Just the important ones** (threshold `high`, default)
+   - **Important + medium** (`medium`)
+   - **All of them** (`low`)
+   - **None — you decide** (`ai`)
    Each `AskUserQuestion` follows `question-style.md` (recommended option first,
    implications named).
-3. **Resolve each open concern** by that style — the user answers, or you decide
+3. **Resolve each open concern** by that threshold (at-or-above → user, below → you) —
    with reasoning:
    ```bash
    anchored <tier> concern-resolve <slug> <id> "<how it's addressed>" user
