@@ -33,9 +33,9 @@ question; suggest at most a one-liner. No salesmanship, no funnel.
 - **Every custom step gets `name` + `instructions`.** `instructions` documents what
   the step does and _why_ (a command to run lives in this prose); on a `use` step it
   is additionally threaded to the worker.
-- **anchored.yml is deltas only.** The default template
-  (`core/default-template/anchored.default.yml`, mirrored at
-  `plugin/references/anchored.default.yml`) is the base — the user file overrides via deep
+- **anchored.yml is deltas only.** The shipped default template
+  (`core/default-template/anchored.default.yml`; its shape is documented in
+  `plugin/references/anchored-config.md`) is the base — the user file overrides via deep
   merge (steps extend-only by name; scalars win). Touch only what the request implies.
 
 ## Procedure (per request)
@@ -43,7 +43,7 @@ question; suggest at most a one-liner. No salesmanship, no funnel.
 1. **Read the current `anchored.yml`** at the project root (if absent, start from
    the defaults — everything is a default the user overrides; an empty file = "use
    all defaults").
-2. **Map the request to the right slot** (see `plugin/references/config.md`):
+2. **Map the request to the right slot** (see `plugin/references/anchored-config.md`):
    - a **custom step** under `<tier>.<stage>.steps` (`name` + `instructions`, plus
      an optional `use: { type, name }` worker and `execute: sequential|workflow`),
    - **gate instructions** (the refine/build gate `instructions` slots),
@@ -51,7 +51,7 @@ question; suggest at most a one-liner. No salesmanship, no funnel.
    - **custom phase fields** (`task.phase.fields`).
 3. **Make the edit** — write `name` + `instructions` on any custom step, and
    `use: { type, name }` when it delegates to a worker. Preserve the user's existing
-   config. Two things bite if you wing them — see `plugin/references/config.md`
+   config. Two things bite if you wing them — see `plugin/references/anchored-config.md`
    ("A step"):
    - **Position with `after:`/`before:`** a named step (else it appends to the end).
      A bad anchor does NOT error — it silently appends, so verify the *order* in

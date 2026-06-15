@@ -9,7 +9,7 @@ model: sonnet
 
 **Input:** the node `<slug>` and the raw plan text.
 
-> NOTE: added because `anchored.default.yml` task.plan lists a `rules-scan` step
+> NOTE: added because the default template's task.plan lists a `rules-scan` step
 > that the original 12-worker roster did not cover (it had refine-rules-check only).
 
 ## Read (via CLI)

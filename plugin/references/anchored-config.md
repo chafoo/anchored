@@ -1,10 +1,10 @@
-# anchored.yml — configuration format
+# anchored-config — the `anchored.yml` format + everything you can configure
 
-> Reference for the `anchored.yml` format. The full default config lives in
-> [`anchored.default.yml`](anchored.default.yml) (anchored reads all defaults from there). A real
-> user `anchored.yml` contains **deltas only** — whatever it does not override comes
-> from the merged default base. Example nodes: [`task.example.yml`](task.example.yml),
-> [`epic.example.yml`](epic.example.yml).
+> Reference for a project's `anchored.yml` — every setting it can carry. A real user
+> `anchored.yml` holds **deltas only**: whatever it does not override comes from the merged
+> default base. The shipped default template is `core/default-template/anchored.default.yml`;
+> its shape — every tier's stages, steps, and `fields` — is documented inline below (the
+> built-in-steps table + the fields section), so this file is self-contained.
 
 ## Structure: tiers × stages × steps
 
@@ -49,7 +49,7 @@ step: the worker is always the nested `use: { type, name }`.
 
 **Invariants:** `instructions` is allowed on **every** step (worker step or
 prose-only) · `type` lives inside `use`, never as a top-level step key · default steps
-carry the worker that matches [`anchored.default.yml`](anchored.default.yml) and are
+carry the worker that matches the shipped default template and are
 **not removable / not reorderable** — only extendable via `instructions` (append).
 
 ```yaml
@@ -182,9 +182,8 @@ build:
 ## Fields (`fields`)
 
 Every tier carries a data model. The **default fields** per tier live in
-[`anchored.default.yml`](anchored.default.yml) (shape) — the mechanics (status enum, transitions) are
-fixed in code. Example values: [`task.example.yml`](task.example.yml) /
-[`epic.example.yml`](epic.example.yml).
+the shipped default template (shape) — the mechanics (status enum, transitions) are
+fixed in code.
 
 > **Hard invariant (not switchable off):** an `ac` only goes to `done` when
 > `evidence` is present. *How* the evidence is produced is yours to configure freely.
@@ -209,8 +208,7 @@ task:
   type: string }` ✗ (the schema expects a map `name → type`).
 - `type`: `string` | `number` | `boolean` (scalar-typed) — everything else passes
   through as `unknown` (permissive, but persisted).
-- Default fields are **not** repeated here — `fields` is **additive** (the base comes
-  from `anchored.default.yml`); a custom name lands additionally in the node schema, while an
+- Default fields are **not** repeated here — `fields` is **additive** (the base comes from the default template); a custom name lands additionally in the node schema, while an
   **un**declared key is still rejected on write.
 - Set/read at runtime: `anchored <tier> set <slug> <name> <value>`. On a **child**:
   a stub via `anchored epic child-set-field <epic> <stub> <name> <value>`; a phase
@@ -219,7 +217,7 @@ task:
 ### Commit anchors: `commit_sha` vs. `merge_commit` (two-anchor semantics)
 
 When you use commit wiring (see
-[`anchored.example-comprehensive.yml`](anchored.example-comprehensive.yml)), the
+the commit-step example below), the
 task-file carries **two** anchors — additive, no rename (existing specs/docs stay
 intact):
 
@@ -246,7 +244,7 @@ in the step's `instructions:` prose:
   after: code-validate
   instructions: |
     Commit the phase, then record the SHA on the task-file:
-      git add -A -- ':!.claude/tasks'
+      git add -A -- ':!.claude/anchored'
       git diff --cached --quiet || git commit -m "phase: <phase-slug>"
       anchored task set <task-slug> commit_sha "$(git rev-parse HEAD)"
 ```
@@ -254,7 +252,7 @@ in the step's `instructions:` prose:
 The framework writes only to the task-file (via the CLI you call from the step) — it
 **never** runs git for you. WHAT gets committed, WHICH field receives the SHA, and
 WHEN: all **policy** in your `instructions:`. See
-[`anchored.example-comprehensive.yml`](anchored.example-comprehensive.yml).
+the commit-step example below.
 
 ## `_lib` — reusable steps (`anchored.yml` only)
 
@@ -277,6 +275,6 @@ epic:
 
 ## Where the defaults come from
 
-`effectiveConfig = merge(anchored.default.yml [framework base], <project>/anchored.yml
+`effectiveConfig = merge(the default template [framework base], <project>/anchored.yml
 [deltas])` — loaded once at bootstrap, injected into the engine as `deps.config`.
 That is why a minimal user file suffices.
