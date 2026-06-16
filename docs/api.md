@@ -86,6 +86,8 @@ anchored epic child next my-epic
 
 ## Tiers & collections
 
+For what each tier is *for* and can do — not just its commands — see the [tier portraits](tier/_tier.md) (epic · task · phase).
+
 | Tier | Lifecycle | Collections |
 | --- | --- | --- |
 | `epic` | `plan refine build wrap` | child · acceptance · question · concern |

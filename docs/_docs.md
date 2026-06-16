@@ -6,8 +6,10 @@ anchored is a **fractal task lifecycle** for AI-assisted engineering: **epic ▸
 flowchart LR
   docs((anchored docs))
   docs --> api["api<br/>the command surface"]
+  docs --> tiers["tiers<br/>what each tier can do"]
   docs --> stages["stages<br/>the lifecycle stages"]
   click api "api.md"
+  click tiers "tier/_tier.md"
   click stages "stages/_stages.md"
 ```
 
@@ -16,4 +18,5 @@ flowchart LR
 | Area | What's there |
 | --- | --- |
 | [api](api.md) | Every command you can run — the `anchored <tier> <verb> [slug]` CLI grammar and the `/a:*` plugin slash commands. |
+| [tiers](tier/_tier.md) | The three tiers — epic, task, phase — and what each one is for and can do. |
 | [stages](stages/_stages.md) | The lifecycle stages — setup, plan, refine, build, wrap — and what each one does on a tier. |
