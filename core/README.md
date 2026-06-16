@@ -4,7 +4,7 @@
 > the Claude Code plugin for long autonomous AI coding runs.
 
 The deterministic core of anchored: a pure factory-function engine over a
-schema-validated substrate, driven entirely through the **`anchored` CLI** (no MCP).
+schema-validated data model, driven entirely through the **`anchored` CLI** (no MCP).
 It owns the fractal lifecycle (plan → refine → build → wrap on epic ▸ task ▸ phase),
 the state machine, atomic node-file writes, and the one hard invariant — **no
 acceptance criterion reaches `done` without evidence.**
@@ -45,7 +45,7 @@ anchored phase status my-task/setup done        # refused unless every AC is ter
 Collections route as `<tier> <collection> <op>` (`ac` · `question` · `child` …).
 Every call prints one envelope; with `--json` the full structured object, otherwise
 a dense readable line with a precomputed `next:` hint. Meaningful exit codes
-(`0` ok · `2` usage · `3` not-found · `4` substrate/invariant), and `-` reads one
+(`0` ok · `2` usage · `3` not-found · `4` schema/invariant), and `-` reads one
 body value from stdin. Run `anchored help` for the full surface, or see
 [`../plugin/references/api.md`](../plugin/references/api.md).
 

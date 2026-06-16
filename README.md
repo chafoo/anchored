@@ -10,19 +10,14 @@
 
 </div>
 
-> **Long autonomous AI coding runs you can actually trust.**
-> Every claim has proof. Every decision is on the record. Every step is configurable.
+> **Configure long, autonomous AI runs — `plan → refine → build → wrap`, on epics or tasks — with anchored evidence at every step.**
 
-**Configure `plan → refine → build → wrap` for whatever you're building — and collect
-evidence at every step.** anchored is one pipeline you shape to your work: wire your own
-tests, commits, linters, gates, and tools into each stage as steps. It never dictates
-*how* you work — it guarantees one thing, in the substrate itself: **nothing reaches
-`done` without proof.** So an AI can run autonomously for hours and you still trust the
-result — every claim has evidence, every decision is on the record.
+You shape each stage to your work — your tests, commits, gates, and tools become the
+steps — and nothing is ever marked *done* without the evidence to back it: the engine
+enforces that on every step, not a rule you can configure away. So a run can go for
+hours and you still trust the result.
 
-The same four stages run on every tier — **epic ▸ task ▸ phase** — one form at three
-scales, the *fractal*. It secures the *proof*, never the *work*: ceremony stays lean,
-git stays entirely yours. CLI-only, zero-install plugin, no MCP.
+Same lifecycle at every scale — **epic ▸ task ▸ phase**. CLI-only, zero-install plugin, no MCP.
 
 ## What ships here
 

@@ -10,8 +10,8 @@ anchored runs AI coding work as a **fractal lifecycle**: the same four stages �
 decomposes into tasks, a task into phases, a phase into evidence-gated acceptance
 criteria. One form, three scales.
 
-AI writes. anchored secures the *proof*. The one thing enforced in the substrate:
-**no acceptance criterion reaches `done` without evidence** — so a run can't claim
+AI writes. anchored secures the *proof*. The one thing the engine enforces, on every
+step: **no acceptance criterion reaches `done` without evidence** — so a run can't claim
 done before it actually is. Everything else — what each step does, the data-model
 fields, your git policy — is configurable template, not baked-in behaviour. It
 secures the proof, never the work; git stays entirely yours.
