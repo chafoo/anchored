@@ -1,38 +1,111 @@
-# anchored v2
+<div align="center">
 
-Fractal rewrite of [anchored](https://github.com/chafoo/anchored) — a pure
-framework for AI-driven work across four self-similar tiers:
+<img src="./assets/og-image.png" alt="anchored — long autonomous AI coding runs you can actually trust. Every claim has proof. Every step configurable." width="100%">
+
+<br>
+
+[![license](https://img.shields.io/badge/license-MIT-2dd4bf)](./LICENSE)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-38bdf8)](https://github.com/chafoo/anchored)
+[![version](https://img.shields.io/badge/version-0.4.0-2dd4bf)](https://github.com/chafoo/anchored/releases)
+
+</div>
+
+> **Long autonomous AI coding runs you can actually trust.**
+> Every claim has proof. Every decision is on the record. Every step is configurable.
+
+anchored runs the same four-stage lifecycle — **plan → refine → build → wrap** — on
+every tier of work: **epic ▸ task ▸ phase**. One form, three scales — the *fractal*.
+The one thing it enforces, in the substrate itself: **no acceptance criterion reaches
+`done` without evidence.** It secures the *proof*, never the *work* — ceremony stays
+lean, and git stays entirely yours.
+
+This is the fractal rewrite of anchored: a pure factory engine, CLI-only transport
+(no MCP), and a zero-install plugin. Built and validated end-to-end across full
+dogfood runs.
+
+## What ships here
+
+| Package | Distributed as | Role |
+|---|---|---|
+| [`plugin/`](./plugin) | Claude Code marketplace plugin (`anchored`) | Skills, agents, references — what users install. Bundles its own CLI; zero setup. |
+| [`core/`](./core) | npm package (`@chaafoo/anchored`) | The factory engine + `anchored` CLI — schema, state machine, atomic writes, and the evidence invariant. |
+
+The plugin ships the user-facing skills (`/a:plan` · `/a:refine` · `/a:build` ·
+`/a:wrap` · `/a:setup`) and agents; the core package ships the deterministic engine
+they drive over the CLI. **No MCP** — one transport, the `anchored` CLI over Bash,
+identical in the main session *and* in subagents/headless.
+
+User-facing docs: [`plugin/README.md`](./plugin/README.md) · engine internals:
+[`core/README.md`](./core/README.md).
+
+## Repo layout
 
 ```
-project ▸ epic ▸ task ▸ phase     (all: plan → refine → build → wrap)
+anchored/
+├── plugin/                  # Claude Code marketplace target
+│   ├── .claude-plugin/      # plugin manifest
+│   ├── bin/                 # the bundled `anchored` CLI — on PATH automatically, zero-install
+│   ├── default-template/    # the anchored.default.yml sidecar
+│   ├── skills/              # /a:plan · /a:refine · /a:build · /a:wrap · /a:setup
+│   ├── agents/              # 16 stage-bucketed subagents
+│   └── references/          # on-demand docs the skills + agents load
+│
+├── core/                    # npm package: @chaafoo/anchored
+│   └── src/
+│       ├── lib/             # the contracts + the error primitive
+│       ├── modules/         # shared schema fragments + the tier factories (phase · task · epic)
+│       ├── services/        # the dumb store (fs · lock · yaml seams) + the template service
+│       ├── cli/             # createCli — the one assembly point + the two-token dispatch
+│       └── bin.ts           # the published CLI entry
+│
+└── docs/                    # design spec + the api / tier / stage portraits
 ```
 
-Core principles (design settled, implementation beginning):
+## Quick start
 
-- **Fractal**: one lifecycle form on every tier; `build.each` is the recursion
-  edge, `phase` the leaf.
-- **Pure framework, no built-ins**: the behaviour lives in the default template
-  (`anchored.default.yml`), active by default, fully overridable.
-- **Integrity in the substrate**: no `ac` to `done` without `evidence` — the core
-  value sits in the data model, not in a step.
-- **CLI-only transport**: all ops through the `anchored` CLI via Bash (no MCP) —
-  works in the main session *and* subagents/headless.
-- **Factory engine**: `createX(cfg, deps) → { run(input) → output }`, `scope/`
-  helpers; the engine is deterministic code, AI is an effect behind `spawn`.
+In Claude Code:
 
-## Where things live
+```
+/plugin marketplace add chafoo/anchored
+/plugin install anchored@chafoo
+```
 
-- **`docs/design/`** — the binding design spec (from the v1 dogfood session):
-  - `fractal-lifecycle.md` — the tier model + diagram
-  - `anchored.default.yml` — the complete default config (steps + fields)
-  - `engine-architecture.md` — the factory-function engine
-  - `fractal-redesign-notes.md` — decision record (all items)
-  - `agenda.md` — the walked-through question list
-- **`core/`** — the CLI/engine package (TS) — *still empty, build to follow*
-- **`plugin/`** — the Claude Code plugin (skills, agents, commands) — *still empty*
+Then in any project:
+
+```
+/a:plan <describe an epic, a task, or a phase>   # the tier is an argument of plan
+/a:refine <slug>                                  # ground the plan + Q&A walk + gates
+/a:build <slug>                                   # implement + verify, phase by phase
+/a:wrap <slug>                                     # review + summary (+ epic roll-up)
+```
+
+The CLI ships **inside** the plugin — Claude Code puts `plugin/bin/` on PATH for
+you, in the main session and in subagents. No `npm i -g`, no MCP setup.
+
+## Contribute
+
+```bash
+git clone https://github.com/chafoo/anchored
+cd anchored/core
+bun install
+bun run test     # the spec-coverage gate + unit + e2e + int suites
+bun run build    # tsc → dist/ (Node-compatible artifact)
+```
+
+The binding spec lives in [`docs/design/`](./docs/design) (the fractal lifecycle,
+the factory engine, the default template); the non-negotiable principles are in
+[`CLAUDE.md`](./CLAUDE.md).
 
 ## Status
 
-Design complete, implementation at the start. Plugin namespace: `a`
-(commands `/a:plan|refine|build|wrap`). Build order: `pure-engine` →
-`default-template` → `epic-tier`.
+Pre-1.0 — the v3 architecture is built and dogfood-validated; APIs may still shift.
+Tier model `epic ▸ task ▸ phase`, plugin namespace `a`. `@chaafoo/anchored` is not
+yet on npm (the plugin bundles the CLI, so users don't need it published).
+
+## License
+
+MIT — see [LICENSE](./LICENSE).
+
+---
+
+Built by [@chafoo](https://github.com/chafoo).
