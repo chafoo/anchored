@@ -281,3 +281,57 @@ test('e2e: B1 stub delivery + DoD-item evidence/deferral gate epic completion �
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+// The universal collection read-vocabulary (`list` + `get`) driven over the REAL CLI on the real
+// filesystem — proving the full strip Bash → dispatch → real file → output actually works for the
+// new ops, BOTH as a JSON envelope AND as the default parse-free agent-line (the whole point of the
+// read side: the orchestrator reads state without piping through a JSON parser).
+test('e2e: list/get across every collection — JSON envelope AND default agent-line', async () => {
+  const { ok, cli, out, dir } = await makeCli()
+  try {
+    await ok('epic', 'create', 'rv', 'Read vocabulary')
+    await ok('epic', 'child', 'add', 'rv', 'login', 'login flow')
+    await ok('epic', 'child', 'add', 'rv', 'logout', 'logout flow')
+    await ok('epic', 'acceptance', 'add', 'rv', 'auth works end to end')
+    await ok('epic', 'question', 'add', 'rv', 'monolith or service?', 'high')
+    await ok('epic', 'concern', 'add', 'rv', 'rate limiting unaddressed', 'medium')
+    await ok('epic', 'child', 'ac', 'add', 'rv', 'login', 'auth handler tested')
+
+    // ── the JSON-envelope side: every collection answers list/get uniformly ──
+    expect(
+      ((await ok('epic', 'child', 'list', 'rv')) as { slug: string }[]).map((c) => c.slug),
+    ).toEqual(['login', 'logout'])
+    expect(((await ok('epic', 'child', 'get', 'rv', 'login')) as { slug: string }).slug).toBe(
+      'login',
+    )
+    expect((await ok('epic', 'acceptance', 'list', 'rv')) as unknown[]).toHaveLength(1)
+    expect(((await ok('epic', 'acceptance', 'get', 'rv', 'e1')) as { id: string }).id).toBe('e1')
+    expect(((await ok('epic', 'question', 'list', 'rv')) as { id: string }[])[0]!.id).toBe('q1')
+    expect((await ok('epic', 'concern', 'list', 'rv')) as unknown[]).toHaveLength(1)
+    expect((await ok('epic', 'log', 'list', 'rv')) as unknown[]).toBeInstanceOf(Array)
+    // the nested child-ac sub-collection too
+    expect(
+      ((await ok('epic', 'child', 'ac', 'list', 'rv', 'login')) as { id: string }[])[0]!.id,
+    ).toBe('a1')
+    expect(
+      ((await ok('epic', 'child', 'ac', 'get', 'rv', 'login', 'a1')) as { text: string }).text,
+    ).toBe('auth handler tested')
+
+    // ── the default agent-line side (NO --json): one dense, parse-free line per item ──
+    expect(await cli.run(['epic', 'question', 'list', 'rv'])).toBe(0)
+    const qLine = out[out.length - 1]!
+    expect(qLine).toContain('q1 · status: open · priority: high · monolith or service?')
+    expect(qLine).not.toContain('{') // no JSON leaked into the readable line
+
+    // a single get renders as one generic item line (not a node summary, not JSON)
+    await cli.run(['epic', 'child', 'get', 'rv', 'login'])
+    const cLine = out[out.length - 1]!
+    expect(cLine).toContain('login')
+    expect(cLine).not.toContain('{')
+
+    // an unknown id is a located error envelope over the real CLI (non-zero exit)
+    expect(await cli.run(['epic', 'child', 'get', 'rv', 'ghost', '--json'])).not.toBe(0)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})

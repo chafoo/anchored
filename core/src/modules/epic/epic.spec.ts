@@ -11,11 +11,25 @@ const template: TemplatePort = {
   validate: () => ({}),
   raw: () => ({}),
 }
-const fakeTask = (statuses: Record<string, string> = {}): Tier => ({
+// the injected task double. `archived` records every `task archive <slug>` call (C2 cascade);
+// `missing` names child slugs whose archive throws (already gone — the cascade tolerates it).
+const fakeTask = (
+  statuses: Record<string, string> = {},
+  archived: string[] = [],
+  missing: string[] = [],
+): Tier => ({
   tier: 'task',
-  verbs: () => ['get'],
+  verbs: () => ['get', 'archive'],
   get: async (slug: string) => ({ slug, status: statuses[slug] ?? 'plan' }),
-  run: async () => ({}),
+  run: async (verb: string, args: string[]) => {
+    if (verb === 'archive') {
+      const childSlug = args[0]!
+      if (missing.includes(childSlug)) throw new Error(`no node '${childSlug}'`)
+      archived.push(childSlug)
+      return { slug: childSlug, archived: true }
+    }
+    return {}
+  },
 })
 
 function epicNode(over: Partial<Node> = {}): Node {
@@ -89,6 +103,28 @@ test('child ac defer records a documented deferral on the stub AC', async () => 
   expect(on(store).tasks[0]!.status).toBe('done')
 })
 
+// a1c2 — the nested child-ac sub-collection has the same read side: list returns a stub's
+// outcome ACs, get fetches one by id (and throws on a missing child / missing AC).
+test('child ac list/get read a stub outcome ACs; get throws on a missing id', async () => {
+  const { epic } = setup()
+  await epic.run('child', ['add', 'my-epic', 'login', 'build login'])
+  await epic.run('child', ['ac', 'add', 'my-epic', 'login', 'auth handler tested'])
+  await epic.run('child', ['ac', 'add', 'my-epic', 'login', 'session expiry tested'])
+
+  const list = (await epic.run('child', ['ac', 'list', 'my-epic', 'login'])) as { id: string }[]
+  expect(list.map((a) => a.id)).toEqual(['a1', 'a2'])
+
+  const one = (await epic.run('child', ['ac', 'get', 'my-epic', 'login', 'a2'])) as { text: string }
+  expect(one.text).toBe('session expiry tested')
+
+  await expect(epic.run('child', ['ac', 'get', 'my-epic', 'login', 'a9'])).rejects.toThrow(
+    /no acceptance criterion 'a9'/,
+  )
+  await expect(epic.run('child', ['ac', 'list', 'my-epic', 'ghost'])).rejects.toThrow(
+    /no child 'ghost'/,
+  )
+})
+
 // a1d — the →build gate also guards the epic tier
 test('open questions block the epic advance to build', async () => {
   const { epic } = setup(epicNode({ status: 'drafted' }))
@@ -96,6 +132,67 @@ test('open questions block the epic advance to build', async () => {
   await expect(epic.run('status', ['my-epic', 'build'])).rejects.toThrow(/open question/i)
   await epic.run('question', ['resolve', 'my-epic', 'q1', 'service', 'user'])
   await epic.run('status', ['my-epic', 'build'])
+})
+
+// a1e — C6: the question collection has a read side — list returns the array, get returns one by
+// id (and errors on an unknown id), so the refine walk reads open questions without python.
+test('C6: question list returns the array, get fetches one by id', async () => {
+  const { epic } = setup()
+  await epic.run('question', ['add', 'my-epic', 'monolith or service?', 'high'])
+  await epic.run('question', ['add', 'my-epic', 'which datastore?', 'low'])
+  const list = (await epic.run('question', ['list', 'my-epic'])) as { id: string; text: string }[]
+  expect(list.map((q) => q.id)).toEqual(['q1', 'q2'])
+  const q = (await epic.run('question', ['get', 'my-epic', 'q2'])) as { text: string }
+  expect(q.text).toBe('which datastore?')
+  await expect(epic.run('question', ['get', 'my-epic', 'q9'])).rejects.toThrow(/no question 'q9'/)
+})
+
+// a1f — the child collection mirrors the question read side — list returns the stubs array, get
+// returns one stub by its slug (and errors on an unknown slug).
+test('child list returns the stubs, get fetches one by slug', async () => {
+  const { epic } = setup()
+  await epic.run('child', ['add', 'my-epic', 'login', 'build login'])
+  await epic.run('child', ['add', 'my-epic', 'logout', 'build logout'])
+  const list = (await epic.run('child', ['list', 'my-epic'])) as { slug: string }[]
+  expect(list.map((s) => s.slug)).toEqual(['login', 'logout'])
+  const stub = (await epic.run('child', ['get', 'my-epic', 'logout'])) as { goal: string }
+  expect(stub.goal).toBe('build logout')
+  await expect(epic.run('child', ['get', 'my-epic', 'nope'])).rejects.toThrow(/no child 'nope'/)
+})
+
+// a1g — the acceptance collection read side — list returns the array, get fetches one by id.
+test('acceptance list returns the items, get fetches one by id', async () => {
+  const { epic } = setup()
+  await epic.run('acceptance', ['add', 'my-epic', 'login works end to end'])
+  await epic.run('acceptance', ['add', 'my-epic', 'logout works'])
+  const list = (await epic.run('acceptance', ['list', 'my-epic'])) as { id: string }[]
+  expect(list.map((a) => a.id)).toEqual(['e1', 'e2'])
+  const item = (await epic.run('acceptance', ['get', 'my-epic', 'e2'])) as { text: string }
+  expect(item.text).toBe('logout works')
+  await expect(epic.run('acceptance', ['get', 'my-epic', 'e9'])).rejects.toThrow(
+    /no acceptance item 'e9'/,
+  )
+})
+
+// a1h — the concern collection read side — list returns the array, get fetches one by id.
+test('concern list returns the concerns, get fetches one by id', async () => {
+  const { epic } = setup()
+  await epic.run('concern', ['add', 'my-epic', 'check rollout', 'high'])
+  await epic.run('concern', ['add', 'my-epic', 'check metrics', 'low'])
+  const list = (await epic.run('concern', ['list', 'my-epic'])) as { id: string; text: string }[]
+  expect(list.map((c) => c.id)).toEqual(['c1', 'c2'])
+  const c = (await epic.run('concern', ['get', 'my-epic', 'c2'])) as { text: string }
+  expect(c.text).toBe('check metrics')
+  await expect(epic.run('concern', ['get', 'my-epic', 'c9'])).rejects.toThrow(/no concern 'c9'/)
+})
+
+// a1i — the log collection has a read side too — list returns the entries (no get; entries have no id).
+test('log list returns the entries', async () => {
+  const { epic } = setup()
+  await epic.run('log', ['add', 'my-epic', '2026-06-16', 'note', 'kicked off'])
+  await epic.run('log', ['add', 'my-epic', '2026-06-16', 'note', 'first child planned'])
+  const list = (await epic.run('log', ['list', 'my-epic'])) as { note: string }[]
+  expect(list.map((e) => e.note)).toEqual(['kicked off', 'first child planned'])
 })
 
 // a2 — DoD acceptance items: acceptance add (auto e-id) + acceptance status done needs evidence
@@ -171,17 +268,39 @@ test('C5: epic set writes context.refine into the nested trail', async () => {
   expect('context.refine' in disk).toBe(false) // not a literal flat key
 })
 
-// a6 — C2: epic archive cascades — it reports its delivered (done) child tasks
-test('C2: epic archive reports delivered child tasks', async () => {
+// a6 — C2: epic archive CASCADES — it archives each delivered (done) child task-file through the
+// injected task module's validated path, then moves the epic node. Active children are untouched.
+test('C2: epic archive cascades to delivered child task-files', async () => {
   const node = epicNode({
     tasks: [
       { slug: 'login', status: 'done' },
+      { slug: 'profile', status: 'done' },
       { slug: 'logout', status: 'active' },
     ],
   })
-  const { epic, store } = setup(node)
+  const archived: string[] = []
+  const { epic, store } = setup(node, fakeTask({}, archived))
   const r = (await epic.run('archive', ['my-epic'])) as { archived: boolean; children: string[] }
   expect(r.archived).toBe(true)
-  expect(r.children).toEqual(['my-epic/login']) // only the delivered child
+  expect(r.children).toEqual(['login', 'profile']) // only the delivered children
+  expect(archived).toEqual(['login', 'profile']) // each routed through task archive
+  expect(store.disk.has('my-epic')).toBe(false)
+})
+
+// a6b — C2: a child whose file is already gone (moved with the epic folder) is tolerated — the
+// cascade is best-effort per child and the epic archive itself still completes.
+test('C2: epic archive tolerates a child already gone, still archives the epic', async () => {
+  const node = epicNode({
+    tasks: [
+      { slug: 'login', status: 'done' },
+      { slug: 'profile', status: 'done' },
+    ],
+  })
+  const archived: string[] = []
+  const { epic, store } = setup(node, fakeTask({}, archived, ['profile']))
+  const r = (await epic.run('archive', ['my-epic'])) as { archived: boolean; children: string[] }
+  expect(r.archived).toBe(true)
+  expect(r.children).toEqual(['login']) // profile's file was gone → not listed, but no throw
+  expect(archived).toEqual(['login'])
   expect(store.disk.has('my-epic')).toBe(false)
 })

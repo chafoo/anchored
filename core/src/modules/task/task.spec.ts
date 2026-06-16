@@ -59,6 +59,19 @@ test('open questions block the advance to build', async () => {
   expect(on(store).status).toBe('build')
 })
 
+// a2c — C6: the question collection has a read side — list returns the array, get returns one by
+// id (and errors on an unknown id), so the refine walk reads open questions without python.
+test('C6: question list returns the array, get fetches one by id', async () => {
+  const { task } = setup(taskNode({ status: 'drafted' }))
+  await task.run('question', ['add', 'my-task', 'which auth provider?', 'high'])
+  await task.run('question', ['add', 'my-task', 'rate limit?', 'medium'])
+  const list = (await task.run('question', ['list', 'my-task'])) as { id: string; text: string }[]
+  expect(list.map((q) => q.id)).toEqual(['q1', 'q2'])
+  const q = (await task.run('question', ['get', 'my-task', 'q1'])) as { text: string }
+  expect(q.text).toBe('which auth provider?')
+  await expect(task.run('question', ['get', 'my-task', 'q9'])).rejects.toThrow(/no question 'q9'/)
+})
+
 // a3 — an open concern blocks done; phases must be terminal
 test('done requires no open concern + every phase terminal', async () => {
   const node = taskNode({
@@ -80,6 +93,36 @@ test('phase add + phase next (parent owns child existence)', async () => {
   expect(((await task.run('phase', ['next', 'my-task'])) as { slug: string }).slug).toBe('setup')
   await expect(task.run('phase', ['add', 'my-task', 'setup'])).rejects.toThrow(/already exists/)
   expect(task.verbs()).toContain('phase add')
+})
+
+// a4a — phase get: fetch one phase by slug (mirrors the question read-side); unknown slug throws
+test('phase get fetches one phase by slug; unknown slug throws', async () => {
+  const { task } = setup()
+  await task.run('phase', ['add', 'my-task', 'setup', 'Setup'])
+  const p = (await task.run('phase', ['get', 'my-task', 'setup'])) as { name: string }
+  expect(p.name).toBe('Setup')
+  await expect(task.run('phase', ['get', 'my-task', 'nope'])).rejects.toThrow(/no phase 'nope'/)
+})
+
+// a3b — concern read-side: list returns the array, get fetches one by id (unknown id throws)
+test('concern list returns the array, get fetches one by id', async () => {
+  const { task } = setup(taskNode({ status: 'wrap' }))
+  await task.run('concern', ['add', 'my-task', 'check perf', 'high'])
+  await task.run('concern', ['add', 'my-task', 'check a11y', 'medium'])
+  const list = (await task.run('concern', ['list', 'my-task'])) as { id: string; text: string }[]
+  expect(list.map((c) => c.id)).toEqual(['c1', 'c2'])
+  const c = (await task.run('concern', ['get', 'my-task', 'c1'])) as { text: string }
+  expect(c.text).toBe('check perf')
+  await expect(task.run('concern', ['get', 'my-task', 'c9'])).rejects.toThrow(/no concern 'c9'/)
+})
+
+// a6 — log read-side: list returns the appended entries (no id, so no get)
+test('log list returns the appended entries', async () => {
+  const { task } = setup()
+  await task.run('log', ['add', 'my-task', '2026-06-16', 'note', 'first'])
+  await task.run('log', ['add', 'my-task', '2026-06-16', 'note', 'second'])
+  const log = (await task.run('log', ['list', 'my-task'])) as { note: string }[]
+  expect(log.map((e) => e.note)).toEqual(['first', 'second'])
 })
 
 // a4b — phase ready honours phase depends_on (the multi-phase fan-out level): independent

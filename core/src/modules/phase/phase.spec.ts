@@ -113,6 +113,40 @@ test('rule add dedups by path; no execute field (sequential leaf)', async () => 
   await expect(phase.run('set', [PH, 'execute', 'workflow'])).rejects.toThrow()
 })
 
+// a6 — ac list returns the criteria array; ac get returns one by id (UnknownAc when absent)
+test('ac list returns the array; ac get returns one by id, else UnknownAc', async () => {
+  const { phase } = setup({
+    acceptance_criteria: [
+      { id: 'a1', text: 'first', status: 'pending' },
+      { id: 'a2', text: 'second', status: 'done', evidence: ['p'] },
+    ],
+  })
+  const list = (await phase.run('ac', ['list', PH])) as Ac[]
+  expect(list.map((a) => a.id)).toEqual(['a1', 'a2'])
+  expect((await phase.run('ac', ['get', PH, 'a2'])) as Ac).toMatchObject({
+    id: 'a2',
+    status: 'done',
+  })
+  await expect(phase.run('ac', ['get', PH, 'a9'])).rejects.toThrow(/no acceptance criterion 'a9'/)
+})
+
+// a7 — rule list returns the rules array; rule get returns one by its key (path), else UnknownRule
+test('rule list returns the array; rule get returns one by path, else UnknownRule', async () => {
+  const { phase } = setup({
+    rules: [
+      { path: 'src/x.ts', why: 'why-x' },
+      { path: 'src/y.ts', why: 'why-y' },
+    ],
+  })
+  const list = (await phase.run('rule', ['list', PH])) as { path: string }[]
+  expect(list.map((r) => r.path)).toEqual(['src/x.ts', 'src/y.ts'])
+  expect((await phase.run('rule', ['get', PH, 'src/y.ts'])) as { why: string }).toMatchObject({
+    path: 'src/y.ts',
+    why: 'why-y',
+  })
+  await expect(phase.run('rule', ['get', PH, 'src/z.ts'])).rejects.toThrow(/no rule 'src\/z.ts'/)
+})
+
 // a5 — set depends_on records the inter-phase dependency graph (for multi-phase fan-out)
 test('set depends_on parses a comma list into depends_on', async () => {
   const { store, phase } = setup()

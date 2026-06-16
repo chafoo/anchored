@@ -138,6 +138,31 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
         ...s,
         acceptance_criteria: deferAc(s.acceptance_criteria ?? [], acId, reason),
       })),
+    // the universal read-vocabulary, nested: list/get a stub's outcome ACs.
+    list: async (slug, childSlug) => {
+      const stub = stubsOf(await read(slug)).find((s) => s.slug === childSlug)
+      if (!stub) {
+        throw anchoredError('UnknownChild', `no child '${childSlug}'`, [
+          'list the children: child list <slug>',
+        ])
+      }
+      return stub.acceptance_criteria ?? []
+    },
+    get: async (slug, childSlug, acId) => {
+      const stub = stubsOf(await read(slug)).find((s) => s.slug === childSlug)
+      if (!stub) {
+        throw anchoredError('UnknownChild', `no child '${childSlug}'`, [
+          'list the children: child list <slug>',
+        ])
+      }
+      const ac = (stub.acceptance_criteria ?? []).find((a) => a.id === acId)
+      if (!ac) {
+        throw anchoredError('UnknownAcceptance', `no acceptance criterion '${acId}'`, [
+          'list them: child ac list <slug> <childSlug>',
+        ])
+      }
+      return ac
+    },
   }
 
   const nodeVerbs: NodeVerbs = {
@@ -171,15 +196,27 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
       return write(slug, next as EpicNodeLike)
     },
 
-    // archive cascades: an epic moves its whole folder (child task files included), and we mark
-    // every delivered (status 'done') child stub as archived in the returned summary (C2).
+    // C2: archiving an epic CASCADES to its delivered child task-files. The epic's own folder
+    // move (`store.archive`) catches children that live nested under it, but just-in-time children
+    // created with simple slugs land at the top-level `tasks/` path — orphaned by the folder move.
+    // So we explicitly archive each delivered (status 'done') child through the injected task
+    // module's validated path (`task archive <childSlug>`), never a raw fs mv. A child whose file
+    // is already gone (e.g. it was moved with the folder) is tolerated — the cascade is best-effort
+    // per child, the epic archive itself always completes.
     async archive(slug) {
       const node = await read(slug).catch(() => undefined)
-      const delivered = (node?.tasks ?? [])
-        .filter((t) => t.status === 'done')
-        .map((t) => `${slug}/${t.slug}`)
+      const delivered = (node?.tasks ?? []).filter((t) => t.status === 'done')
+      const children: string[] = []
+      for (const t of delivered) {
+        try {
+          await task.run('archive', [t.slug])
+          children.push(t.slug)
+        } catch {
+          // already archived (e.g. moved as part of a nested epic folder) — skip it.
+        }
+      }
       await store.archive(slug)
-      return { slug, archived: true, children: delivered }
+      return { slug, archived: true, children }
     },
     async reset(slug) {
       await store.remove(slug)
@@ -204,6 +241,18 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
       },
       async ready(slug) {
         return readyChildren(stubsOf(await read(slug)))
+      },
+      async list(slug) {
+        return stubsOf(await read(slug))
+      },
+      async get(slug, childSlug) {
+        const stub = stubsOf(await read(slug)).find((s) => s.slug === childSlug)
+        if (!stub) {
+          throw anchoredError('UnknownChild', `no child '${childSlug}'`, [
+            'list the children: child list <slug>',
+          ])
+        }
+        return stub
       },
       // B1: flipping a stub to `done` no longer requires its outcome ACs to be terminal — the
       // child task's own phase-completion floor delivers it; outcomes are verified at roll-up/wrap.
@@ -259,6 +308,18 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
 
     // epic DoD acceptance items
     acceptance: {
+      async list(slug) {
+        return (await read(slug)).acceptance ?? []
+      },
+      async get(slug, id) {
+        const item = (await read(slug)).acceptance?.find((a) => a.id === id)
+        if (!item) {
+          throw anchoredError('UnknownAcceptance', `no acceptance item '${id}'`, [
+            'list the acceptance items: acceptance list <slug>',
+          ])
+        }
+        return item
+      },
       async add(slug, text) {
         const node = await read(slug)
         const items = node.acceptance ?? []
@@ -302,6 +363,21 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
     },
 
     question: {
+      // C6: the read side of the collection — `list` returns the questions array (rendered as one
+      // agent-line per question), `get` returns a single question by id, so the refine walk reads
+      // the open questions through the CLI instead of falling back to `get --json | python3`.
+      async list(slug) {
+        return (await read(slug)).questions ?? []
+      },
+      async get(slug, id) {
+        const q = (await read(slug)).questions?.find((x) => x.id === id)
+        if (!q) {
+          throw anchoredError('UnknownQuestion', `no question '${id}'`, [
+            'list the questions: question list <slug>',
+          ])
+        }
+        return q
+      },
       async add(slug, text, priority) {
         const node = await read(slug)
         return write(slug, {
@@ -325,6 +401,18 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
       },
     },
     concern: {
+      async list(slug) {
+        return (await read(slug)).concerns ?? []
+      },
+      async get(slug, id) {
+        const c = (await read(slug)).concerns?.find((x) => x.id === id)
+        if (!c) {
+          throw anchoredError('UnknownConcern', `no concern '${id}'`, [
+            'list the concerns: concern list <slug>',
+          ])
+        }
+        return c
+      },
       async add(slug, text, priority) {
         const node = await read(slug)
         return write(slug, {
@@ -349,6 +437,9 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
       },
     },
     log: {
+      async list(slug) {
+        return (await read(slug)).log ?? []
+      },
       async add(slug, at, kind, note) {
         const node = await read(slug)
         return write(slug, { ...node, log: appendLog(node.log ?? [], { at, kind, note }) })

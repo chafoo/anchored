@@ -25,6 +25,12 @@ anchored <tier> <collection> <op> <slug> [args]  # sub-resource — ac question 
 - **Node + collection** verbs mutate (or read) the node, each through the validating,
   atomic-writing store. The schema is the only law — an `ac` never reaches
   `status: done` without `evidence` (enforced on every write).
+- **`list` and `get` are universal collection read-ops** — every collection (`ac`,
+  `child`, `phase`, `acceptance`, `question`, `concern`, `rule`) answers `<collection>
+  list <slug>` (all items) and `<collection> get <slug> <id>` (one item) on top of
+  `add` and its domain ops. The pattern is regular, so an agent derives them — they are
+  not bespoke per collection. (Exception: `log` is list-only — its entries carry no id,
+  so there is no `log get`.)
 
 ---
 
@@ -40,12 +46,16 @@ no lifecycle stages. Address it under its task: `<task>/<phase>` (e.g.
 | `phase set <slug> <field> <value>` | set a free field (e.g. `depends_on` — a comma list → array); `status`/`acceptance_criteria`/`rules`/`slug` are reserved |
 | `phase status <slug> <to>` | transition the phase status (`done` requires every AC terminal — done or deferred) |
 | `phase ac add <slug> <text> [id]` | add an acceptance criterion |
+| `phase ac list <slug>` | list the phase's acceptance criteria |
+| `phase ac get <slug> <id>` | read one acceptance criterion |
 | `phase ac evidence <slug> <id> <text>` | attach proof + flip the AC to `done` (retires prior failures) |
 | `phase ac done <slug> <id>` | explicit `done` (only succeeds if evidence is already present — the store enforces it) |
 | `phase ac fail <slug> <id> <text>` | record a gate rejection + flip the AC back to `pending` (evidence stays as history) |
 | `phase ac defer <slug> <id> <reason>` | defer the AC with a reason (terminal; schema enforces the reason) |
 | `phase ac set <slug> <id> text <value>` | edit an AC's text (only `text` is settable) |
 | `phase rule add <slug> <path> <why>` | attach (or update) a rule reference on the phase |
+| `phase rule list <slug>` | list the phase's rule references |
+| `phase rule get <slug> <id>` | read one rule reference |
 
 ## task
 
@@ -67,13 +77,19 @@ module owns phase content). Slug: `<epic>/<task>` (nested) or a bare standalone 
 | `task reset <slug>` | remove the task file |
 | `task phase add <slug> <phaseSlug> [name]` | add a phase stub (existence + order) |
 | `task phase list <slug>` | list the task's phases |
+| `task phase get <slug> <phaseSlug>` | read one phase stub |
 | `task phase next <slug>` | the next runnable phase (in-flight wins, else first ready by `depends_on`) |
 | `task phase ready <slug>` | all phases whose dependencies are met |
 | `task question add <slug> <text> [priority]` | add an open question (`low`/`medium`/`high`, default `medium`) |
+| `task question list <slug>` | list the task's questions |
+| `task question get <slug> <id>` | read one question |
 | `task question resolve <slug> <id> <answer> [source] [reasoning]` | resolve a question (`source` `user`/`ai`) |
 | `task concern add <slug> <text> [priority]` | add a wrap-time concern |
+| `task concern list <slug>` | list the task's concerns |
+| `task concern get <slug> <id>` | read one concern |
 | `task concern resolve <slug> <id> <answer> [source] [reasoning]` | resolve a concern |
 | `task log add <slug> <at> <kind> <note>` | append a log entry to the audit trail |
+| `task log list <slug>` | list the audit-trail log entries (list-only — entries have no id) |
 
 ## epic
 
@@ -94,22 +110,33 @@ queue: child existence + per-stub outcome ACs + roll-up), and its Definition-of-
 | `epic archive <slug>` | archive the epic — cascades to its delivered (`done`) child task files |
 | `epic reset <slug>` | remove the epic |
 | `epic child add <slug> <childSlug> [goal]` | add a task-stub to the loop queue |
+| `epic child list <slug>` | list the epic's task-stubs |
+| `epic child get <slug> <childSlug>` | read one task-stub |
 | `epic child next <slug>` | the next runnable stub |
 | `epic child ready <slug>` | all stubs whose dependencies are met |
 | `epic child status <slug> <childSlug> <status>` | set a stub's status (delivered when its child task's phases are all done — outcome ACs verified at roll-up, not here) |
 | `epic child set <slug> <childSlug> <field> <value>` | set a free stub field (e.g. `depends_on` — comma list → array); `slug`/`status`/`acceptance_criteria` reserved |
 | `epic child ac add <slug> <childSlug> <text>` | add an outcome AC to the stub |
+| `epic child ac list <slug> <childSlug>` | list the stub's outcome ACs |
+| `epic child ac get <slug> <childSlug> <id>` | read one outcome AC |
 | `epic child ac evidence <slug> <childSlug> <id> <proof>` | evidence the stub's outcome AC |
 | `epic child ac fail <slug> <childSlug> <id> <why>` | fail the stub's outcome AC |
 | `epic child ac defer <slug> <childSlug> <id> <reason>` | defer the stub's outcome AC |
 | `epic child roll-up <slug>` | read each child task file's status + report the epic's acceptance state |
 | `epic acceptance add <slug> <text>` | add a Definition-of-Done item |
+| `epic acceptance list <slug>` | list the Definition-of-Done items |
+| `epic acceptance get <slug> <id>` | read one Definition-of-Done item |
 | `epic acceptance status <slug> <id> <status> [detail]` | set a DoD item (`done` needs delivery evidence as `detail`; `deferred` needs a reason) |
 | `epic question add <slug> <text> [priority]` | add an open question |
+| `epic question list <slug>` | list the epic's questions |
+| `epic question get <slug> <id>` | read one question |
 | `epic question resolve <slug> <id> <answer> [source] [reasoning]` | resolve a question |
 | `epic concern add <slug> <text> [priority]` | add a wrap-time concern |
+| `epic concern list <slug>` | list the epic's concerns |
+| `epic concern get <slug> <id>` | read one concern |
 | `epic concern resolve <slug> <id> <answer> [source] [reasoning]` | resolve a concern |
 | `epic log add <slug> <at> <kind> <note>` | append a log entry |
+| `epic log list <slug>` | list the audit-trail log entries (list-only — entries have no id) |
 
 ## meta
 

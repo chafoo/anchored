@@ -151,6 +151,15 @@ export function createTask(deps: { store: StorePort; template: TemplatePort }): 
       async list(slug) {
         return (await read(slug)).phases ?? []
       },
+      async get(slug, phaseSlug) {
+        const phase = ((await read(slug)).phases ?? []).find((p) => p.slug === phaseSlug)
+        if (!phase) {
+          throw anchoredError('UnknownPhase', `no phase '${phaseSlug}'`, [
+            'list the phases: phase list <slug>',
+          ])
+        }
+        return phase
+      },
       async next(slug) {
         const phases = ((await read(slug)).phases ?? []) as { slug: string; status: string }[]
         return nextChild(phases)
@@ -161,6 +170,21 @@ export function createTask(deps: { store: StorePort; template: TemplatePort }): 
       },
     },
     question: {
+      // C6: the read side of the collection — `list` returns the questions array (rendered as one
+      // agent-line per question), `get` returns a single question by id, so the refine walk reads
+      // the open questions through the CLI instead of falling back to `get --json | python3`.
+      async list(slug) {
+        return ((await read(slug)).questions ?? []) as Question[]
+      },
+      async get(slug, id) {
+        const q = ((await read(slug)).questions ?? []).find((x) => x.id === id)
+        if (!q) {
+          throw anchoredError('UnknownQuestion', `no question '${id}'`, [
+            'list the questions: question list <slug>',
+          ])
+        }
+        return q
+      },
       async add(slug, text, priority) {
         const node = await read(slug)
         const questions = addQuestion((node.questions ?? []) as Question[], {
@@ -180,6 +204,18 @@ export function createTask(deps: { store: StorePort; template: TemplatePort }): 
       },
     },
     concern: {
+      async list(slug) {
+        return ((await read(slug)).concerns ?? []) as Question[]
+      },
+      async get(slug, id) {
+        const c = ((await read(slug)).concerns ?? []).find((x) => x.id === id)
+        if (!c) {
+          throw anchoredError('UnknownConcern', `no concern '${id}'`, [
+            'list the concerns: concern list <slug>',
+          ])
+        }
+        return c
+      },
       async add(slug, text, priority) {
         const node = await read(slug)
         const concerns = addQuestion(
@@ -203,6 +239,9 @@ export function createTask(deps: { store: StorePort; template: TemplatePort }): 
       },
     },
     log: {
+      async list(slug) {
+        return ((await read(slug)).log ?? []) as LogEntry[]
+      },
       async add(slug, at, kind, note) {
         const node = await read(slug)
         return write(slug, {
