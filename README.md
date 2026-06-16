@@ -12,10 +12,9 @@
 
 > **Configure long, autonomous AI runs — `plan → refine → build → wrap`, on epics or tasks — with anchored evidence at every step.**
 
-You shape each stage to your work — your tests, commits, gates, and tools become the
-steps — and nothing is ever marked *done* without the evidence to back it: the engine
-enforces that on every step, not a rule you can configure away. So a run can go for
-hours and you still trust the result.
+Shape each step of your work — your tests, commits, gates, your tools — and anchor
+evidence to every implementation. With anchored, an AI can run for hours and you still
+trust the result: nothing reaches *done* without the proof to back it.
 
 Same lifecycle at every scale — **epic ▸ task ▸ phase**. CLI-only, zero-install plugin, no MCP.
 
