@@ -72,7 +72,7 @@ directly.
 An `ac` only reaches `status: done` when `evidence` is present. It is a Zod
 `.refine` on the shared acceptance-criterion fragment, run on **every** store
 write — unskippable, defined once, reused by every tier schema. The dumb store never
-even knows what evidence *is*; it just runs `schema.parse`. We secure the proof,
+even knows what evidence _is_; it just runs `schema.parse`. We secure the proof,
 never the work.
 
 ## Guarantees

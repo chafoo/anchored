@@ -35,11 +35,9 @@ export const StepSchema: z.ZodType<Step> = z
   .refine((s) => s.involve === undefined || s.name === 'walk', {
     error: 'involve is only valid on a walk step',
   })
-  .refine(
-    (s) =>
-      [s.before, s.after, s.with].filter((v) => v !== undefined).length <= 1,
-    { error: 'a step sets at most one positioner of before | after | with' },
-  ) as z.ZodType<Step>
+  .refine((s) => [s.before, s.after, s.with].filter((v) => v !== undefined).length <= 1, {
+    error: 'a step sets at most one positioner of before | after | with',
+  }) as z.ZodType<Step>
 
 const StepList = z.array(StepSchema)
 const Stage = z.strictObject({ steps: StepList.optional() })

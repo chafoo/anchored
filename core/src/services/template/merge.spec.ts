@@ -47,9 +47,7 @@ test('a new step with `with` positions after its anchor and KEEPS the with marke
   const user = cfg({
     task: {
       build: {
-        steps: [
-          { name: 'lint', instructions: 'run bun lint', with: 'task-validate' },
-        ],
+        steps: [{ name: 'lint', instructions: 'run bun lint', with: 'task-validate' }],
       },
     },
   })
