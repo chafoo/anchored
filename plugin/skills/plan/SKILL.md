@@ -62,9 +62,10 @@ task-file and recreate it: that throws away the history and the slug stability t
 of the lifecycle (branches `task/<slug>`, archive/reset) depends on. Re-running `plan`
 on the existing slug is the supported re-plan path; deleting + recreating is not.
 
-**Onboarding (no `anchored.yml` yet, G13):** a missing `anchored.yml` is fine — the
-CLI lazy-inits a minimal one (deltas-only = all defaults) + the `Bash(anchored *)`
-allowlist on first use, so planning proceeds immediately. The FIRST time you see a
+**Onboarding (no `anchored.yml` yet, G13):** a missing `anchored.yml` is fine — it
+means "use all defaults", so planning proceeds immediately (no config is written; the
+`Bash(anchored *)` allowlist is remembered by Claude Code on first approval). The
+FIRST time you see a
 project with no prior `anchored.yml`, after the node is created, mention in **one
 line** that anchored is running on defaults and offer to tune it together — a
 single `AskUserQuestion`: *"Want to tailor anchored to your project now (test/lint

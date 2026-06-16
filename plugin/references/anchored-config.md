@@ -76,6 +76,39 @@ carry the worker that matches the shipped default template and are
 > on a default step it extends its behaviour (append). There is no special flag for
 > "after done" — the ordering lives in the `instructions`.
 
+### Steering a gate with rationalizations / evidence prose
+
+The gate steps (`implement` · `task-validate` · `code-validate`, all under the
+**`phase`** tier's `build`) are the highest-leverage place to add soft steering — a
+rationalizations table (the excuses the AI is tempted by, rebutted) or an evidence
+taxonomy (what concrete proof looks like). Your `instructions` is **appended** to the
+worker's default brief. Keep it short and one-concern-per-step — see
+`plugin/references/step-authoring.md` for the why and the reusable shapes.
+
+```yaml
+phase:
+  build:
+    steps:
+      - name: implement
+        instructions: |
+          Test-driven by default: red → green → refactor.
+          Don't rationalize past the self-check:
+          - "I'll add the test later" → you won't; after-the-fact tests test the impl, not behaviour.
+          - "too simple to test" → simple code still needs a concrete result.
+      - name: task-validate
+        instructions: |
+          Evidence per acceptance criterion must be concrete (anything vaguer is a fail):
+          - logic → a committed test + its green run output (N/N)
+          - a bug fix → the reproduction test, failing before and passing after
+          - a CLI change → the real invocation and its output
+          Reject "should work" and any claim anchored on a raw line number, not a symbol.
+```
+
+> Want a rule **binding** rather than nudged? Prose can't do that — write a check
+> instead: a custom step whose command (in its `instructions`) exits non-zero on
+> violation, so the runner acts on the exit code. The hardness ladder is in
+> `step-authoring.md`.
+
 ### `execute:` — the per-step fan-out knob
 
 `execute` controls how a **single** step runs:
