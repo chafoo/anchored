@@ -33,29 +33,6 @@ identical in the main session *and* in subagents/headless.
 User-facing docs: [`plugin/README.md`](./plugin/README.md) · engine internals:
 [`core/README.md`](./core/README.md).
 
-## Repo layout
-
-```
-anchored/
-├── plugin/                  # Claude Code marketplace target
-│   ├── .claude-plugin/      # plugin manifest
-│   ├── bin/                 # the bundled `anchored` CLI — on PATH automatically, zero-install
-│   ├── default-template/    # the anchored.default.yml sidecar
-│   ├── skills/              # /a:plan · /a:refine · /a:build · /a:wrap · /a:setup
-│   ├── agents/              # 16 stage-bucketed subagents
-│   └── references/          # on-demand docs the skills + agents load
-│
-├── core/                    # npm package: @chaafoo/anchored
-│   └── src/
-│       ├── lib/             # the contracts + the error primitive
-│       ├── modules/         # shared schema fragments + the tier factories (phase · task · epic)
-│       ├── services/        # the dumb store (fs · lock · yaml seams) + the template service
-│       ├── cli/             # createCli — the one assembly point + the two-token dispatch
-│       └── bin.ts           # the published CLI entry
-│
-└── docs/                    # the docs hub — CLI api · tier · stage portraits
-```
-
 ## Quick start
 
 In Claude Code:
