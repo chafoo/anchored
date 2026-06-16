@@ -83,6 +83,14 @@ export function createPhase(deps: { store: StorePort; taskSchema: Schema }): Tie
       acceptance_criteria: fn(phase.acceptance_criteria ?? []),
     }))
 
+  // read the addressed phase (without mutating) — the shared read for the collections' `list`/`get`.
+  const readPhase = async (slug: string): Promise<PhaseLike> => {
+    const { taskSlug, phaseSlug } = split(slug)
+    const task = (await store.read(taskSlug, taskSchema)) as TaskFile
+    const { phases, idx } = findPhase(task, phaseSlug, taskSlug)
+    return phases[idx]!
+  }
+
   const nodeVerbs: NodeVerbs = {
     async get(slug) {
       const { taskSlug, phaseSlug } = split(slug)
@@ -133,6 +141,20 @@ export function createPhase(deps: { store: StorePort; taskSchema: Schema }): Tie
 
   const collections: Collections = {
     ac: {
+      // the read side of the collection — `list` returns the acceptance_criteria array, `get`
+      // returns a single criterion by id (throws UnknownAc if absent).
+      async list(slug) {
+        return (await readPhase(slug)).acceptance_criteria ?? []
+      },
+      async get(slug, id) {
+        const ac = ((await readPhase(slug)).acceptance_criteria ?? []).find((a) => a.id === id)
+        if (!ac) {
+          throw anchoredError('UnknownAc', `no acceptance criterion '${id}'`, [
+            'list the acceptance criteria: ac list <slug>',
+          ])
+        }
+        return ac
+      },
       add: (slug, text, id) => onAcs(slug, (acs) => addAc(acs, text, id)),
       // evidence makes the AC pass: add the proof + flip done + retire any prior failures.
       evidence: (slug, acId, text) => onAcs(slug, (acs) => evidenceAc(acs, acId, text)),
@@ -155,6 +177,20 @@ export function createPhase(deps: { store: StorePort; taskSchema: Schema }): Tie
       },
     },
     rule: {
+      // the read side of the collection — `list` returns the rules array, `get` returns a single
+      // rule by its key (the `path`, how rules are keyed/deduped); throws UnknownRule if absent.
+      async list(slug) {
+        return (await readPhase(slug)).rules ?? []
+      },
+      async get(slug, path) {
+        const rule = ((await readPhase(slug)).rules ?? []).find((r) => r.path === path)
+        if (!rule) {
+          throw anchoredError('UnknownRule', `no rule '${path}'`, [
+            'list the rules: rule list <slug>',
+          ])
+        }
+        return rule
+      },
       add: (slug, path, why) =>
         mutate(slug, (phase) => {
           const rules = phase.rules ?? []

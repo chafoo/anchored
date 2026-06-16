@@ -1,0 +1,78 @@
+# CI quality gates for the @chaafoo/anchored core package.
+#
+# Four parallel jobs run on every PR + push to main; all must pass:
+#   lint       — eslint + prettier --check
+#   typecheck  — tsc --noEmit
+#   test       — the full gate: spec-coverage + unit + e2e + int (Bun)
+#   build      — tsc -p tsconfig.build.json compiles cleanly to dist/
+#
+# Toolchain is Bun (the repo's dev accelerator + test runner): the lockfile
+# is core/bun.lock, so install is `bun install --frozen-lockfile`. The npm
+# scripts the gates call (`bun test`, the test:* aggregation) run under Bun;
+# npm itself ships on the runner and is only used to dispatch the scripts.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Opt the JS actions into the Node 24 runtime (GitHub forces this from
+# 2026-06-16; setting it here silences the deprecation notice).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+defaults:
+  run:
+    working-directory: core
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: ESLint
+        run: bun run lint
+      - name: Prettier format check
+        run: bun run format
+
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: tsc --noEmit
+        run: bun run typecheck
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Full gate (spec-coverage + unit + e2e + int)
+        run: bun run test
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Build to dist/
+        run: bun run build
