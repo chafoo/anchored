@@ -13,15 +13,16 @@
 > **Long autonomous AI coding runs you can actually trust.**
 > Every claim has proof. Every decision is on the record. Every step is configurable.
 
-anchored runs the same four-stage lifecycle — **plan → refine → build → wrap** — on
-every tier of work: **epic ▸ task ▸ phase**. One form, three scales — the *fractal*.
-The one thing it enforces, in the substrate itself: **no acceptance criterion reaches
-`done` without evidence.** It secures the *proof*, never the *work* — ceremony stays
-lean, and git stays entirely yours.
+**Configure `plan → refine → build → wrap` for whatever you're building — and collect
+evidence at every step.** anchored is one pipeline you shape to your work: wire your own
+tests, commits, linters, gates, and tools into each stage as steps. It never dictates
+*how* you work — it guarantees one thing, in the substrate itself: **nothing reaches
+`done` without proof.** So an AI can run autonomously for hours and you still trust the
+result — every claim has evidence, every decision is on the record.
 
-This is the fractal rewrite of anchored: a pure factory engine, CLI-only transport
-(no MCP), and a zero-install plugin. Built and validated end-to-end across full
-dogfood runs.
+The same four stages run on every tier — **epic ▸ task ▸ phase** — one form at three
+scales, the *fractal*. It secures the *proof*, never the *work*: ceremony stays lean,
+git stays entirely yours. CLI-only, zero-install plugin, no MCP.
 
 ## What ships here
 
@@ -58,7 +59,7 @@ anchored/
 │       ├── cli/             # createCli — the one assembly point + the two-token dispatch
 │       └── bin.ts           # the published CLI entry
 │
-└── docs/                    # design spec + the api / tier / stage portraits
+└── docs/                    # the docs hub — CLI api · tier · stage portraits
 ```
 
 ## Quick start
@@ -82,6 +83,14 @@ Then in any project:
 The CLI ships **inside** the plugin — Claude Code puts `plugin/bin/` on PATH for
 you, in the main session and in subagents. No `npm i -g`, no MCP setup.
 
+## Docs
+
+The docs hub is **[`docs/`](./docs/_docs.md)**:
+
+- **[CLI API](./docs/api.md)** — every `anchored <tier> <verb> [slug]` command and the `/a:*` skills
+- **[Tier portraits](./docs/tier/_tier.md)** — epic · task · phase, and what each one is for
+- **[Lifecycle stages](./docs/stages/_stages.md)** — setup · plan · refine · build · wrap
+
 ## Contribute
 
 ```bash
@@ -92,9 +101,7 @@ bun run test     # the spec-coverage gate + unit + e2e + int suites
 bun run build    # tsc → dist/ (Node-compatible artifact)
 ```
 
-The binding spec lives in [`docs/design/`](./docs/design) (the fractal lifecycle,
-the factory engine, the default template); the non-negotiable principles are in
-[`CLAUDE.md`](./CLAUDE.md).
+The non-negotiable principles are in [`CLAUDE.md`](./CLAUDE.md).
 
 ## Status
 

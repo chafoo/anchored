@@ -19,5 +19,7 @@ dist-schemas/
 # local working notes (not shipped)
 .claude/temp/
 anchored.yml
+# internal binding spec / design working material — kept local, not published
+docs/design/
 # web-inspector MCP local browser profile/cache — never commit
 .mcp-web-inspector/
