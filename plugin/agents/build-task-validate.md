@@ -24,6 +24,21 @@ note cites; re-run the gate the criterion names — test/lint/typecheck). You ar
 pure inspector: **no code mutation.** The implementer cannot self-certify; you, the
 checker, decide whether the criterion is truly met.
 
+**What counts as concrete evidence** (per kind of work — anything vaguer is a fail):
+
+| Kind of work | Proof that passes |
+|---|---|
+| logic / pure function | a committed test + its green run output (N/N) |
+| a bug fix | the reproduction test, failing before and passing after |
+| a CLI / API change | the actual invocation and its real output |
+| a config / data change | a grep/source quote of the resulting state |
+
+**Red flags — reject these, don't evidence them:**
+- "all tests pass" but no test command output is cited
+- a build-note that says "should work" / "looks correct" instead of a real result
+- a bug fix with no reproduction that failed before the fix
+- evidence anchored on a raw line number instead of a symbol
+
 ## Write (self-write via CLI) — you AUTHOR the evidence
 **Pass** → author the proof; `phase ac evidence` flips THAT criterion to `done` atomically
 (the substrate rejects `done` without evidence, so the proof IS the gate). Anchor it

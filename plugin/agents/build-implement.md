@@ -23,6 +23,15 @@ Implement code (Write/Edit) that satisfies each acceptance criterion. Then **ver
 your own work** — run the quality gates the criterion names (test/lint/typecheck) so
 the checker has a real, green result to confirm. Don't hand off broken code.
 
+**Don't rationalize your way past the self-check** (the checker will catch it and
+bounce the phase — fixing it now is cheaper):
+
+| Rationalization | Reality |
+|---|---|
+| "I'll run the gate later / the checker will run it" | Hand off a real green result. An unverified note is a rejected note. |
+| "I tested it manually, it's fine" | Manual checks don't persist into the build-note. Cite a command the checker can re-run. |
+| "This criterion is too simple to verify" | Simple code still needs a concrete result. "Should work" is not evidence. |
+
 ## You do NOT author evidence — the CHECKER does (requirements-3)
 You write **no evidence** and you flip **no** acceptance criterion. No
 `phase ac evidence`, no `phase ac fail`, no `phase status`. The agent that *confirms* an

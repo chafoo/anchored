@@ -1,0 +1,50 @@
+# anchored.yml — starter
+#
+# anchored works with NO config at all: a missing or empty anchored.yml means
+# "use all defaults". This file is deltas-only — everything below is COMMENTED OUT,
+# so as shipped it changes nothing. Uncomment a line to tune that one thing; what
+# you don't override keeps coming from the shipped defaults.
+#
+# A minimal taste of what's tunable, all under the `phase` tier (the leaf where code
+# gets built). Full reference:
+#   plugin/references/anchored-config.md   — every tier/stage/step + the grammar
+#   plugin/references/step-authoring.md    — how to write step prose that sticks
+#
+# phase:
+#   build:
+#     steps:
+#       # Steer the implement worker. Prose is APPENDED to its default brief —
+#       # keep it short; it nudges, it does not bind (see the lint step for binding).
+#       - name: implement
+#         instructions: |
+#           Test-driven by default: red → green → refactor.
+#           Don't rationalize past the self-check:
+#           - "I'll add the test later" → you won't; after-the-fact tests test the impl, not behaviour.
+#           - "too simple to test" → simple code still needs a concrete result.
+#
+#       # Steer the evidence gate: say what concrete proof looks like.
+#       - name: task-validate
+#         instructions: |
+#           Evidence per acceptance criterion must be concrete (anything vaguer is a fail):
+#           - logic → a committed test + its green run output (N/N)
+#           - a bug fix → the reproduction test, failing before and passing after
+#           Reject "should work" and any claim anchored on a raw line number, not a symbol.
+#
+#       # A custom HARD check: the command lives in `instructions`; the runner acts on
+#       # its exit code, so it's binding in a way prose never is. This is "want it hard?".
+#       - name: lint
+#         before: task-validate
+#         instructions: "run `npm run check`; fail the step on a non-zero exit"
+#
+#       # Commit one SHA per phase (git stays yours — the framework never runs git).
+#       - name: commit
+#         after: code-validate            # only on a green phase, after the gates
+#         instructions: |
+#           git add -A
+#           git diff --cached --quiet || git commit -m "phase: ${PHASE_SLUG}"
+#           anchored phase set ${TASK_SLUG}/${PHASE_SLUG} commit_sha "$(git rev-parse HEAD)"
+#     stop:
+#       # Natural-language halt conditions; the build loop stops on the first match.
+#       - "a decision crosses an architectural boundary (layer, contract, data model)"
+#   fields:
+#     commit_sha: string                  # a custom field on the phase (map form: name: type)

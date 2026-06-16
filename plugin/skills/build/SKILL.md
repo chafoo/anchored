@@ -36,8 +36,9 @@ self-write their results via `anchored <tier> …` (see
 ## Pre-flight
 
 1. `anchored <tier> get <slug>` — the **tier is derived from the node**. (A
-   missing `anchored.yml` is fine — the CLI falls back to the framework defaults;
-   it lazy-inits a minimal one + the `Bash(anchored *)` allowlist on first use.)
+   missing `anchored.yml` is fine — the CLI falls back to the framework defaults; no
+   config is written, and the `Bash(anchored *)` allowlist is remembered by Claude
+   Code on first approval.)
 2. State gate: `refined` → flip up front `anchored <tier> status <slug> build`
    (so the terminal `build → wrap` is legal); `build` → resume directly; `plan`/
    `drafted` → tell the user to run `/a:plan` + `/a:refine` first; `wrap`/`done`

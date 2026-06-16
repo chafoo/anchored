@@ -33,6 +33,12 @@ question; suggest at most a one-liner. No salesmanship, no funnel.
 - **Every custom step gets `name` + `instructions`.** `instructions` documents what
   the step does and _why_ (a command to run lives in this prose); on a `use` step it
   is additionally threaded to the worker.
+- **Write the prose well — consult `plugin/references/step-authoring.md`.** It carries
+  the hardness ladder (want it hard? write a check, not a sentence — a command that
+  exits non-zero is binding, prose never is), the token-conscious / one-concern-per-brief
+  rules, and the reusable shapes (rationalizations · red flags · evidence taxonomy) you
+  drop into a gate's `instructions`. Prose steers the work; only the evidence invariant
+  enforces it.
 - **anchored.yml is deltas only.** The shipped default template
   (`core/default-template/anchored.default.yml`; its shape is documented in
   `plugin/references/anchored-config.md`) is the base — the user file overrides via deep
@@ -82,9 +88,14 @@ tour:
    anchored plugin (and, for a dev checkout, run `npm --prefix core run
    bundle:plugin`). Do **not** attempt an `npm i -g`; the `bin/` mechanism is the
    install path. If `anchored version` works, say nothing and continue.
-1. The CLI already lazy-inits a minimal `anchored.yml` (deltas-only, = all
-   defaults) + the `Bash(anchored *)` allowlist on first use. That is enough to
-   run; say so in one line.
+1. **anchored needs no config to run** — a missing `anchored.yml` means "use all
+   defaults", so planning/building proceed immediately. To show the user what's
+   tunable, **drop a commented starter**: copy `plugin/references/anchored.starter.yml`
+   to `<project-root>/anchored.yml` (only if none exists — never clobber a real one).
+   Every block in it is commented out, so it changes nothing until the user
+   uncomments something. Say in one line that it's there as a self-documenting
+   example. (The `Bash(anchored *)` allowlist is remembered by Claude Code the first
+   time the user approves an `anchored` call — that's the harness, not anchored.)
 2. Offer, as a single question, to tune it together now vs later:
    > "Anchored's already running on the defaults. Want to quickly tailor it to your
    > project (linter/test command, commit-per-phase, …), or just the essentials for
