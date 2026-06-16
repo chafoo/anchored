@@ -145,9 +145,14 @@ or `anchored epic child next <slug>` (epic→task) — returns one (else done):
         epic-refine was skipped), ask it once now (epic-wide vs. jit + threshold) —
         see refine SKILL "Question policy — the epic and the tasks are SEPARATE".
      3. **Build the child** — recurse THIS loop on the child task (`each: phase`).
-     4. **Wrap the child** (review + summarize) → child task `done`. The child owns
-        its **own branch + merge-back via its own wrap** — you do NOT join a worktree
-        or consolidate a diff for it.
+     4. **Wrap the child** (review + summarize) → child task `done`. When the child ran
+        **sequentially in the main tree**, it owns its **own branch + merge-back via
+        its own wrap** and you do nothing extra. When it ran in an **isolated
+        worktree** (the parallel fan-out path), its wrap cannot merge onto the
+        integration branch from inside the worktree — so the **branch merge-back is
+        yours at the join**, serial and conflict-aware (see
+        `plugin/references/workflows.md`). Either way you **never hand-consolidate a
+        diff** — a merge-back is `git merge` of a clean branch, not a manual splice.
      5. Mark the epic-child delivered:
         `anchored epic child status <epic-slug> <child> done`. **All-phases-done is
         enough** — the core delivers the child on every phase terminal; do NOT
@@ -228,9 +233,16 @@ entirely**. The fan-out is driven by the loop step's `execute: workflow` (read f
 the `task build` / `epic build` plan) plus each child's `depends_on` (read from the
 node) — no ad-hoc worktree join, no manual diff consolidation by the orchestrator.
 **Two senses of "join" — keep them apart:** the **synchronization join is KEPT** — a
-barrier where the ready units rejoin (the buffered-question walk + the gate batch run
-there); only the **worktree/diff-consolidation join is DROPPED** — the orchestrator no
-longer merges diffs by hand.
+barrier where the ready units rejoin (the buffered-question walk, the **branch
+merge-back of any worktree-isolated unit**, and the gate batch all run there); only
+the **diff-consolidation join is DROPPED** — the orchestrator never merges file
+contents by hand. A worktree-isolated unit's clean branch is still reunited at the
+join with a real `git merge` (the orchestrator's job, because an isolated worktree
+can't merge onto the integration branch itself) — that is the KEPT branch merge-back,
+not the dropped hand-splice. **Worktree isolation for any fan-out whose units may
+write the same file region is a directive, not caveat** — it is how parallel writes
+stay collision-free; the serial merge-back that follows is governed by
+`plugin/references/workflows.md`.
 
 **Both looping tiers fan out the same way:**
 - **epic → tasks:** ready child-tasks fan out in parallel; each runs its OWN full
@@ -261,13 +273,15 @@ hard-error). The flow:
      commit); the phase's per-phase commit, if any, comes from the orchestrator's
      trailing `commit` custom step on a green phase.
 
-   A task unit owns its own branch + merge-back (via its own wrap); a phase unit owns
-   its WORK + build-notes — either way the orchestrator does NOT merge or consolidate a
-   diff for it (the **worktree/diff-consolidation join is DROPPED**; the synchronization
-   join below is KEPT). Up to the hard ≤16 parallel ceiling; larger
-   batches run in waves. After a task-fan-out batch joins, run the gate batch ONCE over
-   the phases that landed (see "Parallel batches") — the checkers author the evidence,
-   never the unit-workers.
+   A task unit owns its work on its own branch; a phase unit owns its WORK +
+   build-notes. The orchestrator never hand-consolidates a **diff** (the
+   **diff-consolidation join is DROPPED**) — but it DOES own the **branch merge-back**
+   of every worktree-isolated unit at the synchronization join (a real `git merge`,
+   serial, conflict-aware — `plugin/references/workflows.md`), because an isolated
+   worktree cannot merge onto the integration branch itself. Up to the hard ≤16
+   parallel ceiling; larger batches run in waves. After a task-fan-out batch joins,
+   run the gate batch ONCE over the **merged** result (see "Parallel batches") — the
+   checkers author the evidence over what actually landed, never the unit-workers.
 3. **Lock-safety.** Each child writes its OWN file (a task its task-file; a phase its
    region under the task). The only shared surface is the parent's child-status
    updates; the CLI's cross-process lock + validate-before-write serialize those
@@ -278,14 +292,17 @@ hard-error). The flow:
    (`task question add`) instead of prompting. At the **join**, read each child's open
    questions and walk those buffered ones with the user (per the same policy +
    escalation policy), then continue.
-5. **Join + advance.** When a unit reaches its terminal (a task `done`, a phase all
-   acceptance criteria evidenced + the authoritative gates green — those gates are
-   `build-task-validate` / `build-code-validate`, run ONCE over the landed phases at
-   this join, NOT the worker's own pre-handoff self-check) advance the parent: epic →
-   `epic child status <slug> <child> done` (B1: all-phases-done delivers — no outcome-AC
-   re-evidencing here); task → `phase status <slug>/<phase> done` then the phase's
-   trailing custom steps. Re-run the ready verb for the next wave until the queue
-   drains, then terminate as below.
+5. **Join → merge-back → advance.** When a unit reaches its terminal (a task `done`, a
+   phase all acceptance criteria evidenced + the authoritative gates green — those
+   gates are `build-task-validate` / `build-code-validate`, run ONCE over the **merged**
+   result at this join, NOT the worker's own pre-handoff self-check): first **reunite
+   any worktree-isolated branch** — serially, with the project's configured merge,
+   resolving shared-file conflicts from both finished sides, then clean up the branch +
+   worktree (full contract: `plugin/references/workflows.md`). Then advance the parent:
+   epic → `epic child status <slug> <child> done` (B1: all-phases-done delivers — no
+   outcome-AC re-evidencing here); task → `phase status <slug>/<phase> done` then the
+   phase's trailing custom steps. Re-run the ready verb for the next wave until the
+   queue drains, then terminate as below.
 
 ## Build-time escalation → document or pull the user in (the decision-trail)
 
