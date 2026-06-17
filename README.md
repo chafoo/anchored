@@ -6,7 +6,7 @@
 
 [![license](https://img.shields.io/badge/license-MIT-2dd4bf)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-38bdf8)](https://github.com/chafoo/anchored)
-[![version](https://img.shields.io/badge/version-0.4.0-2dd4bf)](https://github.com/chafoo/anchored/releases)
+[![version](https://img.shields.io/badge/version-0.5.1-2dd4bf)](https://github.com/chafoo/anchored/releases)
 
 </div>
 
