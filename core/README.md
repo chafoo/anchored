@@ -13,13 +13,14 @@ Most users never install this directly — the plugin bundles the CLI and ships 
 PATH. This README covers the engine itself (internals, standalone CLI use, scripting
 inside `anchored.yml` steps).
 
-## Install
+## Getting the CLI
 
-```bash
-npm install -g @chaafoo/anchored
-```
+There's nothing to install for plugin users — the plugin bundles the CLI and ships
+it on PATH (see above). For standalone or dev use, build it from source: clone the
+repo, then in `core/` run `bun install && bun run build` and invoke the result with
+`node dist/bin.js` (or put it on your PATH). See [Develop](#develop) below.
 
-Requirements: Node 20+. The published artifact is plain Node (compiled JS + types);
+Requirements: Node 20+. When built, the artifact is plain Node (compiled JS + types);
 Bun is the dev toolchain only — consumers don't need it.
 
 ## The CLI
