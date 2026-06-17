@@ -6,7 +6,7 @@
 
 [![license](https://img.shields.io/badge/license-MIT-2dd4bf)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-38bdf8)](https://github.com/chafoo/anchored)
-[![version](https://img.shields.io/badge/version-0.4.0-2dd4bf)](https://github.com/chafoo/anchored/releases)
+[![version](https://img.shields.io/badge/version-0.5.1-2dd4bf)](https://github.com/chafoo/anchored/releases)
 
 </div>
 
@@ -23,7 +23,7 @@ Same lifecycle at every scale — **epic ▸ task ▸ phase**. CLI-only, zero-in
 | Package | Distributed as | Role |
 |---|---|---|
 | [`plugin/`](./plugin) | Claude Code marketplace plugin (`anchored`) | Skills, agents, references — what users install. Bundles its own CLI; zero setup. |
-| [`core/`](./core) | npm package (`@chaafoo/anchored`) | The factory engine + `anchored` CLI — schema, state machine, atomic writes, and the evidence invariant. |
+| [`core/`](./core) | Bundled into the plugin | The factory engine + bundled `anchored` CLI — schema, state machine, atomic writes, and the evidence invariant. |
 
 The plugin ships the user-facing skills (`/a:plan` · `/a:refine` · `/a:build` ·
 `/a:wrap` · `/a:setup`) and agents; the core package ships the deterministic engine
@@ -39,8 +39,11 @@ In Claude Code:
 
 ```
 /plugin marketplace add chafoo/anchored
-/plugin install anchored@chafoo
+/plugin install a@anchored
 ```
+
+Not on the official Claude Code marketplace yet — this adds the GitHub repo
+(`chafoo/anchored`) as a marketplace source. An official listing is the next step.
 
 Then in any project:
 
@@ -77,8 +80,10 @@ The non-negotiable principles are in [`CLAUDE.md`](./CLAUDE.md).
 ## Status
 
 Pre-1.0 — the v3 architecture is built and dogfood-validated; APIs may still shift.
-Tier model `epic ▸ task ▸ phase`, plugin namespace `a`. `@chaafoo/anchored` is not
-yet on npm (the plugin bundles the CLI, so users don't need it published).
+Tier model `epic ▸ task ▸ phase`, plugin namespace `a`. Not yet on the official
+Claude Code marketplace — install via the GitHub repo as a source (see Quick start).
+The engine also lives in `core/` as a standalone package (not yet published); the
+plugin bundles the CLI, so users never need it.
 
 ## License
 

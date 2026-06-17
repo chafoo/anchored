@@ -21377,7 +21377,9 @@ var StepSchema = exports_external.strictObject({
   with: exports_external.string().optional()
 }).refine((s) => s.involve === undefined || s.name === "walk", {
   error: "involve is only valid on a walk step"
-}).refine((s) => [s.before, s.after, s.with].filter((v) => v !== undefined).length <= 1, { error: "a step sets at most one positioner of before | after | with" });
+}).refine((s) => [s.before, s.after, s.with].filter((v) => v !== undefined).length <= 1, {
+  error: "a step sets at most one positioner of before | after | with"
+});
 var StepList = exports_external.array(StepSchema);
 var Stage = exports_external.strictObject({ steps: StepList.optional() });
 var BuildStage = exports_external.strictObject({
@@ -21853,6 +21855,15 @@ function createTask(deps) {
       async list(slug) {
         return (await read(slug)).phases ?? [];
       },
+      async get(slug, phaseSlug) {
+        const phase = ((await read(slug)).phases ?? []).find((p) => p.slug === phaseSlug);
+        if (!phase) {
+          throw anchoredError("UnknownPhase", `no phase '${phaseSlug}'`, [
+            "list the phases: phase list <slug>"
+          ]);
+        }
+        return phase;
+      },
       async next(slug) {
         const phases = (await read(slug)).phases ?? [];
         return nextChild(phases);
@@ -21863,6 +21874,18 @@ function createTask(deps) {
       }
     },
     question: {
+      async list(slug) {
+        return (await read(slug)).questions ?? [];
+      },
+      async get(slug, id) {
+        const q = ((await read(slug)).questions ?? []).find((x) => x.id === id);
+        if (!q) {
+          throw anchoredError("UnknownQuestion", `no question '${id}'`, [
+            "list the questions: question list <slug>"
+          ]);
+        }
+        return q;
+      },
       async add(slug, text, priority) {
         const node = await read(slug);
         const questions = addQuestion(node.questions ?? [], {
@@ -21882,6 +21905,18 @@ function createTask(deps) {
       }
     },
     concern: {
+      async list(slug) {
+        return (await read(slug)).concerns ?? [];
+      },
+      async get(slug, id) {
+        const c = ((await read(slug)).concerns ?? []).find((x) => x.id === id);
+        if (!c) {
+          throw anchoredError("UnknownConcern", `no concern '${id}'`, [
+            "list the concerns: concern list <slug>"
+          ]);
+        }
+        return c;
+      },
       async add(slug, text, priority) {
         const node = await read(slug);
         const concerns = addQuestion(node.concerns ?? [], {
@@ -21901,6 +21936,9 @@ function createTask(deps) {
       }
     },
     log: {
+      async list(slug) {
+        return (await read(slug)).log ?? [];
+      },
       async add(slug, at, kind, note) {
         const node = await read(slug);
         return write(slug, {
@@ -21999,6 +22037,12 @@ function createPhase(deps) {
     ...phase,
     acceptance_criteria: fn(phase.acceptance_criteria ?? [])
   }));
+  const readPhase = async (slug) => {
+    const { taskSlug, phaseSlug } = split(slug);
+    const task = await store.read(taskSlug, taskSchema);
+    const { phases, idx } = findPhase(task, phaseSlug, taskSlug);
+    return phases[idx];
+  };
   const nodeVerbs = {
     async get(slug) {
       const { taskSlug, phaseSlug } = split(slug);
@@ -22032,6 +22076,18 @@ function createPhase(deps) {
   };
   const collections = {
     ac: {
+      async list(slug) {
+        return (await readPhase(slug)).acceptance_criteria ?? [];
+      },
+      async get(slug, id) {
+        const ac = ((await readPhase(slug)).acceptance_criteria ?? []).find((a) => a.id === id);
+        if (!ac) {
+          throw anchoredError("UnknownAc", `no acceptance criterion '${id}'`, [
+            "list the acceptance criteria: ac list <slug>"
+          ]);
+        }
+        return ac;
+      },
       add: (slug, text, id) => onAcs(slug, (acs) => addAc(acs, text, id)),
       evidence: (slug, acId, text) => onAcs(slug, (acs) => evidenceAc(acs, acId, text)),
       fail: (slug, acId, text) => onAcs(slug, (acs) => failAc(acs, acId, text)),
@@ -22045,6 +22101,18 @@ function createPhase(deps) {
       }
     },
     rule: {
+      async list(slug) {
+        return (await readPhase(slug)).rules ?? [];
+      },
+      async get(slug, path) {
+        const rule = ((await readPhase(slug)).rules ?? []).find((r) => r.path === path);
+        if (!rule) {
+          throw anchoredError("UnknownRule", `no rule '${path}'`, [
+            "list the rules: rule list <slug>"
+          ]);
+        }
+        return rule;
+      },
       add: (slug, path, why) => mutate(slug, (phase) => {
         const rules = phase.rules ?? [];
         const next = rules.some((r) => r.path === path) ? rules.map((r) => r.path === path ? { path, why } : r) : [...rules, { path, why }];
@@ -22147,7 +22215,31 @@ function createEpic(deps) {
     defer: (slug, childSlug, acId, reason) => mutateStub(slug, childSlug, (s) => ({
       ...s,
       acceptance_criteria: deferAc(s.acceptance_criteria ?? [], acId, reason)
-    }))
+    })),
+    list: async (slug, childSlug) => {
+      const stub = stubsOf(await read(slug)).find((s) => s.slug === childSlug);
+      if (!stub) {
+        throw anchoredError("UnknownChild", `no child '${childSlug}'`, [
+          "list the children: child list <slug>"
+        ]);
+      }
+      return stub.acceptance_criteria ?? [];
+    },
+    get: async (slug, childSlug, acId) => {
+      const stub = stubsOf(await read(slug)).find((s) => s.slug === childSlug);
+      if (!stub) {
+        throw anchoredError("UnknownChild", `no child '${childSlug}'`, [
+          "list the children: child list <slug>"
+        ]);
+      }
+      const ac = (stub.acceptance_criteria ?? []).find((a) => a.id === acId);
+      if (!ac) {
+        throw anchoredError("UnknownAcceptance", `no acceptance criterion '${acId}'`, [
+          "list them: child ac list <slug> <childSlug>"
+        ]);
+      }
+      return ac;
+    }
   };
   const nodeVerbs = {
     get: (slug) => read(slug),
@@ -22183,9 +22275,16 @@ function createEpic(deps) {
       const node = await read(slug).catch(() => {
         return;
       });
-      const delivered = (node?.tasks ?? []).filter((t) => t.status === "done").map((t) => `${slug}/${t.slug}`);
+      const delivered = (node?.tasks ?? []).filter((t) => t.status === "done");
+      const children = [];
+      for (const t of delivered) {
+        try {
+          await task.run("archive", [t.slug]);
+          children.push(t.slug);
+        } catch {}
+      }
       await store.archive(slug);
-      return { slug, archived: true, children: delivered };
+      return { slug, archived: true, children };
     },
     async reset(slug) {
       await store.remove(slug);
@@ -22208,6 +22307,18 @@ function createEpic(deps) {
       },
       async ready(slug) {
         return readyChildren(stubsOf(await read(slug)));
+      },
+      async list(slug) {
+        return stubsOf(await read(slug));
+      },
+      async get(slug, childSlug) {
+        const stub = stubsOf(await read(slug)).find((s) => s.slug === childSlug);
+        if (!stub) {
+          throw anchoredError("UnknownChild", `no child '${childSlug}'`, [
+            "list the children: child list <slug>"
+          ]);
+        }
+        return stub;
       },
       status: (slug, childSlug, status) => mutateStub(slug, childSlug, (s) => {
         if (!stubStatusValues.includes(status)) {
@@ -22249,6 +22360,18 @@ function createEpic(deps) {
       }
     },
     acceptance: {
+      async list(slug) {
+        return (await read(slug)).acceptance ?? [];
+      },
+      async get(slug, id) {
+        const item = (await read(slug)).acceptance?.find((a) => a.id === id);
+        if (!item) {
+          throw anchoredError("UnknownAcceptance", `no acceptance item '${id}'`, [
+            "list the acceptance items: acceptance list <slug>"
+          ]);
+        }
+        return item;
+      },
       async add(slug, text) {
         const node = await read(slug);
         const items = node.acceptance ?? [];
@@ -22282,6 +22405,18 @@ function createEpic(deps) {
       }
     },
     question: {
+      async list(slug) {
+        return (await read(slug)).questions ?? [];
+      },
+      async get(slug, id) {
+        const q = (await read(slug)).questions?.find((x) => x.id === id);
+        if (!q) {
+          throw anchoredError("UnknownQuestion", `no question '${id}'`, [
+            "list the questions: question list <slug>"
+          ]);
+        }
+        return q;
+      },
       async add(slug, text, priority) {
         const node = await read(slug);
         return write(slug, {
@@ -22305,6 +22440,18 @@ function createEpic(deps) {
       }
     },
     concern: {
+      async list(slug) {
+        return (await read(slug)).concerns ?? [];
+      },
+      async get(slug, id) {
+        const c = (await read(slug)).concerns?.find((x) => x.id === id);
+        if (!c) {
+          throw anchoredError("UnknownConcern", `no concern '${id}'`, [
+            "list the concerns: concern list <slug>"
+          ]);
+        }
+        return c;
+      },
       async add(slug, text, priority) {
         const node = await read(slug);
         return write(slug, {
@@ -22325,6 +22472,9 @@ function createEpic(deps) {
       }
     },
     log: {
+      async list(slug) {
+        return (await read(slug)).log ?? [];
+      },
       async add(slug, at, kind, note) {
         const node = await read(slug);
         return write(slug, { ...node, log: appendLog(node.log ?? [], { at, kind, note }) });
@@ -22408,16 +22558,61 @@ function envelope(command, result, error51) {
 
 // src/cli/scope/render-line.ts
 var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isScalar = (v) => typeof v === "string" || typeof v === "number" || typeof v === "boolean";
+var NODE_ARRAY_FIELDS = ["phases", "tasks", "acceptance", "acceptance_criteria", "children"];
+var TEXT_FIELDS = ["text", "goal", "note", "answer", "detail"];
+var ID_FIELDS = ["id", "slug"];
+var LEAD_FIELDS = ["status", "priority"];
+function isItem(v) {
+  if (!isObj2(v))
+    return false;
+  if (isObj2(v.node) && (v.stage !== undefined || v.steps !== undefined))
+    return false;
+  if (NODE_ARRAY_FIELDS.some((f) => Array.isArray(v[f])))
+    return false;
+  if (typeof v.id === "string")
+    return true;
+  return TEXT_FIELDS.some((f) => isScalar(v[f]));
+}
+function itemLine(item) {
+  const used = new Set;
+  const parts = [];
+  const idField = ID_FIELDS.find((f) => isScalar(item[f]));
+  if (idField) {
+    parts.push(val(item[idField]));
+    used.add(idField);
+  }
+  const textField = TEXT_FIELDS.find((f) => isScalar(item[f]));
+  if (textField)
+    used.add(textField);
+  const ordered = [
+    ...LEAD_FIELDS.filter((f) => (f in item) && !used.has(f)),
+    ...Object.keys(item).filter((f) => !used.has(f) && !LEAD_FIELDS.includes(f))
+  ];
+  for (const f of ordered) {
+    if (used.has(f))
+      continue;
+    used.add(f);
+    if (item[f] === null || item[f] === undefined)
+      continue;
+    parts.push(`${f}: ${val(item[f])}`);
+  }
+  if (textField)
+    parts.push(val(item[textField]));
+  return parts.join(" · ");
+}
 function val(v) {
   if (v === null || v === undefined)
     return "";
-  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean")
+  if (isScalar(v))
     return String(v);
   return JSON.stringify(v);
 }
 function summarize(result) {
   if (result === null || result === undefined)
     return "ok";
+  if (isItem(result))
+    return itemLine(result);
   if (!isObj2(result))
     return val(result);
   const r = result;
@@ -22462,6 +22657,12 @@ function renderLine(env) {
     const head = `error[${e?.name ?? "Error"}]: ${e?.message ?? "failed"}`;
     const fix = e?.suggestions && e.suggestions.length > 0 ? ` · fix: ${e.suggestions.join("; ")}` : "";
     return `${env.command} · ${head}${fix}`;
+  }
+  if (Array.isArray(env.result)) {
+    if (env.result.length === 0)
+      return `${env.command} · (none)`;
+    return env.result.map((it) => `${env.command} · ${isItem(it) ? itemLine(it) : val(it)}`).join(`
+`);
   }
   const body = summarize(env.result);
   const next = env.next ? ` · next: ${env.next}` : "";

@@ -35,9 +35,12 @@ not configurable. Nesting lives entirely in the slug (`my-epic/login/setup`).
 
 ```
 /plugin marketplace add chafoo/anchored
-/plugin install anchored@chafoo
+/plugin install a@anchored
 /reload-plugins
 ```
+
+Not on the official Claude Code marketplace yet — this adds the GitHub repo
+(`chafoo/anchored`) as a marketplace source; the official listing is the next step.
 
 Then, inside any project's Claude Code session:
 
