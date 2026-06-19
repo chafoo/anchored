@@ -30,9 +30,9 @@ Working through the kata produces:
 
 - **Bun** installed (`bun --version`). See [bun.sh](https://bun.sh).
 - The **anchored plugin** installed in Claude Code.
-- The **anchored CLI** at version **0.5.x or newer** — the `commit` phase field
-  used in this `anchored.yml` requires 0.5+; an older CLI will reject the config.
-  Check: `anchored --version`.
+- The **anchored CLI** at version **0.5.2 or newer** — the example's `anchored.yml`
+  uses the `${NODE_SLUG}` variable in its git workflow, which the build and wrap
+  skill inject from 0.5.2 onward. Check: `anchored --version`.
 
 ---
 

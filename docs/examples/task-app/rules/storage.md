@@ -3,10 +3,10 @@
 When using `localStorage` (or `sessionStorage`), always prefix keys with an
 app-specific namespace to avoid collisions with other pages on the same origin.
 
-For this task-app kata the prefix is `notes:`:
+For this task-app kata the prefix is `notes.` (matching the data model in the ticket's Appendix C):
 
-- `notes:tasks` — the list of task objects (each task's note is raw Markdown)
-- `notes:theme` — the active light/dark theme preference
+- `notes.tasks.v1` — the list of task objects (each task's note is raw Markdown)
+- `notes.theme.v1` — the active light/dark theme preference
 
 **Quota awareness:** `localStorage` holds ~5 MB. Every write that can grow must
 catch `QuotaExceededError` and surface a user-visible warning rather than
