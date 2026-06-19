@@ -1,0 +1,253 @@
+schema_version: 2
+slug: starter-example
+title: Starter-Example (docs/examples) + NODE_SLUG- & Nesting-Slug-Fixes im Build-Skill
+status: build
+context:
+  plan: "Drei Stränge in einem Task: (1) NODE_SLUG — neue Variable im Build-Skill-Variablenvertrag (Slug des gerade gebauten Knotens; schließt die Lücke, dass EPIC_SLUG zur Epic-eigenen Build-Zeit leer ist); rein orchestrator-injiziert, kein Engine-Code. (2) Nesting-Fix — die just-in-time Task-Anlage im Epic-Build nutzt den verschachtelten Slug <epic>/<stub>, damit Task-Files im Epic-Ordner liegen statt nach tasks/ zu zerstreuen; Prosa-only, layout.ts ist bereits korrekt, Konvention settled in docs/design/v3/ticket-3-findings.md. (3) Starter-Example unter docs/examples/task-app/ (anchored.yml 1:1 aus anchored-test mit epic/task-app -> ${NODE_SLUG}, Ticket.md 1:1, flache rules/, neue englische README; kein committetes .claude/anchored/). Harte Gates: guard-prose.sh bleibt gruen (keine Jargon-Begriffe in Tabellenzellen, Sentinel-Strings intakt); docs/examples/ ist Produkt-Content -> Englisch; CLI-only. Phasen: skill-fixes, config-ref (parallel), example-files (haengt an skill-fixes), prose-gate (haengt an allen)."
+  refine: "plan-check (auf intense eskaliert): alle Pfade/Zeilen stimmen (build/SKILL.md 205-210 + 214 + 127-128, setup 66-68, anchored-config 127-143, layout.ts 21-40 nestet korrekt, guard-prose Sentinels da, anchored-test-Quelldateien vorhanden, api.md/agent-contract.md nutzen bereits <epic>/<task>). Echter Fund: epic/task-app steht in 6 Strings ueber 4 Steps — pauschale NODE_SLUG-Ersetzung bricht die Task-Tier-Steps; korrekt ist NODE_SLUG fuer Epic-Steps, EPIC_SLUG fuer Task-Steps (q2 aufgeloest, pruefbares AC ergaenzt). Scope-Luecken geschlossen: plan/wrap-Variablentabellen-Konsistenz (a7), anchored.yml-Kommentar erklaert Zwei-Variablen-Muster (a9). rules-check: Coverage gruen (cli-only, Sprache=Englisch, no-abbrev, guard-prose-Gate als prose-gate-Phase); 2 ACs auto-ergaenzt (no-abbrev auf skill-fixes a6, Englisch fuer Ticket.md+anchored.yml a8). Nicht-anwendbare Regel-Familien korrekt ausgeschlossen (factory-functions, colocation, test-file-naming, fractal-substrate — kein core/src-Code)."
+questions:
+  - id: q1
+    text: |-
+      NODE_SLUG is documented in the skill prose and used in the example anchored.yml, but the engine (cli/layout.ts, the build runner) does not currently inject a NODE_SLUG environment variable — only TASK_SLUG, PHASE_SLUG, PHASE_NAME, and EPIC_SLUG are injected today. The example anchored.yml uses ${NODE_SLUG} in ensure-epic-branch (and potentially ensure-task-branch) to replace the hardcoded 'epic/task-app' literal. If NODE_SLUG is not injected at runtime, the shell expansion will produce an empty string and the git commands will silently fail.
+      Recommendation: Define NODE_SLUG injection as in-scope for this task — a one-line addition to the build runner that sets NODE_SLUG to the epic slug when running epic.build steps, and to the task slug when running task.build steps (i.e. NODE_SLUG = EPIC_SLUG if at epic tier, else TASK_SLUG). This is a pure substrate/mechanism addition (not policy), consistent with fractal-substrate-integrity.md, and the example becomes immediately functional.
+      Implications:
+      - If in-scope: the example anchored.yml is fully functional out of the box; adds a small engine change to phase skill-fixes (or a new phase), which is outside the pure-prose scope originally framed but is necessary for the variable to exist at runtime.
+      - If out-of-scope (prose-only): the example anchored.yml must NOT use ${NODE_SLUG} — it would need to retain the 'epic/task-app' literal, defeating the purpose of the variable; the skill docs would describe a variable that does not yet exist, which is misleading.
+      - A middle path: document NODE_SLUG as 'planned, not yet injected' in the skill prose, use a comment in the example anchored.yml explaining the workaround — keeps this task prose-only but requires a follow-up task before the example is usable.
+    priority: high
+    status: resolved
+    answer: "Prosa-only, kein Engine-Code: NODE_SLUG wird als Env-Var vom Build-Skill-Orchestrator gesetzt."
+    source: ai
+    reasoning: "Verifiziert in plugin/skills/build/SKILL.md (~Z.198-216): Step-Env-Vars setzt der Orchestrator ('you make them real env vars'), nie die Engine/CLI. NODE_SLUG injizieren = eine Zeile in der Variablen-Tabelle + im bash-Beispiel; der Orchestrator kennt den eigenen Slug (er rief /a:build <slug> auf). Konsistent mit der Nutzervorgabe 'kein Engine-Code'. Scope bleibt in Phase skill-fixes."
+  - id: q2
+    text: "The anchored-test anchored.yml has the epic/task-app literal hardcoded in SIX operational instruction strings (lines 82, 95, 114, 125 — in ensure-task-branch, squash-merge, ensure-epic-branch, merge-to-main). The plan says 'replace epic/task-app with ${NODE_SLUG}' but NODE_SLUG is only defined for the epic tier (epic-build context). At task-build time the variable is TASK_SLUG, not NODE_SLUG. The plan's AC a2 says the example uses ${NODE_SLUG} across all four steps — but the ensure-task-branch and squash-merge steps run at task-build, where NODE_SLUG would refer to the task slug, not the epic slug. The correct replacement is EPIC_SLUG in task/wrap steps (ensure-task-branch: git checkout epic/${EPIC_SLUG}; squash-merge: git checkout epic/${EPIC_SLUG}) and NODE_SLUG in epic-build steps (ensure-epic-branch: git checkout -B epic/${NODE_SLUG}; merge-to-main: git merge --no-ff epic/${NODE_SLUG}). Recommendation: define NODE_SLUG as the slug of the node currently being built at THAT tier: epic-build → epic slug; task-build → task slug. Then update AC a2 (example-files) to specify per step which variable fills which slot — ${NODE_SLUG} in epic steps, ${EPIC_SLUG} in task steps — rather than a blanket 'NODE_SLUG everywhere'. Implications: (1) if NODE_SLUG is defined as 'current node slug at any tier', then at task-build NODE_SLUG = TASK_SLUG, which is redundant but consistent — however the git commands would produce branch name epic/task-app-foundation, not epic/task-app, breaking the workflow; (2) the four task/wrap steps each need a specific variable call-out in the AC; (3) the variable-contract table row for NODE_SLUG must state 'epic slug when in epic-build, task slug when in task-build' and the example anchored.yml comments must explain the two-variable pattern."
+    priority: high
+    status: resolved
+    answer: "Tier-korrekte Zuordnung: Epic-Schritte (ensure-epic-branch, merge-to-main) nutzen epic/${NODE_SLUG}; Task-Schritte (ensure-task-branch, squash-merge) nutzen epic/${EPIC_SLUG}. NODE_SLUG = Slug des Knotens, dessen Stage laeuft."
+    source: ai
+    reasoning: "plan-check (auf intense eskaliert) hat verifiziert: epic/task-app steht in 6 Strings ueber 4 Steps. Pauschal NODE_SLUG bricht die zwei Task-Tier-Steps (dort waere NODE_SLUG der Task-Slug task-app/foundation -> epic/task-app/foundation). EPIC_SLUG ist im Epic immer = task-app und damit fuer Task-Steps korrekt; NODE_SLUG fuellt nur die Luecke der Epic-eigenen Steps, wo EPIC_SLUG leer ist. Eine richtige Antwort, kein Praeferenz-Fork."
+log:
+  - at: plan
+    kind: learning
+    note: cli-only-transport.md · the example README in docs/examples/task-app/ must instruct users to invoke anchored via CLI/Bash only — no MCP, no raw Write/Edit on task-files during engine operation
+  - at: plan
+    kind: learning
+    note: CLAUDE.md language rule · docs/examples/ ships as product content (not internal working-docs), so all files — README.md, rules/*.md — must be in English; only our internal dev conversation is in German
+  - at: plan
+    kind: learning
+    note: "guard-prose.sh coupling (memory: Plugin-Prose-Test-Coupling) · plugin/skills/build/SKILL.md is scanned by guard-prose.sh with exact-string assertions (sections 3 and 4: jargon-in-Prefer-cells, 'apply the jargon mapping from', 'directive, not caveat', 'Fan-out caveat'); any prose edit must keep those sentinel strings intact or the quality gate fails"
+  - at: plan
+    kind: learning
+    note: CLAUDE.md no-abbreviations rule · plugin prose edits in plugin/skills/build/SKILL.md and plugin/references/anchored-config.md must spell out acronyms in prose (e.g. 'just-in-time' not 'JIT'); code identifiers stay as-is
+  - at: plan
+    kind: learning
+    note: tooling-quality-gates.md · guard-prose.sh is the operative gate for this task's plugin-prose changes; the gate must be green before ac → done (no core/src code changes, so lint/typecheck/bun-test gates are not triggered)
+  - at: plan
+    kind: learning
+    note: "STRAND 1 — Variable contract table: plugin/skills/build/SKILL.md lines 205-210. Table has TASK_SLUG, PHASE_SLUG, PHASE_NAME, EPIC_SLUG. EPIC_SLUG is defined as 'the parent epic slug, or empty when not in an epic' (line 210) — so at an epic's OWN build stage, EPIC_SLUG is empty and there is no variable carrying the epic's own slug. The example on line 214 shows EPIC_SLUG='' for a standalone task. There is no NODE_SLUG concept anywhere in the codebase today."
+  - at: plan
+    kind: learning
+    note: "STRAND 1 — Full blast radius for slug variables: plugin/skills/build/SKILL.md lines 200-214 (the canonical table + bash invocation example), plugin/references/anchored-config.md lines 127-143 (the 'Referring to slugs in instructions' section — uses plain prose not a variable-name table, so no NODE_SLUG to add there, only a description update), plugin/skills/plan/SKILL.md lines 120-123, plugin/skills/wrap/SKILL.md lines 64-69, plugin/skills/refine/SKILL.md line 215, plugin/skills/setup/SKILL.md lines 66-67, plugin/references/anchored.starter.yml lines 44-45. The setup SKILL also explicitly says 'There is no $SLUG' (line 68) — a NODE_SLUG addition must update that caveat."
+  - at: plan
+    kind: learning
+    note: "STRAND 2 — Child-slug nesting gap: plugin/skills/build/SKILL.md lines 127-128 reads 'anchored task create <child-slug> \"<title>\"' then 'anchored task plan <child-slug>' — the placeholder '<child-slug>' is AMBIGUOUS: it does not say whether it should be bare (e.g. 'core-list') or nested (e.g. 'my-epic/core-list'). ticket-3-findings.md lines 92-96 explicitly named this as a known root cause: 'the epic's just-in-time children were created with simple slugs (priority, search) rather than nested under the epic, so their files land at the top-level tasks/ path instead of being owned by the epic.'"
+  - at: plan
+    kind: learning
+    note: "STRAND 2 — Engine already handles nested slugs correctly: core/src/cli/layout.ts line 25 — 'pathFor': if slug contains '/' it resolves to '.claude/anchored/<epic>/<task>.yml'; bare slug goes to '.claude/anchored/tasks/<task>.yml'. archivePathFor follows the same split (line 38). This is pure SKILL-prose fix only — no engine code changes needed. Strand 2 fix is: replace '<child-slug>' with '<epic-slug>/<stub-slug>' in build/SKILL.md lines 127-128, and add a note that the JIT task create uses the nested form."
+  - at: plan
+    kind: learning
+    note: "STRAND 2 — Blast radius for child-slug nesting fix: only plugin/skills/build/SKILL.md lines 127-128 need updating. plugin/references/api.md line 64 already documents the nested form ('Slug: <epic>/<task> (nested) or a bare standalone slug') — no change needed there. plugin/references/agent-contract.md line 50 also already shows nested task form. The anchored-config.md branch-flatten tip at lines 139-143 ('an epic child slug is nested (myepic/core-list)') already correctly describes the nested pattern."
+  - at: plan
+    kind: learning
+    note: "STRAND 3 — Source files in ~/Dev/anchored-test: anchored.yml (127 lines, full git-workflow + TDD config, currently the complex dogfood config), Ticket.md (320 lines, full spec), .claude/rules/_pattern/bun-typescript.md (40 lines), .claude/rules/_pattern/fractal-modules.md (103 lines), .claude/rules/_concern/dom.md (30 lines), .claude/rules/_concern/storage.md (21 lines). These rules live at .claude/rules/_concern/ and .claude/rules/_pattern/ (NOT .claude/rules/ flat)."
+  - at: plan
+    kind: learning
+    note: "STRAND 3 — PROBLEM: anchored-test already has a completed .claude/anchored/ state checked into git (git ls-files confirms it is tracked). The _archive contains a full completed epic ('task-app') plus archived standalone tasks. The example MUST NOT ship this state. The .gitignore in anchored-test does NOT exclude .claude/anchored/. The example folder in the v2 repo (docs/examples/task-app/) will need to either copy source files only (excluding .claude/anchored/) or document the gitignore addition needed."
+  - at: plan
+    kind: learning
+    note: "STRAND 3 — docs/examples/task-app/ does not exist yet in the v2 repo (docs/ has only _docs.md, api.md, design/, stages/, tier/). The education design doc docs/design/education/_education.md describes the starter kit at lines 86-111: two components — (1) a minimal/near-empty anchored.yml (explicitly NOT the complex dogfood config — 'schreckt ab'), (2) a small dummy project. The anchored-test anchored.yml is the complex dogfood config — so a NEW minimal anchored.yml must be authored for the example, not copied from anchored-test."
+  - at: plan
+    kind: learning
+    note: "STRAND 3 — The education doc (lines 108-111) leaves the delivery location open: 'Liefern als eigenes Repo (anchored-starter) zum Klonen, oder als Ordner im Doku-Site-Repo?' The task slug is 'starter-example' and it targets docs/examples/task-app/ in this repo — so it resolves to the 'folder in the docs repo' option. The rule files from anchored-test (.claude/rules/_pattern/ and _concern/) are part of the task-app project scaffold and should be included in the example."
+  - at: plan
+    kind: learning
+    note: "guard-prose.sh safety: plugin/scripts/guard-prose.sh asserts exact strings across plugin/references/communication-style.md and plugin/skills/{plan,refine,build,wrap}/SKILL.md. Relevant to strands 1+2 which edit build/SKILL.md: the guard scans the LAST column of pipe-table rows for framework jargon (jargon regex: refined|drafted|scaffold|stub|seam|grounding|roll-up|outcome-AC|each:task|concern|DAG|JIT) — so any new table row added for NODE_SLUG must not put those terms in its 'Available in' cell. The guard also checks for exact strings like 'directive, not caveat' and 'Default to the fastest safe path' — these must not be disturbed."
+  - at: plan
+    kind: learning
+    note: "history: no relevant archive — .claude/anchored/_archive/ does not exist in the v2 repo. ticket-3-findings.md (docs/design/v3/) serves as the primary decision record and explicitly flagged BOTH the slug-nesting bug (C3/root-note at line 92-96) and the archiving cascade gap. The nested slug convention for child tasks is a SETTLED design decision: api.md, agent-contract.md, and layout.ts all consistently encode '<epic>/<task>' as the nested form. The only gap is that build/SKILL.md lines 127-128 still use the ambiguous '<child-slug>' placeholder."
+  - at: refine
+    kind: learning
+    note: "rules-check rollup (medium intensity): COVERED — cli-only-transport: example-files/a5 pins CLI/Bash-only in README; tooling-quality-gates/guard-prose.sh: prose-gate/a1 (exit 0), a2 (sentinel strings), a3 (mapping-apply line in all 4 SKILLs), a4 (cross-file consistency); fractal-substrate-integrity: skill-fixes/a1-a5 cover NODE_SLUG mechanism; CLAUDE.md language rule on README + rules/*.md: example-files/a5+a7; CLAUDE.md no-abbreviations in config-ref prose: config-ref/a2 covers JIT. AUTO-FIXED (2 gaps): (1) skill-fixes had no AC enforcing CLAUDE.md no-abbreviations on new build/SKILL.md prose — added a6 + attached CLAUDE.md rule; (2) example-files had no AC requiring English in Ticket.md and anchored.yml (a5 only covered README.md) — added a8 + attached CLAUDE.md language rule. NOT APPLICABLE (no core/src code written): factory-functions, colocation-and-naming, test-file-naming, fractal-substrate-integrity (code-quality aspects) — no code phases exist; correctly excluded."
+  - at: refine
+    kind: learning
+    note: |-
+      Plan-check rollup (medium intensity, escalated to intense on slug-variable drift signal):
+
+      LINE NUMBERS — all accurate: build/SKILL.md variable table is lines 205-210 (confirmed exact), bash invocation example is line 214 (confirmed exact), just-in-time child-slug lines 127-128 (confirmed exact, still uses bare <child-slug>). setup/SKILL.md 'no $SLUG' caveat is lines 66-68 (confirmed). anchored-config.md slug section is lines 127-143 (confirmed, no NODE_SLUG row exists). layout.ts nested-slug logic lines 21-40 (confirmed correct, prose-only fix valid). guard-prose.sh sentinel strings confirmed: 'directive, not caveat' in build/SKILL.md line 244, 'Fan-out caveat' absent from build/SKILL.md, 'apply the jargon mapping from' in all four SKILLs. anchored-test source files confirmed: anchored.yml=127 lines, Ticket.md=320 lines, rules at .claude/rules/_concern/ (dom.md, storage.md) and .claude/rules/_pattern/ (bun-typescript.md, fractal-modules.md) — exactly four files, matches plan.
+
+      DRIFT FOUND — escalated to intense: The plan's AC a2 (example-files) says the example anchored.yml replaces the 'epic/task-app' literal with ${NODE_SLUG}. However the source anchored.yml has epic/task-app in SIX places across four steps that run at DIFFERENT tiers: (a) ensure-epic-branch and merge-to-main run at epic-build — here NODE_SLUG = the epic's own slug, so ${NODE_SLUG} is correct; (b) ensure-task-branch and squash-merge run at task-build — here NODE_SLUG would refer to the task slug (e.g. task-app/foundation), not the epic slug, producing a wrong branch name like 'epic/task-app/foundation'. The correct variable for those task/wrap steps is ${EPIC_SLUG} (already defined, non-empty when inside an epic). A blanket NODE_SLUG substitution is broken for task/wrap steps. Persisted as a new question.
+
+      CONSISTENT / ACCURATE: api.md and agent-contract.md both already use the nested <epic>/<task> form — no contradiction with the nesting fix. No '<child-slug>' in those files. anchored-config.md has no NODE_SLUG row today — the row addition is a real gap. plan/SKILL.md and wrap/SKILL.md both have their own slug-variable tables (TASK_SLUG + EPIC_SLUG only) — the plan AC a5 ('consistent with the NODE_SLUG addition') requires a decision on whether those tables also gain a NODE_SLUG row; persisted as an added AC on skill-fixes.
+
+      GUARD-PROSE RISK: NODE_SLUG table row will be added to build/SKILL.md. The guard scans the LAST pipe cell of every table row for jargon (regex: refined|drafted|scaffold|stub|seam|grounding|roll-up|outcome-AC|each:task|concern|DAG|JIT). As long as the 'Available in' cell for NODE_SLUG uses 'all build steps' (same as EPIC_SLUG) — no jargon terms — the guard passes. The jargon regex does NOT include 'NODE_SLUG' itself, so the term name in the first cell is safe. No risk from the table addition if phrased correctly.
+
+      NO-OP ITEMS: anchored.starter.yml (lines 44-45) uses PHASE_SLUG/TASK_SLUG in a comment — no NODE_SLUG update needed there. docs/examples/ directory does not exist yet — correct, phase example-files creates it. .claude/anchored/ state in anchored-test is present but the plan already accounts for excluding it (AC a6). Rule files are at the nested _concern/_pattern paths, not flat — plan log already noted this, AC a4 says 'docs/examples/task-app/rules/ contains exactly four files' which is achievable by copying from both subdirs into a flat rules/ in the example.
+  - at: skill-fixes
+    kind: build
+    note: note
+  - at: skill-fixes
+    kind: build
+    note: note
+  - at: skill-fixes
+    kind: build
+    note: note
+  - at: skill-fixes
+    kind: build
+    note: note
+  - at: skill-fixes
+    kind: build
+    note: note
+  - at: skill-fixes
+    kind: build
+    note: note
+  - at: skill-fixes
+    kind: build
+    note: note
+  - at: build
+    kind: learning
+    note: "code-validate: 7 adhered, 0 violations"
+  - at: build
+    kind: learning
+    note: "task-validate: 7 evidenced, 0 rejected — all ACs confirmed against actual file content: NODE_SLUG row in build/SKILL.md (line 213) correct value + clean Available-in cell; bash invocation (line 217) includes NODE_SLUG=; setup/SKILL.md caveat (lines 66-69) lists NODE_SLUG; just-in-time plan step (lines 127-128) uses <epic-slug>/<stub-slug> for both task create and task plan; plan/wrap/refine all carry NODE_SLUG consistently; no bare JIT/DAG anywhere in the four files"
+phases:
+  - name: "Plugin-Skill Fixes: NODE_SLUG variable + child-slug nesting"
+    slug: skill-fixes
+    status: done
+    rules:
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: Node-SLUG is a mechanism gap in the variable contract — the engine must expose the node's own slug at every tier, not just the parent epic's
+      - path: .claude/rules/tooling-quality-gates.md
+        why: guard-prose.sh is the operative quality gate for plugin-prose edits; the NODE_SLUG table row must not put jargon in the Available-in cell
+      - path: CLAUDE.md
+        why: "CLAUDE.md no-abbreviations rule applies to all plugin prose edits: 'just-in-time' not 'JIT', 'dependency graph' not 'DAG' etc. in any new or modified prose in build/SKILL.md"
+    acceptance_criteria:
+      - id: a1
+        text: plugin/skills/build/SKILL.md variable table (lines ~205-210) contains a row for `NODE_SLUG` with its value described as 'the slug of the node currently being built (epic at epic-build, task at task-build)' and its Available-in cell contains no jargon from the guard-prose regex (refined|drafted|scaffold|stub|seam|grounding|roll-up|outcome-AC|each:task|concern|DAG|JIT)
+        status: done
+        evidence:
+          - "verified: build/SKILL.md line 213, table row for NODE_SLUG — value: 'the slug of the node currently being built (epic at epic-build, task at task-build)', Available-in cell: 'all build steps'. None of the guard-prose jargon words (refined|drafted|scaffold|stub|seam|grounding|roll-up|outcome-AC|each:task|concern|DAG|JIT) appear in that cell."
+      - id: a2
+        text: plugin/skills/build/SKILL.md bash invocation example (line ~214) includes NODE_SLUG as an environment variable alongside TASK_SLUG, PHASE_SLUG, PHASE_NAME, EPIC_SLUG — confirmed by reading that line and finding `NODE_SLUG=`
+        status: done
+        evidence:
+          - "verified: build/SKILL.md line 217 bash invocation example — TASK_SLUG='core-list' PHASE_SLUG='persistence' PHASE_NAME='Local persistence' EPIC_SLUG='' NODE_SLUG='core-list' bash -c \"$STEP_CMD\". NODE_SLUG= is present alongside all other variables."
+      - id: a3
+        text: plugin/skills/setup/SKILL.md caveat (lines ~66-68) that previously said 'There is no $SLUG' is updated to also list NODE_SLUG among the available variables — confirmed by grepping for 'NODE_SLUG' in that file
+        status: done
+        evidence:
+          - "verified: setup/SKILL.md lines 66-69 — 'The runtime env vars available to a main-thread command are exactly ${TASK_SLUG}, ${PHASE_SLUG}, ${PHASE_NAME} (phase.build only), ${EPIC_SLUG}, and ${NODE_SLUG} (the slug of the node currently being built). There is no $SLUG'. NODE_SLUG is now listed in that caveat."
+      - id: a4
+        text: plugin/skills/build/SKILL.md lines 127-128 (just-in-time plan step) use the nested slug form `<epic-slug>/<stub-slug>` rather than the ambiguous bare `<child-slug>` for both the 'task create' and 'task plan' commands — confirmed by reading those lines
+        status: done
+        evidence:
+          - "verified: build/SKILL.md lines 127-128 — just-in-time plan step reads: 'anchored task create <epic-slug>/<stub-slug> \"<title>\"' then 'anchored task plan <epic-slug>/<stub-slug>'. Both task create and task plan use nested <epic-slug>/<stub-slug> form, not bare <child-slug>."
+      - id: a5
+        text: plugin/skills/{plan,wrap,refine}/SKILL.md each mention the full variable list (wherever they describe available env vars) and are consistent with the NODE_SLUG addition in build/SKILL.md — confirmed by grepping those three files for any slug-variable list and checking NODE_SLUG appears or the list is absent (no partial inconsistency)
+        status: done
+        evidence:
+          - "verified: plan/SKILL.md line 122 — NODE_SLUG table row: 'the slug of the node currently being planned (epic at epic-plan, task at task-plan)'. wrap/SKILL.md line 70 — NODE_SLUG table row: 'the slug of the node currently being wrapped (epic at epic-wrap, task at task-wrap)'. refine/SKILL.md line 216 — NODE_SLUG named inline in custom-steps variable list. All three files consistently carry NODE_SLUG; no partial inconsistency found."
+      - id: a6
+        text: All new prose additions to plugin/skills/build/SKILL.md (the NODE_SLUG table row, the bash invocation example update, and the child-slug nesting lines) spell out acronyms in full — 'just-in-time' not 'JIT', 'dependency graph' not 'DAG' — confirmed by grep -E '\bJIT\b|\bDAG\b' on the changed lines returning no matches in new prose
+        status: done
+        evidence:
+          - "verified: grep -E '\\bJIT\\b|\\bDAG\\b' across build/SKILL.md, plan/SKILL.md, wrap/SKILL.md, refine/SKILL.md — zero matches. All acronyms are spelled out in full ('just-in-time', 'dependency graph') throughout. The NODE_SLUG table row and bash invocation example in build/SKILL.md contain no bare JIT or DAG."
+      - id: a7
+        text: "plan/SKILL.md variable table (lines ~120-121) and wrap/SKILL.md variable table (lines ~68-69) each list TASK_SLUG and EPIC_SLUG only — if NODE_SLUG is added to build/SKILL.md it must be consistent: plan and wrap tables must either add NODE_SLUG or explicitly exclude it with a rationale; the current plan AC a5 says 'consistent with the NODE_SLUG addition' but does not specify whether plan/wrap tables must gain a row — this AC closes that gap: if NODE_SLUG is a build-only concept, add a note to that effect in build/SKILL.md table header; if it applies to all stages, add it to plan/SKILL.md and wrap/SKILL.md tables as well"
+        status: done
+        evidence:
+          - "verified: plan/SKILL.md variable table (line 118-122) includes NODE_SLUG row; wrap/SKILL.md variable table (lines 66-70) includes NODE_SLUG row. Both tables gained NODE_SLUG explicitly — no silent gap. No build-only rationale needed because NODE_SLUG applies to all stages (plan, build, wrap, refine all carry it)."
+  - name: "Anchored-Config Reference: NODE_SLUG slug-table update"
+    slug: config-ref
+    status: pending
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: guard-prose.sh scans anchored-config.md prose; any jargon leak in the slug-table Prefer cell would fail the gate
+    acceptance_criteria:
+      - id: a1
+        text: plugin/references/anchored-config.md slug table (lines ~132-137) includes a row for NODE_SLUG with a plain-prose description of its meaning — confirmed by reading that section and finding a 'NODE_SLUG' or equivalent row
+        status: pending
+      - id: a2
+        text: plugin/references/anchored-config.md prose in the 'Referring to slugs' section (lines ~127-143) spells out 'just-in-time' in full wherever previously shortened — confirmed by grep showing no bare 'JIT' in that section
+        status: pending
+      - id: a3
+        text: "plugin/references/anchored-config.md description of NODE_SLUG explains the gap it fills: EPIC_SLUG is the parent epic slug and is empty at an epic's own build; NODE_SLUG fills that gap by carrying the current node's own slug — confirmed by reading the new row/paragraph"
+        status: pending
+      - id: a4
+        text: plugin/references/anchored.starter.yml (lines 44-45, which use ${PHASE_SLUG} and ${TASK_SLUG} in a commented commit example) does NOT need a NODE_SLUG update — confirmed by reading that file and finding no slug-variable table or NODE_SLUG reference; the starter.yml is out of scope for this task
+        status: pending
+  - name: Create docs/examples/task-app/ starter-example folder
+    slug: example-files
+    status: pending
+    rules:
+      - path: .claude/rules/cli-only-transport.md
+        why: The example README must instruct CLI/Bash usage only — no MCP, no raw Write/Edit on task-files during engine operation
+      - path: .claude/rules/fractal-substrate-integrity.md
+        why: The example anchored.yml uses ${NODE_SLUG} (mechanism — the node's own slug must come from the substrate), so the skill-fixes phase must land first
+      - path: CLAUDE.md
+        why: "CLAUDE.md language rule: docs/examples/ is shipped product content — all files (README.md, Ticket.md, anchored.yml, rules/*.md) must be in English"
+    acceptance_criteria:
+      - id: a1
+        text: docs/examples/task-app/anchored.yml exists and contains the string '${NODE_SLUG}' — confirmed by grep — and contains no literal 'epic/task-app' string anywhere in the file
+        status: pending
+      - id: a2
+        text: docs/examples/task-app/anchored.yml content is the anchored-test worked-example config taken 1:1 except for the NODE_SLUG substitution — line count is within 5 lines of the 127-line source, and the step names (implement, task-validate, commit, ensure-task-branch, squash-merge, ensure-epic-branch, merge-to-main) all appear in the file
+        status: pending
+      - id: a3
+        text: docs/examples/task-app/Ticket.md exists with line count matching the 320-line source (within 5 lines) — confirmed by wc -l docs/examples/task-app/Ticket.md
+        status: pending
+      - id: a4
+        text: "docs/examples/task-app/rules/ contains exactly four files: bun-typescript.md, fractal-modules.md, storage.md, dom.md — confirmed by ls showing exactly those four and no subdirectories"
+        status: pending
+      - id: a5
+        text: docs/examples/task-app/README.md exists, is written in English, instructs users to invoke anchored via CLI/Bash only (no MCP, no raw file edits), and references the anchored CLI workflow — confirmed by reading the file and verifying no MCP instruction appears
+        status: pending
+      - id: a6
+        text: docs/examples/task-app/ contains no .claude/anchored/ directory or any anchored state files — confirmed by find docs/examples/task-app -name '*.yml' -path '*anchored*' returning nothing, and ls docs/examples/task-app showing only anchored.yml, Ticket.md, rules/, README.md
+        status: pending
+      - id: a7
+        text: docs/examples/task-app/rules/*.md files are in English and content is lightly generalised away from the anchored-test project (no hard-coded project-specific paths or names from the original anchored-test project) — confirmed by reading each rule file and finding no anchored-test-specific references
+        status: pending
+      - id: a8
+        text: docs/examples/task-app/Ticket.md and docs/examples/task-app/anchored.yml are written in English — no German prose, comments, or labels appear in either file — confirmed by reading both files and finding no German-language content
+        status: pending
+      - id: a9
+        text: "docs/examples/task-app/anchored.yml comments must explain the two-variable pattern clearly: NODE_SLUG (current node's own slug, epic in epic-build steps) vs EPIC_SLUG (parent epic in task/wrap steps) — the source anchored.yml already has a comment block (lines 14-17) that lists available vars; the example must update that comment to include NODE_SLUG and clarify which steps use which variable, so the example is self-documenting without requiring the reader to consult build/SKILL.md"
+        status: pending
+      - id: a10
+        text: "Die vier Git-Workflow-Steps in anchored.yml enthalten keinen hartkodierten 'epic/task-app'-Literal mehr: ensure-epic-branch + merge-to-main nutzen epic/${NODE_SLUG}, ensure-task-branch + squash-merge nutzen epic/${EPIC_SLUG} (pruefbar: grep 'epic/task-app' in den Step-instructions liefert nichts)"
+        status: pending
+    depends_on:
+      - skill-fixes
+  - name: "Quality gate: guard-prose.sh green + cross-file consistency"
+    slug: prose-gate
+    status: pending
+    rules:
+      - path: .claude/rules/tooling-quality-gates.md
+        why: guard-prose.sh is the hard gate for this task — must exit 0 before any phase moves to done
+    acceptance_criteria:
+      - id: a1
+        text: "plugin/scripts/guard-prose.sh exits 0 when run from the repo root — confirmed by running bash plugin/scripts/guard-prose.sh and seeing 'guard-prose: ALL GREEN'"
+        status: pending
+      - id: a2
+        text: "The sentinel strings that guard-prose.sh checks in build/SKILL.md are still present: 'directive, not caveat' is found in build/SKILL.md, 'Fan-out caveat' is NOT found in build/SKILL.md — confirmed by grep"
+        status: pending
+      - id: a3
+        text: The four SKILL.md files ({plan,refine,build,wrap}/SKILL.md) each contain 'apply the jargon mapping from' — confirmed by grep returning a match in all four files
+        status: pending
+      - id: a4
+        text: plugin/references/api.md, plugin/references/agent-contract.md, and plugin/references/anchored-config.md are consistent with the nested task slug form (<epic>/<task>) and with the NODE_SLUG variable name — confirmed by grep showing no remaining bare '<child-slug>' placeholder in any of those files
+        status: pending
+    depends_on:
+      - skill-fixes
+      - config-ref
+      - example-files

@@ -124,8 +124,10 @@ or `anchored epic child next <slug>` (epic→task) — returns one (else done):
    - **epic → task**: the child runs its OWN full just-in-time lifecycle, then the
      epic-child is marked delivered. Per ready child (the loop's body is the child's
      plan→refine→build→wrap, NOT a phase pipeline):
-     1. **just-in-time plan** — `anchored task create <child-slug> "<title>"` then
-        `anchored task plan <child-slug>` creates the child task-file.
+     1. **just-in-time plan** — `anchored task create <epic-slug>/<stub-slug> "<title>"` then
+        `anchored task plan <epic-slug>/<stub-slug>` creates the child task-file nested under the epic.
+        The nested slug (`<epic-slug>/<stub-slug>`) places the task-file in the epic's folder rather
+        than the top-level tasks directory.
         **Seed its decomposition from the stub's outcome acceptance criteria** (the Epic→Task
         contract epic-decompose wrote): read them
         (`anchored epic get <epic-slug>` → `tasks[].acceptance_criteria`) and pass
@@ -208,10 +210,11 @@ string-substitute by hand:
 | `PHASE_SLUG` | the phase just built | `phase.build` steps |
 | `PHASE_NAME` | the phase's plain-text name | `phase.build` steps |
 | `EPIC_SLUG` | the parent epic slug, or empty when not in an epic | all build steps |
+| `NODE_SLUG` | the slug of the node currently being built (epic at epic-build, task at task-build) | all build steps |
 
 Run it as, e.g.:
 ```bash
-TASK_SLUG='core-list' PHASE_SLUG='persistence' PHASE_NAME='Local persistence' EPIC_SLUG='' bash -c "$STEP_CMD"
+TASK_SLUG='core-list' PHASE_SLUG='persistence' PHASE_NAME='Local persistence' EPIC_SLUG='' NODE_SLUG='core-list' bash -c "$STEP_CMD"
 ```
 where `$STEP_CMD` is the command the step's `instructions` prose names, verbatim.
 **Per-phase commits don't

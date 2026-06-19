@@ -67,6 +67,7 @@ must run *after* `done` simply says so in its `instructions`, and you honour tha
 |---|---|
 | `TASK_SLUG` | the node being wrapped (the task-file / an epic child's slug) |
 | `EPIC_SLUG` | the parent epic slug, or empty when not in an epic |
+| `NODE_SLUG` | the slug of the node currently being wrapped (epic at epic-wrap, task at task-wrap) |
 
 A failed run-step (e.g. a merge conflict) is a real failure: surface it, stay
 pre-`done`, do **not** flip the status. Keep the git plumbing out of chat — report

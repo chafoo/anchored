@@ -212,7 +212,8 @@ child moments. There is no separate threshold/timing picker.
 refine steps beyond the gates. Dispatch them in declaration order at their plan
 position (steps marked `with:` each other join the same parallel batch — see B4 + I
 above): **`kind: 'run'`** → execute via Bash with the variable contract as real
-env vars (`TASK_SLUG` = the node, `EPIC_SLUG` = parent epic or empty); a non-zero
+env vars (`TASK_SLUG` = the node, `EPIC_SLUG` = parent epic or empty,
+`NODE_SLUG` = the node currently being refined); a non-zero
 run-step is a real failure → surface it, stay `drafted`. **`kind: 'use'`** → spawn
 the named subagent / skill with its `instructions`; a worker writes results to a
 declared custom field via `anchored <tier> set <slug> <field> "<value>"`. Keep

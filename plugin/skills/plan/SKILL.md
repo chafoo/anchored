@@ -119,6 +119,7 @@ declaration order, at the position they sit in the plan:
 |---|---|
 | `TASK_SLUG` | the node being planned (its slug) |
 | `EPIC_SLUG` | the parent epic slug, or empty when not in an epic |
+| `NODE_SLUG` | the slug of the node currently being planned (epic at epic-plan, task at task-plan) |
 
 Run a `run`-step as e.g. `TASK_SLUG='<slug>' EPIC_SLUG='' bash -c "$STEP_RUN"`.
 Keep the plumbing out of chat — narrate the outcome ("Research's done — result's in

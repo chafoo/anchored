@@ -64,7 +64,8 @@ question; suggest at most a one-liner. No salesmanship, no funnel.
      step 4, not just that the step is present.
    - **A command goes in `instructions:` prose**, not a step key. The runtime env
      vars available to a main-thread command are exactly `${TASK_SLUG}`,
-     `${PHASE_SLUG}`, `${PHASE_NAME}` (phase.build only), `${EPIC_SLUG}`. There is
+     `${PHASE_SLUG}`, `${PHASE_NAME}` (phase.build only), `${EPIC_SLUG}`,
+     and `${NODE_SLUG}` (the slug of the node currently being built). There is
      **no `$SLUG`**; `git commit -am "$SLUG"` commits an empty message.
 4. **Validate + check order**, then **show the changed region** so the user sees what
    landed. Run **`anchored validate`** as the final check — it parses + merges +
