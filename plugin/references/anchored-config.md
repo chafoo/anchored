@@ -135,6 +135,7 @@ slugs are in scope depends on the stage:
 | the phase slug | the phase just built | `phase.build` only |
 | the phase name | the phase's plain-text name | `phase.build` only |
 | the epic slug | the parent epic slug, otherwise empty | all build/wrap steps |
+| NODE_SLUG | the slug of the node currently being processed — the epic at an epic stage, the task at a task stage. Fills the gap left by the epic slug: the epic slug is the *parent* epic slug and is therefore empty at an epic's own build/wrap; NODE_SLUG carries the current node's own slug to cover that case. | all build/wrap steps |
 
 > **branch-per-task — flatten the slug:** an epic child slug is *nested*
 > (`myepic/core-list`). A raw branch `task/<slug>` can collide with a prefix-related

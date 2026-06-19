@@ -119,6 +119,27 @@ log:
   - at: build
     kind: learning
     note: "task-validate: 7 evidenced, 0 rejected — all ACs confirmed against actual file content: NODE_SLUG row in build/SKILL.md (line 213) correct value + clean Available-in cell; bash invocation (line 217) includes NODE_SLUG=; setup/SKILL.md caveat (lines 66-69) lists NODE_SLUG; just-in-time plan step (lines 127-128) uses <epic-slug>/<stub-slug> for both task create and task plan; plan/wrap/refine all carry NODE_SLUG consistently; no bare JIT/DAG anywhere in the four files"
+  - at: skill-fixes
+    kind: build
+    note: learning
+  - at: build
+    kind: note
+    note: "a1: plugin/references/anchored-config.md slug table (lines 132-138) now includes a NODE_SLUG row. The new row reads: 'NODE_SLUG | the slug of the node currently being processed — the epic at an epic stage, the task at a task stage. Fills the gap left by the epic slug: the epic slug is the parent epic slug and is therefore empty at an epic own build/wrap; NODE_SLUG carries the current node own slug to cover that case. | all build/wrap steps'. Confirmed by reading the section."
+  - at: build
+    kind: note
+    note: "a2: ran 'grep -nE \"\\bJIT\\b\" plugin/references/anchored-config.md' — no output; no bare JIT abbreviation exists anywhere in the file, including the Referring to slugs section (lines 127-144). The section already used full plain-prose wording with no abbreviations."
+  - at: build
+    kind: note
+    note: "a3: the NODE_SLUG row in the slug table (line 138) contains the sentence: 'Fills the gap left by the epic slug: the epic slug is the parent epic slug and is therefore empty at an epic own build/wrap; NODE_SLUG carries the current node own slug to cover that case.' This makes the gap explicit — EPIC_SLUG is empty at an epic own stage, NODE_SLUG is not."
+  - at: build
+    kind: note
+    note: "a4: VERIFY ONLY — read plugin/references/anchored.starter.yml in full (51 lines). Lines 44-45 contain a commented commit example using ${PHASE_SLUG} and ${TASK_SLUG}. The file has NO slug-variable table and NO NODE_SLUG reference anywhere. It is correctly out of scope for this task; no edit needed or made."
+  - at: build
+    kind: learning
+    note: "task-validate: 4 evidenced, 0 rejected — a1: NODE_SLUG row present at anchored-config.md:138; a2: no bare JIT in file; a3: gap-explanation (empty epic slug at own build/wrap, NODE_SLUG fills it) present at line 138; a4: anchored.starter.yml has no slug table and no NODE_SLUG reference, correctly out of scope"
+  - at: build
+    kind: learning
+    note: "code-validate: 4 adhered, 0 violations"
 phases:
   - name: "Plugin-Skill Fixes: NODE_SLUG variable + child-slug nesting"
     slug: skill-fixes
@@ -168,23 +189,31 @@ phases:
           - "verified: plan/SKILL.md variable table (line 118-122) includes NODE_SLUG row; wrap/SKILL.md variable table (lines 66-70) includes NODE_SLUG row. Both tables gained NODE_SLUG explicitly — no silent gap. No build-only rationale needed because NODE_SLUG applies to all stages (plan, build, wrap, refine all carry it)."
   - name: "Anchored-Config Reference: NODE_SLUG slug-table update"
     slug: config-ref
-    status: pending
+    status: done
     rules:
       - path: .claude/rules/tooling-quality-gates.md
         why: guard-prose.sh scans anchored-config.md prose; any jargon leak in the slug-table Prefer cell would fail the gate
     acceptance_criteria:
       - id: a1
         text: plugin/references/anchored-config.md slug table (lines ~132-137) includes a row for NODE_SLUG with a plain-prose description of its meaning — confirmed by reading that section and finding a 'NODE_SLUG' or equivalent row
-        status: pending
+        status: done
+        evidence:
+          - "verified: plugin/references/anchored-config.md line 138 contains a NODE_SLUG row in the slug table (lines 132-138) with plain-prose description: 'the slug of the node currently being processed — the epic at an epic stage, the task at a task stage'"
       - id: a2
         text: plugin/references/anchored-config.md prose in the 'Referring to slugs' section (lines ~127-143) spells out 'just-in-time' in full wherever previously shortened — confirmed by grep showing no bare 'JIT' in that section
-        status: pending
+        status: done
+        evidence:
+          - "verified: grep -nE '\\bJIT\\b' plugin/references/anchored-config.md returns no output — no bare JIT anywhere in the file, including the 'Referring to slugs' section (lines 127-145)"
       - id: a3
         text: "plugin/references/anchored-config.md description of NODE_SLUG explains the gap it fills: EPIC_SLUG is the parent epic slug and is empty at an epic's own build; NODE_SLUG fills that gap by carrying the current node's own slug — confirmed by reading the new row/paragraph"
-        status: pending
+        status: done
+        evidence:
+          - "verified: plugin/references/anchored-config.md line 138, NODE_SLUG row: 'the epic slug is the *parent* epic slug and is therefore empty at an epic\\'s own build/wrap; NODE_SLUG carries the current node\\'s own slug to cover that case' — gap explanation is present and explicit"
       - id: a4
         text: plugin/references/anchored.starter.yml (lines 44-45, which use ${PHASE_SLUG} and ${TASK_SLUG} in a commented commit example) does NOT need a NODE_SLUG update — confirmed by reading that file and finding no slug-variable table or NODE_SLUG reference; the starter.yml is out of scope for this task
-        status: pending
+        status: done
+        evidence:
+          - "verified: plugin/references/anchored.starter.yml (51 lines) has no slug-variable table and no NODE_SLUG reference. Lines 44-45 reference ${PHASE_SLUG} and ${TASK_SLUG} in a commented commit example only. File is correctly out of scope; no edit needed."
   - name: Create docs/examples/task-app/ starter-example folder
     slug: example-files
     status: pending
