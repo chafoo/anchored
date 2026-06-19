@@ -176,6 +176,24 @@ log:
   - at: build
     kind: learning
     note: "task-validate: 10 evidenced, 0 rejected — all criteria met; a1 NODE_SLUG present/no epic/task-app literal; a2 133 lines (+6 from expanded comment block, acceptable), all 7 step names present; a3 Ticket.md exactly 320 lines; a4 exactly 4 rules files, no subdirs; a5 README English, CLI-only, MCP forbidden not instructed; a6 no anchored state files; a7 rules generalised/English; a8 no German in either file; a9 lines 14-23 explain two-variable pattern self-documentingly; a10 ensure-epic-branch+merge-to-main use NODE_SLUG, ensure-task-branch+squash-merge use EPIC_SLUG"
+  - at: build
+    kind: note
+    note: "a1: bash plugin/scripts/guard-prose.sh exits 0 and prints 'guard-prose: ALL GREEN' — all three check groups (jargon-scrub, question-discipline, fanout-fastest-safe) show 'ok' for every assertion. No fixes needed."
+  - at: build
+    kind: note
+    note: "a2: grep -n 'directive, not caveat' plugin/skills/build/SKILL.md matches line 247 ('write the same file region is a directive, not caveat'); grep -n 'Fan-out caveat' returns nothing. Both sentinels are in the correct state."
+  - at: build
+    kind: note
+    note: "a3: grep -l 'apply the jargon mapping from' lists all four files — plan/SKILL.md, refine/SKILL.md, build/SKILL.md, wrap/SKILL.md. All four carry the sentinel string."
+  - at: build
+    kind: note
+    note: "a4: grep -rn '<child-slug>' plugin/references/api.md plugin/references/agent-contract.md plugin/references/anchored-config.md returns no matches — no bare <child-slug> placeholder exists in any of the three reference files. No fix needed."
+  - at: build
+    kind: learning
+    note: "code-validate: 4 adhered, 0 violations"
+  - at: build
+    kind: learning
+    note: "task-validate: 4 evidenced, 0 rejected — guard-prose.sh exits 0 (ALL GREEN), build/SKILL.md sentinel strings correct, all 4 SKILL.md files contain jargon mapping reference, no bare <child-slug> in reference files"
 phases:
   - name: "Plugin-Skill Fixes: NODE_SLUG variable + child-slug nesting"
     slug: skill-fixes
@@ -252,7 +270,7 @@ phases:
           - "verified: plugin/references/anchored.starter.yml (51 lines) has no slug-variable table and no NODE_SLUG reference. Lines 44-45 reference ${PHASE_SLUG} and ${TASK_SLUG} in a commented commit example only. File is correctly out of scope; no edit needed."
   - name: Create docs/examples/task-app/ starter-example folder
     slug: example-files
-    status: pending
+    status: done
     rules:
       - path: .claude/rules/cli-only-transport.md
         why: The example README must instruct CLI/Bash usage only — no MCP, no raw Write/Edit on task-files during engine operation
@@ -315,23 +333,31 @@ phases:
       - skill-fixes
   - name: "Quality gate: guard-prose.sh green + cross-file consistency"
     slug: prose-gate
-    status: pending
+    status: done
     rules:
       - path: .claude/rules/tooling-quality-gates.md
         why: guard-prose.sh is the hard gate for this task — must exit 0 before any phase moves to done
     acceptance_criteria:
       - id: a1
         text: "plugin/scripts/guard-prose.sh exits 0 when run from the repo root — confirmed by running bash plugin/scripts/guard-prose.sh and seeing 'guard-prose: ALL GREEN'"
-        status: pending
+        status: done
+        evidence:
+          - "verified: bash plugin/scripts/guard-prose.sh from repo root exits 0 and prints 'guard-prose: ALL GREEN' as final line (all 3 sections — jargon-scrub, question-discipline, fanout-fastest-safe — fully green)"
       - id: a2
         text: "The sentinel strings that guard-prose.sh checks in build/SKILL.md are still present: 'directive, not caveat' is found in build/SKILL.md, 'Fan-out caveat' is NOT found in build/SKILL.md — confirmed by grep"
-        status: pending
+        status: done
+        evidence:
+          - "verified: grep -n 'directive, not caveat' plugin/skills/build/SKILL.md => line 247 match (exit 0); grep -n 'Fan-out caveat' plugin/skills/build/SKILL.md => no match (exit 1). Both sentinel conditions met."
       - id: a3
         text: The four SKILL.md files ({plan,refine,build,wrap}/SKILL.md) each contain 'apply the jargon mapping from' — confirmed by grep returning a match in all four files
-        status: pending
+        status: done
+        evidence:
+          - "verified: grep -l 'apply the jargon mapping from' on all four SKILL.md files lists plan/SKILL.md, refine/SKILL.md, build/SKILL.md, wrap/SKILL.md (exit 0). All four match."
       - id: a4
         text: plugin/references/api.md, plugin/references/agent-contract.md, and plugin/references/anchored-config.md are consistent with the nested task slug form (<epic>/<task>) and with the NODE_SLUG variable name — confirmed by grep showing no remaining bare '<child-slug>' placeholder in any of those files
-        status: pending
+        status: done
+        evidence:
+          - "verified: grep -rn '<child-slug>' plugin/references/api.md plugin/references/agent-contract.md plugin/references/anchored-config.md => no matches (exit 1, meaning no occurrences). All three reference files are free of bare <child-slug> placeholders."
     depends_on:
       - skill-fixes
       - config-ref
