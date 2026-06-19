@@ -1,10 +1,24 @@
 schema_version: 2
 slug: starter-example
 title: Starter-Example (docs/examples) + NODE_SLUG- & Nesting-Slug-Fixes im Build-Skill
-status: build
+status: done
 context:
   plan: "Drei Stränge in einem Task: (1) NODE_SLUG — neue Variable im Build-Skill-Variablenvertrag (Slug des gerade gebauten Knotens; schließt die Lücke, dass EPIC_SLUG zur Epic-eigenen Build-Zeit leer ist); rein orchestrator-injiziert, kein Engine-Code. (2) Nesting-Fix — die just-in-time Task-Anlage im Epic-Build nutzt den verschachtelten Slug <epic>/<stub>, damit Task-Files im Epic-Ordner liegen statt nach tasks/ zu zerstreuen; Prosa-only, layout.ts ist bereits korrekt, Konvention settled in docs/design/v3/ticket-3-findings.md. (3) Starter-Example unter docs/examples/task-app/ (anchored.yml 1:1 aus anchored-test mit epic/task-app -> ${NODE_SLUG}, Ticket.md 1:1, flache rules/, neue englische README; kein committetes .claude/anchored/). Harte Gates: guard-prose.sh bleibt gruen (keine Jargon-Begriffe in Tabellenzellen, Sentinel-Strings intakt); docs/examples/ ist Produkt-Content -> Englisch; CLI-only. Phasen: skill-fixes, config-ref (parallel), example-files (haengt an skill-fixes), prose-gate (haengt an allen)."
   refine: "plan-check (auf intense eskaliert): alle Pfade/Zeilen stimmen (build/SKILL.md 205-210 + 214 + 127-128, setup 66-68, anchored-config 127-143, layout.ts 21-40 nestet korrekt, guard-prose Sentinels da, anchored-test-Quelldateien vorhanden, api.md/agent-contract.md nutzen bereits <epic>/<task>). Echter Fund: epic/task-app steht in 6 Strings ueber 4 Steps — pauschale NODE_SLUG-Ersetzung bricht die Task-Tier-Steps; korrekt ist NODE_SLUG fuer Epic-Steps, EPIC_SLUG fuer Task-Steps (q2 aufgeloest, pruefbares AC ergaenzt). Scope-Luecken geschlossen: plan/wrap-Variablentabellen-Konsistenz (a7), anchored.yml-Kommentar erklaert Zwei-Variablen-Muster (a9). rules-check: Coverage gruen (cli-only, Sprache=Englisch, no-abbrev, guard-prose-Gate als prose-gate-Phase); 2 ACs auto-ergaenzt (no-abbrev auf skill-fixes a6, Englisch fuer Ticket.md+anchored.yml a8). Nicht-anwendbare Regel-Familien korrekt ausgeschlossen (factory-functions, colocation, test-file-naming, fractal-substrate — kein core/src-Code)."
+  wrap: |-
+    Shipped a starter-example for anchored (docs/examples/task-app/) plus two coupled build-skill slug fixes, all in one task across four phases.
+
+    skill-fixes phase: added NODE_SLUG (the slug of the node whose stage is running — epic-scoped at epic build/wrap, task-scoped at task build/wrap; orchestrator-injected via prose, no engine code) to the variable contract across all five SKILL.md files (build, plan, wrap, refine, setup). Fixed the just-in-time epic→task step in build/SKILL.md from the ambiguous bare <child-slug> to the correct nested <epic-slug>/<stub-slug>, matching the layout.ts nesting that was already in place.
+
+    config-ref phase: added the NODE_SLUG row and a gap-explanation (EPIC_SLUG is the parent and empty at an epic's own build/wrap) to plugin/references/anchored-config.md.
+
+    example-files phase: created docs/examples/task-app/ — anchored.yml (tier-correct: ${NODE_SLUG} in epic-build/wrap steps, ${EPIC_SLUG} in task-build/wrap steps; no hardcoded epic/task-app literal), Ticket.md (320-line task spec), rules/ (4 flat files), README.md (English, CLI-only, how to spin up an external test repo).
+
+    prose-gate phase: guard-prose.sh green, all sentinel strings intact, no bare <child-slug> remaining in references.
+
+    Two medium concerns fixed during wrap review: (c1) a fabricated README version-gate replaced with the real ${NODE_SLUG} dependency + correct 0.5.2+ requirement; (c2) a localStorage key-format contradiction between rules/storage.md and Ticket.md Appendix C — storage.md aligned to notes.tasks.v1 / notes.theme.v1.
+
+    Version alignment: all three version files (core/package.json, plugin/.claude-plugin/plugin.json, plugin/package.json — the last had been lagging at 0.4.0) bumped to 0.5.2. Outcome: 24/24 acceptance criteria evidenced, no gate vetoes, committed on develop (03895bc, 526aede, 0a49360, e6fcb98).
 questions:
   - id: q1
     text: |-
@@ -26,6 +40,21 @@ questions:
     answer: "Tier-korrekte Zuordnung: Epic-Schritte (ensure-epic-branch, merge-to-main) nutzen epic/${NODE_SLUG}; Task-Schritte (ensure-task-branch, squash-merge) nutzen epic/${EPIC_SLUG}. NODE_SLUG = Slug des Knotens, dessen Stage laeuft."
     source: ai
     reasoning: "plan-check (auf intense eskaliert) hat verifiziert: epic/task-app steht in 6 Strings ueber 4 Steps. Pauschal NODE_SLUG bricht die zwei Task-Tier-Steps (dort waere NODE_SLUG der Task-Slug task-app/foundation -> epic/task-app/foundation). EPIC_SLUG ist im Epic immer = task-app und damit fuer Task-Steps korrekt; NODE_SLUG fuellt nur die Luecke der Epic-eigenen Steps, wo EPIC_SLUG leer ist. Eine richtige Antwort, kein Praeferenz-Fork."
+concerns:
+  - id: c1
+    text: README.md claims the example anchored.yml requires CLI 0.5+ due to a 'commit phase field', but commit is a plain custom step and the config validates and runs against CLI 0.4.0. The version gate is fabricated — a user with the actual installed version may think their installation is too old and not run the kata.
+    priority: medium
+    status: resolved
+    answer: "Behoben: README-Prerequisite korrigiert. Der falsche 'commit phase field requires 0.5+'-Hinweis ist raus (das Beispiel hat nur einen commit-STEP, kein Custom-Feld). Ersetzt durch die echte Abhaengigkeit: das Beispiel nutzt ${NODE_SLUG}, das build/wrap-Skill ab 0.5.2 injiziert -> 'requires 0.5.2 or newer'."
+    source: ai
+    reasoning: "Review-Fund verifiziert: docs/examples/task-app/anchored.yml hat keinen fields:-Block und kein 'anchored phase set ... commit'. Der urspruengliche Hinweis stammte aus meinem Briefing-Fehler (Repo-config 'fields: commit' mit Beispiel verwechselt). Echte Versionsabhaengigkeit ist NODE_SLUG, an die neue 0.5.2 gebunden."
+  - id: c2
+    text: storage.md rule specifies colon-separated keys (notes:tasks, notes:theme) but Ticket.md Appendix C specifies dot-separated keys with version suffix (notes.tasks.v1, notes.theme.v1). A developer following both documents would use inconsistent localStorage keys. One of the two must change to match the other.
+    priority: medium
+    status: resolved
+    answer: "Behoben: storage.md an Ticket.md Appendix C angeglichen — Schluessel jetzt notes.tasks.v1 / notes.theme.v1 (Punkt + Versionssuffix) statt notes:tasks/notes:theme. Ticket ist die Spec, also gewinnt sein Datenmodell."
+    source: ai
+    reasoning: "Widerspruch war real: Rule und Ticket htten zu verschiedenen localStorage-Keys gefuehrt. Ticket Appendix C ist die autoritative Spec; storage.md folgt ihr jetzt."
 log:
   - at: plan
     kind: learning
@@ -194,6 +223,27 @@ log:
   - at: build
     kind: learning
     note: "task-validate: 4 evidenced, 0 rejected — guard-prose.sh exits 0 (ALL GREEN), build/SKILL.md sentinel strings correct, all 4 SKILL.md files contain jargon mapping reference, no bare <child-slug> in reference files"
+  - at: wrap
+    kind: learning
+    note: "storage.md key format contradicts Ticket.md Appendix C: rule says colon-separated prefix 'notes:tasks' and 'notes:theme', Ticket says dot-separated 'notes.tasks.v1' and 'notes.theme.v1' (also with a version suffix the rule omits). A user following both documents would use inconsistent keys."
+  - at: wrap
+    kind: learning
+    note: "README.md Prerequisites claims: 'the commit phase field used in this anchored.yml requires 0.5+; an older CLI will reject the config.' Both parts are inaccurate: (a) commit is a custom step under phase.build.steps, not a phase field; (b) the example anchored.yml validates and runs against the current CLI 0.4.0 without error. The version gate claim appears to have been fabricated during the build and could mislead users who have a working installation."
+  - at: wrap
+    kind: learning
+    note: "NODE_SLUG documentation is consistent across all five SKILL.md files and anchored-config.md: each describes it as 'the slug of the node currently being built/planned/refined/wrapped (epic at epic-stage, task at task-stage)' with no contradictions. The TASK_SLUG / EPIC_SLUG / PHASE_SLUG rows also align."
+  - at: wrap
+    kind: learning
+    note: "build/SKILL.md nesting fix reads unambiguously: 'anchored task create <epic-slug>/<stub-slug> ...' then 'anchored task plan <epic-slug>/<stub-slug>' — the nested slug form is spelled out twice and the explanation 'places the task-file in the epic's folder rather than the top-level tasks directory' closes the gap. No bare <child-slug> remains in the just-in-time plan step."
+  - at: wrap
+    kind: learning
+    note: guard-prose.sh passes green on re-run. No bare <child-slug> in references, all 13 jargon terms covered, fanout-fastest-safe sentinels intact.
+  - at: wrap
+    kind: learning
+    note: The four rules (bun-typescript.md, fractal-modules.md, storage.md, dom.md) contain no leftover anchored-test-private or anchored-v2-internal references. fractal-modules.md uses .const.ts as a valid suffix, which differs from anchored-v2's own convention (that rejects it), but this is deliberate — the rule is for the task-app project, not for anchored-v2 itself.
+  - at: wrap
+    kind: learning
+    note: "The anchored.yml two-variable comment header is accurate: it correctly explains NODE_SLUG for epic.build/wrap (the epic IS the current node) vs EPIC_SLUG for task.build/wrap (the parent). The step instructions match the comment — epic steps use ${NODE_SLUG}, task steps use ${EPIC_SLUG}. The per-phase commit uses ${TASK_SLUG}/${PHASE_NAME}/${PHASE_SLUG} correctly for phase.build context."
 phases:
   - name: "Plugin-Skill Fixes: NODE_SLUG variable + child-slug nesting"
     slug: skill-fixes
