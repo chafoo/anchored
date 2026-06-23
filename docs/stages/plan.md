@@ -58,8 +58,6 @@ The tier argument is **optional**. Omit it and the skill classifies for you, the
 
 Plan is an **explicit-only** trigger — it fires only on the typed command, never on planning chatter.
 
-> The orchestrator/headless alias is `/impl-plan`; the user-facing plugin command is `/a:plan`.
-
 ## Steps under the hood
 
 1. **Classify the tier** when omitted — probe scope, apply the phase-count tripwire + independence test, recommend epic/task, confirm via AskUserQuestion.

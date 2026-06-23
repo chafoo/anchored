@@ -44,8 +44,6 @@ flowchart TD
 | **Precondition** | The node must be at status `drafted`; otherwise the run is gated. |
 | **On finish** | The status flips `drafted → refined`, and you are told to run `/a:build`. |
 
-> Note: in some environments an older parallel install advertises this as `/impl-refine`. For anchored v3, `/a:refine` is the authoritative command.
-
 ## Steps under the hood
 
 1. **Pre-flight** — checks the node is at status `drafted` and assembles the step plan (the stage orchestrates; it does not blindly spawn).
