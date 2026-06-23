@@ -46,7 +46,7 @@ anchored validate
 
 It parses, merges, and validates the whole file, then reports the resolved per-`tier × stage` step order and the declared custom fields.
 
-> **Note — invocation naming.** Per the design (CLAUDE.md namespace `a`), the invocation is `/a:setup`. Be aware that the currently shipped lifecycle skills are namespaced `/impl-*` (`/impl-plan`, `/impl-refine`, `/impl-build`, `/impl-wrap`) rather than the design-doc aliases `/a:plan` etc. — a known divergence between the design names and the shipped registry.
+> **Note — invocation naming.** Per the design (plugin namespace `a`), the invocation is `/a:setup`. Be aware that the currently shipped lifecycle skills are namespaced `/impl-*` (`/impl-plan`, `/impl-refine`, `/impl-build`, `/impl-wrap`) rather than the design-doc aliases `/a:plan` etc. — a known divergence between the design names and the shipped registry.
 
 ## Steps under the hood
 

@@ -72,4 +72,3 @@ into the right slot. Git stays entirely yours; the engine never runs it for you.
 | Every command and the `/a:*` skills | [api](api.md) |
 | What each tier is for | [tiers](tier/_tier.md) — epic · task · phase |
 | What each stage does | [stages](stages/_stages.md) — setup · plan · refine · build · wrap |
-| The non-negotiable principles | [`CLAUDE.md`](../CLAUDE.md) |

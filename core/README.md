@@ -101,7 +101,7 @@ bun run build         # tsc → dist/ (Node-compatible)
 Every runtime file under `lib/` · `modules/` · `services/` carries a colocated test
 (`*.spec.ts` / `*.int.ts` / `*.e2e.ts`); the spec-coverage gate is the first thing
 `bun run test` checks. The factory pattern is non-negotiable — see
-[`../.claude/rules/`](../.claude/rules) and [`../CLAUDE.md`](../CLAUDE.md).
+[`../.claude/rules/`](../.claude/rules).
 
 ## License
 

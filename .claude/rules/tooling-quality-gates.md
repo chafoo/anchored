@@ -41,6 +41,5 @@ evidence-honesty at the package level.
 
 ## Reference
 
-`CLAUDE.md` (quality-gates per package), `docs/design/file-structure.md`
-(core/package.json). [[fractal-substrate-integrity]] (gates ≈ invariant at the
-package level).
+`docs/design/file-structure.md` (core/package.json).
+[[fractal-substrate-integrity]] (gates ≈ invariant at the package level).
