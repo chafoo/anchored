@@ -18,6 +18,7 @@ dist-schemas/
 
 # local working notes (not shipped)
 .claude/temp/
+.claude/settings.local.json
 anchored.yml
 # internal binding spec / design working material — kept local, not published
 docs/design/

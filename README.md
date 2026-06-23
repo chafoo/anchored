@@ -6,7 +6,7 @@
 
 [![license](https://img.shields.io/badge/license-MIT-2dd4bf)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-38bdf8)](https://github.com/chafoo/anchored)
-[![version](https://img.shields.io/badge/version-0.5.1-2dd4bf)](https://github.com/chafoo/anchored/releases)
+[![version](https://img.shields.io/badge/version-0.5.2-2dd4bf)](https://github.com/chafoo/anchored/releases)
 
 </div>
 
@@ -18,20 +18,30 @@ trust the result: nothing reaches *done* without the proof to back it.
 
 Same lifecycle at every scale — **epic ▸ task ▸ phase**. CLI-only, zero-install plugin, no MCP.
 
-## What ships here
+## Why this exists
 
-| Package | Distributed as | Role |
-|---|---|---|
-| [`plugin/`](./plugin) | Claude Code marketplace plugin (`anchored`) | Skills, agents, references — what users install. Bundles its own CLI; zero setup. |
-| [`core/`](./core) | Bundled into the plugin | The factory engine + bundled `anchored` CLI — schema, state machine, atomic writes, and the evidence invariant. |
+AI writes code faster than you can verify it.
 
-The plugin ships the user-facing skills (`/a:plan` · `/a:refine` · `/a:build` ·
-`/a:wrap` · `/a:setup`) and agents; the core package ships the deterministic engine
-they drive over the CLI. **No MCP** — one transport, the `anchored` CLI over Bash,
-identical in the main session *and* in subagents/headless.
+On a long autonomous run, the app "works." Tests are green. PRs merge. And you still don't fully trust the result — because nobody can see *why* anything was built the way it was, or whether a passing test actually proves the thing it claims to.
 
-User-facing docs: [`plugin/README.md`](./plugin/README.md) · engine internals:
-[`core/README.md`](./core/README.md).
+Implementation runs at AI speed. Verification runs at human speed. That gap is the problem. Every line generated faster than it's proven becomes an obligation that comes back during review, debugging, and the next refactor.
+
+Better prompts don't close the gap. A prompt is a request, not a guarantee — the agent can skip a criterion, lose track over a long run, or point at a test that doesn't actually prove anything, then write a summary that *sounds* verified.
+
+**anchored moves verification out of your discipline and into the system.** A rule says "please do it this way." A boundary says "you cannot move forward until this is done." anchored is the boundary.
+
+## How it works
+
+Every piece of work moves through the same four steps, and a criterion cannot reach **done** without attached evidence that an independent checker accepts.
+
+| Step | What happens |
+| --- | --- |
+| **plan** | The task is broken into phases with *testable* acceptance criteria. If a criterion can't be verified, it isn't a valid criterion. |
+| **refine** | The plan is checked against the real codebase and your project rules — gaps, bad assumptions, and soft criteria get caught *before* any code is written. |
+| **build** | Implementation happens phase by phase. A phase can't be marked done because the code compiles or a test is green — each criterion needs evidence, and that evidence is validated. Insufficient proof or a rule violation → the step is rejected. |
+| **wrap** | The run is summarized. Verification already happened during the run; wrap just rolls up what was proven. |
+
+The key move: the agent that writes the code is **not** the one that decides whether it's proven. An independent instance evaluates each criterion — what was required, what changed, which check proves it, whether the evidence is sufficient, whether a rule was violated. Evidence is *structured state*, not prose. The whole workflow lives in a versioned `anchored.yml` at the repo root, so the process is reviewable and the same for everyone on the team — not trapped in one person's head or a chat history.
 
 ## Quick start
 
