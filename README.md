@@ -71,6 +71,7 @@ you, in the main session and in subagents. No `npm i -g`, no MCP setup.
 
 The docs hub is **[`docs/`](./docs/_docs.md)**:
 
+- **[Guide](./docs/guide.md)** — the one-page on-ramp: the idea, the lifecycle, and the runnable kata
 - **[CLI API](./docs/api.md)** — every `anchored <tier> <verb> [slug]` command and the `/a:*` skills
 - **[Tier portraits](./docs/tier/_tier.md)** — epic · task · phase, and what each one is for
 - **[Lifecycle stages](./docs/stages/_stages.md)** — setup · plan · refine · build · wrap
@@ -84,8 +85,6 @@ bun install
 bun run test     # the spec-coverage gate + unit + e2e + int suites
 bun run build    # tsc → dist/ (Node-compatible artifact)
 ```
-
-The non-negotiable principles are in [`CLAUDE.md`](./CLAUDE.md).
 
 ## Status
 
