@@ -78,7 +78,7 @@ carry the worker that matches the shipped default template and are
 
 ### Steering a gate with rationalizations / evidence prose
 
-The gate steps (`implement` · `task-validate` · `code-validate`, all under the
+The gate steps (`implement` · `task-validate`, all under the
 **`phase`** tier's `build`) are the highest-leverage place to add soft steering — a
 rationalizations table (the excuses the AI is tempted by, rebutted) or an evidence
 taxonomy (what concrete proof looks like). Your `instructions` is **appended** to the
@@ -108,6 +108,33 @@ phase:
 > instead: a custom step whose command (in its `instructions`) exits non-zero on
 > violation, so the runner acts on the exit code. The hardness ladder is in
 > `step-authoring.md`.
+
+### Recipe: an automated wrap fix-loop (findings → implementer, not the main session)
+
+By default, a wrap-review defect lands as a **concern** (which blocks `done` — a
+substrate gate) and the concern-walk asks YOU how to address it. If you want fixes to
+run automatically instead, wire the loop as a custom wrap step — the framework rule
+still holds: the main session and the reviewers never mutate code; **build-implement
+is the only code mutator**, and build-task-validate verifies each fix:
+
+```yaml
+task:
+  wrap:
+    steps:
+      - name: fix-loop
+        after: review
+        use: { type: agent, name: build-implement }
+        instructions: |
+          For each OPEN concern that names a code defect (wrap-review records those),
+          spawn this implementer with the concern text as its fix-list, then have
+          build-task-validate verify the fix. Resolve the concern only with the fix +
+          proof: `anchored task concern resolve <slug> <id> "<fix + evidence>" ai "<why>"`.
+          Repeat until no open code-defect concern remains; a concern that is NOT a
+          code defect stays for the concern-walk.
+```
+
+The loop is bounded by the same honesty rules as build: no resolve without the fix
+evidence, and `done` stays blocked while any concern is open.
 
 ### `execute:` — the per-step fan-out knob
 
@@ -154,7 +181,7 @@ name lands at the anchor position, a known name extends the existing step in pla
 phase:
   build:
     steps:
-      - { name: commit, after: code-validate, instructions: '…' }   # AFTER the gates, on a green phase
+      - { name: commit, after: task-validate, instructions: '…' }   # AFTER the gate, on a green phase
       - { name: lint,   before: task-validate, instructions: '…' }  # BEFORE the evidence gate
 ```
 
@@ -170,12 +197,19 @@ Reserved `name` values, recognised by the framework (not removable):
 | Stage | phase (leaf) | task | epic |
 |---|---|---|---|
 | `plan` | — | `discover` · `rules-scan` · `decompose` | `discover` · `scaffold` |
-| `refine` | — | `plan-check` · `rules-check` · `walk` | `walk` |
-| `build` | `implement` · `task-validate` · `code-validate` | `each: phase` | `each: task` |
+| `refine` | — | `plan-check` · `walk` | `walk` |
+| `build` | `implement` · `task-validate` | `each: phase` | `each: task` |
 | `wrap` | — | `review` · `summarize` | `roll-up` |
 
 > Reserved/off-limits for your *own* worker names: `plan`, `explore` (Claude
 > Code internal agent types).
+
+> **Shipped-but-optional gate agents:** `refine-rules-check` (rules-coverage check at
+> refine) and `build-code-validate` (rule inspector at build) are no longer default
+> steps — the plugin still ships both agents, so a project that wants them wires them
+> back as custom steps, e.g.
+> `{ name: rules-check, use: { type: agent, name: refine-rules-check }, with: plan-check }`
+> or `{ name: code-validate, use: { type: agent, name: build-code-validate }, with: task-validate }`.
 
 ## `each`, the loop step
 
@@ -275,7 +309,7 @@ in the step's `instructions:` prose:
 
 ```yaml
 - name: commit
-  after: code-validate
+  after: task-validate
   instructions: |
     Commit the phase, then record the SHA on the task-file:
       git add -A -- ':!.claude/anchored'

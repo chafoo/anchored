@@ -94,7 +94,8 @@ instructions }`:
   criteria: `anchored task phase add <slug> <phase-slug> "<name>"` then
   `anchored phase ac add <slug>/<phase-slug> "<testable acceptance criterion>"` (id auto-assigned).
 - **scaffold → epic-scaffold** (epic) — coarse task stubs:
-  `anchored epic child add <slug> <task-stub-slug>` (dependency order via depends_on).
+  `anchored epic child add <slug> <task-stub-slug> "<goal>" [<depends_on>]` (the 4th
+  arg persists the comma-separated dependency edge at add-time).
 
 ## Custom run/use steps (the config's own steps — research, scaffolding, …)
 
@@ -141,8 +142,15 @@ failure. Only flip when the structure is actually written.
 
 ## Finish
 
-Write the plan-trail prose (intro + the discover/decompose summary) to the node's
-own context, then flip the status:
+**Receipt every executed plan step first** (step enforcement — the flip to `drafted`
+is BLOCKED by the CLI until every served plan step carries a receipt):
+```bash
+anchored <tier> step done <slug> plan <step> "<one-line rollup>"     # per completed step
+anchored <tier> step skip <slug> plan <step> "<why it did not run>"  # a skip is documented, never silent
+```
+Write each `step done` right when the step's worker returns (not batched at the end);
+then write the plan-trail prose (intro + the discover/decompose summary) to the node's
+own context, and flip the status:
 ```bash
 anchored <tier> set <slug> context.plan "<intro + the plan-trail summary>"
 anchored <tier> status <slug> drafted

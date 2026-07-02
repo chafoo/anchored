@@ -77,7 +77,8 @@ status <slug> …`) — that is its own file.
 | attach a rule to a phase | `anchored phase rule add <task>/<phase> <path> "<why>"` |
 | set a phase's dependencies | `anchored phase set <task>/<phase> depends_on "<phase-slugs>"` |
 | — EPIC owns STUB existence — | |
-| add a child-stub | `anchored epic child add <epic-slug> <task-stub-slug> ["<goal>"]` |
+| add a child-stub | `anchored epic child add <epic-slug> <task-stub-slug> ["<goal>"] [<depends_on,comma-separated>]` |
+| receipt an executed step (orchestrator) | `anchored <tier> step done <slug> <stage> <step> "<rollup>"` · documented skip: `step skip … "<reason>"` — the stage-closing transition is blocked until every served step is receipted |
 | advance a child-stub | `anchored epic child status <epic-slug> <stub-slug> <pending\|active\|done\|blocked>` |
 | set a stub field (e.g. depends_on) | `anchored epic child set <epic> <stub> depends_on "a,b"` |
 | add a stub outcome-AC | `anchored epic child ac add <epic> <stub> "<text>"` |
@@ -99,14 +100,27 @@ status <slug> …`) — that is its own file.
 No structured return that the skill applies — the agent **self-writes** its result
 directly via the CLI. Per agent role:
 
+> **One code mutator, every stage.** `build-implement` (and its fan-out sibling
+> `build-workflow`) is the ONLY role that writes code — in build, and just as much in
+> wrap: a reviewer or orchestrator never fixes a finding "on the side". A wrap-review
+> defect becomes a **concern** (blocks `done`); its fix routes through build-implement
+> and is verified by build-task-validate before the concern is resolved. This is the
+> same separation of duties that keeps evidence honest (requirements-3).
+
+> **Verify your load-bearing writes.** Before you finish, read the node back
+> (`anchored <tier> get <slug>` or the matching `… get`/`… list`) and confirm the
+> fields your work depends on actually landed (a dependency edge, an AC flip, a set
+> field). A write the CLI accepted but the state doesn't show is a bug — surface it
+> (log it as a blocker), never paper over it silently.
+
 | Role | self-write commands |
 |---|---|
 | plan-discover / plan-rules-scan / refine-* / wrap-review / validators | `anchored <tier> log add <task-slug> <stage> <kind> "<note>"` |
 | plan-decompose | `anchored task phase add <task-slug> <phase-slug> "<name>"` · `anchored phase ac add <task-slug>/<phase-slug> "<text>"` · MAY record a phase's cross-phase deps (`anchored phase set <task-slug>/<phase-slug> depends_on "<phase-slugs>"`) |
-| epic-scaffold | `anchored epic child add <epic-slug> <task-stub-slug> "<goal>"` |
+| epic-scaffold | `anchored epic child add <epic-slug> <task-stub-slug> "<goal>" [<depends_on>]` |
 | build-implement | code (Write/Edit) + a build-NOTE per criterion: `anchored task log add <task-slug> build note "<ac-id>: <symbol> — <what + gate green>"`. Authors **NO** evidence, flips nothing — the checker records the proof (requirements-3). |
 | build-task-validate | the **EVIDENCE AUTHOR**: independently re-verifies each criterion, then `anchored phase ac evidence <task-slug>/<phase-slug> <ac-id> "<proof>"` on pass (flips it done; symbol anchor) or `anchored phase ac fail <task-slug>/<phase-slug> <ac-id> "<why>"` on fail (→ pending, re-do loop). NEVER flips the phase status (G4). |
-| build-code-validate | rule inspector (no evidence): `anchored phase ac fail <task-slug>/<phase-slug> <ac-id> "<rule violation>"` on a violation (→ pending, re-do — may veto a criterion the checker already evidenced) + rollup via `log add … build learning` |
+| build-code-validate *(optional — user-wired, not a default step)* | rule inspector (no evidence): `anchored phase ac fail <task-slug>/<phase-slug> <ac-id> "<rule violation>"` on a violation (→ pending, re-do — may veto a criterion the checker already evidenced) + rollup via `log add … build learning` |
 | build-workflow | fan-out unit-worker: code + a build-NOTE via `log add … build note` (authors **NO** evidence, like build-implement; the checker records it post-fan-out) |
 | wrap-summarize | `anchored <tier> set <node-slug> context.wrap "<summary>"` (dotted-path → nested) |
 | epic-roll-up | `anchored epic child roll-up <epic-slug>` (read child statuses) · `anchored epic acceptance status <epic> <id> done "<evidence>"` · `anchored epic log add <epic-slug> wrap <kind> "<retro>"` · `anchored epic status <epic-slug> done` |

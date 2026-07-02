@@ -14,7 +14,7 @@ Partner voice in chat, machinery only in the audit trail — see
 
 | Avoid (machinery) | Prefer (partner) |
 |---|---|
-| "Spawning plan-check + rules-check in parallel…" | "Let me check the plan against the current state of the code." |
+| "Spawning the plan-check gate agent…" | "Let me check the plan against the current state of the code." |
 | "epic-refine runs epic-plan-check → epic-decompose → walk" | "I'll check the two tasks against the code and work out their acceptance criteria." |
 | "refine intensity = intense" | "There's a lot moving here — let me look closely." |
 | "status transition drafted → refined" | "Plan's been talked through. Run `/a:build`." |
@@ -35,7 +35,7 @@ step-plan + node ops and spawns the refine agents itself via the **Task tool**
 1. `anchored <tier> refine <slug>` → `{ stage, tier, node, steps }` (tier derived from the
    node; does NOT spawn). State gate: refine expects `drafted`.
 2. `steps` is the resolved refine pipeline: for a task
-   `[plan-check, rules-check, walk]`, for an **epic**
+   `[plan-check, walk]` (plus any user-added gate steps from anchored.yml), for an **epic**
    `[epic-plan-check, epic-decompose, walk]` (D2 — epic-refine is a REAL stage:
    ground the stubs against code, then author per-stub outcome acceptance criteria, then walk).
 
@@ -62,7 +62,7 @@ itself** from signals it already has — **no extra agent, no probe call**:
   `low`; work that edits or extends existing code (the drift risk lives there) leans
   `intense`.
 
-Weigh them together, land on one level, and **pass it to both gate agents** in their
+Weigh them together, land on one level, and **pass it to every gate agent** in its
 Task prompt (`refine intensity: <low|medium|intense>`). This replaces any old
 binary-skip / "should we even refine" framing — the question is never *whether*, only
 *how hard*.
@@ -73,21 +73,20 @@ phase silently violates), it escalates itself to a deeper pass and notes why in 
 rollup. The floor is set by the main thread; an agent can always go deeper, never
 shallower.
 
-## Spawn the gate agents — ALWAYS in parallel (B4 + I)
+## Spawn the gate agents — batch by `with:` (B4 + I)
 
-**plan-check and rules-check ALWAYS spawn in parallel** — one message, two `Task`
-calls in the same turn. They are independent (one grounds the plan against code, the
-other checks rule coverage); splitting them keeps the evidence-author honest, and
-running them together costs ~0 extra wall-clock. **Never merge them into one agent;
-never run them sequentially.**
+The default template ships **one** refine gate per tier (task: `plan-check`). Users
+may add further gate steps in their anchored.yml (e.g. a rules-coverage check via the
+shipped `refine-rules-check` agent) — read the gates from the served `steps`, never
+hardcode a pairing.
 
 **Honor the template's `with:` marker.** The refine `steps` may mark sibling steps to
-run in the same parallel batch (`{ name: rules-check, with: plan-check }` — the I
-positioner). When two steps carry a `with:` relationship, spawn that whole batch in
+run in the same parallel batch (`{ name: <user-step>, with: plan-check }` — the I
+positioner). When steps carry a `with:` relationship, spawn that whole batch in
 **one** message (all `Task` calls together) and **join** before the next sequential
-step. The default gate parallelism (plan-check ∥ rules-check) is expressed this way in
-the template — read it from the plan, do not hardcode the pairing. Any further custom
-steps a user marks `with:` each other join the same way.
+step. Independent gates ALWAYS batch — splitting focused checkers keeps each honest,
+and running them together costs ~0 extra wall-clock. **Never merge batched steps into
+one agent; never run a `with:` batch sequentially.**
 
 **Task tier:**
 - **plan-check → refine-plan-check** — validates the plan against current code
@@ -95,11 +94,12 @@ steps a user marks `with:` each other join the same way.
   (a `low` glance vs. an `intense` full sweep); self-writes the rollup:
   `anchored task log add <slug> refine learning "<plan-check rollup>"`. Any
   drift it can't auto-fix becomes an open question.
-- **rules-check → refine-rules-check** — verifies each phase covers the applicable
-  `.claude/rules/*.md`, at the passed intensity; self-writes the coverage rollup via
-  `task log add`. A missing rule-enforcement is an **auto-fix** (the agent adds an
-  enforcing acceptance criterion itself), NOT a user question — project rules are
-  framework requirements that get enforced, not negotiated. Only a genuine
+- *(optional, user-wired)* **rules-check → refine-rules-check** — no longer a default
+  step; a user can wire the shipped agent back in
+  (`{ name: rules-check, use: { type: agent, name: refine-rules-check }, with: plan-check }`).
+  When present it verifies each phase covers the applicable `.claude/rules/*.md` at the
+  passed intensity; a missing rule-enforcement is an **auto-fix** (the agent adds an
+  enforcing acceptance criterion itself), NOT a user question. Only a genuine
   architecture/code ambiguity becomes an open question.
 
 **Epic tier (D2):**
@@ -277,10 +277,18 @@ separate lever (the epic build loop), not this decision.
 
 ## Finish
 
-Write the refine-trail (the plan-check + rules-check rollups) to context.refine,
-then — only when **every** question is resolved — flip the status:
+**Receipt every executed refine step first** (step enforcement — the flip to `refined`
+is BLOCKED by the CLI until every served refine step carries a receipt, the walk
+included):
 ```bash
-anchored <tier> set <slug> context.refine "<plan-check + rules-check rollups>"
+anchored <tier> step done <slug> refine <step> "<one-line rollup>"    # per completed step (plan-check, walk, custom gates)
+anchored <tier> step skip <slug> refine <step> "<why it did not run>" # e.g. walk with 0 open questions
+```
+Write each `step done` right when the step completes (a gate agent's join, the walk's
+end); then write the refine-trail (the gate rollups) to context.refine, and — only
+when **every** question is resolved — flip the status:
+```bash
+anchored <tier> set <slug> context.refine "<gate rollups>"
 anchored <tier> status <slug> refined
 ```
 Tell the user: *"Plan's been talked through — N+M auto-fixes, K questions settled. Run `/a:build`."*

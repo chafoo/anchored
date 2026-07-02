@@ -35,7 +35,7 @@ do NOT bake an implementation mechanism into a stub criterion. Bad: "each task i
 via `textContent` (never `innerHTML`)" — that's a coding rule, not an outcome. Good:
 "each task's text appears as its own list item, with no HTML interpretation of the
 text". The `textContent`/`innerHTML`-style rules belong to `.claude/rules/dom.md` +
-the child's rules-check, not to the contract.
+the child's rule gates (if wired), not to the contract.
 
 **Author the epic-level integration acceptance criterion (H7).** When the epic has **more than one
 task with a dependency edge** between them, the per-task outcome criteria alone don't

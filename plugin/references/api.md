@@ -44,7 +44,7 @@ no lifecycle stages. Address it under its task: `<task>/<phase>` (e.g.
 |---|---|
 | `phase get <slug>` | read the phase object |
 | `phase set <slug> <field> <value>` | set a free field (e.g. `depends_on` — a comma list → array); `status`/`acceptance_criteria`/`rules`/`slug` are reserved |
-| `phase status <slug> <to>` | transition the phase status (`done` requires every AC terminal — done or deferred) |
+| `phase status <slug> <to>` | transition the phase status (`done` requires every AC terminal — done or deferred — AND a receipt per served build step) |
 | `phase ac add <slug> <text> [id]` | add an acceptance criterion |
 | `phase ac list <slug>` | list the phase's acceptance criteria |
 | `phase ac get <slug> <id>` | read one acceptance criterion |
@@ -56,6 +56,9 @@ no lifecycle stages. Address it under its task: `<task>/<phase>` (e.g.
 | `phase rule add <slug> <path> <why>` | attach (or update) a rule reference on the phase |
 | `phase rule list <slug>` | list the phase's rule references |
 | `phase rule get <slug> <id>` | read one rule reference |
+| `phase step done <slug> <stage> <step> [note]` | receipt an executed pipeline step (step enforcement — `status done` requires completeness) |
+| `phase step skip <slug> <stage> <step> <reason>` | document a deliberately-not-run step (reason required — schema-enforced) |
+| `phase step list <slug>` | list the phase's step receipts |
 
 ## task
 
@@ -67,7 +70,7 @@ module owns phase content). Slug: `<epic>/<task>` (nested) or a bare standalone 
 |---|---|
 | `task plan <slug>` | return the plan-stage orchestration plan |
 | `task refine <slug>` | return the refine-stage orchestration plan |
-| `task build <slug>` | return the build-stage orchestration plan |
+| `task build <slug>` | return the build-stage orchestration plan (incl. `each_steps` — the phase pipeline, served so the orchestrator never works from memory) |
 | `task wrap <slug>` | return the wrap-stage orchestration plan |
 | `task get <slug>` | read the task node |
 | `task create <slug> [title]` | create a new task file (status `plan`) |
@@ -90,6 +93,9 @@ module owns phase content). Slug: `<epic>/<task>` (nested) or a bare standalone 
 | `task concern resolve <slug> <id> <answer> [source] [reasoning]` | resolve a concern |
 | `task log add <slug> <at> <kind> <note>` | append a log entry to the audit trail |
 | `task log list <slug>` | list the audit-trail log entries (list-only — entries have no id) |
+| `task step done <slug> <stage> <step> [note]` | receipt an executed stage step (the stage-closing transition requires completeness) |
+| `task step skip <slug> <stage> <step> <reason>` | document a deliberately-not-run step (reason required — schema-enforced) |
+| `task step list <slug>` | list the task's step receipts |
 
 ## epic
 
@@ -109,7 +115,7 @@ queue: child existence + per-stub outcome ACs + roll-up), and its Definition-of-
 | `epic status <slug> <to>` | transition the epic lifecycle (`build` needs no open questions; `done` needs every stub `done`, no open concern, every DoD item terminal) |
 | `epic archive <slug>` | archive the epic — cascades to its delivered (`done`) child task files |
 | `epic reset <slug>` | remove the epic |
-| `epic child add <slug> <childSlug> [goal]` | add a task-stub to the loop queue |
+| `epic child add <slug> <childSlug> [goal] [depends_on]` | add a task-stub to the loop queue (`depends_on` comma-separated) |
 | `epic child list <slug>` | list the epic's task-stubs |
 | `epic child get <slug> <childSlug>` | read one task-stub |
 | `epic child next <slug>` | the next runnable stub |
@@ -136,6 +142,9 @@ queue: child existence + per-stub outcome ACs + roll-up), and its Definition-of-
 | `epic concern get <slug> <id>` | read one concern |
 | `epic concern resolve <slug> <id> <answer> [source] [reasoning]` | resolve a concern |
 | `epic log add <slug> <at> <kind> <note>` | append a log entry |
+| `epic step done <slug> <stage> <step> [note]` | receipt an executed stage step (the stage-closing transition requires completeness) |
+| `epic step skip <slug> <stage> <step> <reason>` | document a deliberately-not-run step (reason required — schema-enforced) |
+| `epic step list <slug>` | list the epic's step receipts |
 | `epic log list <slug>` | list the audit-trail log entries (list-only — entries have no id) |
 
 ## meta

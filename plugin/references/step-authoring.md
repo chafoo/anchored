@@ -26,7 +26,7 @@ the ladder:
 | Altitude | How hard | What lives here |
 |---|---|---|
 | **Deterministic check** | **hard** — code, not judgement | a command that exits non-zero on violation (`npm test`, a `grep` guard, `tsc --noEmit`). Lives in a custom step's `instructions` (there is no `run:` key — the command IS the prose): the command + "fail the step on a non-zero exit". The exit code is checked by the runner, not weighed by an AI. |
-| **Gate verdict** | semi-hard | a criterion the always-run `task-validate` / `code-validate` gate checks; its structured per-AC verdict drives the re-do loop. AI-judged, but by a *separate* focused agent whose only job is to catch the first. |
+| **Gate verdict** | semi-hard | a criterion the always-run `task-validate` gate (or a user-wired extra gate) checks; its structured per-AC verdict drives the re-do loop. AI-judged, but by a *separate* focused agent whose only job is to catch the first. |
 | **Brief prose** | soft | methodology, nudges, anti-rationalizations. Higher salience in a focused brief, still violable. |
 
 > **Rule of thumb: want it hard? Write a check, not a sentence.** A `grep` guard that
@@ -43,7 +43,7 @@ the ladder:
 3. **Token-conscious.** If deleting a line would not change what the AI does, delete
    it. Three sharp lines the AI heeds beat a twenty-line table it skims.
 4. **One concern per brief (sorted, not stacked).** anchored already splits the work
-   across focused workers (`implement` · `task-validate` · `code-validate`). Put a
+   across focused workers (`implement` · `task-validate`, plus any user-wired gates). Put a
    rule in the brief whose *single job* is that concern — never pile five concerns
    into one `instructions` field, or attention spreads thin and nothing sticks.
 5. **Anti-rationalization.** For any step the AI is tempted to skip, name the excuse

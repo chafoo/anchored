@@ -53,7 +53,7 @@ Prefer notes the checker can re-run: a grep/source quote or a COMMITTED test. If
 ran a throwaway script, phrase it as a logic walkthrough, not "simulation confirmed".
 
 **The phase status is NOT yours to flip.** A phase only reaches `done` when the
-**orchestrator** advances it AFTER the checkers (task-validate + code-validate) have
+**orchestrator** advances it AFTER the checkers (task-validate, plus any user-wired gates) have
 authored/confirmed evidence (G4: a worker flipping the phase before the gates ran was
 a gate-before-done bypass). Your contract is **code + build-notes only**.
 

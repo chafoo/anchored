@@ -39,7 +39,9 @@ step-plan + node ops and spawns the wrap agents itself via the **Task tool**
 ## Spawn each step's agent (Task tool, in order)
 
 - **review → wrap-review** — final review pass over the built node; self-writes
-  findings: `anchored <tier> log add <slug> wrap learning "<review findings>"`.
+  the rollup (`anchored <tier> log add <slug> wrap learning "<review findings>"`) and
+  records every genuine defect as a **concern** (`concern add` — the substrate blocks
+  `done` while one is open, so a finding can't be forgotten).
 - **summarize → wrap-summarize** — writes a tight summary (what was built + the
   source='ai' decisions) into the node's own context:
   `anchored <tier> set <slug> context.wrap "<summary>"` (dotted-path → nested).
@@ -104,6 +106,15 @@ So before you finish, run a **concern-walk** — the SAME shape as the refine Q&
    real blocker, resolve it honestly, don't rubber-stamp it.
 4. Only once every concern is resolved does `done` go through (the substrate enforces it).
 
+**A concern whose fix needs a CODE change is NEVER fixed in the main session.** You
+(the orchestrator) and the reviewers mutate no code — build-implement is the only
+code mutator, in every stage (the same separation of duties that keeps evidence
+honest). Route it: spawn **build-implement** with the concern text as the fix-list,
+have **build-task-validate** verify the fix, and only then resolve the concern with
+the fix + proof. Whether this fix-loop runs automatically is the USER's call — the
+default is document + walk (you ask); a project can wire the loop as a custom wrap
+step (see the fix-loop recipe in `plugin/references/anchored-config.md`).
+
 ## Failure-handling
 
 If an agent errors, surface it and stay pre-`done` (do not flip). The node only
@@ -115,6 +126,12 @@ Run the closing sequence: first the trailing custom run-steps (in declaration
 order, **following each step's `instructions`** — a step whose `instructions` say
 to run after the done-flip you defer accordingly), then flip `done` as the closing
 action.
+
+- **Step receipts first (enforcement):** every served wrap step (review, summarize /
+  roll-up, custom steps) gets its receipt right when it completes —
+  `anchored <tier> step done <slug> wrap <step> "<one-line rollup>"`, or
+  `anchored <tier> step skip <slug> wrap <step> "<reason>"` for a documented skip.
+  The CLI **blocks the `done`-flip** until every wrap step carries one.
 
 - **Trailing run-steps** (a `merge`/`push`) — run them in order, each per its own
   `instructions`. A failing **gating** run-step (e.g. a merge conflict) keeps the

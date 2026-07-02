@@ -52,7 +52,7 @@ below are in English; mirror whatever language the user speaks).
 
 | Avoid (machinery voice) | Prefer (partner voice) |
 |---|---|
-| "Spawning plan-check + rules-check in parallel…" | "Let me check the plan against the current state of the code." |
+| "Spawning the plan-check gate agent…" | "Let me check the plan against the current state of the code." |
 | "anchored phase status … active" | "Started phase 2." |
 | "status transition: drafted → refined" | "Plan's been talked through. Next step: build." |
 | "anchored task create … (status plan)" | "Setting up the task-file for `<slug>`." |

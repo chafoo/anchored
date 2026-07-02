@@ -77,14 +77,17 @@ self-write their results via `anchored <tier> …` (see
 ## Get the orchestration plan
 
 ```bash
-anchored <tier> build <slug>      # → { stage, tier, node, steps }   (does NOT spawn)
+anchored <tier> build <slug>      # → { stage, tier, node, steps, each?, each_steps? }   (does NOT spawn)
 ```
 
 `steps` is the resolved, config-driven plan. For a **looping tier** the plan carries
 `each: <child-tier>` (plus `stop`, `retry_limit`) — that is the recursion edge you
-drive below; `execute: workflow` on the `each` step is what fans the loop's ready
-children out in parallel (see "Fan-out" below). For a **leaf phase** it is the worker
-pipeline (`implement → task-validate → code-validate`). Each step has the shape
+drive below — **and `each_steps`: the CHILD tier's pipeline** (for a task, the leaf
+phase pipeline `implement → task-validate` plus any user-added gate steps). **Read the
+leaf pipeline from `each_steps`, never from memory** — the served plan is the only
+source of which steps exist (and each one must later be receipted, see "Step
+receipts"). `execute: workflow` on the `each` step is what fans the loop's ready
+children out in parallel (see "Fan-out" below). Each step has the shape
 `{ name, instructions?, use?: { type: agent|skill, name }, execute?: sequential|workflow, with?: <step-name> }`:
 `use` names the worker to spawn, `instructions` is prose you read and follow (a
 command lives HERE, as prose — there is no `run` step key), `execute: workflow` on
@@ -104,23 +107,22 @@ or `anchored epic child next <slug>` (epic→task) — returns one (else done):
      (a task-stub is a loop-queue marker: `pending|active|done|blocked`, NOT the
      phase word `in-progress` — that mismatch bricked an epic in the dogfood).
 2. **Per-child body:**
-   - **task → phase** (leaf): the leaf pipeline `[implement, task-validate,
-     code-validate]` comes from the `task build <slug>` plan (the worker steps under
-     `each: phase`) — the phase has no own build verb. Spawn **build-implement** via the
-     Task tool with the agent-contract input `{ task-slug: <slug>, phase-slug:
-     <child>, tier: phase, stage: build, context, rules }`. It writes code + a
-     **build-NOTE per criterion** (`task log add <slug> <at> build note`) — it authors NO
-     evidence. Then run the two checkers: **build-task-validate** is the EVIDENCE
-     AUTHOR — it independently re-verifies each criterion and writes the proof
-     (`anchored phase ac evidence <slug>/<child> <ac-id> "<proof>"`, flips it done) or
-     `ac fail` (→ re-do); **build-code-validate** vetoes rule violations via `ac fail`.
-     **The two gates run as a parallel batch** — the `code-validate` step carries
-     `with: task-validate` in the plan, so you spawn both **in one message, two
-     agents** (you learn the pairing from the plan's `with:`, never hardcode it — see
-     "Parallel batches (`with:`)"). The split stays (evidence-author vs. rule-veto keeps
-     the author honest); they run together because they already could. code-validate
-     may veto a criterion task-validate just evidenced — the checker records the proof,
-     never the implementer (requirements-3).
+   - **task → phase** (leaf): the leaf pipeline `[implement, task-validate]` (plus
+     any user-added gate steps) comes from the `task build <slug>` plan's
+     **`each_steps`** — the phase has no own build verb. Spawn
+     **build-implement** via the Task tool with the agent-contract input
+     `{ task-slug: <slug>, phase-slug: <child>, tier: phase, stage: build, context,
+     rules }`. It writes code + a **build-NOTE per criterion** (`task log add <slug>
+     <at> build note`) — it authors NO evidence. Then run the checker:
+     **build-task-validate** is the EVIDENCE AUTHOR — it independently re-verifies
+     each criterion and writes the proof (`anchored phase ac evidence <slug>/<child>
+     <ac-id> "<proof>"`, flips it done) or `ac fail` (→ re-do). The checker records
+     the proof, never the implementer (requirements-3). A user may wire further gates
+     into the pipeline (e.g. a rule inspector via the shipped **build-code-validate**
+     agent, `with: task-validate`); such a gate vetoes via `ac fail` — even a
+     criterion task-validate just evidenced — and its `with:` marker batches it with
+     the checker: spawn the whole batch **in one message** (you learn the pairing
+     from the plan's `with:`, never hardcode it — see "Parallel batches (`with:`)").
    - **epic → task**: the child runs its OWN full just-in-time lifecycle, then the
      epic-child is marked delivered. Per ready child (the loop's body is the child's
      plan→refine→build→wrap, NOT a phase pipeline):
@@ -133,7 +135,7 @@ or `anchored epic child next <slug>` (epic→task) — returns one (else done):
         (`anchored epic get <epic-slug>` → `tasks[].acceptance_criteria`) and pass
         them to plan-decompose as the outcome bar the phases must meet — so the
         goal/contract is never lost (the G8 fix). Run plan's steps → `drafted`.
-     2. **Refine the child** (`/a:refine`-style: plan-check + rules-check + walk) →
+     2. **Refine the child** (`/a:refine`-style: the refine gates + walk) →
         `refined`. Apply the **task question policy** from the epic-refine (working
         memory — the `task` half, SEPARATE from the epic's own policy):
         - **`epic-wide`** → route each child question by the remembered threshold
@@ -166,12 +168,19 @@ or `anchored epic child next <slug>` (epic→task) — returns one (else done):
 3. **Checkers + failures (the re-do loop):** build-task-validate AUTHORS the evidence
    for each criterion it confirms (`ac evidence` → done) and REJECTS the rest
    (`anchored phase ac fail <slug>/<phase> <ac-id> "<why>"` → `pending` with
-   `failures`); build-code-validate rejects rule violations the same way. Read the
-   child back (`anchored task get <slug>`); for each criterion carrying `failures`,
-   re-spawn build-implement with those failures as the fix-list, then re-run the
-   checkers. Retry up to `retry_limit` (default 3); on exhaustion → blocked.
-4. **Advance:** when all the child's acceptance criteria are `done` (with evidence) and both
-   checkers pass → `anchored phase status <slug>/<child> done`. This is the **only**
+   `failures`); any user-wired gate (e.g. build-code-validate) rejects the same way.
+   Read the child back (`anchored task get <slug>`); for each criterion carrying
+   `failures`, re-spawn build-implement with those failures as the fix-list, then
+   re-run the checkers. Retry up to `retry_limit` (default 3); on exhaustion → blocked.
+4. **Advance:** when all the child's acceptance criteria are `done` (with evidence) and
+   every gate passes → first **receipt each executed pipeline step on the phase**
+   (step enforcement — the CLI blocks the done-flip until every `each_steps` step
+   carries one; write each receipt right when its step's worker returns):
+   ```bash
+   anchored phase step done <slug>/<child> build <step> "<one-line rollup>"
+   anchored phase step skip <slug>/<child> build <step> "<why it did not run>"
+   ```
+   then `anchored phase status <slug>/<child> done`. This is the **only**
    place a phase reaches `done` — build-implement writes code + notes only and
    never flips the phase status (G4: that flip must come AFTER the checkers, never
    before, or the gates would inspect an already-`done` phase).
@@ -297,8 +306,8 @@ hard-error). The flow:
    questions and walk those buffered ones with the user (per the same policy +
    escalation policy), then continue.
 5. **Join → merge-back → advance.** When a unit reaches its terminal (a task `done`, a
-   phase all acceptance criteria evidenced + the authoritative gates green — those
-   gates are `build-task-validate` / `build-code-validate`, run ONCE over the **merged**
+   phase all acceptance criteria evidenced + the authoritative gates green — the
+   gate is `build-task-validate` plus any user-wired gates, run ONCE over the **merged**
    result at this join, NOT the worker's own pre-handoff self-check): first **reunite
    any worktree-isolated branch** — serially, with the project's configured merge,
    resolving shared-file conflicts from both finished sides, then clean up the branch +
@@ -376,14 +385,14 @@ steps pair:
   Steps chained by `with:` form one batch — spawn them **all in one message** (one
   message, N agents), wait for the whole batch to join, then move on to the next
   sequential step.
-- **The built-in gates ride this.** The default template ships the two phase gates as
-  a `with:` batch — `code-validate` carries `with: task-validate` — so they spawn **in
-  parallel by default**, declaratively, **not** because the skill hardcodes the
-  pairing. (Earlier the skill hardcoded "task-validate then code-validate"; now the
-  pairing is data. The order *within* the batch still matters for the evidence
-  inversion — task-validate authors evidence, code-validate may veto it — but they
-  spawn together and the result is read after both land.)
-- **Users get the same lever** — any custom steps the config chains with `with:` (e.g.
+- **User-wired gates ride this.** A config that adds a second gate next to the shipped
+  checker (e.g. `{ name: code-validate, use: { type: agent, name: build-code-validate },
+  with: task-validate }`) makes both spawn **in parallel**, declaratively, **not**
+  because the skill hardcodes a pairing. (The pairing is data. The order *within* such
+  a batch still matters for the evidence inversion — task-validate authors evidence, a
+  veto gate may overturn it — but they spawn together and the result is read after
+  both land.)
+- **Any custom steps get the same lever** — steps the config chains with `with:` (e.g.
   `lint` + `typecheck` + `test`) spawn as one parallel batch.
 
 `with:` (parallel *sibling* steps) is a different axis from `execute: workflow`
@@ -399,7 +408,10 @@ the sequential loop** for fan-out (never hard-error).
 ## Termination
 
 When the next-child verb (`task phase next` / `epic child next`) returns null and at
-least one child is `done` (none in-progress): `anchored <tier> status <slug> wrap`. Tell the user in plain words —
+least one child is `done` (none in-progress): first receipt any **node-level** build
+steps the plan's own `steps` carried (custom steps at the loop tier —
+`anchored <tier> step done <slug> build <step> "<rollup>"`; the CLI blocks the flip
+until each is receipted or documented-skipped), then `anchored <tier> status <slug> wrap`. Tell the user in plain words —
 no status word, no `P/Q` codes: *"Build's done — P of Q finished (R still pending).
 Next step: `/a:wrap`."* (drop the bracketed clause when nothing is blocked.)
 No MCP, no raw node-file edit — every mutation goes through the `anchored` CLI.

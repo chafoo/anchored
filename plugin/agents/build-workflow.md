@@ -35,7 +35,7 @@ criterion of your phase, as one coherent change. If any criterion carries
 `failures`, treat them as the fix-list for that criterion. Then verify your own
 work — run the gate each criterion names so the phase is genuinely green before you
 hand off. This is a **pre-handoff sanity check**, NOT the authoritative gate: the
-authoritative evidence-gates (`build-task-validate` / `build-code-validate`) run at
+authoritative evidence-gates (`build-task-validate`, plus any user-wired gates) run at
 the fan-out join, after you hand off.
 
 ## Advance your OWN phase status — `pending → in-progress`, never to `done`
@@ -47,8 +47,8 @@ ladder for you:
 anchored phase status <task-slug>/<phase-slug> in-progress
 ```
 Stop there. You do **not** flip the phase to `done` (G4): the final `in-progress →
-done` is the orchestrator's at the fan-out join, AFTER `build-task-validate` /
-`build-code-validate` have inspected a not-yet-`done` phase and authored its
+done` is the orchestrator's at the fan-out join, AFTER `build-task-validate` (plus
+any user-wired gates) has inspected a not-yet-`done` phase and authored its
 evidence. Flipping `done` yourself would hand the gates an already-finished phase.
 
 ## Self-write a build-NOTE per criterion via the CLI — you author NO evidence

@@ -38,7 +38,7 @@
 #
 #       # Commit one SHA per phase (git stays yours — the framework never runs git).
 #       - name: commit
-#         after: code-validate            # only on a green phase, after the gates
+#         after: task-validate            # only on a green phase, after the gate
 #         instructions: |
 #           git add -A
 #           git diff --cached --quiet || git commit -m "phase: ${PHASE_SLUG}"

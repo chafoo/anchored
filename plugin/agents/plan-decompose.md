@@ -29,7 +29,7 @@ The acceptance-criterion id is assigned automatically (a1, a2, …) — you pass
 and criteria are children of the task-file, addressed by `<task-slug> <phase-slug>`.
 **Attach the applicable `.claude/rules/*.md` per phase** via `rule add` (from
 the rules-scan findings) — so each phase carries a real `rules` array the
-code-validate gate checks against, not just a log note. (`rule add` updates in
+build gates check against, not just a log note. (`rule add` updates in
 place when the rule path already exists on the phase.)
 
 ## Decide the build mode (workflow levers)

@@ -56,7 +56,7 @@ reunites them — one unit at a time:
    the conflict from the two real versions (keep both intents; reconcile shared
    anchors). Never reconstruct a file from scratch or drop one side silently.
 4. **Gates run over the MERGED result, once.** The authoritative evidence-gates
-   (`build-task-validate` / `build-code-validate`) run after the merge-back, over what
+   (`build-task-validate`, plus any user-wired gates) run after the merge-back, over what
    actually landed on the integration branch — not over any single worktree in
    isolation. A merge can introduce a regression no isolated unit could see.
 5. **Clean up on success.** After a unit's branch is merged and green, delete the
