@@ -17,9 +17,10 @@ phase:
   build:
     steps:
       - { name: implement, use: { type: agent, name: build-implement } }
+      # ONE default gate — the evidence author. Extra gates (e.g. a rule inspector via the
+      # shipped build-code-validate agent) are user steps in anchored.yml, `with: task-validate`
+      # puts them in the same parallel batch.
       - { name: task-validate, use: { type: agent, name: build-task-validate } }
-      # code-validate runs in task-validate's parallel batch — both gates fire at once
-      - { name: code-validate, use: { type: agent, name: build-code-validate }, with: task-validate }
   wrap:
     steps: []
   fields:
@@ -31,6 +32,7 @@ phase:
     acceptance_criteria: list<{ id, text, status, evidence?, reason? }>
     evidence: list<string>
     failures: list<string>
+    steps_run: list<{ stage, step, status, note? }> # step receipts — enforcement, see `step done|skip`
 
 task:
   plan:
@@ -40,9 +42,10 @@ task:
       - { name: decompose, use: { type: agent, name: plan-decompose } }
   refine:
     steps:
+      # ONE default gate — the plan-vs-code check. Extra gates (e.g. a rules-coverage check via
+      # the shipped refine-rules-check agent) are user steps in anchored.yml, `with: plan-check`
+      # puts them in the same parallel batch.
       - { name: plan-check, use: { type: agent, name: refine-plan-check } }
-      # rules-check runs in plan-check's parallel batch — both refine gates fire at once
-      - { name: rules-check, use: { type: agent, name: refine-rules-check }, with: plan-check }
       - { name: walk, use: { type: skill, name: walk }, involve: high-only }
   build:
     each: phase # intrinsic — fixed per tier (task→phase)
@@ -63,6 +66,7 @@ task:
     questions: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
     concerns: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
     log: list<{ at, kind, note }>
+    steps_run: list<{ stage, step, status, note? }> # step receipts — enforcement, see `step done|skip`
     phases: list<phase>
 
 epic:
@@ -95,3 +99,4 @@ epic:
     concerns: list<{ id, text, priority, origin, status, answer?, source?, reasoning? }>
     tasks: list<{ slug, goal, status, depends_on, acceptance_criteria? }>
     log: list<{ at, kind, note }>
+    steps_run: list<{ stage, step, status, note? }> # step receipts — enforcement, see `step done|skip`

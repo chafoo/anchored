@@ -9,6 +9,7 @@ import {
   QuestionSchema,
   LogEntrySchema,
   ContextTrails,
+  StepReceipt,
 } from '../shared/fragments.schemas.js'
 import { PhaseNodeSchema } from '../phase/phase.schemas.js'
 
@@ -25,6 +26,9 @@ export const TaskNodeSchema = z.strictObject({
   // "check at the end" threads raised during build — done blocks while any is open.
   concerns: z.array(QuestionSchema).optional(),
   log: z.array(LogEntrySchema).optional(),
+  // step ENFORCEMENT: one receipt per executed (or documented-skipped) template step; the
+  // stage-closing status transition requires completeness (shared/receipts.ts guard).
+  steps_run: z.array(StepReceipt).optional(),
   phases: z.array(PhaseNodeSchema).optional(),
 })
 

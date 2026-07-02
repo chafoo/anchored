@@ -5,11 +5,17 @@ import { taskNode } from './task.fixtures.js'
 import type { TemplatePort } from '../../lib/contracts/template.js'
 import type { TaskNode } from './task.schemas.js'
 
+// the injected template double: a build pipeline (so the plan-serving + receipt-gate tests
+// have steps to work with) + the task→phase loop edge; every other stage serves no steps.
 const template: TemplatePort = {
   steps: (tier, stage) => ({
     tier,
     stage,
-    steps: [{ name: 'implement', use: { type: 'agent', name: 'build-implement' } }],
+    steps:
+      stage === 'build'
+        ? [{ name: 'implement', use: { type: 'agent', name: 'build-implement' } }]
+        : [],
+    ...(tier === 'task' && stage === 'build' ? { each: 'phase' } : {}),
   }),
   fields: () => ({}),
   validate: () => ({ ok: true }),
@@ -22,17 +28,23 @@ function setup(node: TaskNode = taskNode()) {
 }
 const on = (store: ReturnType<typeof createFakeStore>) => store.disk.get('my-task') as TaskNode
 
-// a1 — get + the build stage plan (steps from template, node from store)
-test('get returns the node; build returns the orchestration plan', async () => {
+// a1 — get + the build stage plan (steps from template, node from store). A looping stage
+// also serves the CHILD tier's pipeline as `each_steps` (the orchestrator reads the leaf
+// steps from the CLI, never from prose memory).
+test('get returns the node; build returns the orchestration plan incl. each_steps', async () => {
   const { task } = setup()
   expect(((await task.get('my-task')) as TaskNode).slug).toBe('my-task')
   const plan = (await task.run('build', ['my-task'])) as {
     stage: string
     steps: { use?: { name?: string } }[]
+    each?: string
+    each_steps?: { name: string }[]
     node: TaskNode
   }
   expect(plan.stage).toBe('build')
   expect(plan.steps[0]!.use?.name).toBe('build-implement')
+  expect(plan.each).toBe('phase')
+  expect(plan.each_steps!.map((s) => s.name)).toEqual(['implement'])
   expect(plan.node.slug).toBe('my-task')
 })
 
@@ -147,4 +159,25 @@ test('archive/reset go through the store; unknown verb throws', async () => {
   await task.run('archive', ['my-task'])
   expect(store.disk.has('my-task')).toBe(false)
   await expect(task.run('frobnicate', ['my-task'])).rejects.toThrow(/no verb/)
+})
+
+// a7 — step enforcement: the transition CLOSING a stage requires a receipt per served step
+// (here build→wrap vs. the fake's build pipeline); step done/skip record them; steps_run is
+// reserved for the dedicated verbs.
+test('stage-closing transition gates on step receipts; step done/skip/list work', async () => {
+  const node = taskNode({ status: 'build', phases: [{ name: 'P', slug: 'p1', status: 'done' }] })
+  const { task, store } = setup(node)
+  await expect(task.run('status', ['my-task', 'wrap'])).rejects.toThrow(/implement/)
+  await task.run('step', ['done', 'my-task', 'build', 'implement', 'loop drove p1 green'])
+  await task.run('status', ['my-task', 'wrap'])
+  expect(on(store).status).toBe('wrap')
+  // the fake serves no wrap steps → wrap→done passes without further receipts
+  await task.run('status', ['my-task', 'done'])
+  const receipts = (await task.run('step', ['list', 'my-task'])) as { step: string }[]
+  expect(receipts.map((r) => r.step)).toEqual(['implement'])
+  await expect(task.run('set', ['my-task', 'steps_run', 'x'])).rejects.toThrow(/reserved/)
+  // a skip documents its reason; the schema refuses an empty one
+  await expect(task.run('step', ['skip', 'my-task', 'wrap', 'review', ''])).rejects.toThrow()
+  await task.run('step', ['skip', 'my-task', 'wrap', 'review', 'single-file docs change'])
+  expect(((await task.run('step', ['list', 'my-task'])) as unknown[]).length).toBe(2)
 })

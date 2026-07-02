@@ -56,7 +56,12 @@ run err phase ac defer t1/setup a3            # no reason → AcNoReason
 run ok phase ac done t1/setup a1             # already evidenced → re-done ok
 run ok phase rule add t1/setup .claude/rules/factory-functions.md "factory pattern"
 run ok phase set t1/setup context "a free-text phase context"
-run ok phase status t1/setup done             # all ACs terminal (2 done, 1 deferred)
+run err phase status t1/setup done            # ACs terminal but pipeline unreceipted → StepsUnreceipted
+run ok phase step done t1/setup build implement "code + notes written"
+run err phase step skip t1/setup build task-validate   # a skip without a reason → schema refuses
+run ok phase step skip t1/setup build task-validate "verified by hand in the smoke"
+run ok phase step list t1/setup
+run ok phase status t1/setup done             # all ACs terminal (2 done, 1 deferred) + steps receipted
 run ok phase get t1/setup
 
 echo "== task node + phase-existence verbs =="
@@ -67,7 +72,12 @@ run ok task phase ready t1
 run ok task set t1 title "Task one (renamed)"
 run ok task question add t1 "which storage backend?" high
 run err task status t1 build                  # open question blocks build (still drafted? we're at plan)
-run ok task status t1 drafted
+run err task status t1 drafted                # plan steps unreceipted → StepsUnreceipted
+run ok task step done t1 plan discover "codebase scanned"
+run ok task step done t1 plan rules-scan "2 rules collected"
+run ok task step done t1 plan decompose "1 phase, 3 ACs"
+run ok task step list t1
+run ok task status t1 drafted                 # plan receipted → closes
 run err task status t1 build                  # still blocked by the open question
 run ok task question resolve t1 q1 "localStorage" user
 run ok task status t1 build                   # skip-refine edge, question resolved
@@ -97,6 +107,9 @@ run ok epic child roll-up e1
 run ok epic question add e1 "monolith or service?" high
 run err epic status e1 build                              # open question blocks build (at plan)
 run ok epic question resolve e1 q1 "service" user
+run err epic status e1 drafted                # epic plan steps unreceipted → StepsUnreceipted
+run ok epic step done e1 plan discover "scanned"
+run ok epic step skip e1 plan scaffold "stubs added by hand above"
 run ok epic status e1 drafted
 run ok epic status e1 build
 run ok epic status e1 wrap
@@ -104,6 +117,8 @@ run err epic status e1 done                               # DoD items not termin
 run ok epic acceptance status e1 e1 done "login+audit — delivered"
 run err epic acceptance status e1 e2 deferred          # no reason
 run ok epic acceptance status e1 e2 deferred "next quarter"
+run err epic status e1 done                               # wrap step (roll-up) unreceipted
+run ok epic step done e1 wrap roll-up "children checked, DoD terminal"
 run ok epic status e1 done
 
 echo "== negative: illegal transition + unknown verb/slug =="

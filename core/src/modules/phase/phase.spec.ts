@@ -3,6 +3,7 @@ import { createPhase } from './phase.js'
 import { createFakeStore } from '../../services/store/store.fake.js'
 import { TaskNodeSchema } from '../task/task.schemas.js'
 import type { Node } from '../../lib/contracts/store.js'
+import type { TemplatePort, Step } from '../../lib/contracts/template.js'
 
 type Ac = {
   id: string
@@ -25,9 +26,24 @@ function taskWith(phase: Partial<Phase> = {}): Node {
     ],
   }
 }
-function setup(phase: Partial<Phase> = {}) {
+// the injected template double — `buildSteps` names the phase.build pipeline the receipts
+// gate enforces (empty by default so the AC-focused tests stay receipt-free).
+const templateWith = (buildSteps: Step[] = []): TemplatePort => ({
+  steps: (tier, stage) => ({
+    tier,
+    stage,
+    steps: tier === 'phase' && stage === 'build' ? buildSteps : [],
+  }),
+  fields: () => ({}),
+  validate: () => ({}),
+  raw: () => ({}),
+})
+function setup(phase: Partial<Phase> = {}, buildSteps: Step[] = []) {
   const store = createFakeStore({ 'my-epic/login': taskWith(phase) })
-  return { store, phase: createPhase({ store, taskSchema: TaskNodeSchema }) }
+  return {
+    store,
+    phase: createPhase({ store, taskSchema: TaskNodeSchema, template: templateWith(buildSteps) }),
+  }
 }
 const PH = 'my-epic/login/setup'
 const onPhase = (store: ReturnType<typeof createFakeStore>) =>
@@ -152,4 +168,30 @@ test('set depends_on parses a comma list into depends_on', async () => {
   const { store, phase } = setup()
   await phase.run('set', [PH, 'depends_on', 'css-tokens, markup'])
   expect((onPhase(store) as { depends_on?: string[] }).depends_on).toEqual(['css-tokens', 'markup'])
+})
+
+// a6 — step enforcement: `status done` requires a receipt per served phase.build step;
+// step done / step skip write them (skip needs a reason — schema-enforced); set can't bypass.
+test('status done gates on step receipts; step done/skip record them', async () => {
+  const gates = [{ name: 'implement' }, { name: 'task-validate' }]
+  const { store, phase } = setup({}, gates)
+  await phase.run('ac', ['add', PH, 'works'])
+  await phase.run('status', [PH, 'in-progress'])
+  await phase.run('ac', ['evidence', PH, 'a1', 'src/x.ts — proof'])
+  // ACs terminal, but the pipeline is unreceipted → blocked, listing the missing steps
+  await expect(phase.run('status', [PH, 'done'])).rejects.toThrow(/implement, task-validate/)
+  await phase.run('step', ['done', PH, 'build', 'implement', 'code + notes written'])
+  await expect(phase.run('status', [PH, 'done'])).rejects.toThrow(/task-validate/)
+  // a skip without a reason is rejected by the schema (documented, never silent)
+  await expect(phase.run('step', ['skip', PH, 'build', 'task-validate', ''])).rejects.toThrow()
+  await phase.run('step', ['skip', PH, 'build', 'task-validate', 'covered by pair review'])
+  await phase.run('status', [PH, 'done'])
+  expect(onPhase(store).status).toBe('done')
+  const receipts = (await phase.run('step', ['list', PH])) as { step: string; status: string }[]
+  expect(receipts.map((r) => `${r.step}:${r.status}`)).toEqual([
+    'implement:done',
+    'task-validate:skipped',
+  ])
+  // steps_run is reserved for the dedicated verbs
+  await expect(phase.run('set', [PH, 'steps_run', 'x'])).rejects.toThrow(/reserved/)
 })

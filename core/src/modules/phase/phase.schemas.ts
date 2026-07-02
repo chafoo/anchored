@@ -3,7 +3,7 @@
 // fragments; carries the evidence-refine via AcceptanceCriterion. The task schema embeds it.
 import { z } from 'zod'
 import { phaseStatusValues } from '../shared/statuses.js'
-import { KebabSlug, Rule, AcceptanceCriterion } from '../shared/fragments.schemas.js'
+import { KebabSlug, Rule, AcceptanceCriterion, StepReceipt } from '../shared/fragments.schemas.js'
 
 export const PhaseStatus = z.enum(phaseStatusValues)
 
@@ -20,6 +20,9 @@ export const PhaseNodeSchema = z.strictObject({
   // loop). depends_on: other phase slugs that must finish first — plan/refine sets it;
   // `phase ready` honours it so independent phases can build in parallel (multi-phase fan-out).
   depends_on: z.array(KebabSlug).optional(),
+  // step ENFORCEMENT for the leaf pipeline: one receipt per executed phase.build step;
+  // `phase status done` requires completeness (shared/receipts.ts guard).
+  steps_run: z.array(StepReceipt).optional(),
 })
 
 export type PhaseNode = z.infer<typeof PhaseNodeSchema>

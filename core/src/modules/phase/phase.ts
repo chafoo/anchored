@@ -12,6 +12,7 @@
 // done/evidence/fail/defer) replaces the old hyphenated one-offs. There is NO `execute` field
 // and NO `phase build` verb — a phase is a sequential leaf advanced by `phase status <slug> done`.
 import type { StorePort, Node, Schema } from '../../lib/contracts/store.js'
+import type { TemplatePort } from '../../lib/contracts/template.js'
 import type { Tier } from '../../lib/contracts/tier.js'
 import { anchoredError } from '../../lib/utils/error.js'
 import { dispatch, type Collections, type NodeVerbs } from '../shared/dispatch.js'
@@ -25,6 +26,7 @@ import {
   setAcText,
   type AcLike,
 } from '../shared/acceptance.js'
+import { recordReceipt, assertStepsReceipted, type StepReceiptLike } from '../shared/receipts.js'
 
 interface PhaseLike {
   slug: string
@@ -33,14 +35,19 @@ interface PhaseLike {
   acceptance_criteria?: AcLike[]
   rules?: { path: string; why: string }[]
   depends_on?: string[]
+  steps_run?: StepReceiptLike[]
   [k: string]: unknown
 }
 interface TaskFile extends Node {
   phases?: PhaseLike[]
 }
 
-export function createPhase(deps: { store: StorePort; taskSchema: Schema }): Tier {
-  const { store, taskSchema } = deps
+export function createPhase(deps: {
+  store: StorePort
+  taskSchema: Schema
+  template: TemplatePort
+}): Tier {
+  const { store, taskSchema, template } = deps
 
   const split = (slug: string): { taskSlug: string; phaseSlug: string } => {
     const i = slug.lastIndexOf('/')
@@ -113,6 +120,14 @@ export function createPhase(deps: { store: StorePort; taskSchema: Schema }): Tie
               ['evidence each AC (ac evidence flips it done) or defer it with a reason (ac defer)'],
             )
           }
+          // step enforcement: `done` closes the leaf build pipeline — every served
+          // phase.build step needs a receipt (done, or skipped with a reason).
+          assertStepsReceipted(
+            template.steps('phase', 'build').steps,
+            phase.steps_run ?? [],
+            'build',
+            'phase',
+          )
         }
         return { ...phase, status: to }
       }),
@@ -121,9 +136,9 @@ export function createPhase(deps: { store: StorePort; taskSchema: Schema }): Tie
     // managed collections + slug are reserved (their own verbs guard transitions/invariants).
     set: (slug, field, value) =>
       mutate(slug, (phase) => {
-        if (['status', 'acceptance_criteria', 'rules', 'slug'].includes(field)) {
+        if (['status', 'acceptance_criteria', 'rules', 'slug', 'steps_run'].includes(field)) {
           throw anchoredError('ReservedField', `phase field '${field}' is reserved`, [
-            'use the dedicated verb (status, ac add, rule add)',
+            'use the dedicated verb (status, ac add, rule add, step done)',
           ])
         }
         if (field === 'depends_on') {
@@ -199,6 +214,34 @@ export function createPhase(deps: { store: StorePort; taskSchema: Schema }): Tie
             : [...rules, { path, why }]
           return { ...phase, rules: next }
         }),
+    },
+    // step RECEIPTS (enforcement) for the leaf pipeline: one per executed phase.build step,
+    // written when the step completes; `phase status done` requires completeness. `skip`
+    // documents a deliberately-not-run step — the schema rejects a skip without a reason.
+    step: {
+      async list(slug) {
+        return (await readPhase(slug)).steps_run ?? []
+      },
+      done: (slug, stage, step, note) =>
+        mutate(slug, (phase) => ({
+          ...phase,
+          steps_run: recordReceipt(phase.steps_run ?? [], {
+            stage,
+            step,
+            status: 'done',
+            ...(note !== undefined ? { note } : {}),
+          }),
+        })),
+      skip: (slug, stage, step, reason) =>
+        mutate(slug, (phase) => ({
+          ...phase,
+          steps_run: recordReceipt(phase.steps_run ?? [], {
+            stage,
+            step,
+            status: 'skipped',
+            note: reason,
+          }),
+        })),
     },
   }
 

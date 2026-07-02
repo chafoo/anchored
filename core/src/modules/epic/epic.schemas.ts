@@ -11,6 +11,7 @@ import {
   QuestionSchema,
   LogEntrySchema,
   ContextTrails,
+  StepReceipt,
 } from '../shared/fragments.schemas.js'
 
 export const EpicStatus = z.enum(lifecycleStatusValues)
@@ -37,6 +38,9 @@ export const EpicNodeSchema = z.strictObject({
   concerns: z.array(QuestionSchema).optional(),
   tasks: z.array(TaskStub).optional(),
   log: z.array(LogEntrySchema).optional(),
+  // step ENFORCEMENT: one receipt per executed (or documented-skipped) template step; the
+  // stage-closing status transition requires completeness (shared/receipts.ts guard).
+  steps_run: z.array(StepReceipt).optional(),
 })
 
 export type EpicNode = z.infer<typeof EpicNodeSchema>

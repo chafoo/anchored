@@ -82,6 +82,22 @@ export const LogEntrySchema = z.strictObject({
   note: z.string(),
 })
 
+// Step receipt — the per-stage execution record behind step ENFORCEMENT. Every step the
+// template serves for a stage must be receipted (`done`, or `skipped` WITH a reason) before
+// the transition that CLOSES that stage goes through (the guard lives in shared/receipts.ts;
+// the modules call it in their `status` verb). Same invariant style as a deferred AC: a skip
+// is documented, never silent — the schema makes the reason unskippable on every write.
+export const StepReceipt = z
+  .strictObject({
+    stage: z.enum(['plan', 'refine', 'build', 'wrap']),
+    step: z.string(),
+    status: z.enum(['done', 'skipped']),
+    note: z.string().optional(),
+  })
+  .refine((r) => r.status !== 'skipped' || isReasonFilled(r.note), {
+    error: "a step receipt with status 'skipped' must have a non-empty note (the skip reason)",
+  })
+
 export const ContextTrails = z.strictObject({
   plan: z.string().optional(),
   refine: z.string().optional(),

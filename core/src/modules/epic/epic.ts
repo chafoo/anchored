@@ -20,6 +20,12 @@ import {
 } from '../shared/questions.js'
 import { appendLog, type LogEntry } from '../shared/log.js'
 import { addAc, evidenceAc, failAc, deferAc, type AcLike } from '../shared/acceptance.js'
+import {
+  recordReceipt,
+  assertStepsReceipted,
+  stageClosedBy,
+  type StepReceiptLike,
+} from '../shared/receipts.js'
 import { EpicNodeSchema } from './epic.schemas.js'
 
 interface Stub extends ChildLike {
@@ -41,6 +47,7 @@ interface EpicNodeLike extends Node {
   questions?: Question[]
   concerns?: Question[]
   log?: LogEntry[]
+  steps_run?: StepReceiptLike[]
 }
 
 function assertEpicCompletable(node: EpicNodeLike): void {
@@ -75,6 +82,7 @@ const RESERVED = new Set([
   'questions',
   'concerns',
   'log',
+  'steps_run',
   'schema_version',
   'slug',
 ])
@@ -100,10 +108,16 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
   const read = (slug: string) => store.read(slug, EpicNodeSchema) as Promise<EpicNodeLike>
   const write = (slug: string, node: EpicNodeLike) => store.write(slug, node, EpicNodeSchema)
   const stubsOf = (n: EpicNodeLike) => n.tasks ?? []
-  const stagePlan = async (stage: string, slug: string) => ({
-    ...template.steps('epic', stage),
-    node: await read(slug),
-  })
+  // serve the stage plan; a looping stage (`each`) also carries the CHILD tier's pipeline
+  // (`each_steps`), so the orchestrator reads the child steps from the CLI, never from memory.
+  const stagePlan = async (stage: string, slug: string) => {
+    const plan = template.steps('epic', stage)
+    return {
+      ...plan,
+      ...(plan.each !== undefined ? { each_steps: template.steps(plan.each, stage).steps } : {}),
+      node: await read(slug),
+    }
+  }
 
   const mutateStub = (slug: string, childSlug: string, fn: (s: Stub) => Stub) =>
     read(slug).then((node) => {
@@ -185,6 +199,16 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
       assertTransition(lifecycleTransitions, node.status, to, 'epic')
       if (to === 'build') assertNoOpenQuestions(node.questions ?? [], 'epic')
       if (to === 'done') assertEpicCompletable(node)
+      // step enforcement: the transition closing a stage requires a receipt per served step.
+      const closing = stageClosedBy(node.status, to)
+      if (closing !== undefined) {
+        assertStepsReceipted(
+          template.steps('epic', closing).steps,
+          node.steps_run ?? [],
+          closing,
+          'epic',
+        )
+      }
       return write(slug, { ...node, status: to })
     },
     async set(slug, field, value) {
@@ -227,12 +251,17 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
   const collections: Collections = {
     // task-stub existence + the per-stub outcome-AC sub-collection (`child ac <op>`).
     child: {
-      async add(slug, childSlug, goal) {
+      // 4th arg = the depends_on edge, comma-separated (same parsing as `child set`) —
+      // epic-scaffold passes it at add-time so the dependency order lands in one write.
+      async add(slug, childSlug, goal, dependsOn) {
         const node = await read(slug)
         const stub: Stub = {
           slug: childSlug,
           status: 'pending',
           ...(goal !== undefined ? { goal } : {}),
+          ...(dependsOn !== undefined && dependsOn.trim() !== ''
+            ? { depends_on: dependsOn.split(',').map((x) => x.trim()) }
+            : {}),
         }
         return write(slug, { ...node, tasks: addChild(stubsOf(node), stub) })
       },
@@ -443,6 +472,24 @@ export function createEpic(deps: { store: StorePort; template: TemplatePort; tas
       async add(slug, at, kind, note) {
         const node = await read(slug)
         return write(slug, { ...node, log: appendLog(node.log ?? [], { at, kind, note }) })
+      },
+    },
+    // step RECEIPTS (enforcement): one per executed template step, written when the step
+    // completes; the stage-closing status transition requires completeness. `skip` documents
+    // a deliberately-not-run step — the schema rejects a skip without a reason.
+    step: {
+      async list(slug) {
+        return (await read(slug)).steps_run ?? []
+      },
+      async done(slug, stage, step, note) {
+        const node = await read(slug)
+        const receipt = { stage, step, status: 'done', ...(note !== undefined ? { note } : {}) }
+        return write(slug, { ...node, steps_run: recordReceipt(node.steps_run ?? [], receipt) })
+      },
+      async skip(slug, stage, step, reason) {
+        const node = await read(slug)
+        const receipt = { stage, step, status: 'skipped', note: reason }
+        return write(slug, { ...node, steps_run: recordReceipt(node.steps_run ?? [], receipt) })
       },
     },
   }

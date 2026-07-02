@@ -335,3 +335,125 @@ test('e2e: list/get across every collection — JSON envelope AND default agent-
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+// The FULL walk against the REAL SHIPPED default template (not the minimal test template) —
+// this is the only e2e that drives the actual anchored.default.yml, so the step-enforcement
+// receipts (StepsUnreceipted gates on every stage-closing transition) and the served
+// `each_steps` leaf pipeline are proven end to end on the real filesystem.
+test('e2e: step receipts gate every stage close — real shipped template', async () => {
+  const { readFileSync } = await import('node:fs')
+  const shipped = readFileSync(
+    new URL('../../default-template/anchored.default.yml', import.meta.url),
+    'utf8',
+  )
+  const dir = await mkdtemp(join(tmpdir(), 'anchored-life-'))
+  const out: string[] = []
+  const fs: FileSystem = {
+    readFile: (p) => readFile(p, 'utf8'),
+    writeFile: (p, d) => writeFile(p, d),
+    rename: (a, b) => rename(a, b),
+    unlink: (p) => unlink(p),
+    mkdir: (d, o) => mkdir(d, o),
+    stat: async (p) => {
+      try {
+        const s = await stat(p)
+        return `${s.mtimeMs}:${s.size}`
+      } catch {
+        return undefined
+      }
+    },
+  }
+  const cli = createCli({
+    fs,
+    lock: { acquire: async () => async () => {} },
+    yaml: { parse: (r, o) => parse(r, o), stringify: (v, o) => stringify(v, o) },
+    pathFor: (slug, tier) => layout.pathFor(dir, slug, tier),
+    archivePathFor: (slug, tier) => layout.archivePathFor(dir, slug, tier),
+    rand: () => 'r',
+    pid: () => 1,
+    readDefault: () => shipped,
+    readUser: () => undefined,
+    parseYaml: (r) => parse(r),
+    projectRoot: dir,
+    out: (l) => out.push(l),
+    readStdin: () => '',
+    version: '1.0.0',
+  })
+  const ok = async (...argv: string[]): Promise<unknown> => {
+    const code = await cli.run([...argv, '--json'])
+    const env = JSON.parse(out[out.length - 1]!) as {
+      ok: boolean
+      result?: unknown
+      error?: unknown
+    }
+    if (!env.ok || code !== 0)
+      throw new Error(`'${argv.join(' ')}' failed: ${JSON.stringify(env.error)}`)
+    return env.result
+  }
+  const rejected = async (name: string, ...argv: string[]) => {
+    const code = await cli.run([...argv, '--json'])
+    const env = JSON.parse(out[out.length - 1]!) as { ok: boolean; error?: { name?: string } }
+    expect(code).not.toBe(0)
+    expect(env.ok).toBe(false)
+    expect(env.error?.name).toBe(name)
+  }
+  try {
+    await ok('task', 'create', 'rcpt', 'Receipts')
+
+    // plan closes only with a receipt per shipped plan step (discover, rules-scan, decompose)
+    await rejected('StepsUnreceipted', 'task', 'status', 'rcpt', 'drafted')
+    await ok('task', 'step', 'done', 'rcpt', 'plan', 'discover', 'scanned')
+    await ok('task', 'step', 'done', 'rcpt', 'plan', 'rules-scan', '1 rule')
+    await ok('task', 'step', 'done', 'rcpt', 'plan', 'decompose', '1 phase')
+    await ok('task', 'status', 'rcpt', 'drafted')
+
+    // refine: the shipped gates are plan-check + walk; a skip is reason-gated by the schema
+    await rejected('StepsUnreceipted', 'task', 'status', 'rcpt', 'refined')
+    await ok('task', 'step', 'done', 'rcpt', 'refine', 'plan-check', 'no drift')
+    await rejected('ZodError', 'task', 'step', 'skip', 'rcpt', 'refine', 'walk')
+    await ok('task', 'step', 'skip', 'rcpt', 'refine', 'walk', 'no open questions')
+    await ok('task', 'status', 'rcpt', 'refined')
+    await ok('task', 'status', 'rcpt', 'build')
+
+    // the build plan serves the leaf pipeline as each_steps — the orchestrator's only source
+    const plan = (await ok('task', 'build', 'rcpt')) as {
+      each: string
+      each_steps: { name: string }[]
+    }
+    expect(plan.each).toBe('phase')
+    expect(plan.each_steps.map((s) => s.name)).toEqual(['implement', 'task-validate'])
+
+    // the leaf pipeline gates `phase status done` — ACs terminal is NOT enough
+    await ok('task', 'phase', 'add', 'rcpt', 'p1', 'P1')
+    await ok('phase', 'status', 'rcpt/p1', 'in-progress')
+    await ok('phase', 'ac', 'add', 'rcpt/p1', 'works')
+    await ok('phase', 'ac', 'evidence', 'rcpt/p1', 'a1', 'src/x.ts — proven')
+    await rejected('StepsUnreceipted', 'phase', 'status', 'rcpt/p1', 'done')
+    await ok('phase', 'step', 'done', 'rcpt/p1', 'build', 'implement', 'code written')
+    await ok('phase', 'step', 'done', 'rcpt/p1', 'build', 'task-validate', 'a1 evidenced')
+    await ok('phase', 'status', 'rcpt/p1', 'done')
+
+    // wrap closes only with review + summarize receipted
+    await ok('task', 'status', 'rcpt', 'wrap')
+    await rejected('StepsUnreceipted', 'task', 'status', 'rcpt', 'done')
+    await ok('task', 'step', 'done', 'rcpt', 'wrap', 'review', 'clean')
+    await ok('task', 'step', 'done', 'rcpt', 'wrap', 'summarize', '1 phase built')
+    await ok('task', 'status', 'rcpt', 'done')
+
+    // epic: plan (discover, scaffold) + wrap (roll-up) gate the same way
+    await ok('epic', 'create', 'er', 'E')
+    await ok('epic', 'child', 'add', 'er', 'only', 'the one stub', '')
+    await rejected('StepsUnreceipted', 'epic', 'status', 'er', 'drafted')
+    await ok('epic', 'step', 'done', 'er', 'plan', 'discover', 'scanned')
+    await ok('epic', 'step', 'skip', 'er', 'plan', 'scaffold', 'stub added by hand')
+    await ok('epic', 'status', 'er', 'drafted')
+    await ok('epic', 'status', 'er', 'build')
+    await ok('epic', 'child', 'status', 'er', 'only', 'done')
+    await ok('epic', 'status', 'er', 'wrap')
+    await rejected('StepsUnreceipted', 'epic', 'status', 'er', 'done')
+    await ok('epic', 'step', 'done', 'er', 'wrap', 'roll-up', 'child delivered, no DoD items')
+    await ok('epic', 'status', 'er', 'done')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})

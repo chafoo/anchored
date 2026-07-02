@@ -69,7 +69,7 @@ export function createCli(deps: CliDeps): Anchored {
     projectRoot: deps.projectRoot,
   })
   const task = createTask({ store: storeFor('task'), template })
-  const phase = createPhase({ store: storeFor('task'), taskSchema: TaskNodeSchema })
+  const phase = createPhase({ store: storeFor('task'), taskSchema: TaskNodeSchema, template })
   const epic = createEpic({ store: storeFor('epic'), template, task })
   const tiers: Record<string, Tier> = { phase, task, epic }
 

@@ -68,6 +68,23 @@ test('task-stub child add/next + enum-guarded child status', async () => {
   expect(on(store).tasks[0]!.status).toBe('active')
 })
 
+// a1d — the 4th `child add` arg is the depends_on edge (comma-separated, same parsing as
+// `child set depends_on`) and PERSISTS at add-time; child next honors the persisted order.
+test('child add persists the depends_on argument', async () => {
+  const { epic, store } = setup()
+  await epic.run('child', ['add', 'my-epic', 'login', 'build login'])
+  await epic.run('child', ['add', 'my-epic', 'profile', 'build profile', 'login'])
+  await epic.run('child', ['add', 'my-epic', 'admin', 'build admin', 'login, profile'])
+  const tasks = on(store).tasks as { slug: string; depends_on?: string[] }[]
+  expect(tasks[0]!.depends_on).toBeUndefined()
+  expect(tasks[1]!.depends_on).toEqual(['login'])
+  expect(tasks[2]!.depends_on).toEqual(['login', 'profile'])
+  // the persisted edge drives the loop: profile only becomes next once login is done
+  expect(((await epic.run('child', ['next', 'my-epic'])) as { slug: string }).slug).toBe('login')
+  await epic.run('child', ['status', 'my-epic', 'login', 'done'])
+  expect(((await epic.run('child', ['next', 'my-epic'])) as { slug: string }).slug).toBe('profile')
+})
+
 // a1b — B1: per-stub outcome ACs DOCUMENT outcomes but no longer GATE `child status done`. A
 // stub goes done by the all-phases-done rule even with an open outcome AC; the outcomes are
 // verified at roll-up/wrap. fail/evidence still mutate the AC.
@@ -303,4 +320,27 @@ test('C2: epic archive tolerates a child already gone, still archives the epic',
   expect(r.children).toEqual(['login']) // profile's file was gone → not listed, but no throw
   expect(archived).toEqual(['login'])
   expect(store.disk.has('my-epic')).toBe(false)
+})
+
+// a9 — step enforcement (epic): plan→drafted requires a receipt per served plan step;
+// step done/skip record them on the epic node.
+test('epic stage-closing transition gates on step receipts', async () => {
+  const planTemplate: TemplatePort = {
+    steps: (tier, stage) => ({
+      tier,
+      stage,
+      steps: stage === 'plan' ? [{ name: 'discover' }, { name: 'scaffold' }] : [],
+    }),
+    fields: () => ({}),
+    validate: () => ({}),
+    raw: () => ({}),
+  }
+  const store = createFakeStore({ 'my-epic': epicNode() })
+  const epic = createEpic({ store, template: planTemplate, task: fakeTask() })
+  await expect(epic.run('status', ['my-epic', 'drafted'])).rejects.toThrow(/discover, scaffold/)
+  await epic.run('step', ['done', 'my-epic', 'plan', 'discover', 'codebase scanned'])
+  await epic.run('step', ['skip', 'my-epic', 'plan', 'scaffold', 'stubs hand-written by the user'])
+  await epic.run('status', ['my-epic', 'drafted'])
+  expect((store.disk.get('my-epic') as { status: string }).status).toBe('drafted')
+  await expect(epic.run('set', ['my-epic', 'steps_run', 'x'])).rejects.toThrow(/reserved/)
 })

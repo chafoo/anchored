@@ -20,6 +20,12 @@ import {
   type Question,
 } from '../shared/questions.js'
 import { appendLog, type LogEntry } from '../shared/log.js'
+import {
+  recordReceipt,
+  assertStepsReceipted,
+  stageClosedBy,
+  type StepReceiptLike,
+} from '../shared/receipts.js'
 import { TaskNodeSchema } from './task.schemas.js'
 
 interface PhaseLike {
@@ -33,6 +39,7 @@ interface TaskNodeLike extends Node {
   concerns?: Question[]
   questions?: Question[]
   log?: LogEntry[]
+  steps_run?: StepReceiptLike[]
 }
 
 // status → done floor: no open concern + every phase terminal-OK (done/deferred). Task has no
@@ -64,6 +71,7 @@ const RESERVED = new Set([
   'questions',
   'concerns',
   'log',
+  'steps_run',
   'schema_version',
   'slug',
 ])
@@ -84,10 +92,16 @@ export function createTask(deps: { store: StorePort; template: TemplatePort }): 
   const { store, template } = deps
   const read = (slug: string) => store.read(slug, TaskNodeSchema) as Promise<TaskNodeLike>
   const write = (slug: string, node: TaskNodeLike) => store.write(slug, node, TaskNodeSchema)
-  const stagePlan = async (stage: string, slug: string) => ({
-    ...template.steps('task', stage),
-    node: await read(slug),
-  })
+  // serve the stage plan; a looping stage (`each`) also carries the CHILD tier's pipeline
+  // (`each_steps`), so the orchestrator reads the leaf steps from the CLI, never from memory.
+  const stagePlan = async (stage: string, slug: string) => {
+    const plan = template.steps('task', stage)
+    return {
+      ...plan,
+      ...(plan.each !== undefined ? { each_steps: template.steps(plan.each, stage).steps } : {}),
+      node: await read(slug),
+    }
+  }
 
   const nodeVerbs: NodeVerbs = {
     get: (slug) => read(slug),
@@ -108,6 +122,16 @@ export function createTask(deps: { store: StorePort; template: TemplatePort }): 
       assertTransition(lifecycleTransitions, node.status, to, 'task')
       if (to === 'build') assertNoOpenQuestions(node.questions ?? [], 'task')
       if (to === 'done') assertTaskCompletable(node)
+      // step enforcement: the transition closing a stage requires a receipt per served step.
+      const closing = stageClosedBy(node.status, to)
+      if (closing !== undefined) {
+        assertStepsReceipted(
+          template.steps('task', closing).steps,
+          node.steps_run ?? [],
+          closing,
+          'task',
+        )
+      }
       return write(slug, { ...node, status: to })
     },
 
@@ -248,6 +272,24 @@ export function createTask(deps: { store: StorePort; template: TemplatePort }): 
           ...node,
           log: appendLog((node.log ?? []) as LogEntry[], { at, kind, note }),
         })
+      },
+    },
+    // step RECEIPTS (enforcement): one per executed template step, written when the step
+    // completes; the stage-closing status transition requires completeness. `skip` documents
+    // a deliberately-not-run step — the schema rejects a skip without a reason.
+    step: {
+      async list(slug) {
+        return (await read(slug)).steps_run ?? []
+      },
+      async done(slug, stage, step, note) {
+        const node = await read(slug)
+        const receipt = { stage, step, status: 'done', ...(note !== undefined ? { note } : {}) }
+        return write(slug, { ...node, steps_run: recordReceipt(node.steps_run ?? [], receipt) })
+      },
+      async skip(slug, stage, step, reason) {
+        const node = await read(slug)
+        const receipt = { stage, step, status: 'skipped', note: reason }
+        return write(slug, { ...node, steps_run: recordReceipt(node.steps_run ?? [], receipt) })
       },
     },
   }
