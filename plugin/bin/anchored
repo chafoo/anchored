@@ -21663,6 +21663,35 @@ function appendLog(log, entry) {
   return [...log, entry];
 }
 
+// src/modules/shared/receipts.ts
+function recordReceipt(receipts, receipt) {
+  const idx = receipts.findIndex((r) => r.stage === receipt.stage && r.step === receipt.step);
+  if (idx < 0)
+    return [...receipts, receipt];
+  return receipts.map((r, i) => i === idx ? receipt : r);
+}
+function stageClosedBy(from, to) {
+  if (from === "plan" && to === "drafted")
+    return "plan";
+  if (from === "drafted" && to === "refined")
+    return "refine";
+  if (from === "build" && (to === "wrap" || to === "done"))
+    return "build";
+  if (from === "wrap" && to === "done")
+    return "wrap";
+  return;
+}
+function assertStepsReceipted(required2, receipts, stage, tier = "node") {
+  const have = new Set(receipts.filter((r) => r.stage === stage).map((r) => r.step));
+  const missing = required2.filter((s) => !have.has(s.name)).map((s) => s.name);
+  if (missing.length > 0) {
+    throw anchoredError("StepsUnreceipted", `cannot close ${tier} ${stage}: step(s) without a receipt — ${missing.join(", ")}`, [
+      `receipt each executed step: <tier> step done <slug> ${stage} <step> "<rollup>"`,
+      `or document a skip: <tier> step skip <slug> ${stage} <step> "<reason>"`
+    ]);
+  }
+}
+
 // src/modules/shared/statuses.ts
 var lifecycleStatusValues = [
   "plan",
@@ -21729,6 +21758,14 @@ var LogEntrySchema = exports_external.strictObject({
   kind: exports_external.string(),
   note: exports_external.string()
 });
+var StepReceipt = exports_external.strictObject({
+  stage: exports_external.enum(["plan", "refine", "build", "wrap"]),
+  step: exports_external.string(),
+  status: exports_external.enum(["done", "skipped"]),
+  note: exports_external.string().optional()
+}).refine((r) => r.status !== "skipped" || isReasonFilled(r.note), {
+  error: "a step receipt with status 'skipped' must have a non-empty note (the skip reason)"
+});
 var ContextTrails = exports_external.strictObject({
   plan: exports_external.string().optional(),
   refine: exports_external.string().optional(),
@@ -21747,7 +21784,8 @@ var PhaseNodeSchema = exports_external.strictObject({
   acceptance_criteria: exports_external.array(AcceptanceCriterion).optional(),
   evidence: exports_external.array(exports_external.string()).optional(),
   failures: exports_external.array(exports_external.string()).optional(),
-  depends_on: exports_external.array(KebabSlug).optional()
+  depends_on: exports_external.array(KebabSlug).optional(),
+  steps_run: exports_external.array(StepReceipt).optional()
 });
 
 // src/modules/task/task.schemas.ts
@@ -21762,6 +21800,7 @@ var TaskNodeSchema = exports_external.strictObject({
   questions: exports_external.array(QuestionSchema).optional(),
   concerns: exports_external.array(QuestionSchema).optional(),
   log: exports_external.array(LogEntrySchema).optional(),
+  steps_run: exports_external.array(StepReceipt).optional(),
   phases: exports_external.array(PhaseNodeSchema).optional()
 });
 
@@ -21782,6 +21821,7 @@ var RESERVED = new Set([
   "questions",
   "concerns",
   "log",
+  "steps_run",
   "schema_version",
   "slug"
 ]);
@@ -21797,10 +21837,14 @@ function createTask(deps) {
   const { store, template } = deps;
   const read = (slug) => store.read(slug, TaskNodeSchema);
   const write = (slug, node) => store.write(slug, node, TaskNodeSchema);
-  const stagePlan = async (stage, slug) => ({
-    ...template.steps("task", stage),
-    node: await read(slug)
-  });
+  const stagePlan = async (stage, slug) => {
+    const plan = template.steps("task", stage);
+    return {
+      ...plan,
+      ...plan.each !== undefined ? { each_steps: template.steps(plan.each, stage).steps } : {},
+      node: await read(slug)
+    };
+  };
   const nodeVerbs = {
     get: (slug) => read(slug),
     create: (slug, title) => write(slug, {
@@ -21820,6 +21864,10 @@ function createTask(deps) {
         assertNoOpenQuestions(node.questions ?? [], "task");
       if (to === "done")
         assertTaskCompletable(node);
+      const closing = stageClosedBy(node.status, to);
+      if (closing !== undefined) {
+        assertStepsReceipted(template.steps("task", closing).steps, node.steps_run ?? [], closing, "task");
+      }
       return write(slug, { ...node, status: to });
     },
     async set(slug, field, value) {
@@ -21946,6 +21994,21 @@ function createTask(deps) {
           log: appendLog(node.log ?? [], { at, kind, note })
         });
       }
+    },
+    step: {
+      async list(slug) {
+        return (await read(slug)).steps_run ?? [];
+      },
+      async done(slug, stage, step, note) {
+        const node = await read(slug);
+        const receipt = { stage, step, status: "done", ...note !== undefined ? { note } : {} };
+        return write(slug, { ...node, steps_run: recordReceipt(node.steps_run ?? [], receipt) });
+      },
+      async skip(slug, stage, step, reason) {
+        const node = await read(slug);
+        const receipt = { stage, step, status: "skipped", note: reason };
+        return write(slug, { ...node, steps_run: recordReceipt(node.steps_run ?? [], receipt) });
+      }
     }
   };
   return dispatch("task", nodeVerbs, collections, (slug) => read(slug));
@@ -22009,7 +22072,7 @@ function deferAc(acs, acId, reason) {
 
 // src/modules/phase/phase.ts
 function createPhase(deps) {
-  const { store, taskSchema } = deps;
+  const { store, taskSchema, template } = deps;
   const split = (slug) => {
     const i = slug.lastIndexOf("/");
     if (i < 0) {
@@ -22056,13 +22119,14 @@ function createPhase(deps) {
         if (open.length > 0) {
           throw anchoredError("PhaseIncomplete", `cannot mark '${phase.slug}' done: acceptance criteria not terminal — ${open.map((a) => a.id).join(", ")}`, ["evidence each AC (ac evidence flips it done) or defer it with a reason (ac defer)"]);
         }
+        assertStepsReceipted(template.steps("phase", "build").steps, phase.steps_run ?? [], "build", "phase");
       }
       return { ...phase, status: to };
     }),
     set: (slug, field, value) => mutate(slug, (phase) => {
-      if (["status", "acceptance_criteria", "rules", "slug"].includes(field)) {
+      if (["status", "acceptance_criteria", "rules", "slug", "steps_run"].includes(field)) {
         throw anchoredError("ReservedField", `phase field '${field}' is reserved`, [
-          "use the dedicated verb (status, ac add, rule add)"
+          "use the dedicated verb (status, ac add, rule add, step done)"
         ]);
       }
       if (field === "depends_on") {
@@ -22118,6 +22182,29 @@ function createPhase(deps) {
         const next = rules.some((r) => r.path === path) ? rules.map((r) => r.path === path ? { path, why } : r) : [...rules, { path, why }];
         return { ...phase, rules: next };
       })
+    },
+    step: {
+      async list(slug) {
+        return (await readPhase(slug)).steps_run ?? [];
+      },
+      done: (slug, stage, step, note) => mutate(slug, (phase) => ({
+        ...phase,
+        steps_run: recordReceipt(phase.steps_run ?? [], {
+          stage,
+          step,
+          status: "done",
+          ...note !== undefined ? { note } : {}
+        })
+      })),
+      skip: (slug, stage, step, reason) => mutate(slug, (phase) => ({
+        ...phase,
+        steps_run: recordReceipt(phase.steps_run ?? [], {
+          stage,
+          step,
+          status: "skipped",
+          note: reason
+        })
+      }))
     }
   };
   return dispatch("phase", nodeVerbs, collections, (slug) => nodeVerbs.get(slug));
@@ -22144,7 +22231,8 @@ var EpicNodeSchema = exports_external.strictObject({
   questions: exports_external.array(QuestionSchema).optional(),
   concerns: exports_external.array(QuestionSchema).optional(),
   tasks: exports_external.array(TaskStub).optional(),
-  log: exports_external.array(LogEntrySchema).optional()
+  log: exports_external.array(LogEntrySchema).optional(),
+  steps_run: exports_external.array(StepReceipt).optional()
 });
 
 // src/modules/epic/epic.ts
@@ -22171,6 +22259,7 @@ var RESERVED2 = new Set([
   "questions",
   "concerns",
   "log",
+  "steps_run",
   "schema_version",
   "slug"
 ]);
@@ -22188,10 +22277,14 @@ function createEpic(deps) {
   const read = (slug) => store.read(slug, EpicNodeSchema);
   const write = (slug, node) => store.write(slug, node, EpicNodeSchema);
   const stubsOf = (n) => n.tasks ?? [];
-  const stagePlan = async (stage, slug) => ({
-    ...template.steps("epic", stage),
-    node: await read(slug)
-  });
+  const stagePlan = async (stage, slug) => {
+    const plan = template.steps("epic", stage);
+    return {
+      ...plan,
+      ...plan.each !== undefined ? { each_steps: template.steps(plan.each, stage).steps } : {},
+      node: await read(slug)
+    };
+  };
   const mutateStub = (slug, childSlug, fn) => read(slug).then((node) => {
     const stubs = stubsOf(node);
     const idx = stubs.findIndex((s) => s.slug === childSlug);
@@ -22261,6 +22354,10 @@ function createEpic(deps) {
         assertNoOpenQuestions(node.questions ?? [], "epic");
       if (to === "done")
         assertEpicCompletable(node);
+      const closing = stageClosedBy(node.status, to);
+      if (closing !== undefined) {
+        assertStepsReceipted(template.steps("epic", closing).steps, node.steps_run ?? [], closing, "epic");
+      }
       return write(slug, { ...node, status: to });
     },
     async set(slug, field, value) {
@@ -22293,12 +22390,13 @@ function createEpic(deps) {
   };
   const collections = {
     child: {
-      async add(slug, childSlug, goal) {
+      async add(slug, childSlug, goal, dependsOn) {
         const node = await read(slug);
         const stub = {
           slug: childSlug,
           status: "pending",
-          ...goal !== undefined ? { goal } : {}
+          ...goal !== undefined ? { goal } : {},
+          ...dependsOn !== undefined && dependsOn.trim() !== "" ? { depends_on: dependsOn.split(",").map((x) => x.trim()) } : {}
         };
         return write(slug, { ...node, tasks: addChild(stubsOf(node), stub) });
       },
@@ -22478,6 +22576,21 @@ function createEpic(deps) {
       async add(slug, at, kind, note) {
         const node = await read(slug);
         return write(slug, { ...node, log: appendLog(node.log ?? [], { at, kind, note }) });
+      }
+    },
+    step: {
+      async list(slug) {
+        return (await read(slug)).steps_run ?? [];
+      },
+      async done(slug, stage, step, note) {
+        const node = await read(slug);
+        const receipt = { stage, step, status: "done", ...note !== undefined ? { note } : {} };
+        return write(slug, { ...node, steps_run: recordReceipt(node.steps_run ?? [], receipt) });
+      },
+      async skip(slug, stage, step, reason) {
+        const node = await read(slug);
+        const receipt = { stage, step, status: "skipped", note: reason };
+        return write(slug, { ...node, steps_run: recordReceipt(node.steps_run ?? [], receipt) });
       }
     }
   };
@@ -22754,7 +22867,7 @@ function createCli(deps) {
     projectRoot: deps.projectRoot
   });
   const task = createTask({ store: storeFor("task"), template });
-  const phase = createPhase({ store: storeFor("task"), taskSchema: TaskNodeSchema });
+  const phase = createPhase({ store: storeFor("task"), taskSchema: TaskNodeSchema, template });
   const epic = createEpic({ store: storeFor("epic"), template, task });
   const tiers = { phase, task, epic };
   const emit = (env, json2) => {
