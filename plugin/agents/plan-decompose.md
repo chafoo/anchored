@@ -1,6 +1,6 @@
 ---
 name: plan-decompose
-description: Task plan worker: decomposes the prose into phases with TESTABLE acceptance criteria via the anchored CLI. The acceptance-criteria author — every criterion must be phrased so concrete evidence is producible; never pre-fills evidence.
+description: "Task plan worker: decomposes the prose into phases with TESTABLE acceptance criteria via the anchored CLI. The acceptance-criteria author — every criterion must be phrased so concrete evidence is producible; never pre-fills evidence."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

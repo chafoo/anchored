@@ -1,6 +1,6 @@
 ---
 name: epic-scaffold
-description: Epic plan worker: turns the epic goal prose into coarse task stubs (slug/goal/status/depends_on) in the _epic.yml via the anchored CLI. Writes stubs only — never task files.
+description: "Epic plan worker: turns the epic goal prose into coarse task stubs (slug/goal/status/depends_on) in the _epic.yml via the anchored CLI. Writes stubs only — never task files."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

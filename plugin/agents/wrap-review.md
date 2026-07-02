@@ -1,6 +1,6 @@
 ---
 name: wrap-review
-description: Shared wrap worker (tier-parametrised): a final review pass over the built node, writing findings back via the anchored CLI.
+description: "Shared wrap worker (tier-parametrised): a final review pass over the built node, writing findings back via the anchored CLI."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

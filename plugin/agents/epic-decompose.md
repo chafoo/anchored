@@ -1,6 +1,6 @@
 ---
 name: epic-decompose
-description: Epic refine worker: works out OUTCOME-level task acceptance criteria per task-stub (the Epic→Task contract) and writes them onto the stub via the anchored CLI. The outcome-criteria author — criteria at the whole-task level ('persistence to localStorage works'), NEVER phase-granular; those come later from the just-in-time plan task.
+description: "Epic refine worker: works out OUTCOME-level task acceptance criteria per task-stub (the Epic→Task contract) and writes them onto the stub via the anchored CLI. The outcome-criteria author — criteria at the whole-task level ('persistence to localStorage works'), NEVER phase-granular; those come later from the just-in-time plan task."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

@@ -1,6 +1,6 @@
 ---
 name: epic-plan-check
-description: Epic refine worker: grounds the epic's coarse task-stubs + their dependency order against the REAL codebase — confirms each stub's integration seams exist, flags missing/contradicted assumptions, and surfaces genuine scope ambiguities as questions via the anchored CLI. Pure thinker for the stubs; reads code, never writes code.
+description: "Epic refine worker: grounds the epic's coarse task-stubs + their dependency order against the REAL codebase — confirms each stub's integration seams exist, flags missing/contradicted assumptions, and surfaces genuine scope ambiguities as questions via the anchored CLI. Pure thinker for the stubs; reads code, never writes code."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

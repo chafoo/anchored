@@ -1,6 +1,6 @@
 ---
 name: build-implement
-description: Leaf (phase) build worker: writes the code that satisfies each acceptance criterion of ONE phase and records per-criterion build-notes. The only worker that mutates code. Does NOT author evidence — the build-task-validate checker confirms and records it (requirements-3).
+description: "Leaf (phase) build worker: writes the code that satisfies each acceptance criterion of ONE phase and records per-criterion build-notes. The only worker that mutates code. Does NOT author evidence — the build-task-validate checker confirms and records it (requirements-3)."
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

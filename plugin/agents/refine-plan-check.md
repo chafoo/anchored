@@ -1,6 +1,6 @@
 ---
 name: refine-plan-check
-description: Shared refine worker (tier-parametrised): validates the drafted plan against the current code (stale paths, unacknowledged handlers, hidden defaults) and writes its rollup back via the anchored CLI.
+description: "Shared refine worker (tier-parametrised): validates the drafted plan against the current code (stale paths, unacknowledged handlers, hidden defaults) and writes its rollup back via the anchored CLI."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

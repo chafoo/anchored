@@ -1,6 +1,6 @@
 ---
 name: wrap-summarize
-description: Shared wrap worker (tier-parametrised): writes a concise summary into the node context.wrap via the anchored CLI.
+description: "Shared wrap worker (tier-parametrised): writes a concise summary into the node context.wrap via the anchored CLI."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

@@ -1,6 +1,6 @@
 ---
 name: build-code-validate
-description: OPTIONAL leaf (phase) build checker (not a default-template step — wire it in anchored.yml as e.g. `{ name: code-validate, use: { type: agent, name: build-code-validate }, with: task-validate }`) — Rule-Adherence inspector (no code Write/Edit): checks the phase against the applicable rules and REJECTS violating acceptance criteria via the anchored CLI (phase ac fail) to drive the re-do loop. Authors no evidence — that is build-task-validate's job; this one only vetoes on rule violations.
+description: "OPTIONAL leaf (phase) build checker (not a default-template step — wire it in anchored.yml as e.g. `{ name: code-validate, use: { type: agent, name: build-code-validate }, with: task-validate }`) — Rule-Adherence inspector (no code Write/Edit): checks the phase against the applicable rules and REJECTS violating acceptance criteria via the anchored CLI (phase ac fail) to drive the re-do loop. Authors no evidence — that is build-task-validate's job; this one only vetoes on rule violations."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

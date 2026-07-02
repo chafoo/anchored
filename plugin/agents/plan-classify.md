@@ -1,6 +1,6 @@
 ---
 name: plan-classify
-description: Recommendation worker (NOT a persisted step): recommends epic | task | phase from the phase-count tripwire + independence test. Routing help for /a:plan when the tier is omitted; persists nothing.
+description: "Recommendation worker (NOT a persisted step): recommends epic | task | phase from the phase-count tripwire + independence test. Routing help for /a:plan when the tier is omitted; persists nothing."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

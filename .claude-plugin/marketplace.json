@@ -4,6 +4,9 @@
     "name": "chafoo",
     "url": "https://github.com/chafoo"
   },
+  "metadata": {
+    "description": "anchored — evidence-driven development for Claude Code. Fractal task lifecycle (plan→refine→build→wrap) with step-enforcement receipts, backed by the `anchored` CLI."
+  },
   "plugins": [
     {
       "name": "a",

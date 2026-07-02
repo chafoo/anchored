@@ -1,6 +1,6 @@
 ---
 name: plan-rules-scan
-description: Shared plan worker (added for the default template task.plan.rules-scan step): collects the .claude/rules/ relevant to the task and writes them back via the anchored CLI. Sibling of refine-rules-check on the plan stage.
+description: "Shared plan worker (added for the default template task.plan.rules-scan step): collects the .claude/rules/ relevant to the task and writes them back via the anchored CLI. Sibling of refine-rules-check on the plan stage."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

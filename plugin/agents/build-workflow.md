@@ -1,6 +1,6 @@
 ---
 name: build-workflow
-description: Workflow fan-out unit-worker — builds ONE phase of a task (all its acceptance criteria as one coherent diff) and self-writes a per-criterion build-NOTE to the task-file via the anchored CLI. The background sibling of build-implement (one phase per worker, parallel); reached only via the build skill's Workflow-tool fan-out dispatch (agentType), never a step. Like build-implement, it authors NO evidence and makes NO commit — it owns its phase's WORK + build-notes; the per-phase commit, if any, is the orchestrator's trailing commit custom step on a green phase. build-task-validate confirms and records the proof after the fan-out (requirements-3).
+description: "Workflow fan-out unit-worker — builds ONE phase of a task (all its acceptance criteria as one coherent diff) and self-writes a per-criterion build-NOTE to the task-file via the anchored CLI. The background sibling of build-implement (one phase per worker, parallel); reached only via the build skill's Workflow-tool fan-out dispatch (agentType), never a step. Like build-implement, it authors NO evidence and makes NO commit — it owns its phase's WORK + build-notes; the per-phase commit, if any, is the orchestrator's trailing commit custom step on a green phase. build-task-validate confirms and records the proof after the fan-out (requirements-3)."
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

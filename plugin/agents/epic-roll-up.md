@@ -1,6 +1,6 @@
 ---
 name: epic-roll-up
-description: Epic wrap worker — the AUTHORITATIVE definition-of-done check of every stub's outcome acceptance criteria against the BUILT code (the Epic→Task contract). Build no longer evidences the outcome criteria — it delivers a child on all-phases-done — so the roll-up is the ONE place they are verified. Also checks epic.acceptance and writes a retro via the anchored CLI. Hard-with-reconcile — a gap blocks the epic and surfaces as a question, never a silent pass.
+description: "Epic wrap worker — the AUTHORITATIVE definition-of-done check of every stub's outcome acceptance criteria against the BUILT code (the Epic→Task contract). Build no longer evidences the outcome criteria — it delivers a child on all-phases-done — so the roll-up is the ONE place they are verified. Also checks epic.acceptance and writes a retro via the anchored CLI. Hard-with-reconcile — a gap blocks the epic and surfaces as a question, never a silent pass."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

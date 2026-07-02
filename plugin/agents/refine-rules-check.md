@@ -1,6 +1,6 @@
 ---
 name: refine-rules-check
-description: OPTIONAL shared refine worker (tier-parametrised; not a default-template step — wire it in anchored.yml as e.g. `{ name: rules-check, use: { type: agent, name: refine-rules-check }, with: plan-check }`): verifies each phase covers the applicable .claude/rules/ files. A missing rule-enforcement is AUTO-FIXED (adds an enforcing acceptance criterion); only genuine architecture ambiguity becomes a question. Writes back via the anchored CLI.
+description: "OPTIONAL shared refine worker (tier-parametrised; not a default-template step — wire it in anchored.yml as e.g. `{ name: rules-check, use: { type: agent, name: refine-rules-check }, with: plan-check }`): verifies each phase covers the applicable .claude/rules/ files. A missing rule-enforcement is AUTO-FIXED (adds an enforcing acceptance criterion); only genuine architecture ambiguity becomes a question. Writes back via the anchored CLI."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

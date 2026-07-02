@@ -4,5 +4,8 @@
   "version": "0.6.0",
   "author": {
     "name": "chafoo"
-  }
+  },
+  "homepage": "https://github.com/chafoo/anchored",
+  "repository": "https://github.com/chafoo/anchored",
+  "license": "MIT"
 }

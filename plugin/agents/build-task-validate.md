@@ -1,6 +1,6 @@
 ---
 name: build-task-validate
-description: Leaf (phase) build checker — the EVIDENCE AUTHOR (no code Write/Edit): independently re-verifies every acceptance criterion against the implemented code and AUTHORS its evidence via the anchored CLI (phase ac evidence flips it done), or rejects it (phase ac fail) to drive the re-do loop. The checker records the proof, never the implementer (requirements-3).
+description: "Leaf (phase) build checker — the EVIDENCE AUTHOR (no code Write/Edit): independently re-verifies every acceptance criterion against the implemented code and AUTHORS its evidence via the anchored CLI (phase ac evidence flips it done), or rejects it (phase ac fail) to drive the re-do loop. The checker records the proof, never the implementer (requirements-3)."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---

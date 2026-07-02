@@ -1,6 +1,6 @@
 ---
 name: plan-discover
-description: Shared plan worker (epic + task, tier-parametrised): scans the codebase AND the project history (.claude/anchored/_archive/) for affected paths, similar code, conventions, and prior decisions, then writes a discovery summary back to the node via the anchored CLI.
+description: "Shared plan worker (epic + task, tier-parametrised): scans the codebase AND the project history (.claude/anchored/_archive/) for affected paths, similar code, conventions, and prior decisions, then writes a discovery summary back to the node via the anchored CLI."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 ---
