@@ -41,12 +41,12 @@ Under the hood the skill drives the `anchored <tier> wrap <slug>` CLI plan over 
 
 1. **Pre-flight + plan** — call `anchored <tier> wrap <slug>`, which returns the stage, tier, node, and steps. The tier is derived and the call is state-gated on the build phases being terminal.
 2. **Resolve the pipeline** — task → `[review, summarize]`; epic → `[roll-up]`, plus any custom `run`/`use` steps the config adds.
-3. **Task path — review** — spawn the `wrap-review` agent for a final correctness/cleanup pass; it self-writes findings into the node's learning log.
+3. **Task path — review** — spawn the `wrap-review` agent for a final correctness/cleanup pass; it self-writes the rollup into the learning log and records every genuine defect as a **concern** (which blocks `done`). The reviewer never fixes code — a fix routes through `build-implement` and is re-verified before the concern is resolved (an automated fix-loop is a user-wired custom step, see the recipe in the config reference).
 4. **Task path — summarize** — spawn the `wrap-summarize` agent, which writes a tight summary into `context.wrap`, preserving the plan/refine/build siblings.
 5. **Epic path — roll-up** — spawn the `epic-roll-up` agent: verify each task-stub's outcome criteria were delivered, validate each epic acceptance criterion, write the verdict to `context.wrap` plus a retro to the log. Gaps surface as reconcile questions — never silent passes.
 6. **Concern-walk** — list open concerns, pick a threshold, and resolve each (at-or-above the threshold → you decide, below → AI) with reasoning.
 7. **Custom run-steps** — run any trailing `run`/`use` steps (merge/tag/push) in declaration order per their instructions. A failing gating step keeps the node pre-`done`.
-8. **Flip** — `anchored <tier> status <slug> done`, the same `wrap → done` transition on every tier, then report the summary to you.
+8. **Flip** — receipt every executed wrap step (`step done`/`step skip` — the CLI blocks the flip until each served step carries one), then `anchored <tier> status <slug> done`, the same `wrap → done` transition on every tier, then report the summary to you.
 
 ### What the substrate enforces
 

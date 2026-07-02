@@ -2,7 +2,7 @@
 
 # Build
 
-Build turns a refined plan into proven, working code. It loops over every child of a node in-session (a task's phases, an epic's tasks), runs the implementer plus two always-on gates per phase, auto-retries failures, and — guaranteed by a schema invariant — never marks an acceptance criterion done without independently-authored evidence. When all children are terminal, it hands the node on to **wrap**.
+Build turns a refined plan into proven, working code. It loops over every child of a node in-session (a task's phases, an epic's tasks), runs the implementer plus the always-on evidence gate per phase (further gates are user-wired), auto-retries failures, and — guaranteed by a schema invariant — never marks an acceptance criterion done without independently-authored evidence. When all children are terminal, it hands the node on to **wrap**.
 
 ```mermaid
 flowchart TD
@@ -11,9 +11,8 @@ flowchart TD
   plan --> next{Next child?}
   next -->|yes| flight[Mark child in-flight]
   flight --> impl[build-implement: code + notes]
-  impl --> g1[Gate 1 task-validate: author evidence]
-  g1 --> g2[Gate 2 code-validate: rule check]
-  g2 --> redo{Any failures?}
+  impl --> g1[Gate task-validate: author evidence]
+  g1 --> redo{Any failures?}
   redo -->|yes, < retry_limit| impl
   redo -->|yes, exhausted| blocked[Mark child blocked]
   redo -->|no| done[Flip phase to done]
@@ -31,7 +30,7 @@ flowchart TD
 
 - **Turn a refined plan into working code, hands-off** — the skill walks every phase from start to green by itself.
 - **Trust nothing on faith** — a separate checker re-verifies each acceptance criterion against the real code and writes the proof, so "done" always means "proven done".
-- **Enforce your rules** — a second checker vetoes code that violates the project's rules, and can bounce a criterion that was already evidenced.
+- **Optionally enforce your rules** — wire the shipped `build-code-validate` agent in as a second gate; it vetoes code that violates the project's rules, and can bounce a criterion that was already evidenced.
 - **Auto-retry failures** — each failure becomes a fix-list fed back to the implementer, retried up to a configurable limit before the phase is marked blocked and the run moves on.
 - **Stay in the loop only when it matters** — within-plan decisions are documented automatically onto the record; a genuine plan or architecture deviation halts and asks you.
 - **Resume safely after a crash or context compaction** — the loop re-reads state from disk and only re-does unfinished work.
@@ -63,13 +62,12 @@ This is an **explicit-only** trigger — it will not fire on a generic "build th
 3. **Fetch the plan** — `anchored <tier> build <slug>` returns the stage, tier, node and steps, plus the intrinsic recursion edge, the stop-conditions and the retry limit. The CLI never spawns; the skill does.
 4. **Loop over children** — while the parent yields a next child, mark it in-flight (a phase goes `in-progress`, a task-stub goes `active`).
 5. **Implement** — per leaf phase, spawn `build-implement`: it writes code and a build-note per criterion anchored on the symbol, authors **no** evidence, and flips nothing.
-6. **Gate 1 — task-validate** — the evidence author independently re-verifies each criterion against the real code, runs the named gate, then records evidence (criterion to done) on pass or marks it failed (back to pending) on fail.
-7. **Gate 2 — code-validate** — the rule inspector checks the code against the phase rules and fails any violation, possibly vetoing a criterion task-validate just evidenced.
-8. **Re-do loop** — for every criterion still carrying failures, re-spawn the implementer with those failures as the fix-list, then re-run both gates; retry up to the limit. On exhaustion, mark the child **blocked** and continue.
-9. **Advance** — only when every criterion is done-with-evidence and both gates pass does the orchestrator flip the phase to done. This is the one and only place a phase reaches done — never the implementer.
-10. **Trailing steps** — run the phase's custom steps (commit/push/coverage) on the now-green phase, with `TASK_SLUG` / `PHASE_SLUG` / `PHASE_NAME` / `EPIC_SLUG` available as env vars. A failed custom-step command stops the loop.
-11. **Decision stop-check** — for each implementer-reported decision: if no stop-condition matches, proceed and mint an ai-sourced question for the record; if one matches, halt, escalate to you, walk it, then continue.
-12. **Terminate** — when no child remains, set the node status to `wrap` and tell you in plain words that build is done and `/a:wrap` is next.
+6. **Gate — task-validate** — the evidence author independently re-verifies each criterion against the real code, runs the named gate, then records evidence (criterion to done) on pass or marks it failed (back to pending) on fail. (A user-wired extra gate — e.g. the rule inspector `build-code-validate` — runs in the same batch and fails violations, possibly vetoing a criterion task-validate just evidenced.)
+7. **Re-do loop** — for every criterion still carrying failures, re-spawn the implementer with those failures as the fix-list, then re-run the gates; retry up to the limit. On exhaustion, mark the child **blocked** and continue.
+8. **Advance** — only when every criterion is done-with-evidence, every gate passes, and every pipeline step carries a receipt (`phase step done|skip` — the CLI blocks the flip otherwise) does the orchestrator flip the phase to done. This is the one and only place a phase reaches done — never the implementer.
+9. **Trailing steps** — run the phase's custom steps (commit/push/coverage) on the now-green phase, with `TASK_SLUG` / `PHASE_SLUG` / `PHASE_NAME` / `EPIC_SLUG` available as env vars. A failed custom-step command stops the loop.
+10. **Decision stop-check** — for each implementer-reported decision: if no stop-condition matches, proceed and mint an ai-sourced question for the record; if one matches, halt, escalate to you, walk it, then continue.
+11. **Terminate** — when no child remains, set the node status to `wrap` and tell you in plain words that build is done and `/a:wrap` is next.
 
 ## Configure it
 
@@ -79,11 +77,11 @@ All of these live under the tier in `anchored.yml` (for example `task.build.*` o
 |---|---|
 | `build.retry_limit` (default `3`) | How many fix-list re-do passes a criterion gets before the child is marked blocked. |
 | `build.stop` | The stop-conditions that escalate a decision to you. Task default: *a decision deviates from the plan*. Epic default: *an architectural boundary is crossed (a layer, the task dependency order, a contract)*. |
-| `phase.build.steps` | The worker pipeline. Shipped default: implement → task-validate → code-validate, fully overridable and replaceable (no built-ins). |
+| `phase.build.steps` | The worker pipeline. Shipped default: implement → task-validate; extendable with user gates (e.g. `{ name: code-validate, use: { type: agent, name: build-code-validate }, with: task-validate }`). |
 | `execute: sequential \| workflow` on the `implement` step | The project-wide fan-out default for a phase's acceptance criteria. |
 | per-phase `execute` field | Overrides the step default so one task fans out while another stays sequential (set at planning via `anchored phase set-execute <task>/<phase> workflow`). |
 | custom trailing build steps | Instructions-only or `use:` an agent/skill — e.g. per-phase commit, push, coverage gate. |
-| the gate workers | `build-task-validate` and `build-code-validate` are template steps and can be re-instructed or swapped via config. |
+| the gate workers | `build-task-validate` is a template step and can be re-instructed via config; `build-code-validate` ships as an optional agent you wire in yourself. |
 
 **Note:** `build.each` (the recursion edge: task → phase, epic → task) is fixed per tier and is **not** user-configurable.
 

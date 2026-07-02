@@ -70,7 +70,7 @@ Plan is an **explicit-only** trigger — it fires only on the typed command, nev
 8. **Scaffold** (epic) — instead write coarse task stubs with goal + `depends_on` edges into `_epic.yml` — never task files (those appear lazily at `task.plan`).
 9. **Surface ambiguities** — every open question is priority-tagged and carries a recommendation + implications, never a silent default.
 10. **Dispatch custom steps** — any `run`/`use` config steps run in declaration order at their position in the plan.
-11. **Finish** — write the plan-trail prose to `context.plan`, flip `status: plan → drafted`, report N phases / M acceptance criteria / K open questions, and point to `/a:refine`.
+11. **Finish** — receipt every executed plan step (`step done`/`step skip` — the CLI blocks the flip until each served step carries one), write the plan-trail prose to `context.plan`, flip `status: plan → drafted`, report N phases / M acceptance criteria / K open questions, and point to `/a:refine`.
 
 > **Questions over silent decisions.** Over-surfacing is the safe default; "I'll just pick X" *is* a question (X becomes the recommendation). Priority is tagged by impact, not difficulty — when in doubt, tag higher. Every question is stated in plain language with framework jargon and internal ids stripped out.
 

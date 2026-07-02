@@ -103,7 +103,7 @@ criteria for each task and phase.
 anchored iterates over the tasks in rolling-wave order. For each task it:
 
 - Checks out a task branch off `epic/${EPIC_SLUG}` (the epic integration branch).
-- Runs phases: implement → task-validate → code-validate → commit.
+- Runs phases: implement → task-validate → commit.
 - Squash-merges the finished task branch back into the epic branch.
 
 Evidence (real `bun test` output or browser-observed result) is recorded per

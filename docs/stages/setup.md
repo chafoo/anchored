@@ -21,7 +21,7 @@ flowchart TD
 | --- | --- |
 | Add a **custom step** to any stage | Writes a prose-only step (`name` + `instructions`, with any shell command living inside the instructions prose) or a delegated worker step (`use: { type: agent\|skill, name }`) under `<tier>.<stage>.steps`. |
 | **Steer a built-in step** | Appends an instruction onto a default worker — e.g. a TDD / red-green-refactor note on `implement`. Built-in steps are extend-only: not removable, not reorderable. |
-| **Position** a custom step precisely | Anchors it with `after: <step>` / `before: <step>` relative to a built-in — e.g. a commit step after `code-validate`, a lint gate before `task-validate`. |
+| **Position** a custom step precisely | Anchors it with `after: <step>` / `before: <step>` relative to a built-in — e.g. a commit step after `task-validate`, a lint gate before it. |
 | Wire in an **agent or skill** | Plugs an isolated subagent (`type: agent`) or an in-session skill (`type: skill`) into any stage — a researcher in plan, a security/dependency audit in refine, a doc step in wrap. |
 | Tune the **build loop** | Sets `build.retry_limit` (how many times a failing unit re-runs) and `build.stop` (natural-language halt conditions; halts on the first match). |
 | Add **custom data-model fields** | Adds additive `phase`/`task`/`epic` fields in record form `name: type` (`string`/`number`/`boolean`) — e.g. `coverage_pct`, `commit_sha`, `merge_commit`, `ticket_url`. Set/read at runtime via `anchored <tier> set`. |
@@ -71,7 +71,7 @@ It parses, merges, and validates the whole file, then reports the resolved per-`
 
 ### Good to know
 
-- **Built-in steps are reserved and extend-only.** You cannot remove or reorder them — only append instructions. Reserved per stage: plan (`discover`/`rules-scan`/`decompose`; epic: `discover`/`scaffold`), refine (`plan-check`/`rules-check`/`walk`), build (`implement`/`task-validate`/`code-validate`, or `each:`), wrap (`review`/`summarize`; epic: `roll-up`).
+- **Built-in steps are reserved and extend-only.** You cannot remove or reorder them — only append instructions. Reserved per stage: plan (`discover`/`rules-scan`/`decompose`; epic: `discover`/`scaffold`), refine (`plan-check`/`walk`), build (`implement`/`task-validate`, or `each:`), wrap (`review`/`summarize`; epic: `roll-up`).
 - **Never name a custom worker `plan` or `explore`** — those are Claude Code internal agent types.
 - **The hard invariant is not switchable.** An `ac` reaches `status: done` only when `evidence` is present — this lives in the schema, not a step. Setup can configure *how* evidence is produced, never disable the rule.
 - **Git is entirely yours.** The framework never runs git and never auto-fills SHA fields. Commit / branch / PR / merge logic and any `anchored task set <field> "$(git rev-parse HEAD)"` write-back live in the step's instructions prose. Two-anchor pattern: `commit_sha` is the interim per-phase anchor (can be pruned by a `--no-ff` wrap merge), `merge_commit` is the durable surviving merge commit.

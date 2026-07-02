@@ -82,7 +82,11 @@ anchored phase ac fail my-epic/login/setup a1 "…"
 anchored task question add my-epic/login "…"
 anchored epic child add my-epic new-task [goal] [deps]
 anchored epic child next my-epic
+anchored task step done my-task refine plan-check "no drift found"
+anchored task step skip my-task refine walk "no open questions"
 ```
+
+Every stage step gets a **receipt** when it completes (`step done`, or `step skip` with a documented reason). The transition that closes a stage — `status drafted|refined|wrap|done`, or `phase status done` for the leaf pipeline — is blocked until every step the template serves for that stage carries one. Step enforcement lives in the substrate, like the evidence invariant.
 
 ## Tiers & collections
 

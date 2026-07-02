@@ -21,6 +21,7 @@ flowchart TD
 - **Plan as a rolling wave** — `epic plan` writes *only* the `_epic.yml` (the living source of truth): the goal, the task stubs, their order and dependencies. It does **not** write the task-files. Each task-file is created just-in-time when `task plan` runs for it during build, so later tasks benefit from what earlier tasks revealed, and the `_epic.yml` is re-synced between tasks.
 - **Build its children hands-off** — `epic build` is the recursion edge `build.each: task`: it walks the ready queue, plans/refines/builds each child task in turn (the orchestrating skill calls `anchored task build <child>`), and only advances when a child reaches a terminal state.
 - **Roll up the result** — when every child task is terminal, the epic reads its children's evidence and aggregates it into the epic's own acceptance criteria, so the epic's "done" is grounded in its tasks' proven work, not asserted on top of it.
+- **Enforce its own stage steps** — like a task, an epic receipts every executed stage step (`epic step done|skip`), and each stage-closing transition is blocked until the served steps are receipted (plan: discover/scaffold; wrap: roll-up).
 - **Hold epic-level acceptance, questions, and concerns** — collections `acceptance · question · concern` capture outcomes and open issues that belong to the whole goal rather than to a single task.
 
 ## Collections

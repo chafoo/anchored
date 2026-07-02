@@ -6,7 +6,7 @@
 
 [![license](https://img.shields.io/badge/license-MIT-2dd4bf)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-38bdf8)](https://github.com/chafoo/anchored)
-[![version](https://img.shields.io/badge/version-0.5.2-2dd4bf)](https://github.com/chafoo/anchored/releases)
+[![version](https://img.shields.io/badge/version-0.6.0-2dd4bf)](https://github.com/chafoo/anchored/releases)
 
 </div>
 
@@ -32,7 +32,7 @@ Better prompts don't close the gap. A prompt is a request, not a guarantee — t
 
 ## How it works
 
-Every piece of work moves through the same four steps, and a criterion cannot reach **done** without attached evidence that an independent checker accepts.
+Every piece of work moves through the same four steps, and a criterion cannot reach **done** without attached evidence that an independent checker accepts. The steps themselves are enforced too: each one is receipted when it runs, and a stage can't close while a served step has no receipt — skipping is possible, but only documented with a reason, never silent.
 
 | Step | What happens |
 | --- | --- |
