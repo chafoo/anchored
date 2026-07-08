@@ -1,0 +1,17 @@
+{
+  "name": "anchored",
+  "owner": {
+    "name": "chafoo",
+    "url": "https://github.com/chafoo"
+  },
+  "metadata": {
+    "description": "anchored — the verification gate for AI work. The AI works like it always does; an independent validator must prove every criterion at the gates. Nothing reaches done without evidence."
+  },
+  "plugins": [
+    {
+      "name": "a",
+      "source": "./plugin",
+      "description": "Verification gate for AI work — one run file, one validator, evidence-gated close. CLI-only transport via the `anchored` binary over Bash, no MCP. Slash commands: /a:run /a:setup."
+    }
+  ]
+}

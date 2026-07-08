@@ -1,0 +1,92 @@
+# .claude/anchored/fix-navbar.yml — ONE run, mid-flight.
+#
+# Written in one breath by the run skill (`anchored anchor`), mutated only
+# through the CLI. Shown mid-run so every state is visible: one criterion
+# proven, one failed (fix-list), one superseded via an amendment, two open.
+#
+# Minimal valid file = goal + criteria with text. Everything else optional.
+
+rigor: standard                # per-task quality bar, set at anchor time from
+                               # the user's words — NOT config
+
+goal: Navbar overflow on mobile is fixed without changing desktop behavior
+
+# ── The plan, VERBATIM — immutable. What the user asked for, frozen. ────────
+plan: |
+  Accepted plan (plan mode, 2026-07-08):
+  1. Replace the fixed-width nav items with the flex layout components.
+  2. Add a viewport test at 375px.
+  3. Make sure desktop looks exactly the same as before.
+
+# Course changes never edit the plan — they append here (validation + log).
+# The WHY lives here once; the WHAT sits on the criteria, linked by id.
+amendments:
+  - id: a1
+    at: 2026-07-08T14:40:00Z
+    reason: >
+      .nav-actions turns out to be shared with the footer — fixing its width
+      inside Navbar.vue would fork the component. Extract a shared token
+      instead; supersedes c2, adds c5.
+
+# ── Criteria — derived from the plan; gates sized by the AI to the rigor. ───
+# `setup` is a CRITERION field only (no run level): the AI tags each criterion
+# with the setup that knows how to verify it; no setup → `defaults` apply.
+# Never deleted: obsolete ones flip to superseded/rejected and stay visible.
+# Mirrored into the session task list as "[fix-navbar/<id>] <text>" — a task
+# is checked off ONLY when its criterion is done-with-evidence.
+criteria:
+  - id: c1
+    text: Navbar items wrap correctly at 375px viewport width
+    setup: frontend
+    gate: layout
+    status: done
+    evidence:
+      by: validator            # only a validator can flip a criterion to done
+      snapshot: 3f2a91c        # the pinned state this proof refers to
+      grounded: web-inspector screenshot at 375px + `bun test navbar.layout`, exit 0
+      at: 2026-07-08T14:32:00Z
+
+  - id: c2
+    text: No horizontal scrollbar on any breakpoint (fix .nav-actions width)
+    setup: frontend
+    gate: layout
+    status: superseded         # replaced by c5 — see amendment a1
+    superseded_by: c5
+    amended_by: a1
+
+  - id: c3
+    text: Desktop navbar is pixel-identical to before (no regression)
+    setup: frontend
+    gate: final
+    status: open
+
+  - id: c4
+    text: Solution follows the existing layout-component pattern (.claude/rules/)
+    setup: frontend
+    gate: final
+    status: failed             # → fix-list; run cannot close until resolved
+    evidence:
+      by: validator
+      snapshot: 3f2a91c
+      verdict: introduces a bespoke NavFlex wrapper instead of layout/Flex.vue
+      at: 2026-07-08T14:32:00Z
+
+  - id: c5
+    text: .nav-actions width comes from a shared token used by navbar AND footer
+    setup: frontend
+    gate: layout-2             # new gate added by the amendment
+    status: open
+    added_by: a1
+
+# ── Optional one-line claims from the working session — trail, never gates. ─
+# Free-form by design: a work step often serves several criteria at once.
+# `refs` is optional — added only when the mapping is obvious.
+trail:
+  - at: 2026-07-08T14:12:00Z
+    claim: replaced fixed widths in Navbar.vue with the flex layout components
+    refs: [c1, c2]
+  - at: 2026-07-08T14:25:00Z
+    claim: added navbar.layout viewport test
+  - at: 2026-07-08T14:31:00Z
+    gate: layout               # validation requests are trail entries too
+    validated: c1 done, c4 failed (snapshot 3f2a91c)

@@ -1,0 +1,27 @@
+# Bun configuration for the @chaafoo/anchored core package.
+#
+# [test] declares the test-suffix taxonomy this package recognizes:
+#   *.spec.ts  — unit specs (bun's built-in matcher discovers these)
+#   *.e2e.ts   — end-to-end suites
+#   *.int.ts   — integration suites
+#
+# IMPORTANT — discovery mechanism (verified on bun 1.3.14):
+#   Bun's built-in test-file matcher ONLY recognizes the substrings
+#   ".test" / "_test_" / ".spec" / "_spec_" in a filename. There is no
+#   bunfig key that widens that matcher to additional suffixes, and a
+#   bare glob arg (e.g. "src/**/*.e2e.ts") is interpreted as a *name
+#   filter*, not a path — so it never matches a non-spec file either.
+#   The ONLY reliable way to run *.e2e.ts / *.int.ts is to hand bun an
+#   explicit "./"-prefixed file path, which bypasses the name matcher.
+#   The per-suffix npm scripts (test:e2e / test:int) therefore collect
+#   files via `find` and pass them to bun as explicit paths. This
+#   [test] block stands as the single declared source of truth for the
+#   recognized suffix set; the npm scripts implement discovery for the
+#   suffixes bun cannot match on its own.
+#
+# Recognized test suffixes (single source of truth):
+#   - "*.spec.ts"   (unit)      -> npm run test:unit
+#   - "*.e2e.ts"    (e2e)       -> npm run test:e2e
+#   - "*.int.ts"    (int)       -> npm run test:int
+[test]
+root = "src"
