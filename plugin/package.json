@@ -1,0 +1,5 @@
+{
+  "name": "anchored-cli",
+  "private": true,
+  "description": "Bundled anchored CLI shipped with the plugin (do not publish). Rebuild via `npm --prefix core run bundle:plugin`."
+}

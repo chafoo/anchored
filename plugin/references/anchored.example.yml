@@ -1,0 +1,72 @@
+# anchored.yml — project config (optional; without it, `defaults` IS the behavior)
+#
+# A setup = verification know-how for one kind of work. Same shape everywhere:
+# `validator` + `before` + `after`. No extends, no nesting, no step lists.
+# Criteria reference setups; no setup → `defaults`.
+#
+# Hooks are INSTRUCTIONS the agent executes — not harness-run commands. That
+# way they can wrap context around a CLI call ("run X, verify Y, then …").
+#
+# anchored itself ships ONLY the validate loop. Git, CI, notifications — no
+# built-ins, no dependencies. You wire them yourself via before/after
+# instructions and custom criterion `fields`.
+#
+# NOT configured here by design: `rigor` (per task, in the run file) and any
+# gate layout (the AI slices gates itself, setup-homogeneous).
+
+# Additive custom criterion fields — TOP LEVEL, available to every setup.
+# Record form `name: type` (string/number/boolean), 1:1 the v2 mechanism.
+# Set/read at runtime via `anchored set <slug> <criterion> <field>=<value>`.
+fields:
+  commit: string               # sha of the commit that landed this criterion
+  coverage_pct: number
+
+defaults:
+  validator:
+    instructions: >
+      Ground evidence in executed commands wherever possible (tests, lint,
+      build, curl). Prose judgment only for what cannot be executed.
+
+setups:
+  frontend:
+    validator:
+      instructions: >
+        Verify the rendered screen in the browser (web-inspector), not just
+        the code. Check mobile viewport when layout is touched.
+    before:
+      instructions: Run `bun run lint` and fix anything red before the validator spawns.
+
+  backend:
+    validator:
+      instructions: >
+        Every criterion needs a real test run as evidence — a green suite
+        alone is not evidence for a specific criterion.
+    before:
+      instructions: >
+        Run `bun run typecheck`; treat a red typecheck as a failed gate. Then
+        commit the gate's state and pass a real snapshot:
+        `anchored validate <slug> --gate <g> --snapshot $(git rev-parse --short HEAD)`.
+        (Without --snapshot, anchored mints an opaque token and the validator
+        runs the simpler outcome check against the working tree.)
+    after:
+      instructions: >
+        Commit the verified gate's diff and store the sha on each of its
+        criteria: `anchored set <slug> <criterion> commit=<sha>`.
+
+  docs:
+    validator:
+      instructions: >
+        Check links resolve, tone matches existing docs, and code snippets in
+        the text actually run.
+
+  release:
+    validator:
+      instructions: >
+        Reject on any doubt. Evidence must be executable proof; prose verdicts
+        are not acceptable in this setup.
+    before:
+      instructions: Run the full suite (`bun run test:all`) before any validator spawn.
+    after:
+      instructions: >
+        When the run closes green, push and open a PR (`gh pr create --fill`)
+        and record the PR URL as a trail claim.

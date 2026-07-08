@@ -1,0 +1,11 @@
+{
+  "name": "a",
+  "description": "Verification gate for AI work — one run file, one independent validator, evidence-gated close. CLI-only transport via the `anchored` binary over Bash, no MCP. Slash commands: /a:run /a:setup.",
+  "version": "0.1.0",
+  "author": {
+    "name": "chafoo"
+  },
+  "homepage": "https://github.com/chafoo/anchored",
+  "repository": "https://github.com/chafoo/anchored",
+  "license": "MIT"
+}
