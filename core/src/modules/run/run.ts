@@ -20,7 +20,7 @@ import { anchoredError } from '../../lib/utils/error.js'
 import { buildRunSchema, type Criterion, type RunFile } from './run.schemas.js'
 import { nextId } from './scope/ids.js'
 import { coerceField } from './scope/fields.js'
-import { selectGate } from './scope/packet.js'
+import { selectGate, requestLine, reusableRequest } from './scope/packet.js'
 import { closeBlockers } from './scope/close-gate.js'
 
 const SLUG_RE = /^[a-z0-9][a-z0-9._-]*$/
@@ -84,6 +84,7 @@ export function createRun(deps: RunModuleDeps): RunPort {
         status: 'open',
         ...(draft.setup !== undefined ? { setup: draft.setup } : {}),
         ...(draft.gate !== undefined ? { gate: draft.gate } : {}),
+        ...(draft.judgment === true ? { judgment: true } : {}),
         ...(addedBy !== undefined ? { added_by: addedBy } : {}),
       }
       minted.push(criterion)
@@ -203,14 +204,23 @@ export function createRun(deps: RunModuleDeps): RunPort {
       const run = await read(slug)
       assertOpen(slug, run, 'validate')
       const selection = selectGate(run, opts.gate)
-      const snapshot = opts.snapshot ?? `snap-${clock()}-${rand()}`
       const resolved = config.resolve(selection.setup)
-      const entry = {
-        at: clock(),
-        ...(opts.gate !== undefined ? { gate: opts.gate } : {}),
-        validated: `requested ${selection.criteria.map((c) => c.id).join(', ')} (snapshot ${snapshot})`,
+
+      // asking the same question twice is one request: reuse the snapshot, add no entry
+      const prior = reusableRequest(run, opts.gate, selection.criteria)
+      const reuse =
+        prior !== undefined && (opts.snapshot === undefined || opts.snapshot === prior.snapshot)
+      const snapshot = reuse ? prior.snapshot! : (opts.snapshot ?? `snap-${clock()}-${rand()}`)
+
+      if (!reuse) {
+        const entry = {
+          at: clock(),
+          ...(opts.gate !== undefined ? { gate: opts.gate } : {}),
+          validated: requestLine(selection.criteria),
+          snapshot,
+        }
+        await persist(slug, run, { ...run, trail: [...run.trail, entry] })
       }
-      await persist(slug, run, { ...run, trail: [...run.trail, entry] })
       return {
         slug,
         ...(opts.gate !== undefined ? { gate: opts.gate } : {}),
@@ -222,6 +232,8 @@ export function createRun(deps: RunModuleDeps): RunPort {
           text: c.text,
           ...(c.setup !== undefined ? { setup: c.setup } : {}),
           status: c.status,
+          // the validator must know which criteria a prose verdict may prove
+          ...(c.judgment === true ? { judgment: true } : {}),
         })),
         setup: {
           ...(selection.setup !== undefined ? { name: selection.setup } : {}),
@@ -240,6 +252,17 @@ export function createRun(deps: RunModuleDeps): RunPort {
         throw anchoredError(
           'InactiveCriterion',
           `criterion '${criterion}' is ${c.status} — nothing to prove`,
+        )
+      // grounded-for-done, pre-checked with a usable message (the schema is the backstop)
+      if (input.grounded === undefined && c.judgment !== true)
+        throw anchoredError(
+          'UngroundedEvidence',
+          `criterion '${criterion}' is not a judgment criterion — a prose verdict cannot prove it`,
+          [
+            'run something that proves it, then pass --grounded "<command> → <real output>"',
+            `if it truly cannot be executed, it must be declared 'judgment: true' at anchor/amend time`,
+            `to reject it instead: anchored fail ${slug} ${criterion} --snapshot <s> --verdict <why>`,
+          ],
         )
       return persist(slug, run, { ...run, criteria: proofState(run, criterion, 'done', input) })
     },

@@ -105,7 +105,44 @@ describe('validate', () => {
     await run.validate('fix-navbar', { gate: 'layout', snapshot: 'abc' })
     const r = onDisk('fix-navbar')
     expect(r.trail[0]!.gate).toBe('layout')
-    expect(r.trail[0]!.validated).toBe('requested c1, c2 (snapshot abc)')
+    expect(r.trail[0]!.validated).toBe('requested c1, c2')
+    expect(r.trail[0]!.snapshot).toBe('abc')
+  })
+
+  test('asking the same gate again reuses the snapshot and adds no trail entry', async () => {
+    await anchorNavbar()
+    const first = await run.validate('fix-navbar', { gate: 'layout' })
+    const again = await run.validate('fix-navbar', { gate: 'layout' })
+    expect(again.snapshot).toBe(first.snapshot)
+    expect(onDisk('fix-navbar').trail).toHaveLength(1)
+  })
+
+  test('another gate is a different request — it gets its own entry', async () => {
+    await anchorNavbar()
+    const layout = await run.validate('fix-navbar', { gate: 'layout' })
+    const final = await run.validate('fix-navbar', { gate: 'final' })
+    expect(final.snapshot).not.toBe(layout.snapshot)
+    expect(onDisk('fix-navbar').trail).toHaveLength(2)
+  })
+
+  test('after a fail, re-validating the gate mints a fresh snapshot', async () => {
+    await anchorNavbar()
+    const before = await run.validate('fix-navbar', { gate: 'layout' })
+    await run.fail('fix-navbar', 'c2', { snapshot: before.snapshot, verdict: 'overflows by 4px' })
+    const after = await run.validate('fix-navbar', { gate: 'layout' })
+    // c1 is still open, c2 is failed → same selection, but proof was written since
+    expect(after.criteria.map((c) => c.id)).toEqual(['c1', 'c2'])
+    expect(after.snapshot).not.toBe(before.snapshot)
+    expect(onDisk('fix-navbar').trail).toHaveLength(2)
+  })
+
+  test('proving one criterion changes the selection — a new request', async () => {
+    await anchorNavbar()
+    const before = await run.validate('fix-navbar', { gate: 'layout' })
+    await run.evidence('fix-navbar', 'c1', { snapshot: before.snapshot, grounded: 'bun test, 0' })
+    const after = await run.validate('fix-navbar', { gate: 'layout' })
+    expect(after.criteria.map((c) => c.id)).toEqual(['c2'])
+    expect(after.snapshot).not.toBe(before.snapshot)
   })
 })
 
@@ -142,6 +179,46 @@ describe('evidence + fail (the validator verbs)', () => {
     expect(
       run.evidence('fix-navbar', 'c2', { snapshot: 's', grounded: 'x' }),
     ).rejects.toMatchObject({ kind: 'InactiveCriterion' })
+  })
+
+  test('a prose verdict cannot prove an executable criterion — it stays open', async () => {
+    await anchorNavbar()
+    expect(
+      run.evidence('fix-navbar', 'c1', { snapshot: 's', verdict: 'looks right to me' }),
+    ).rejects.toMatchObject({ kind: 'UngroundedEvidence' })
+    expect(onDisk('fix-navbar').criteria[0]!.status).toBe('open')
+  })
+})
+
+describe('judgment criteria (the one opt-out from grounded-for-done)', () => {
+  const anchorCopy = () =>
+    run.anchor({
+      slug: 'copy',
+      goal: 'The empty state reads calm',
+      criteria: [
+        { text: 'the empty-state copy reads calm', gate: 'copy', judgment: true },
+        { text: 'the copy renders', gate: 'copy' },
+      ],
+    })
+
+  test('anchor persists judgment only where it was declared', async () => {
+    await anchorCopy()
+    const r = onDisk('copy')
+    expect(r.criteria[0]!.judgment).toBe(true)
+    expect(r.criteria[1]!.judgment).toBeUndefined()
+  })
+
+  test('a prose verdict proves it', async () => {
+    await anchorCopy()
+    await run.evidence('copy', 'c1', { snapshot: 's', verdict: 'no exclamation marks, one clause' })
+    expect(onDisk('copy').criteria[0]).toMatchObject({ status: 'done' })
+  })
+
+  test('the packet tells the validator which criteria a verdict may prove', async () => {
+    await anchorCopy()
+    const packet = await run.validate('copy', { gate: 'copy' })
+    expect(packet.criteria[0]).toMatchObject({ id: 'c1', judgment: true })
+    expect(packet.criteria[1]!.judgment).toBeUndefined()
   })
 })
 

@@ -12,6 +12,9 @@ export interface CriterionDraft {
   setup?: string
   /** gate label — the AI's slicing, sized to the rigor. Absent → the single final gate. */
   gate?: string
+  /** declare it unexecutable: a prose verdict may prove it. The one opt-out from
+   *  grounded-for-done — state it up front, not after the proof fails to materialise. */
+  judgment?: boolean
 }
 
 export interface AnchorInput {
@@ -48,7 +51,7 @@ export interface ValidationPacket {
   snapshot: string
   rigor: string
   goal: string
-  criteria: { id: string; text: string; setup?: string; status: string }[]
+  criteria: { id: string; text: string; setup?: string; status: string; judgment?: boolean }[]
   /** the resolved setup of the gate (gates are setup-homogeneous). */
   setup: { name?: string; validator?: Instructions; before?: Instructions }
   fields: FieldsConfig
@@ -56,9 +59,9 @@ export interface ValidationPacket {
 
 export interface EvidenceInput {
   snapshot: string
-  /** executed-command proof (preferred). */
+  /** executed-command proof — required for `done` unless the criterion is `judgment`. */
   grounded?: string
-  /** prose judgment — the fallback for what cannot be executed. */
+  /** prose judgment: the reason a `fail` rejects, or the proof of a `judgment` criterion. */
   verdict?: string
 }
 
