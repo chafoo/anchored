@@ -64,6 +64,9 @@ criteria:
     text: Solution follows the existing layout-component pattern (.claude/rules/)
     setup: frontend
     gate: final
+    judgment: true             # nothing can be EXECUTED against it — a prose verdict may
+                               # prove it. Declared up front; the one opt-out from
+                               # grounded-for-done. Everything else needs a real command.
     status: failed             # → fix-list; run cannot close until resolved
     evidence:
       by: validator
@@ -89,4 +92,5 @@ trail:
     claim: added navbar.layout viewport test
   - at: 2026-07-08T14:31:00Z
     gate: layout               # validation requests are trail entries too
-    validated: c1 done, c4 failed (snapshot 3f2a91c)
+    validated: requested c1, c4
+    snapshot: 3f2a91c          # asking the same gate again reuses this — no second entry
