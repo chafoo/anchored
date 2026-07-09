@@ -36,6 +36,24 @@ describe('createConfig', () => {
     expect(backend.after?.instructions).toBe('close-time hooks') // defaults fill the gap
   })
 
+  test('a setup writing its own instructions does not silently drop the defaults` require', () => {
+    const config = createConfig({
+      defaults: { validator: { instructions: 'ground evidence', require: 'grounded' } },
+      setups: { backend: { validator: { instructions: 'real test runs only' } } },
+    })
+    const backend = config.resolve('backend')
+    expect(backend.validator?.instructions).toBe('real test runs only') // setup wins the key
+    expect(backend.validator?.require).toBe('grounded') // …but the hardening layer survives
+  })
+
+  test('a setup may harden on its own without any defaults', () => {
+    const config = createConfig({
+      setups: { release: { validator: { instructions: 'reject on doubt', require: 'grounded' } } },
+    })
+    expect(config.resolve('release').validator?.require).toBe('grounded')
+    expect(config.resolve().validator).toBeUndefined() // defaults stay untouched
+  })
+
   test('an unknown setup throws UnknownSetup and lists the declared names', () => {
     const config = createConfig({ setups: { frontend: {} } })
     try {

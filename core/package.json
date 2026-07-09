@@ -1,6 +1,6 @@
 {
   "name": "@chaafoo/anchored",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "anchored — the verification gate for AI work. Evidence-gated runs: no criterion reaches done without validator-authored proof, grounded in an executed command.",
   "type": "module",
   "license": "MIT",

@@ -15,8 +15,9 @@ edit code or the run file directly.
 
 The spawning skill hands you: the `slug`, the `gate` (if any), the `snapshot` string, the
 `rigor`, the criteria to verify (`id` + `text` + current `status` + `judgment` where the
-author declared the criterion unexecutable), the setup's `validator.instructions`, and the
-declared custom `fields`. Re-read the live state yourself: `anchored status <slug>`.
+author declared the criterion unexecutable), the setup's `validator` block (its
+`instructions`, and `require: grounded` if this setup refuses prose), and the declared
+custom `fields`. Re-read the live state yourself: `anchored status <slug>`.
 
 ## Snapshot contract
 
@@ -29,8 +30,12 @@ declared custom `fields`. Re-read the live state yourself: `anchored status <slu
 
 ## How you verify (per criterion)
 
-1. **Ground first.** If anything executable can prove the criterion — a test, lint, a
-   build, curl, a CLI invocation — RUN it and use the real output as evidence.
+1. **Verify as well as the subject allows.** Where something can be executed against the
+   criterion — a test, a lint, a build, a render, a request, a checksum, a diff — RUN it
+   and use the real output as evidence. Where nothing can be (a copy deck, an asset, a
+   design token, a policy) verify by INSPECTION: open the artifact, compare it against the
+   spec, and state exactly what you checked and what you saw. Both are proof. Neither
+   requires the subject to be code.
 2. **Find the tool before you claim it is missing.** "No browser available" is nearly
    always false: `command -v`, `npx --no-install <tool> --version`, the project's own
    scripts. A headless browser (playwright / puppeteer / `chrome --headless`, driven over
@@ -38,27 +43,37 @@ declared custom `fields`. Re-read the live state yourself: `anchored status <slu
    contrast, focus order or a real click path demands. **Measure it; never infer it from
    the CSS.** The suite you are handed can lie in exactly this gap — a synthetic
    `.click()` fires events in an order a real browser never produces. If a tool genuinely
-   is absent, say so IN the evidence and treat the criterion as unproven.
+   is absent, say so IN the evidence.
 3. **Check the project's rules.** Read `.claude/rules/` if present; a criterion that is
    met but violates a rule is NOT met.
-4. **Respect the rigor.** It sets how hard you push, never whether you ground: `light`:
-   one clean proof per criterion. `standard`: prove the criterion, not a proxy for it.
-   `high`/`max`: adversarial — probe the edges, and at `max` reject on doubt.
+4. **Respect the rigor.** It sets how hard you push: `light`: one clean proof per
+   criterion. `standard`: prove the criterion, not a proxy for it. `high`/`max`:
+   adversarial — probe the edges, and at `max` reject on doubt.
 5. **Then write the proof — one CLI call per criterion:**
 
 ```bash
-# proven — the ONLY way an ordinary criterion reaches done:
+# proven by EXECUTION — what you ran, and its real output:
 anchored evidence <slug> <cN> --snapshot <snap> --grounded "<command> → <real output/exit code>"
-# proven in prose — ONLY for a criterion the packet marks `judgment: true`:
-anchored evidence <slug> <cN> --snapshot <snap> --verdict "<what you checked and why it holds>"
+# proven by INSPECTION — what you examined, against what, and why it holds:
+anchored evidence <slug> <cN> --snapshot <snap> --verdict "<what you checked and what you saw>"
 # not proven — a reasoned rejection drives the fix-list:
 anchored fail <slug> <cN> --snapshot <snap> --verdict "<precisely what is wrong, where>"
 ```
 
-`--verdict` on an ordinary criterion is refused (`UngroundedEvidence`) — prose is not a
-proof, and you cannot promote a criterion to `judgment` yourself: that was the author's
-call, at anchor time. Cannot ground one that is not marked? Then it is not proven — `fail`
-it, and say that the proof could not be executed. Never talk a criterion into `done`.
+The two are not ranked by comfort. Reach for `--grounded` whenever something CAN be run:
+an execution you skipped is a proof you owe. Reach for `--verdict` when the subject has
+nothing to execute — and then make it specific enough that a reader can re-check it (file
+and line, the measure you compared, the spec clause).
+
+**Never dress an inspection up as an execution.** Prose in `--grounded` that names no
+command you actually ran is a lie in the run file, and it is worse than an honest verdict,
+because it hides that nothing was measured.
+
+**A setup may demand execution.** If your packet's `setup.validator.require` is
+`grounded`, this setup accepts no verdict: prove it by running something, or `fail` it and
+say the proof could not be executed. Criteria the packet marks `judgment: true` stay exempt
+even there — their author already declared that nothing can be run against them. You cannot
+mark a criterion `judgment` yourself; that was decided at anchor time.
 
 ## Hard lines
 

@@ -1,8 +1,9 @@
 // modules/run/run.schemas.ts — the run-file schema + its z.infer types. THE mechanism:
 // the evidence invariant lives here as refinements, and because the store parses every
 // write fail-closed against this schema, the invariant is unskippable — no verb, no bug,
-// no caller can persist `done` without validator-authored evidence, and that evidence is
-// GROUNDED in an executed command unless the criterion was declared `judgment: true`.
+// no caller can persist `done` without validator-authored evidence. What COUNTS as
+// evidence (executed output vs. reasoned inspection) is deliberately not decided here:
+// that is the user's policy, stacked per setup. See `validator.require` in the config.
 //
 // The schema is BUILT from config: top-level custom `fields` (anchored.yml) become
 // optional, typed criterion properties — so `buildRunSchema(config.fields())` is the one
@@ -58,9 +59,9 @@ const CRITERION_BASE = {
   text: z.string().min(1),
   setup: z.string().optional(), // which setup verifies it; no setup → defaults
   gate: z.string().optional(), // the AI's slicing; absent → the single final gate
-  /** declared at anchor/amend time: this criterion cannot be executed, only judged in
-   *  prose (copy quality, pattern fidelity). The ONE opt-out from grounded-for-done —
-   *  visible in the run file, so a prose proof is a stated choice, never a silent one. */
+  /** declared at anchor/amend time: nothing can be EXECUTED against this criterion, it is
+   *  verified by inspection (copy quality, pattern fidelity, an asset looking right). A
+   *  note for the reader — and the exemption that survives a `require: grounded` setup. */
   judgment: z.boolean().optional(),
   status: z.enum(CRITERION_STATUSES).default('open'),
   evidence: EvidenceSchema.optional(),
@@ -95,14 +96,10 @@ export function buildCriterionSchema(fields: FieldsConfig) {
           code: 'custom',
           message: `criterion ${c.id}: done requires validator evidence`,
         })
-      // done is grounded in an executed command — prose alone proves only a criterion the
-      // author declared unexecutable (`judgment: true`). Without this, `verdict` is a
-      // silent bypass: any assertion reaches done.
-      if (c.status === 'done' && c.judgment !== true && c.evidence?.grounded === undefined)
-        ctx.addIssue({
-          code: 'custom',
-          message: `criterion ${c.id}: done requires grounded evidence (an executed command) — declare 'judgment: true' if it can only be judged in prose`,
-        })
+      // NOTE: the schema does NOT demand `grounded` for done. Executing something is a
+      // METHOD of proof, not the nature of it — an asset, a copy deck, a design token are
+      // verified by inspection, and that is evidence too. Whether a setup refuses prose is
+      // POLICY (`validator.require: grounded`), checked by the `evidence` verb.
       if (c.status === 'failed' && c.evidence?.verdict === undefined)
         ctx.addIssue({
           code: 'custom',

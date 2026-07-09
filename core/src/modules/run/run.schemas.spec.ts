@@ -59,36 +59,24 @@ describe('the evidence invariant', () => {
     ).toThrow(/grounded.*or a verdict/)
   })
 
-  test('done on a prose verdict alone is rejected — grounded proof or nothing', () => {
+  test('done on a reasoned verdict is valid — executing is a method of proof, not its nature', () => {
     const verdictOnly = {
       by: 'validator',
       snapshot: 's',
-      verdict: 'read it, holds',
+      verdict: 'opened the asset, compared it to the spec sheet, every measure matches',
       at: doneEvidence.at,
     }
-    expect(() => RunSchema.parse(criterion({ status: 'done', evidence: verdictOnly }))).toThrow(
-      /done requires grounded evidence/,
-    )
-  })
-
-  test('a judgment criterion may reach done on a prose verdict alone', () => {
-    const verdictOnly = {
-      by: 'validator',
-      snapshot: 's',
-      verdict: 'the copy reads calm',
-      at: doneEvidence.at,
-    }
-    const run = RunSchema.parse(
-      criterion({ status: 'done', judgment: true, evidence: verdictOnly }),
-    )
+    const run = RunSchema.parse(criterion({ status: 'done', evidence: verdictOnly }))
     expect(run.criteria[0]!.status).toBe('done')
+    // whether prose is ACCEPTED is the setup's policy (`require: grounded`), checked by the
+    // verb — the schema only insists that a validator authored something.
   })
 
-  test('judgment does not forbid grounded proof — it only permits prose', () => {
-    expect(
-      RunSchema.parse(criterion({ status: 'done', judgment: true, evidence: doneEvidence }))
-        .criteria[0]!.status,
-    ).toBe('done')
+  test('a judgment criterion carries its declaration through', () => {
+    const run = RunSchema.parse(
+      criterion({ status: 'done', judgment: true, evidence: doneEvidence }),
+    )
+    expect(run.criteria[0]!.judgment).toBe(true)
   })
 
   test('judgment is reserved — a custom field may not shadow it', () => {

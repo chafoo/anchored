@@ -40,12 +40,15 @@ flowchart TD
   (`[<slug>/<id>] …`) and a task is checked off only when its criterion is
   `done`-with-evidence: **a checkbox means proven, not claimed.** Pure
   display — the run file stays the SSOT.
-- **Proven means executed** — `done` requires evidence grounded in a real
-  command. A criterion that nothing can be run against (the copy reads calm, the
-  solution follows the pattern) is marked `judgment: true` when it is written,
-  before anyone tries to prove it — that declaration is the only licence for a
-  prose verdict, and it stands visible in the run file. The validator cannot
-  grant it to itself.
+- **Proven means checked, not claimed** — evidence is executed output
+  (`grounded`) where something can be run, and a reasoned inspection (`verdict`)
+  where nothing can: an asset, a copy deck, a design token are verified by
+  looking carefully, and that is a proof. `anchored status` counts how many
+  `done` criteria rest on a verdict (`judged`), so a green run never hides what
+  it stands on. A criterion nobody can execute against is marked `judgment: true`
+  when it is written — a note to the reader; the validator cannot award it to
+  itself. Want a setup that accepts executions only? `validator.require:
+  grounded` — policy you stack, not a rule anchored imposes.
 - **Course changes stay honest** — when the AI must rethink mid-run it never
   edits the plan; it appends an amendment with the reason, adds new criteria,
   and flips obsolete ones to `superseded`/`rejected` (never deleted).

@@ -3,7 +3,7 @@
 // run schema validates on every write); the structured inputs/outputs here are the
 // hand-written shapes the verbs exchange. Interface-only.
 import type { Node } from './store.js'
-import type { FieldsConfig, Instructions } from './config.js'
+import type { FieldsConfig, Instructions, ValidatorInstructions } from './config.js'
 
 /** A criterion as authored at anchor/amend time (ids are minted by the module). */
 export interface CriterionDraft {
@@ -52,16 +52,17 @@ export interface ValidationPacket {
   rigor: string
   goal: string
   criteria: { id: string; text: string; setup?: string; status: string; judgment?: boolean }[]
-  /** the resolved setup of the gate (gates are setup-homogeneous). */
-  setup: { name?: string; validator?: Instructions; before?: Instructions }
+  /** the resolved setup of the gate (gates are setup-homogeneous). `validator.require`
+   *  tells the validator whether this setup accepts a reasoned verdict at all. */
+  setup: { name?: string; validator?: ValidatorInstructions; before?: Instructions }
   fields: FieldsConfig
 }
 
 export interface EvidenceInput {
   snapshot: string
-  /** executed-command proof — required for `done` unless the criterion is `judgment`. */
+  /** proof by execution: what was run, and its real output. */
   grounded?: string
-  /** prose judgment: the reason a `fail` rejects, or the proof of a `judgment` criterion. */
+  /** proof by reasoning: what was inspected and why it holds — or why a `fail` rejects. */
   verdict?: string
 }
 
@@ -73,6 +74,9 @@ export interface RunSummary {
   open: number
   failed: number
   done: number
+  /** of the `done` criteria, how many rest on a reasoned verdict rather than executed
+   *  output. Not a defect — a fact worth seeing before you trust a green run. */
+  judged: number
 }
 
 export interface RunPort {

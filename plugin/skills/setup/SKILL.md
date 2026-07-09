@@ -11,7 +11,7 @@ anchored.yml is deliberately tiny. Everything you may write, exhaustively:
 fields:                 # top-level, for ALL setups — record form name: type
   commit: string        #   string | number | boolean
 defaults:               # the setup shape, used when a criterion has no setup
-  validator: { instructions: "…" }
+  validator: { instructions: "…", require: grounded }   # `require` optional, see below
   before:    { instructions: "…" }
   after:     { instructions: "…" }
 setups:
@@ -33,6 +33,14 @@ Full commented example: [references/anchored.example.yml](../../references/ancho
   failed gate"). Write them as instruction prose containing the concrete commands.
   `before` runs ahead of each validator spawn for that setup's gates; `after` on a setup
   fires when one of its gates goes green; `after` on `defaults` is the close-time hook.
+- **`validator.require: grounded` is the one HARD knob** — the only place config stops
+  being advice. It makes a setup refuse a prose verdict: proof must carry the real output
+  of something the validator ran (`UngroundedEvidence` otherwise). Offer it where the
+  subject is genuinely executable and the stakes are high (a `release` setup); never make
+  it the default, and never put it on a setup that verifies assets, copy or design — those
+  are proven by inspection, and that is proof too. Criteria marked `judgment: true` stay
+  exempt everywhere. It merges DOWN: set on `defaults`, a named setup keeps it even when it
+  writes its own `instructions`.
 - **NOT config, by design** — refuse politely and say where it lives instead:
   - `rigor` / quality bar → per task, in the run file, from the user's words at anchor time
   - gate layout → the AI slices gates itself, sized to the rigor

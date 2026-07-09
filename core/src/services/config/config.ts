@@ -29,7 +29,19 @@ export function createConfig(raw?: unknown): ConfigPort {
             ? `declared setups: ${Object.keys(cfg.setups).join(', ')}`
             : 'no setups declared — omit the setup to use defaults, or add one via /a:setup',
         ])
-      return { ...cfg.defaults, ...named }
+      // before/after replace wholesale — one instruction, one author. The validator slot
+      // merges FIELD-wise: a setup that writes its own `instructions` must not silently
+      // drop a `require: grounded` the defaults established. Hardening layers, it does not
+      // get shadowed by a sibling key.
+      const validator =
+        cfg.defaults.validator !== undefined || named.validator !== undefined
+          ? { ...cfg.defaults.validator, ...named.validator }
+          : undefined
+      return {
+        ...cfg.defaults,
+        ...named,
+        ...(validator !== undefined ? { validator } : {}),
+      } as SetupConfig
     },
 
     names: () => Object.keys(cfg.setups),

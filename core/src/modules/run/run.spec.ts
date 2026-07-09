@@ -16,6 +16,7 @@ const config = createFakeConfig({
   setups: {
     frontend: { before: { instructions: 'run lint' } },
     backend: { validator: { instructions: 'real test runs' } },
+    release: { validator: { instructions: 'reject on doubt', require: 'grounded' } },
   },
 })
 
@@ -181,12 +182,51 @@ describe('evidence + fail (the validator verbs)', () => {
     ).rejects.toMatchObject({ kind: 'InactiveCriterion' })
   })
 
-  test('a prose verdict cannot prove an executable criterion — it stays open', async () => {
+  test('a reasoned verdict proves a criterion where no setup demands execution', async () => {
     await anchorNavbar()
+    await run.evidence('fix-navbar', 'c1', {
+      snapshot: 's',
+      verdict: 'compared the rendered asset against the spec sheet, every measure matches',
+    })
+    expect(onDisk('fix-navbar').criteria[0]).toMatchObject({ status: 'done' })
+  })
+})
+
+describe('validator.require: grounded (the one hardening knob, opt-in per setup)', () => {
+  const anchorRelease = () =>
+    run.anchor({
+      slug: 'ship',
+      goal: 'ship it',
+      criteria: [
+        { text: 'the suite passes', setup: 'release', gate: 'g' },
+        { text: 'the changelog reads well', setup: 'release', gate: 'g', judgment: true },
+      ],
+    })
+
+  test('the setup refuses a prose verdict — the criterion stays open', async () => {
+    await anchorRelease()
     expect(
-      run.evidence('fix-navbar', 'c1', { snapshot: 's', verdict: 'looks right to me' }),
+      run.evidence('ship', 'c1', { snapshot: 's', verdict: 'I read it, seems fine' }),
     ).rejects.toMatchObject({ kind: 'UngroundedEvidence' })
-    expect(onDisk('fix-navbar').criteria[0]!.status).toBe('open')
+    expect(onDisk('ship').criteria[0]!.status).toBe('open')
+  })
+
+  test('executed output proves it', async () => {
+    await anchorRelease()
+    await run.evidence('ship', 'c1', { snapshot: 's', grounded: 'bun test → 42 pass, exit 0' })
+    expect(onDisk('ship').criteria[0]!.status).toBe('done')
+  })
+
+  test('a judgment criterion stays exempt even in a grounded-only setup', async () => {
+    await anchorRelease()
+    await run.evidence('ship', 'c2', { snapshot: 's', verdict: 'no hype, one clause per line' })
+    expect(onDisk('ship').criteria[1]).toMatchObject({ status: 'done' })
+  })
+
+  test('the packet tells the validator the setup demands execution', async () => {
+    await anchorRelease()
+    const packet = await run.validate('ship', { gate: 'g' })
+    expect(packet.setup.validator?.require).toBe('grounded')
   })
 })
 
@@ -330,6 +370,14 @@ describe('close (the gate)', () => {
 })
 
 describe('status + list', () => {
+  test('list counts how many done criteria rest on a verdict rather than executed output', async () => {
+    await anchorNavbar()
+    await run.evidence('fix-navbar', 'c1', { snapshot: 's', grounded: 'bun test, exit 0' })
+    await run.evidence('fix-navbar', 'c2', { snapshot: 's', verdict: 'inspected, it holds' })
+    const [summary] = await run.list()
+    expect(summary).toMatchObject({ done: 2, judged: 1 })
+  })
+
   test('status returns the run; list summarizes every run', async () => {
     await anchorNavbar()
     await run.fail('fix-navbar', 'c2', { snapshot: 's', verdict: 'broken' })
@@ -341,6 +389,7 @@ describe('status + list', () => {
         goal: 'Navbar overflow fixed',
         rigor: 'high',
         closed: false,
+        judged: 0,
         open: 1,
         failed: 1,
         done: 1,

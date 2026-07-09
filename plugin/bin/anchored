@@ -22912,8 +22912,12 @@ config(en_default());
 var InstructionsSchema = exports_external.object({
   instructions: exports_external.string().min(1)
 }).strict();
+var ValidatorSchema = exports_external.object({
+  instructions: exports_external.string().min(1),
+  require: exports_external.enum(["grounded"]).optional()
+}).strict();
 var SetupSchema = exports_external.object({
-  validator: InstructionsSchema.optional(),
+  validator: ValidatorSchema.optional(),
   before: InstructionsSchema.optional(),
   after: InstructionsSchema.optional()
 }).strict();
@@ -22945,7 +22949,12 @@ function createConfig(raw) {
         throw anchoredError("UnknownSetup", `no setup '${setup}' in anchored.yml`, [
           Object.keys(cfg.setups).length > 0 ? `declared setups: ${Object.keys(cfg.setups).join(", ")}` : "no setups declared — omit the setup to use defaults, or add one via /a:setup"
         ]);
-      return { ...cfg.defaults, ...named };
+      const validator = cfg.defaults.validator !== undefined || named.validator !== undefined ? { ...cfg.defaults.validator, ...named.validator } : undefined;
+      return {
+        ...cfg.defaults,
+        ...named,
+        ...validator !== undefined ? { validator } : {}
+      };
     },
     names: () => Object.keys(cfg.setups)
   };
@@ -23007,11 +23016,6 @@ function buildCriterionSchema(fields) {
       ctx.addIssue({
         code: "custom",
         message: `criterion ${c.id}: done requires validator evidence`
-      });
-    if (c.status === "done" && c.judgment !== true && c.evidence?.grounded === undefined)
-      ctx.addIssue({
-        code: "custom",
-        message: `criterion ${c.id}: done requires grounded evidence (an executed command) — declare 'judgment: true' if it can only be judged in prose`
       });
     if (c.status === "failed" && c.evidence?.verdict === undefined)
       ctx.addIssue({
@@ -23304,10 +23308,11 @@ function createRun(deps) {
       const c = findCriterion(run, criterion);
       if (c.status === "superseded" || c.status === "rejected")
         throw anchoredError("InactiveCriterion", `criterion '${criterion}' is ${c.status} — nothing to prove`);
-      if (input.grounded === undefined && c.judgment !== true)
-        throw anchoredError("UngroundedEvidence", `criterion '${criterion}' is not a judgment criterion — a prose verdict cannot prove it`, [
-          'run something that proves it, then pass --grounded "<command> → <real output>"',
-          `if it truly cannot be executed, it must be declared 'judgment: true' at anchor/amend time`,
+      const setup = config2.resolve(c.setup);
+      if (setup.validator?.require === "grounded" && input.grounded === undefined && c.judgment !== true)
+        throw anchoredError("UngroundedEvidence", `setup '${c.setup ?? "(defaults)"}' requires grounded evidence — a prose verdict cannot prove '${criterion}' here`, [
+          'execute something that proves it, then pass --grounded "<what you ran> → <its real output>"',
+          `if nothing can be executed against it, it belongs in the run file as 'judgment: true'`,
           `to reject it instead: anchored fail ${slug} ${criterion} --snapshot <s> --verdict <why>`
         ]);
       return persist(slug, run, { ...run, criteria: proofState(run, criterion, "done", input) });
@@ -23342,7 +23347,8 @@ function createRun(deps) {
           closed: run.closed !== undefined,
           open: count("open"),
           failed: count("failed"),
-          done: count("done")
+          done: count("done"),
+          judged: run.criteria.filter((c) => c.status === "done" && c.evidence?.grounded === undefined).length
         });
       }
       return summaries;
@@ -23589,7 +23595,7 @@ function createCli(deps) {
 }
 
 // src/bin.ts
-var VERSION2 = "0.7.0";
+var VERSION2 = "0.8.0";
 var fs = {
   readFile: (p) => nodeFs.readFile(p, "utf8"),
   writeFile: (p, d) => nodeFs.writeFile(p, d, "utf8"),

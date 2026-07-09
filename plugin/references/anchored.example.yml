@@ -24,8 +24,10 @@ fields:
 defaults:
   validator:
     instructions: >
-      Ground evidence in executed commands wherever possible (tests, lint,
-      build, curl). Prose judgment only for what cannot be executed.
+      Verify as well as the subject allows. Execute what can be executed (tests,
+      lint, build, a request, a render) and use the real output. Where nothing can
+      be run — an asset, a copy deck, a token — verify by inspection and say what
+      you checked. Never present an inspection as a command you did not run.
 
 setups:
   frontend:
@@ -61,9 +63,13 @@ setups:
 
   release:
     validator:
+      # The ONE hardening knob, opt-in. `grounded` makes this setup refuse a prose
+      # verdict: proof must carry the real output of something the validator ran.
+      # Criteria marked `judgment: true` stay exempt — their author already said
+      # nothing can be executed against them. Omit it and both proofs count.
+      require: grounded
       instructions: >
-        Reject on any doubt. Evidence must be executable proof; prose verdicts
-        are not acceptable in this setup.
+        Reject on any doubt. Probe the edges, not the happy path.
     before:
       instructions: Run the full suite (`bun run test:all`) before any validator spawn.
     after:

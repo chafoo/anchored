@@ -253,14 +253,20 @@ export function createRun(deps: RunModuleDeps): RunPort {
           'InactiveCriterion',
           `criterion '${criterion}' is ${c.status} — nothing to prove`,
         )
-      // grounded-for-done, pre-checked with a usable message (the schema is the backstop)
-      if (input.grounded === undefined && c.judgment !== true)
+      // POLICY, not mechanism: only a setup that asked for it refuses a prose verdict.
+      // A `judgment` criterion is exempt — its author already said nothing can be executed.
+      const setup = config.resolve(c.setup)
+      if (
+        setup.validator?.require === 'grounded' &&
+        input.grounded === undefined &&
+        c.judgment !== true
+      )
         throw anchoredError(
           'UngroundedEvidence',
-          `criterion '${criterion}' is not a judgment criterion — a prose verdict cannot prove it`,
+          `setup '${c.setup ?? '(defaults)'}' requires grounded evidence — a prose verdict cannot prove '${criterion}' here`,
           [
-            'run something that proves it, then pass --grounded "<command> → <real output>"',
-            `if it truly cannot be executed, it must be declared 'judgment: true' at anchor/amend time`,
+            'execute something that proves it, then pass --grounded "<what you ran> → <its real output>"',
+            `if nothing can be executed against it, it belongs in the run file as 'judgment: true'`,
             `to reject it instead: anchored fail ${slug} ${criterion} --snapshot <s> --verdict <why>`,
           ],
         )
@@ -307,6 +313,9 @@ export function createRun(deps: RunModuleDeps): RunPort {
           open: count('open'),
           failed: count('failed'),
           done: count('done'),
+          judged: run.criteria.filter(
+            (c) => c.status === 'done' && c.evidence?.grounded === undefined,
+          ).length,
         })
       }
       return summaries

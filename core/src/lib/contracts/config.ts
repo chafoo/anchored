@@ -11,9 +11,16 @@ export interface Instructions {
   instructions: string
 }
 
+/** The validator slot: instructions + the one opt-in hardening knob. */
+export interface ValidatorInstructions extends Instructions {
+  /** `grounded`: this setup refuses a prose verdict — proof must be executed output.
+   *  Opt-in policy; `judgment: true` criteria stay exempt. */
+  require?: 'grounded'
+}
+
 /** One setup (or the defaults), flat — exactly these three slots, nothing else. */
 export interface SetupConfig {
-  validator?: Instructions
+  validator?: ValidatorInstructions
   before?: Instructions
   after?: Instructions
 }

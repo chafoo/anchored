@@ -137,7 +137,16 @@ describe('cli wiring (in-memory)', () => {
     await call(['anchor', 'r1'], '{"goal": "g", "criteria": [{"text": "a"}]}')
     const list = await call(['status'])
     expect(list.env.result).toEqual([
-      { slug: 'r1', goal: 'g', rigor: 'standard', closed: false, open: 1, failed: 0, done: 0 },
+      {
+        slug: 'r1',
+        goal: 'g',
+        rigor: 'standard',
+        closed: false,
+        open: 1,
+        failed: 0,
+        done: 0,
+        judged: 0,
+      },
     ])
     expect((await call(['version'])).env.result).toEqual({ version: '0.0.0-test' })
     const unknown = await call(['frobnicate'])

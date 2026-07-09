@@ -28,6 +28,7 @@ beforeAll(async () => {
       setups: {
         backend: { before: { instructions: 'run typecheck' } },
         frontend: { before: { instructions: 'run lint' } },
+        strict: { validator: { instructions: 'reject on doubt', require: 'grounded' } },
       },
     }),
     'utf8',
@@ -188,7 +189,14 @@ describe('the full lifecycle on the real filesystem', () => {
   test('the invariant holds at the real boundary: raw evidence-less done never lands', async () => {
     await call(
       'anchor tamper'.split(' '),
-      stringify({ goal: 'g', criteria: [{ text: 't' }, { text: 'reads calm', judgment: true }] }),
+      stringify({
+        goal: 'g',
+        criteria: [
+          { text: 'inspectable' }, // no setup → defaults, prose is proof
+          { text: 'the suite passes', setup: 'strict' }, // policy: execution required
+          { text: 'reads calm', setup: 'strict', judgment: true }, // exempt even there
+        ],
+      }),
     )
     const statusOf = async (i: number) => {
       const raw = parse(
@@ -197,18 +205,45 @@ describe('the full lifecycle on the real filesystem', () => {
       return raw.criteria[i]!.status
     }
 
-    // the verb pre-check: prose cannot prove an executable criterion
-    expect(
-      (await call(['evidence', 'tamper', 'c1', '--snapshot', 's', '--verdict', 'trust me'])).env
-        .error?.kind,
-    ).toBe('UngroundedEvidence')
-    expect(await statusOf(0)).toBe('open')
-
-    // the SCHEMA backstop, reached via the one path the pre-check waves through (a judgment
-    // criterion): no grounded, no verdict → the store refuses the write itself.
-    expect((await call(['evidence', 'tamper', 'c2', '--snapshot', 's'])).env.error?.kind).toBe(
+    // the SCHEMA backstop: no grounded, no verdict → the store refuses the write itself
+    expect((await call(['evidence', 'tamper', 'c1', '--snapshot', 's'])).env.error?.kind).toBe(
       'SchemaViolation',
     )
-    expect(await statusOf(1)).toBe('open') // nothing reached disk
+    expect(await statusOf(0)).toBe('open') // nothing reached disk
+
+    // MECHANISM: a reasoned verdict is evidence — no setup demanded execution here
+    expect(
+      (await call(['evidence', 'tamper', 'c1', '--snapshot', 's', '--verdict', 'read it, holds']))
+        .code,
+    ).toBe(0)
+    expect(await statusOf(0)).toBe('done')
+
+    // POLICY: the `strict` setup refuses prose, through the real anchored.yml
+    expect(
+      (await call(['evidence', 'tamper', 'c2', '--snapshot', 's', '--verdict', 'trust me'])).env
+        .error?.kind,
+    ).toBe('UngroundedEvidence')
+    expect(await statusOf(1)).toBe('open')
+    expect(
+      (await call(['evidence', 'tamper', 'c2', '--snapshot', 's', '--grounded', 'bun test → 0']))
+        .code,
+    ).toBe(0)
+    expect(await statusOf(1)).toBe('done')
+
+    // …and a judgment criterion stays exempt even inside that strict setup
+    expect(
+      (
+        await call([
+          'evidence',
+          'tamper',
+          'c3',
+          '--snapshot',
+          's',
+          '--verdict',
+          'one clause, no hype',
+        ])
+      ).code,
+    ).toBe(0)
+    expect(await statusOf(2)).toBe('done')
   })
 })

@@ -24,7 +24,16 @@ test('an in-memory RunPort conforms', async () => {
     set: async () => node,
     status: async () => node,
     list: async () => [
-      { slug: 'r1', goal: 'g', rigor: 'standard', closed: false, open: 1, failed: 0, done: 0 },
+      {
+        slug: 'r1',
+        goal: 'g',
+        rigor: 'standard',
+        closed: false,
+        open: 1,
+        failed: 0,
+        done: 0,
+        judged: 0,
+      },
     ],
     close: async () => node,
   }

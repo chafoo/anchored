@@ -42,11 +42,12 @@ One breath, no planning ceremony. From the user's words + whatever plan already 
   or refute each one. Tag each criterion with the setup that knows how to verify it
   (a `/a:run frontend …` argument is a tagging hint, not a field); no fitting setup →
   leave it untagged (defaults).
-- **Judgment**: `done` demands GROUNDED evidence — an executed command. Phrase criteria so
-  something can be run against them. Only where nothing can be (the copy reads calm, the
-  solution follows the pattern) mark `judgment: true`; that is the one licence for a prose
-  verdict, and it is a visible admission, so reach for it last. "Looks right in the
-  browser" is not judgment — drive the browser.
+- **Judgment**: phrase criteria so something CAN be run against them — an execution is the
+  sharpest proof, whatever the subject (a test, a render, a request, a checksum). Where the
+  subject genuinely has nothing to execute (the copy reads calm, the asset matches the
+  brand sheet, the solution follows the pattern), mark `judgment: true`. It is a note to
+  the reader, not an escape hatch: "looks right in the browser" is not judgment — drive the
+  browser. A validator can never award itself that mark.
 - **Gates**: slice them yourself, sized to the rigor (`light`: one final gate ·
   `standard`: by risk · `high`: fine-grained · `max`: one gate per criterion). A gate is
   setup-homogeneous — slice along setup boundaries too.
@@ -121,8 +122,10 @@ EOF
 `anchored close <slug>`. `CloseBlocked` → the suggestions ARE the remaining fix-list.
 On green: follow the `after.instructions` of the involved setups/defaults (commit +
 `anchored set <slug> <cN> commit=<sha>`, PR, … — whatever the user wired; anchored has no
-git built-ins). Then report in plain words: goal, N/N criteria proven (grounded vs.
-verdict), amendments, where the trail lives.
+git built-ins). Then report in plain words: goal, N/N criteria proven, **how many rest on
+a reasoned verdict rather than an execution** (`anchored status` counts them as `judged` —
+say it plainly, it is what the user needs to know before trusting a green run), amendments,
+where the trail lives.
 
 ## Failure handling — never silent
 

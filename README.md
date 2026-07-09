@@ -5,14 +5,14 @@
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license" />
   <img src="https://img.shields.io/badge/Claude%20Code-plugin-blueviolet" alt="Claude Code plugin" />
-  <img src="https://img.shields.io/badge/version-0.7.0-blue" alt="version 0.1.0" />
+  <img src="https://img.shields.io/badge/version-0.8.0-blue" alt="version 0.8.0" />
 </p>
 
 > You plan like you always do, the AI works like it always does — anchored freezes your plan, derives criteria from it, and an independent validator must prove each one at the gates. Nothing reaches `done` without evidence.
 
 ## Why this exists
 
-AI writes code faster than anyone can verify it. Every line generated faster than it is proven becomes an obligation — validation debt. Prompts don't fix that: an instruction is a rule, not a boundary. anchored moves verification into the system: a criterion cannot reach `done` unless an independent validator attached evidence **grounded in an executed command**, enforced by schema on every write. Prose proves a criterion only where its author declared up front that nothing can be executed against it.
+AI writes code faster than anyone can verify it. Every line generated faster than it is proven becomes an obligation — validation debt. Prompts don't fix that: an instruction is a rule, not a boundary. anchored moves verification into the system: a criterion cannot reach `done` unless an independent validator attached evidence, enforced by schema on every write. Evidence is executed output where something can be run, and a reasoned inspection where nothing can — anchored records which, and never lets a claim pass for either.
 
 anchored v3 is deliberately **not a workflow engine**. It owns nothing but the proof: one run file, one CLI, one validator agent, and a close gate that stays shut until every criterion is proven. Your flow stays yours.
 

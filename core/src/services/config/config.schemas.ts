@@ -10,10 +10,24 @@ export const InstructionsSchema = z
   })
   .strict()
 
+/**
+ * The validator slot: instructions, plus the ONE hardening knob a user may stack on top.
+ * `require: grounded` refuses a prose verdict in this setup — evidence must carry the real
+ * output of something the validator executed. It is opt-in POLICY, never the default: a
+ * criterion about an asset, a copy deck or a design token is verified by inspection, and
+ * that is a proof too. A criterion marked `judgment: true` stays exempt even here.
+ */
+export const ValidatorSchema = z
+  .object({
+    instructions: z.string().min(1),
+    require: z.enum(['grounded']).optional(),
+  })
+  .strict()
+
 /** One setup (and `defaults` shares the shape) — exactly these three slots. */
 export const SetupSchema = z
   .object({
-    validator: InstructionsSchema.optional(),
+    validator: ValidatorSchema.optional(),
     before: InstructionsSchema.optional(),
     after: InstructionsSchema.optional(),
   })

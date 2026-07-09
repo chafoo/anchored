@@ -27,12 +27,24 @@ amendment, kept visible forever (criteria are never deleted).
 schema on every write. Only the spawned validator authors evidence; the working session
 never calls `evidence`/`fail`.
 
-`grounded` is executed-command output, and `done` demands it. A prose `verdict` proves a
-criterion ONLY where the author declared `judgment: true` at anchor/amend time — the copy
-reads calm, the solution follows the pattern. That declaration is the single opt-out, it
-stands in the run file, and it is made BEFORE the proof is attempted, so an unexecutable
-criterion is an up-front admission rather than a retroactive excuse. `failed` still
-requires a `verdict` (the reasoned rejection), grounded or not.
+Evidence comes in two shapes, and neither outranks the other by default:
+
+- **`grounded`** — proof by execution: what the validator ran, and its real output.
+- **`verdict`** — proof by inspection: what it examined, against what, and why it holds.
+
+Executing is a *method* of proof, not the nature of it. A criterion about an asset, a copy
+deck or a design token has nothing to run against, and inspecting it carefully is a real
+proof. What the schema refuses is `done` with **no** validator-authored evidence at all.
+
+Two things keep that honest. `judgment: true`, declared at anchor/amend time, marks a
+criterion as unexecutable up front — a note to the reader, never awarded by the validator
+itself. And `anchored status` counts, among the `done` criteria, how many rest on a verdict
+rather than an execution (`judged`), so a green run never hides what it stands on.
+
+If you want a setup to accept nothing but executions, say so — see
+`validator.require: grounded` in [anchored.example.yml](anchored.example.yml). That is
+policy you stack, not a rule anchored imposes. `failed` always requires a `verdict` (the
+reasoned rejection), grounded or not.
 
 ### What the snapshot is not
 
