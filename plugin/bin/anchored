@@ -23589,7 +23589,7 @@ function createCli(deps) {
 }
 
 // src/bin.ts
-var VERSION2 = "0.1.0";
+var VERSION2 = "0.7.0";
 var fs = {
   readFile: (p) => nodeFs.readFile(p, "utf8"),
   writeFile: (p, d) => nodeFs.writeFile(p, d, "utf8"),

@@ -9,7 +9,9 @@ import { parse, stringify } from 'yaml'
 import { createCli } from './cli/cli.js'
 import type { FileSystem, Lock, Yaml } from './lib/contracts/fs.js'
 
-const VERSION = '0.1.0'
+// Kept in sync with package.json by bin.e2e.ts — inlined rather than read at runtime so
+// the bundled single-file binary carries no package.json lookup.
+const VERSION = '0.7.0'
 
 const fs: FileSystem = {
   readFile: (p) => nodeFs.readFile(p, 'utf8'),

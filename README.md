@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license" />
   <img src="https://img.shields.io/badge/Claude%20Code-plugin-blueviolet" alt="Claude Code plugin" />
-  <img src="https://img.shields.io/badge/version-0.1.0-blue" alt="version 0.1.0" />
+  <img src="https://img.shields.io/badge/version-0.7.0-blue" alt="version 0.1.0" />
 </p>
 
 > You plan like you always do, the AI works like it always does — anchored freezes your plan, derives criteria from it, and an independent validator must prove each one at the gates. Nothing reaches `done` without evidence.
@@ -49,7 +49,6 @@ The CLI ships inside the plugin — Claude Code puts `plugin/bin/` on PATH for y
 ## Docs
 
 - [Docs hub](docs/_docs.md) — the map
-- [North star](docs/design/north-star.md) — the whole model on one page
 - [Run](docs/run.md) · [Setup](docs/setup.md) — the two skills
 - [Examples](docs/examples/anchored.yml) — commented config + run file
 
