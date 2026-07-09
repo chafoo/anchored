@@ -42,6 +42,11 @@ One breath, no planning ceremony. From the user's words + whatever plan already 
   or refute each one. Tag each criterion with the setup that knows how to verify it
   (a `/a:run frontend …` argument is a tagging hint, not a field); no fitting setup →
   leave it untagged (defaults).
+- **Judgment**: `done` demands GROUNDED evidence — an executed command. Phrase criteria so
+  something can be run against them. Only where nothing can be (the copy reads calm, the
+  solution follows the pattern) mark `judgment: true`; that is the one licence for a prose
+  verdict, and it is a visible admission, so reach for it last. "Looks right in the
+  browser" is not judgment — drive the browser.
 - **Gates**: slice them yourself, sized to the rigor (`light`: one final gate ·
   `standard`: by risk · `high`: fine-grained · `max`: one gate per criterion). A gate is
   setup-homogeneous — slice along setup boundaries too.
@@ -55,6 +60,7 @@ rigor: standard
 criteria:
   - { text: "Navbar items wrap at 375px", setup: frontend, gate: layout }
   - { text: "Desktop pixel-identical", setup: frontend, gate: final }
+  - { text: "Follows the layout-component pattern", setup: frontend, gate: final, judgment: true }
 EOF
 ```
 
@@ -87,6 +93,10 @@ When the work behind a gate label is complete:
    Keep working on other gates meanwhile — the run file is the shared state.
 
 One validator per gate, no more: that's the whole token budget of the loop.
+
+Gates run concurrently against ONE working tree, so tell each validator in its prompt:
+scratch files go in its own scratchpad and are run by absolute path — a probe written
+under the project's source would be swept into a sibling gate's test run.
 
 ## Fix-list, amend, checkboxes
 

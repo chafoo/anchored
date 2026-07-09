@@ -22974,7 +22974,8 @@ var TrailEntrySchema = exports_external.object({
   claim: exports_external.string().min(1).optional(),
   refs: exports_external.array(exports_external.string()).optional(),
   gate: exports_external.string().optional(),
-  validated: exports_external.string().optional()
+  validated: exports_external.string().optional(),
+  snapshot: exports_external.string().min(1).optional()
 }).strict().refine((t) => t.claim !== undefined || t.validated !== undefined, {
   message: "a trail entry is a claim or a validation record"
 });
@@ -22983,6 +22984,7 @@ var CRITERION_BASE = {
   text: exports_external.string().min(1),
   setup: exports_external.string().optional(),
   gate: exports_external.string().optional(),
+  judgment: exports_external.boolean().optional(),
   status: exports_external.enum(CRITERION_STATUSES).default("open"),
   evidence: EvidenceSchema.optional(),
   superseded_by: exports_external.string().optional(),
@@ -23005,6 +23007,11 @@ function buildCriterionSchema(fields) {
       ctx.addIssue({
         code: "custom",
         message: `criterion ${c.id}: done requires validator evidence`
+      });
+    if (c.status === "done" && c.judgment !== true && c.evidence?.grounded === undefined)
+      ctx.addIssue({
+        code: "custom",
+        message: `criterion ${c.id}: done requires grounded evidence (an executed command) — declare 'judgment: true' if it can only be judged in prose`
       });
     if (c.status === "failed" && c.evidence?.verdict === undefined)
       ctx.addIssue({
@@ -23116,6 +23123,15 @@ function selectGate(run, gate) {
     throw anchoredError("MixedGate", `a gate is setup-homogeneous — selection spans: ${[...setups].map((s) => s ?? "(defaults)").join(", ")}`, ["validate per gate (--gate <g>) so each validator gets one instruction set"]);
   return { criteria: selected, setup: selected[0].setup };
 }
+var requestLine = (criteria) => `requested ${criteria.map((c) => c.id).join(", ")}`;
+function reusableRequest(run, gate, selection) {
+  const prior = [...run.trail].reverse().find((t) => t.validated !== undefined && t.gate === gate);
+  if (prior?.snapshot === undefined || prior.validated !== requestLine(selection))
+    return;
+  const since = Date.parse(prior.at);
+  const provenSince = selection.some((c) => c.evidence !== undefined && Date.parse(c.evidence.at) > since);
+  return provenSince ? undefined : prior;
+}
 
 // src/modules/run/scope/close-gate.ts
 function closeBlockers(run) {
@@ -23165,6 +23181,7 @@ function createRun(deps) {
         status: "open",
         ...draft.setup !== undefined ? { setup: draft.setup } : {},
         ...draft.gate !== undefined ? { gate: draft.gate } : {},
+        ...draft.judgment === true ? { judgment: true } : {},
         ...addedBy !== undefined ? { added_by: addedBy } : {}
       };
       minted.push(criterion);
@@ -23247,14 +23264,19 @@ function createRun(deps) {
       const run = await read(slug);
       assertOpen(slug, run, "validate");
       const selection = selectGate(run, opts.gate);
-      const snapshot = opts.snapshot ?? `snap-${clock()}-${rand()}`;
       const resolved = config2.resolve(selection.setup);
-      const entry = {
-        at: clock(),
-        ...opts.gate !== undefined ? { gate: opts.gate } : {},
-        validated: `requested ${selection.criteria.map((c) => c.id).join(", ")} (snapshot ${snapshot})`
-      };
-      await persist(slug, run, { ...run, trail: [...run.trail, entry] });
+      const prior = reusableRequest(run, opts.gate, selection.criteria);
+      const reuse = prior !== undefined && (opts.snapshot === undefined || opts.snapshot === prior.snapshot);
+      const snapshot = reuse ? prior.snapshot : opts.snapshot ?? `snap-${clock()}-${rand()}`;
+      if (!reuse) {
+        const entry = {
+          at: clock(),
+          ...opts.gate !== undefined ? { gate: opts.gate } : {},
+          validated: requestLine(selection.criteria),
+          snapshot
+        };
+        await persist(slug, run, { ...run, trail: [...run.trail, entry] });
+      }
       return {
         slug,
         ...opts.gate !== undefined ? { gate: opts.gate } : {},
@@ -23265,7 +23287,8 @@ function createRun(deps) {
           id: c.id,
           text: c.text,
           ...c.setup !== undefined ? { setup: c.setup } : {},
-          status: c.status
+          status: c.status,
+          ...c.judgment === true ? { judgment: true } : {}
         })),
         setup: {
           ...selection.setup !== undefined ? { name: selection.setup } : {},
@@ -23281,6 +23304,12 @@ function createRun(deps) {
       const c = findCriterion(run, criterion);
       if (c.status === "superseded" || c.status === "rejected")
         throw anchoredError("InactiveCriterion", `criterion '${criterion}' is ${c.status} — nothing to prove`);
+      if (input.grounded === undefined && c.judgment !== true)
+        throw anchoredError("UngroundedEvidence", `criterion '${criterion}' is not a judgment criterion — a prose verdict cannot prove it`, [
+          'run something that proves it, then pass --grounded "<command> → <real output>"',
+          `if it truly cannot be executed, it must be declared 'judgment: true' at anchor/amend time`,
+          `to reject it instead: anchored fail ${slug} ${criterion} --snapshot <s> --verdict <why>`
+        ]);
       return persist(slug, run, { ...run, criteria: proofState(run, criterion, "done", input) });
     },
     async fail(slug, criterion, input) {
@@ -23403,7 +23432,7 @@ var USAGE = {
   claim: "anchored claim <slug> <text> [--refs c1,c2]",
   amend: "anchored amend <slug>             (body via stdin: reason, add?, supersede?, reject?)",
   validate: "anchored validate <slug> [--gate <g>] [--snapshot <ref>]",
-  evidence: "anchored evidence <slug> <criterion> --snapshot <s> [--grounded <proof>] [--verdict <v>]",
+  evidence: "anchored evidence <slug> <criterion> --snapshot <s> --grounded <proof>   (--verdict <v> proves judgment criteria only)",
   fail: "anchored fail <slug> <criterion> --snapshot <s> --verdict <v>",
   set: "anchored set <slug> <criterion> <field> <value>   (or <field>=<value>)",
   status: "anchored status [slug]            (no slug: summaries of every run)",

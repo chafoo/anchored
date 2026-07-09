@@ -1,7 +1,8 @@
 // modules/run/run.schemas.ts — the run-file schema + its z.infer types. THE mechanism:
 // the evidence invariant lives here as refinements, and because the store parses every
 // write fail-closed against this schema, the invariant is unskippable — no verb, no bug,
-// no caller can persist `done` without validator-authored evidence.
+// no caller can persist `done` without validator-authored evidence, and that evidence is
+// GROUNDED in an executed command unless the criterion was declared `judgment: true`.
 //
 // The schema is BUILT from config: top-level custom `fields` (anchored.yml) become
 // optional, typed criterion properties — so `buildRunSchema(config.fields())` is the one
@@ -45,6 +46,7 @@ export const TrailEntrySchema = z
     refs: z.array(z.string()).optional(), // optional criterion hints — free-form, never gates
     gate: z.string().optional(),
     validated: z.string().optional(), // validation requests are trail entries too
+    snapshot: z.string().min(1).optional(), // the token handed out — lets validate dedupe
   })
   .strict()
   .refine((t) => t.claim !== undefined || t.validated !== undefined, {
@@ -56,6 +58,10 @@ const CRITERION_BASE = {
   text: z.string().min(1),
   setup: z.string().optional(), // which setup verifies it; no setup → defaults
   gate: z.string().optional(), // the AI's slicing; absent → the single final gate
+  /** declared at anchor/amend time: this criterion cannot be executed, only judged in
+   *  prose (copy quality, pattern fidelity). The ONE opt-out from grounded-for-done —
+   *  visible in the run file, so a prose proof is a stated choice, never a silent one. */
+  judgment: z.boolean().optional(),
   status: z.enum(CRITERION_STATUSES).default('open'),
   evidence: EvidenceSchema.optional(),
   superseded_by: z.string().optional(),
@@ -88,6 +94,14 @@ export function buildCriterionSchema(fields: FieldsConfig) {
         ctx.addIssue({
           code: 'custom',
           message: `criterion ${c.id}: done requires validator evidence`,
+        })
+      // done is grounded in an executed command — prose alone proves only a criterion the
+      // author declared unexecutable (`judgment: true`). Without this, `verdict` is a
+      // silent bypass: any assertion reaches done.
+      if (c.status === 'done' && c.judgment !== true && c.evidence?.grounded === undefined)
+        ctx.addIssue({
+          code: 'custom',
+          message: `criterion ${c.id}: done requires grounded evidence (an executed command) — declare 'judgment: true' if it can only be judged in prose`,
         })
       if (c.status === 'failed' && c.evidence?.verdict === undefined)
         ctx.addIssue({

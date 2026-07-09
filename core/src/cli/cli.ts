@@ -35,7 +35,7 @@ const USAGE = {
   amend: 'anchored amend <slug>             (body via stdin: reason, add?, supersede?, reject?)',
   validate: 'anchored validate <slug> [--gate <g>] [--snapshot <ref>]',
   evidence:
-    'anchored evidence <slug> <criterion> --snapshot <s> [--grounded <proof>] [--verdict <v>]',
+    'anchored evidence <slug> <criterion> --snapshot <s> --grounded <proof>   (--verdict <v> proves judgment criteria only)',
   fail: 'anchored fail <slug> <criterion> --snapshot <s> --verdict <v>',
   set: 'anchored set <slug> <criterion> <field> <value>   (or <field>=<value>)',
   status: 'anchored status [slug]            (no slug: summaries of every run)',

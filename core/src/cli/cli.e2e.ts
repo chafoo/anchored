@@ -186,13 +186,29 @@ describe('the full lifecycle on the real filesystem', () => {
   }, 20_000)
 
   test('the invariant holds at the real boundary: raw evidence-less done never lands', async () => {
-    await call(['anchor', 'tamper'], stringify({ goal: 'g', criteria: [{ text: 't' }] }))
-    // simulate a buggy/malicious writer bypassing the verbs but going through the cli store path:
-    const { env } = await call(['evidence', 'tamper', 'c1', '--snapshot', 's'])
-    expect(env.error?.kind).toBe('SchemaViolation') // no grounded, no verdict → refused
-    const raw = parse(await nodeFs.readFile(join(root, '.claude/anchored/tamper.yml'), 'utf8')) as {
-      criteria: { status: string }[]
+    await call(
+      'anchor tamper'.split(' '),
+      stringify({ goal: 'g', criteria: [{ text: 't' }, { text: 'reads calm', judgment: true }] }),
+    )
+    const statusOf = async (i: number) => {
+      const raw = parse(
+        await nodeFs.readFile(join(root, '.claude/anchored/tamper.yml'), 'utf8'),
+      ) as { criteria: { status: string }[] }
+      return raw.criteria[i]!.status
     }
-    expect(raw.criteria[0]!.status).toBe('open') // nothing reached disk
+
+    // the verb pre-check: prose cannot prove an executable criterion
+    expect(
+      (await call(['evidence', 'tamper', 'c1', '--snapshot', 's', '--verdict', 'trust me'])).env
+        .error?.kind,
+    ).toBe('UngroundedEvidence')
+    expect(await statusOf(0)).toBe('open')
+
+    // the SCHEMA backstop, reached via the one path the pre-check waves through (a judgment
+    // criterion): no grounded, no verdict → the store refuses the write itself.
+    expect((await call(['evidence', 'tamper', 'c2', '--snapshot', 's'])).env.error?.kind).toBe(
+      'SchemaViolation',
+    )
+    expect(await statusOf(1)).toBe('open') // nothing reached disk
   })
 })

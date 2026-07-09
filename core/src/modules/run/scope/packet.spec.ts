@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test'
-import { selectGate } from './packet.js'
+import { selectGate, requestLine, reusableRequest } from './packet.js'
 import { RunSchema } from '../run.schemas.js'
 import { midFlightRun } from '../run.fixtures.js'
 import type { AnchoredError } from '../../../lib/utils/error.js'
@@ -69,5 +69,66 @@ describe('selectGate', () => {
       expect((e as Error).message).toContain('backend')
       expect((e as Error).message).toContain('frontend')
     }
+  })
+})
+
+describe('reusableRequest', () => {
+  const withTrail = (trail: unknown[]) =>
+    RunSchema.parse({
+      goal: 'g',
+      criteria: [{ id: 'c1', text: 't', gate: 'g1' }],
+      trail,
+    })
+
+  const selection = (r: ReturnType<typeof withTrail>) => selectGate(r, 'g1').criteria
+
+  test('the same request for the same gate is reusable', () => {
+    const r = withTrail([
+      { at: '2026-07-08T14:00:00Z', gate: 'g1', validated: 'requested c1', snapshot: 'snap-a' },
+    ])
+    expect(reusableRequest(r, 'g1', selection(r))?.snapshot).toBe('snap-a')
+  })
+
+  test('a legacy entry (snapshot only in the prose) is never reused', () => {
+    const r = withTrail([
+      { at: '2026-07-08T14:00:00Z', gate: 'g1', validated: 'requested c1 (snapshot snap-a)' },
+    ])
+    expect(reusableRequest(r, 'g1', selection(r))).toBeUndefined()
+  })
+
+  test('a different gate, and a claim entry, are not the prior request', () => {
+    const r = withTrail([
+      { at: '2026-07-08T14:00:00Z', gate: 'other', validated: 'requested c1', snapshot: 'snap-a' },
+      { at: '2026-07-08T14:01:00Z', claim: 'did the work' },
+    ])
+    expect(reusableRequest(r, 'g1', selection(r))).toBeUndefined()
+  })
+
+  test('evidence written since the request (a fail) forces a fresh snapshot', () => {
+    const r = RunSchema.parse({
+      goal: 'g',
+      criteria: [
+        {
+          id: 'c1',
+          text: 't',
+          gate: 'g1',
+          status: 'failed',
+          evidence: {
+            by: 'validator',
+            snapshot: 'snap-a',
+            verdict: 'off by 4px',
+            at: '2026-07-08T14:05:00Z', // AFTER the request below
+          },
+        },
+      ],
+      trail: [
+        { at: '2026-07-08T14:00:00Z', gate: 'g1', validated: 'requested c1', snapshot: 'snap-a' },
+      ],
+    })
+    expect(reusableRequest(r, 'g1', selectGate(r, 'g1').criteria)).toBeUndefined()
+  })
+
+  test('requestLine names the selected criteria in order', () => {
+    expect(requestLine(selectGate(run, 'final').criteria)).toBe('requested c3, c4')
   })
 })

@@ -24,8 +24,9 @@ fields:
 defaults:
   validator:
     instructions: >
-      Ground evidence in executed commands wherever possible (tests, lint,
-      build, curl). Prose judgment only for what cannot be executed.
+      Ground evidence in executed commands (tests, lint, build, curl) — the schema
+      refuses `done` without it. A prose verdict proves only a criterion the author
+      declared `judgment: true`.
 
 setups:
   frontend:

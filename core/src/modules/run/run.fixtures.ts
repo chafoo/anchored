@@ -57,6 +57,7 @@ export const midFlightRun = {
       text: 'Solution follows the existing layout-component pattern',
       setup: 'frontend',
       gate: 'final',
+      judgment: true, // pattern fidelity: nothing to execute — prose may prove it
       status: 'failed',
       evidence: {
         by: 'validator',
@@ -83,7 +84,8 @@ export const midFlightRun = {
     {
       at: '2026-07-08T14:31:00Z',
       gate: 'layout',
-      validated: 'c1 done, c4 failed (snapshot 3f2a91c)',
+      validated: 'requested c1, c4',
+      snapshot: '3f2a91c',
     },
   ],
 }
