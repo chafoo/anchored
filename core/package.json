@@ -21,11 +21,14 @@
   "bugs": {
     "url": "https://github.com/chafoo/anchored/issues"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20"
   },
   "bin": {
-    "anchored": "./dist/bin.js"
+    "anchored": "dist/bin.js"
   },
   "exports": {
     ".": {
