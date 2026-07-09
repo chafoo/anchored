@@ -40,6 +40,12 @@ flowchart TD
   (`[<slug>/<id>] …`) and a task is checked off only when its criterion is
   `done`-with-evidence: **a checkbox means proven, not claimed.** Pure
   display — the run file stays the SSOT.
+- **Proven means executed** — `done` requires evidence grounded in a real
+  command. A criterion that nothing can be run against (the copy reads calm, the
+  solution follows the pattern) is marked `judgment: true` when it is written,
+  before anyone tries to prove it — that declaration is the only licence for a
+  prose verdict, and it stands visible in the run file. The validator cannot
+  grant it to itself.
 - **Course changes stay honest** — when the AI must rethink mid-run it never
   edits the plan; it appends an amendment with the reason, adds new criteria,
   and flips obsolete ones to `superseded`/`rejected` (never deleted).

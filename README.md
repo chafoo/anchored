@@ -12,7 +12,7 @@
 
 ## Why this exists
 
-AI writes code faster than anyone can verify it. Every line generated faster than it is proven becomes an obligation — validation debt. Prompts don't fix that: an instruction is a rule, not a boundary. anchored moves verification into the system: a criterion cannot reach `done` unless an independent validator attached evidence, enforced by schema on every write.
+AI writes code faster than anyone can verify it. Every line generated faster than it is proven becomes an obligation — validation debt. Prompts don't fix that: an instruction is a rule, not a boundary. anchored moves verification into the system: a criterion cannot reach `done` unless an independent validator attached evidence **grounded in an executed command**, enforced by schema on every write. Prose proves a criterion only where its author declared up front that nothing can be executed against it.
 
 anchored v3 is deliberately **not a workflow engine**. It owns nothing but the proof: one run file, one CLI, one validator agent, and a close gate that stays shut until every criterion is proven. Your flow stays yours.
 
