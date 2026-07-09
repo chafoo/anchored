@@ -9,9 +9,11 @@ flowchart LR
   docs --> run["run skill<br/>execute a task under the verify loop"]
   docs --> setup["setup skill<br/>author anchored.yml + setups"]
   docs --> ex["examples<br/>anchored.yml + a run file"]
+  docs --> rel["release<br/>how a version ships"]
   click ns "design/north-star.md"
   click run "run.md"
   click setup "setup.md"
+  click rel "release.md"
 ```
 
 ## Areas
@@ -22,6 +24,7 @@ flowchart LR
 | [run](run.md) | The one execution skill — anchor a goal, work freely, validate at gates, close on green. |
 | [setup](setup.md) | The onboarding skill — builds the project's `anchored.yml` and its named setups (`frontend`, `backend`, `release`, …). |
 | [examples](examples/anchored.yml) | A commented `anchored.yml` and a commented run file (`.claude/anchored/<slug>.yml`) showing every field in play. |
+| [release](release.md) | How a version ships: the four places the version lives, the gates, npm's 2FA and its fresh-publish 404, and what cannot be undone. |
 
 ## The one-sentence pitch
 
