@@ -1,9 +1,26 @@
 {
   "name": "@chaafoo/anchored",
   "version": "0.1.0",
-  "description": "anchored — the verification gate for AI work. Evidence-gated runs: no criterion reaches done without validator-authored proof.",
+  "description": "anchored — the verification gate for AI work. Evidence-gated runs: no criterion reaches done without validator-authored proof, grounded in an executed command.",
   "type": "module",
   "license": "MIT",
+  "keywords": [
+    "ai",
+    "agents",
+    "claude-code",
+    "verification",
+    "evidence",
+    "cli"
+  ],
+  "homepage": "https://github.com/chafoo/anchored#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chafoo/anchored.git",
+    "directory": "core"
+  },
+  "bugs": {
+    "url": "https://github.com/chafoo/anchored/issues"
+  },
   "engines": {
     "node": ">=20"
   },
