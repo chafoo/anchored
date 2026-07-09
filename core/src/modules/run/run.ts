@@ -239,6 +239,8 @@ export function createRun(deps: RunModuleDeps): RunPort {
           ...(selection.setup !== undefined ? { name: selection.setup } : {}),
           ...(resolved.validator !== undefined ? { validator: resolved.validator } : {}),
           ...(resolved.before !== undefined ? { before: resolved.before } : {}),
+          // the skill runs this when the gate goes green — it has no other way to learn it
+          ...(resolved.after !== undefined ? { after: resolved.after } : {}),
         },
         fields: config.fields(),
       }

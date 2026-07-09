@@ -88,7 +88,9 @@ When the work behind a gate label is complete:
 
 1. Follow the gate's setup's `before.instructions` (you execute them — e.g. "run
    `bun run typecheck`, red = failed gate"; if they produce a snapshot ref, pass it on).
-2. `anchored validate <slug> --gate <g> [--snapshot <ref>]` → the validation packet.
+2. `anchored validate <slug> --gate <g> [--snapshot <ref>]` → the validation packet. It
+   carries `setup.before` and `setup.after` as well: **you** run those, around the spawn.
+   They are instruction prose, never a step list — the harness executes nothing.
 3. Spawn **one** `a:validator` subagent, in the background, handing it the packet
    verbatim (slug, gate, snapshot, rigor, criteria, validator instructions, fields).
    Keep working on other gates meanwhile — the run file is the shared state.
@@ -119,13 +121,18 @@ EOF
 
 ## Close
 
+A gate's `after.instructions` (from its packet) run when THAT gate goes green. The
+close-time hook is `defaults.after` — no packet carries it, so read it from `anchored.yml`
+before closing; if there is no file, there is no hook.
+
 `anchored close <slug>`. `CloseBlocked` → the suggestions ARE the remaining fix-list.
-On green: follow the `after.instructions` of the involved setups/defaults (commit +
-`anchored set <slug> <cN> commit=<sha>`, PR, … — whatever the user wired; anchored has no
-git built-ins). Then report in plain words: goal, N/N criteria proven, **how many rest on
-a reasoned verdict rather than an execution** (`anchored status` counts them as `judged` —
-say it plainly, it is what the user needs to know before trusting a green run), amendments,
-where the trail lives.
+On green: follow the close-time `after.instructions` (commit + `anchored set <slug> <cN>
+commit=<sha>`, PR, … — whatever the user wired; anchored has no git built-ins). Whatever
+those instructions do, leave a trace: `anchored claim` for what happened, `anchored set`
+for a value worth keeping. Then report in plain words: goal, N/N criteria proven, **how
+many rest on a reasoned verdict rather than an execution** (`anchored status` counts them
+as `judged` — say it plainly, it is what the user needs to know before trusting a green
+run), amendments, where the trail lives.
 
 ## Failure handling — never silent
 

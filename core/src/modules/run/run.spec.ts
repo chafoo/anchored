@@ -12,9 +12,12 @@ let run: RunPort
 
 const config = createFakeConfig({
   fields: { commit: 'string', coverage_pct: 'number' },
-  defaults: { validator: { instructions: 'ground evidence' } },
+  defaults: { validator: { instructions: 'ground evidence' }, after: { instructions: 'on close' } },
   setups: {
-    frontend: { before: { instructions: 'run lint' } },
+    frontend: {
+      before: { instructions: 'run lint' },
+      after: { instructions: 'log the green gate' },
+    },
     backend: { validator: { instructions: 'real test runs' } },
     release: { validator: { instructions: 'reject on doubt', require: 'grounded' } },
   },
@@ -93,6 +96,13 @@ describe('validate', () => {
     expect(packet.setup.before?.instructions).toBe('run lint') // setup slot
     expect(packet.setup.validator?.instructions).toBe('ground evidence') // defaults fill
     expect(packet.fields).toEqual({ commit: 'string', coverage_pct: 'number' })
+  })
+
+  test('the packet carries BOTH instruction blocks the skill runs around the spawn', async () => {
+    await anchorNavbar()
+    const packet = await run.validate('fix-navbar', { gate: 'layout' })
+    expect(packet.setup.before?.instructions).toBe('run lint') // before the validator
+    expect(packet.setup.after?.instructions).toBe('log the green gate') // when it goes green
   })
 
   test('--snapshot overrides the minted token verbatim', async () => {

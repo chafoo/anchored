@@ -53,8 +53,15 @@ export interface ValidationPacket {
   goal: string
   criteria: { id: string; text: string; setup?: string; status: string; judgment?: boolean }[]
   /** the resolved setup of the gate (gates are setup-homogeneous). `validator.require`
-   *  tells the validator whether this setup accepts a reasoned verdict at all. */
-  setup: { name?: string; validator?: ValidatorInstructions; before?: Instructions }
+   *  tells the validator whether this setup accepts a reasoned verdict at all; `before`
+   *  and `after` are the SKILL's — instruction blocks it executes around the spawn, never
+   *  a step list the harness runs. */
+  setup: {
+    name?: string
+    validator?: ValidatorInstructions
+    before?: Instructions
+    after?: Instructions
+  }
   fields: FieldsConfig
 }
 

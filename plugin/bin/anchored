@@ -23297,7 +23297,8 @@ function createRun(deps) {
         setup: {
           ...selection.setup !== undefined ? { name: selection.setup } : {},
           ...resolved.validator !== undefined ? { validator: resolved.validator } : {},
-          ...resolved.before !== undefined ? { before: resolved.before } : {}
+          ...resolved.before !== undefined ? { before: resolved.before } : {},
+          ...resolved.after !== undefined ? { after: resolved.after } : {}
         },
         fields: config2.fields()
       };
